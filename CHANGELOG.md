@@ -4,6 +4,10 @@
 
 Each version's section is written by the pull request that changes the version, from the pull requests merged since the previous version; other pull requests don't edit this file.
 
+## 0.0.2
+
+- The packages are published through npm's trusted publishing, with provenance, so the release stores no token.
+
 ## 0.0.1
 
 - The first version of Git's seven packages, under the MIT License: `@noldova/git`, `@noldova/git.window` and `@noldova/git.protocol` for the local Git module, `@noldova/git.github`, `@noldova/git.github.window` and `@noldova/git.github.protocol` for the GitHub module, and `@noldova/git.hosting.protocol`, which every host module shares.

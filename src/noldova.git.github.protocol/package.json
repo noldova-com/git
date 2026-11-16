@@ -1,6 +1,6 @@
 {
   "name": "@noldova/git.github.protocol",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "What the GitHub module's parts share: GitHubNames, the module's id, method, event, tool and service names, and the IGitHubAccess service through which another module reads the signed-in token as a GitHubAccessGrant, or why not as a GitHubAccessRefusal.",
   "type": "module",
   "license": "MIT",
@@ -27,6 +27,6 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@noldova/git.hosting.protocol": "0.0.1"
+    "@noldova/git.hosting.protocol": "0.0.2"
   }
 }
