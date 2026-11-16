@@ -64,7 +64,7 @@ npm test
 
 Every pull request into `main` must pass "Check / Linked issue" and "Build and test / All targets", which [documents/TESTING.md](documents/TESTING.md#the-pull-request-checks) describes.
 
-`.github/workflows/module-range.yml` calls Noldova Desktop's "Module range" workflow, pinned to Noldova Desktop 0.0.1's commit, once for each module, `src/noldova.git` and `src/noldova.git.github`, on every pull request, every night and by hand.
+`.github/workflows/module-range.yml` calls Noldova Desktop's "Module range" workflow, pinned to Noldova Desktop 0.0.2's commit, once for each module, `src/noldova.git` and `src/noldova.git.github`, on every pull request, every night and by hand.
 It builds and tests each module with `npm run build` and `npm test` against the newest published Noldova Desktop inside its `module.json`'s `noldovaDesktop` range, which Desktop Build's range check, at the Noldova Desktop version the root `package.json` pins, chooses, and a failing nightly run opens or updates an issue, so it holds only `contents: read` and `issues: write`.
 The build's installs of the packed packages name the version `node_modules` holds of each `@noldova/` package the root `package.json` pins, since an install otherwise takes the lockfile's version back, so the version the run moved to stays.
 
