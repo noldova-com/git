@@ -1,0 +1,32 @@
+{
+  "name": "@noldova/git.github.protocol",
+  "version": "0.0.1",
+  "description": "What the GitHub module's parts share: GitHubNames, the module's id, method, event, tool and service names, and the IGitHubAccess service through which another module reads the signed-in token as a GitHubAccessGrant, or why not as a GitHubAccessRefusal.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/noldova-com/git.git",
+    "directory": "src/noldova.git.github.protocol"
+  },
+  "homepage": "https://github.com/noldova-com/git#readme",
+  "bugs": {
+    "url": "https://github.com/noldova-com/git/issues"
+  },
+  "exports": {
+    ".": "./src/api/index.ts",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src/**/*.js",
+    "src/**/*.js.map",
+    "src/**/*.d.ts"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "dependencies": {
+    "@noldova/git.hosting.protocol": "0.0.1"
+  }
+}

@@ -1,0 +1,16 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<textarea nol-text-field class="field" rows="3" [attr.aria-label]="resources.messageLabel" [placeholder]="placeholder()" [ngModel]="state.message()"
+  (ngModelChange)="state.message.set($event)"></textarea>
+<button nol-button type="button" class="commit" [disabled]="!canCommit()" (click)="commit()">
+  <span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.commitIcon }}</span>{{ label() }}
+</button>
+@if (hint(); as hint) {
+  <span class="hint">{{ hint }}</span>
+}

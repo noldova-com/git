@@ -1,0 +1,24 @@
+{
+  "extends": "../tsconfig-base.json",
+  "compilerOptions": {
+    "lib": [
+      "ES2025",
+      "ESNext.Disposable",
+      "DOM"
+    ],
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.mts",
+    "../vitest.config.ts"
+  ],
+  "exclude": [
+    "tests/installed-package/read-runtime-part.mts"
+  ]
+}

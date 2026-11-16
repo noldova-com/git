@@ -1,0 +1,57 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (empty(); as empty) {
+  <div class="empty">
+    <span class="empty-icon material-symbols-rounded" aria-hidden="true">{{ empty.icon }}</span>
+    <h2 class="heading">{{ empty.heading }}</h2>
+    <p class="text">{{ empty.text }}</p>
+    @if (offersGit()) {
+      <span class="actions">
+        <button nol-button type="button" (click)="getGit()"><span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.openLinkIcon }}</span>{{ resources.getGitLabel }}</button>
+        <button nol-button type="button" [variant]="secondary" (click)="checkAgain()">{{ resources.checkAgainLabel }}</button>
+      </span>
+    }
+  </div>
+} @else if (state.status(); as status) {
+  <div class="body">
+    <nol-git-branch-card [status]="status" />
+    @if (status.remote; as remote) {
+      <nol-git-host-row [remote]="remote" [status]="status" [folder]="state.folder() ?? ''" />
+    }
+    @if (operationOf(status.operation); as operation) {
+      <div class="banner" role="status">
+        <span class="banner-icon warning material-symbols-rounded" aria-hidden="true">{{ resources.mergeIcon }}</span>
+        <span class="banner-text"><span class="strong">{{ operation }}</span><span class="muted">{{ resources.formatConflictText(state.conflicts()) }}</span></span>
+      </div>
+    }
+    @if (state.watchFailure(); as watchFailure) {
+      <div class="banner" role="status">
+        <span class="banner-icon warning material-symbols-rounded" aria-hidden="true">{{ resources.watchFailedIcon }}</span>
+        <span class="banner-text">{{ watchFailure }}</span>
+        <button nol-button type="button" class="banner-action" [variant]="secondary" (click)="followAgain()">{{ resources.checkAgainLabel }}</button>
+      </div>
+    }
+    @if (state.failure(); as failure) {
+      <div class="banner" role="alert">
+        <span class="banner-icon failed material-symbols-rounded" aria-hidden="true">{{ resources.failureIcon }}</span>
+        <span class="banner-text">{{ failure }}</span>
+        <button nol-button type="button" class="banner-action" [variant]="secondary" (click)="dismissFailure()">{{ resources.dismissLabel }}</button>
+      </div>
+    }
+    @for (group of state.groups(); track group.kind) {
+      <nol-git-file-group [group]="group" />
+    } @empty {
+      <p class="quiet">{{ resources.noChanges }}</p>
+    }
+    @if (status.truncated) {
+      <p class="quiet">{{ resources.listCut }}</p>
+    }
+    <nol-git-commit-card [status]="status" />
+  </div>
+}

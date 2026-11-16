@@ -1,0 +1,100 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (signIn(); as current) {
+  <section class="nol-git-github-setting" [attr.aria-busy]="isBusy()">
+    @if (current.deviceCode; as code) {
+      <div class="nol-git-github-heading" [attr.data-setting]="resources.accountRow">
+        <h3 class="nol-git-github-setting-title">{{ resources.accountTitle }}</h3>
+        <p class="nol-git-github-setting-note">{{ resources.formatCodeNote(code.verificationUri, code.userCode, copiedCode() === code.userCode) }}</p>
+      </div>
+      <div class="nol-git-github-row">
+        <span class="nol-git-github-code">{{ code.userCode }}</span>
+        <button type="button" nol-button [variant]="secondary" (click)="copyAsync(code.userCode)">
+          <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.copyIcon }}</span>{{ resources.copyCode }}
+        </button>
+        <button type="button" nol-button [variant]="secondary" (click)="continueAsync(code)">
+          <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.openIcon }}</span>{{ resources.openAgain }}
+        </button>
+      </div>
+      <div class="nol-git-github-row nol-git-github-muted">
+        <nol-spinner />
+        <span role="timer">{{ remainingOf(code) }}</span>
+        <button type="button" nol-button class="nol-git-github-cancel" [variant]="secondary" [disabled]="isBusy()" (click)="cancelAsync()">{{ resources.cancel }}</button>
+      </div>
+    } @else if (current.account; as account) {
+      <div class="nol-git-github-heading" [attr.data-setting]="resources.accountRow">
+        <h3 class="nol-git-github-setting-title">{{ resources.accountTitle }}</h3>
+        <div class="nol-git-github-account">
+          <nol-avatar [name]="account.login" [image]="account.avatar" [initials]="initialOf(account)" [colorKey]="account.login" [decorative]="true" />
+          <span class="nol-git-github-account-text">
+            <span class="nol-git-github-strong">{{ account.login }}</span>
+            <span class="nol-git-github-muted nol-git-github-label">{{ accessOf(account) }}</span>
+          </span>
+        </div>
+      </div>
+      <div class="nol-git-github-row">
+        <span class="nol-git-github-action" [attr.data-setting]="resources.signOutRow">
+          <button type="button" nol-button [variant]="secondary" [disabled]="isBusy()" (click)="signOutAsync()">
+            <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.signOutIcon }}</span>{{ resources.signOut }}
+          </button>
+        </span>
+        <span class="nol-git-github-action" [attr.data-setting]="resources.manageAccessRow">
+          <button type="button" nol-button [variant]="secondary" (click)="manageAsync()">
+            <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.openIcon }}</span>{{ resources.manageAccess }}
+          </button>
+        </span>
+      </div>
+    } @else {
+      <div class="nol-git-github-heading" [attr.data-setting]="resources.accountRow">
+        <h3 class="nol-git-github-setting-title">{{ resources.accountTitle }}</h3>
+        @if (failureOf(current); as failure) {
+          <div class="nol-git-github-banner" role="alert">
+            <span class="material-symbols-rounded nol-git-github-banner-icon" aria-hidden="true">{{ resources.failureIcon }}</span>
+            <span class="nol-git-github-banner-text">
+              <span class="nol-git-github-strong">{{ failure.title }}</span>
+              <span class="nol-git-github-muted">{{ failure.hint }}</span>
+            </span>
+          </div>
+        } @else {
+          <p class="nol-git-github-setting-note">{{ resources.signedOutNote }}</p>
+        }
+      </div>
+      <div class="nol-git-github-row">
+        <span class="nol-git-github-action" [attr.data-setting]="resources.signInRow">
+          <button type="button" nol-button [disabled]="isBusy()" (click)="startAsync()">
+            <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.signInIcon }}</span>{{ resources.signIn }}
+          </button>
+        </span>
+      </div>
+    }
+    @if (failure(); as failure) {
+      <ng-container *ngTemplateOutlet="requestFailed; context: { $implicit: failure }" />
+    }
+  </section>
+} @else if (failure(); as failure) {
+  <section class="nol-git-github-setting">
+    <div class="nol-git-github-heading" [attr.data-setting]="resources.accountRow">
+      <h3 class="nol-git-github-setting-title">{{ resources.accountTitle }}</h3>
+      <ng-container *ngTemplateOutlet="requestFailed; context: { $implicit: failure }" />
+    </div>
+    <div class="nol-git-github-row">
+      <button type="button" nol-button [variant]="secondary" [disabled]="isBusy()" (click)="readAsync()">{{ resources.tryAgain }}</button>
+    </div>
+  </section>
+}
+
+<ng-template #requestFailed let-failure>
+  <div class="nol-git-github-banner" role="alert">
+    <span class="material-symbols-rounded nol-git-github-banner-icon" aria-hidden="true">{{ resources.failureIcon }}</span>
+    <span class="nol-git-github-banner-text">
+      <span class="nol-git-github-strong">{{ failure }}</span>
+      <span class="nol-git-github-muted">{{ resources.requestFailedHint }}</span>
+    </span>
+  </div>
+</ng-template>

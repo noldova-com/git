@@ -1,0 +1,83 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (failure(); as failure) {
+  <div class="notice" role="alert">
+    <span class="material-symbols-rounded notice-icon" aria-hidden="true">{{ resources.failureIcon }}</span>
+    <span class="notice-text">{{ failure }}</span>
+    <button type="button" nol-button [variant]="secondary" (click)="retry()">{{ resources.tryAgain }}</button>
+  </div>
+} @else if (signIn(); as current) {
+  @if (!isSignedIn()) {
+    @if (current.deviceCode; as code) {
+      <div class="notice">
+        <span class="notice-text">{{ resources.formatHostRowCode(code.userCode, copiedCode() === code.userCode) }}</span>
+        <button type="button" nol-button [variant]="secondary" (click)="copyAsync(code.userCode)">{{ resources.copyCode }}</button>
+        <button type="button" nol-button [variant]="secondary" [disabled]="isBusy()" (click)="cancelAsync()">{{ resources.cancel }}</button>
+      </div>
+    } @else {
+      <div class="notice">
+        <span class="notice-mark" aria-hidden="true" [style.--nol-git-github-icon]="mark"></span>
+        <span class="notice-text">{{ resources.hostRowSignedOut }}</span>
+        <button type="button" nol-button [variant]="secondary" [disabled]="isBusy()" (click)="startAsync()">{{ resources.signIn }}</button>
+      </div>
+    }
+  } @else if (shown(); as shown) {
+    <div class="pr" [attr.aria-busy]="isReading() ? resources.ariaTrue : null">
+      <div class="line">
+        <span class="state" role="img" [attr.aria-label]="shown.look.stateLabel" [style.--nol-git-github-icon]="iconOf(shown.look)"
+          [style.--nol-git-github-state]="colorOf(shown.look)"></span>
+        <button type="button" class="title" [nolTooltip]="titleOf(shown)" [nolTooltipTruncated]="true" (click)="openAsync(shown.pullRequest.url)">
+          <span class="text" data-truncates>{{ titleOf(shown) }}</span>
+        </button>
+        <button nol-icon-button type="button" class="open" [icon]="resources.openIcon" [label]="resources.openOnGitHub" (click)="openAsync(shown.pullRequest.url)"></button>
+      </div>
+      @if (shown.checks.length > 0) {
+        <ul class="checks" [attr.aria-label]="resources.checksLabel">
+          @for (check of shown.checks; track $index) {
+            <li class="check" [class.failed]="check.state === states.Failed" [class.ok]="check.state === states.Succeeded">
+              <span class="check-icon" aria-hidden="true" [style.--nol-git-github-icon]="checkIconOf(check)"></span>
+              @if (check.url; as url) {
+                <button type="button" class="name" [nolTooltip]="check.name" [nolTooltipTruncated]="true" (click)="openAsync(url)">
+                  <span class="text" data-truncates>{{ check.name }}</span>
+                </button>
+              } @else {
+                <span class="name" [nolTooltip]="check.name" [nolTooltipTruncated]="true">
+                  <span class="text" data-truncates>{{ check.name }}</span>
+                </span>
+              }
+              <span class="check-state">{{ checkLabelOf(check) }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  } @else if (isReading()) {
+    <div class="notice" aria-busy="true">
+      <nol-spinner />
+      <span class="notice-text">{{ resources.readingPullRequest }}</span>
+    </div>
+  } @else {
+    <div class="notice">
+      <span class="notice-mark" aria-hidden="true" [style.--nol-git-github-icon]="mark"></span>
+      <span class="notice-text">{{ resources.noPullRequest }}</span>
+    </div>
+  }
+} @else {
+  <div class="notice" aria-busy="true">
+    <nol-spinner />
+    <span class="notice-text">{{ resources.readingPullRequest }}</span>
+  </div>
+}
+@if (failedLink(); as link) {
+  <div class="notice link-failed" role="alert">
+    <span class="material-symbols-rounded notice-icon" aria-hidden="true">{{ resources.failureIcon }}</span>
+    <span class="notice-text">{{ resources.hostRowLinkNotOpened }}</span>
+    <button type="button" nol-button [variant]="secondary" (click)="openAsync(link)">{{ resources.openAgain }}</button>
+  </div>
+}

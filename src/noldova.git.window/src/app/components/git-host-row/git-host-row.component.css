@@ -1,0 +1,30 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.plain {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  padding: var(--nol-space-2) var(--nol-git-card-padding);
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: var(--nol-radius-medium);
+  background-color: var(--nol-raised);
+  color: var(--nol-text-muted);
+}
+
+.plain-text {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--nol-text-label);
+  overflow-wrap: anywhere;
+}

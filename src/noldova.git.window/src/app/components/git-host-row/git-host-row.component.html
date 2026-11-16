@@ -1,0 +1,16 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (row(); as row) {
+  <ng-container *ngComponentOutlet="row.component; inputs: inputs(); injector: row.injector" />
+} @else {
+  <div class="plain">
+    <span class="material-symbols-rounded" aria-hidden="true">{{ resources.plainRemoteIcon }}</span>
+    <span class="plain-text">{{ plainLine() }}</span>
+  </div>
+}

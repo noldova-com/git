@@ -1,0 +1,188 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import { JsonException, JsonReader } from "@noldova/context.json";
+import { Failure, FailureCode } from "@noldova/desktop.protocol";
+import { MethodFailureException } from "@noldova/desktop.runtime";
+import { HostingProtocolException } from "@noldova/git.hosting.protocol";
+
+import { CachedAnswer } from "../models/cached-answer.ts";
+import { Resources } from "../resources.ts";
+import type { Fetcher } from "../types/fetcher.ts";
+
+export class GitHubApi {
+  private readonly fetcher: Fetcher;
+  private readonly answers: Map<string, CachedAnswer> = new Map();
+  private answersToken: string | null = null;
+
+  public constructor(fetcher: Fetcher) {
+    this.fetcher = fetcher;
+  }
+
+  public async getAsync(path: string, token: string, signal: AbortSignal): Promise<JsonReader | null> {
+    if (this.answersToken !== token) {
+      this.answers.clear();
+      this.answersToken = token;
+    }
+    const url: string = Resources.apiUrl + path;
+    const cached: CachedAnswer | undefined = this.answers.get(url);
+    const now: number = Date.now();
+    if (cached !== undefined && now - cached.readAt < Resources.freshFor)
+      return this.reuse(url, cached, cached.readAt, token);
+    const headers: Record<string, string> = GitHubApi.headersOf(token);
+    const tag: string | null = cached?.tag ?? null;
+    if (tag !== null)
+      headers[Resources.ifNoneMatchHeader] = tag;
+    const response: Response = await this.fetchAsync(url, { headers }, signal);
+    if (response.status === Resources.notModifiedStatus && cached !== undefined)
+      return this.reuse(url, cached, now, token);
+    if (response.status === Resources.notFoundStatus) {
+      await GitHubApi.dropBodyAsync(response);
+      return null;
+    }
+    const body: string = await GitHubApi.bodyOf(response, signal);
+    const reader: JsonReader = GitHubApi.readerOf(body);
+    this.keep(url, new CachedAnswer(response.headers.get(Resources.tagHeader), body, now), token);
+    return reader;
+  }
+
+  public async postAsync(path: string, token: string, body: Readonly<Record<string, string | boolean>>, signal: AbortSignal): Promise<JsonReader> {
+    const response: Response = await this.fetchAsync(Resources.apiUrl + path, {
+      method: Resources.postMethod,
+      headers: { ...GitHubApi.headersOf(token), [Resources.contentTypeHeader]: Resources.jsonType },
+      body: JSON.stringify(body)
+    }, signal);
+    if (response.status === Resources.notFoundStatus) {
+      await GitHubApi.dropBodyAsync(response);
+      throw GitHubApi.failure(FailureCode.NotFound, Resources.notFoundMessage);
+    }
+    if (response.status === Resources.unprocessableStatus) {
+      await GitHubApi.dropBodyAsync(response);
+      throw GitHubApi.failure(FailureCode.Conflict, Resources.refusedPullRequestMessage);
+    }
+    return GitHubApi.readerOf(await GitHubApi.bodyOf(response, signal));
+  }
+
+  public clear(): void {
+    this.answers.clear();
+    this.answersToken = null;
+  }
+
+  public static isUnauthorized(error: unknown): boolean {
+    return error instanceof MethodFailureException && error.failure.code === FailureCode.Unauthorized;
+  }
+
+  public static failure(code: FailureCode, message: string): MethodFailureException {
+    return new MethodFailureException(new Failure(code, message));
+  }
+
+  public static read<T>(read: () => T): T {
+    try {
+      return read();
+    }
+    catch (error) {
+      if (error instanceof SyntaxError || error instanceof JsonException || error instanceof HostingProtocolException)
+        throw GitHubApi.failure(FailureCode.Unavailable, Resources.unreadableAnswerMessage);
+      throw error;
+    }
+  }
+
+  private reuse(url: string, cached: CachedAnswer, readAt: number, token: string): JsonReader {
+    this.keep(url, cached.readAgainAt(readAt), token);
+    return GitHubApi.readerOf(cached.body);
+  }
+
+  private keep(url: string, answer: CachedAnswer, token: string): void {
+    if (this.answersToken !== token)
+      return;
+    this.answers.delete(url);
+    if (answer.body.length > Resources.maximumKeptLength)
+      return;
+    this.answers.set(url, answer);
+    for (const oldest of this.answers.keys()) {
+      if (this.answers.size <= Resources.cacheSize)
+        break;
+      this.answers.delete(oldest);
+    }
+  }
+
+  private async fetchAsync(url: string, init: RequestInit, signal: AbortSignal): Promise<Response> {
+    let response: Response;
+    try {
+      response = await this.fetcher(url, { ...init, signal: AbortSignal.any([signal, AbortSignal.timeout(Resources.requestTimeout)]) });
+    }
+    catch (error) {
+      throw GitHubApi.unreachable(error, signal);
+    }
+    signal.throwIfAborted();
+    if (response.status === Resources.unauthorizedStatus) {
+      await GitHubApi.dropBodyAsync(response);
+      throw GitHubApi.failure(FailureCode.Unauthorized, Resources.signedOutMessage);
+    }
+    return response;
+  }
+
+  private static headersOf(token: string): Record<string, string> {
+    return {
+      [Resources.acceptHeader]: Resources.gitHubJsonType, [Resources.authorizationHeader]: Resources.formatBearer(token), [Resources.userAgentHeader]: Resources.userAgent,
+      [Resources.apiVersionHeader]: Resources.apiVersion
+    };
+  }
+
+  private static async bodyOf(response: Response, signal: AbortSignal): Promise<string> {
+    if (GitHubApi.isRateLimited(response)) {
+      await GitHubApi.dropBodyAsync(response);
+      throw GitHubApi.failure(FailureCode.Unavailable, GitHubApi.rateLimitedMessage(response.headers.get(Resources.rateLimitResetHeader)));
+    }
+    if (!response.ok) {
+      await GitHubApi.dropBodyAsync(response);
+      throw GitHubApi.failure(FailureCode.Unavailable, Resources.formatRefusedRequest(response.status));
+    }
+    let body: string;
+    try {
+      body = await response.text();
+    }
+    catch (error) {
+      throw GitHubApi.unreachable(error, signal);
+    }
+    signal.throwIfAborted();
+    return body;
+  }
+
+  private static async dropBodyAsync(response: Response): Promise<void> {
+    await response.body?.cancel();
+  }
+
+  private static unreachable(error: unknown, signal: AbortSignal): unknown {
+    if (signal.aborted)
+      return signal.reason;
+    if (error instanceof DOMException && error.name === Resources.timeoutErrorName)
+      return GitHubApi.failure(FailureCode.DeadlineExceeded, Resources.unreachableMessage);
+    if (error instanceof TypeError)
+      return GitHubApi.failure(FailureCode.Unavailable, Resources.unreachableMessage);
+    return error;
+  }
+
+  private static isRateLimited(response: Response): boolean {
+    return response.status === Resources.tooManyRequestsStatus
+      || response.status === Resources.forbiddenStatus && response.headers.get(Resources.rateLimitRemainingHeader) === Resources.noneRemaining;
+  }
+
+  private static rateLimitedMessage(reset: string | null): string {
+    const seconds: number = Number(reset ?? "");
+    return Number.isSafeInteger(seconds) && seconds > 0 ? Resources.formatRateLimited(new Date(seconds * Resources.millisecondsPerSecond).toISOString())
+      : Resources.rateLimitedMessage;
+  }
+
+  private static readerOf(body: string): JsonReader {
+    return GitHubApi.read(() => {
+      const value: unknown = JSON.parse(body);
+      return JsonReader.fromValue(Array.isArray(value) ? { [Resources.itemsField]: value } : value);
+    });
+  }
+}

@@ -1,0 +1,481 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import assert from "node:assert/strict";
+import { type FSWatcher, type PathLike, type WatchListener, watch } from "node:fs";
+import { readdir, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
+import timers from "node:timers";
+
+import { afterAll, afterEach, beforeAll, beforeEach, describe, test, vi } from "vitest";
+
+import { FakeModuleLog } from "@noldova/desktop.runtime/testing";
+
+import { WatchStart } from "../../src/enums/watch-start.ts";
+import { RepositoryFolders } from "../../src/models/repository-folders.ts";
+import { ChangeMonitor } from "../../src/services/change-monitor.ts";
+import { ProgramRunner } from "../../src/services/program-runner.ts";
+import { StatusReader } from "../../src/services/status.reader.ts";
+import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
+import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
+
+vi.mock(import("node:fs"), { spy: true });
+vi.mock(import("node:fs/promises"), { spy: true });
+
+describe("ChangeMonitor", () => {
+  const KEY = "conversation:QA-KEY-7f3c";
+  const OTHER = "conversation:QA-KEY-9d2e";
+  const DEBOUNCE = 200;
+  const POLL = 5_000;
+  const TOUCH = 100;
+  let template: RepositoryFixture;
+  let repository: RepositoryFixture;
+  let supervisor: DesktopFixture;
+  let monitor: ChangeMonitor;
+  let changes: [string, number][];
+  let lines: string[];
+  let waits: { milliseconds: number; fire: () => void; timer: NodeJS.Timeout; isCleared: boolean; isTaken: boolean }[];
+  let asked: { milliseconds: number; resolve: (wait: (typeof waits)[number]) => void }[];
+  let heard: { count: () => number; resolve: () => void }[];
+
+  beforeAll(async () => {
+    template = await RepositoryFixture.createAsync();
+  });
+
+  afterAll(async () => {
+    await template.disposeAsync();
+  });
+
+  beforeEach(async () => {
+    repository = await RepositoryFixture.createAsync(template);
+    supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    changes = [];
+    lines = [];
+    waits = [];
+    asked = [];
+    heard = [];
+    const original = timers.setTimeout;
+    const originalClear = timers.clearTimeout;
+    vi.spyOn(timers, "setTimeout").mockImplementation((...values: Parameters<typeof timers.setTimeout>) => {
+      const [handler, delay] = values;
+      if (delay !== DEBOUNCE && delay !== POLL && delay !== TOUCH)
+        return original(...values);
+      const wait = { milliseconds: delay, fire: (): void => handler(), timer: original(() => undefined, 2_147_483_647), isCleared: false, isTaken: false };
+      waits.push(wait);
+      const listener = asked.find(t => t.milliseconds === delay);
+      if (listener !== undefined) {
+        asked = asked.filter(t => t !== listener);
+        wait.isTaken = true;
+        listener.resolve(wait);
+      }
+      return wait.timer;
+    });
+    vi.spyOn(timers, "clearTimeout").mockImplementation((...values: Parameters<typeof timers.clearTimeout>) => {
+      const [timer] = values;
+      for (const wait of waits.filter(t => t.timer === timer))
+        wait.isCleared = true;
+      originalClear(...values);
+    });
+    const hear = (): void => {
+      for (const listener of heard.filter(t => t.count() <= 0))
+        listener.resolve();
+      heard = heard.filter(t => t.count() > 0);
+    };
+    const log = new FakeModuleLog();
+    log.answer("write", line => {
+      lines.push(line);
+      hear();
+    });
+    monitor = new ChangeMonitor(new ProgramRunner(supervisor.context), log, (key, sequence) => {
+      changes.push([key, sequence]);
+      hear();
+    });
+  });
+
+  afterEach(async () => {
+    await monitor.disposeAsync();
+    vi.restoreAllMocks();
+    await supervisor.disposeAsync();
+    await repository.disposeAsync();
+  });
+
+  const folders = (): RepositoryFolders => new RepositoryFolders(repository.folder, repository.gitFolder, repository.gitFolder);
+  const branchesFolder = (): string => path.join(repository.gitFolder, "refs", "heads");
+  const isCookie = (name: string): boolean => name.startsWith("noldova-watch-");
+  const cookiesAsync = async (): Promise<string[][]> => [(await readdir(repository.gitFolder)).filter(isCookie), (await readdir(branchesFolder())).filter(isCookie)];
+  const nextWaitAsync = async (milliseconds: number): Promise<(typeof waits)[number]> => {
+    const waiting = waits.find(t => t.milliseconds === milliseconds && !t.isTaken && !t.isCleared);
+    if (waiting !== undefined) {
+      waiting.isTaken = true;
+      return waiting;
+    }
+    const { promise, resolve } = Promise.withResolvers<(typeof waits)[number]>();
+    asked.push({ milliseconds, resolve });
+    return await promise;
+  };
+  const fireNextAsync = async (milliseconds: number): Promise<void> => {
+    (await nextWaitAsync(milliseconds)).fire();
+  };
+  const touchingAsync = async <T>(work: Promise<T>): Promise<T> => {
+    const settled = work.then(() => null, () => null);
+    for (;;) {
+      // A touch comes after time passes, so the file system's work runs before each one.
+      await new Promise<void>(resolve => timers.setImmediate(resolve));
+      const waiting = waits.find(t => t.milliseconds === TOUCH && !t.isTaken && !t.isCleared);
+      if (waiting !== undefined) {
+        waiting.isTaken = true;
+        waiting.fire();
+        continue;
+      }
+      const { promise, resolve } = Promise.withResolvers<(typeof waits)[number]>();
+      const listener = { milliseconds: TOUCH, resolve };
+      asked.push(listener);
+      const touch = await Promise.race([settled, promise]);
+      asked = asked.filter(t => t !== listener);
+      if (touch === null)
+        return await work;
+      touch.fire();
+    }
+  };
+  const startedAsync = (key: string = KEY): Promise<WatchStart> => touchingAsync(monitor.startedAsync(key));
+  const untilAsync = async (count: () => number): Promise<void> => {
+    if (count() <= 0)
+      return;
+    const { promise, resolve } = Promise.withResolvers<void>();
+    heard.push({ count, resolve });
+    await promise;
+  };
+  const untilChangesAsync = (count: number): Promise<void> => untilAsync(() => count - changes.length);
+  const untilLinesAsync = (count: number): Promise<void> => untilAsync(() => count - lines.length);
+  const watchersOf = (from: number): FSWatcher[] => vi.mocked(watch).mock.results.slice(from).map(t => {
+    assert.ok(t.type === "return");
+    return t.value;
+  });
+  const seenAsync = (watcher: FSWatcher, matches: (name: string) => boolean): Promise<void> => new Promise(resolve => {
+    const listener = (_event: string, file: unknown): void => {
+      if (typeof file !== "string" || !matches(file))
+        return;
+      watcher.off("change", listener);
+      resolve();
+    };
+    watcher.on("change", listener);
+  });
+
+  test("announces a commit that it sees through HEAD, the index and the branch", async () => {
+    monitor.watch(KEY, repository.folder, folders());
+    await startedAsync();
+    monitor.notifyWritten(KEY);
+    await fireNextAsync(DEBOUNCE);
+    await untilChangesAsync(1);
+    await repository.writeAsync("a.txt", "changed\n");
+    await repository.runGitAsync(["commit", "--quiet", "-am", "Changed"]);
+
+    await fireNextAsync(DEBOUNCE);
+    await untilChangesAsync(2);
+
+    assert.deepEqual(changes, [[KEY, 1], [KEY, 2]]);
+  });
+
+  test("refreshes for packed-refs, but not for a lock file among the branches or another file in the git folder", async () => {
+    const earlier = vi.mocked(watch).mock.results.length;
+    monitor.watch(KEY, repository.folder, folders());
+    const [own, branches, packed] = watchersOf(earlier);
+    assert.ok(own !== undefined && branches !== undefined && packed !== undefined);
+    assert.equal(await startedAsync(), WatchStart.Seen);
+    const lock = seenAsync(branches, t => t === "feature.lock");
+    await writeFile(path.join(repository.gitFolder, "refs", "heads", "feature.lock"), "lock\n");
+    await lock;
+    const other = Promise.all([seenAsync(own, t => t === "description"), seenAsync(packed, t => t === "description")]);
+    await writeFile(path.join(repository.gitFolder, "description"), "other\n");
+    await other;
+    const before = waits.filter(t => t.milliseconds === DEBOUNCE).length;
+
+    await writeFile(path.join(repository.gitFolder, "packed-refs"), "# pack-refs with: peeled fully-peeled sorted\n");
+    await fireNextAsync(DEBOUNCE);
+    await untilChangesAsync(1);
+
+    assert.deepEqual([before, changes], [0, [[KEY, 1]]]);
+  });
+
+  test("refreshes when the file system names no file for a change", async () => {
+    const earlier = vi.mocked(watch).mock.results.length;
+    monitor.watch(KEY, repository.folder, folders());
+    const [own] = watchersOf(earlier);
+    assert.ok(own !== undefined);
+    await startedAsync();
+
+    own.emit("change", "rename", null);
+    await fireNextAsync(DEBOUNCE);
+    await untilChangesAsync(1);
+
+    assert.deepEqual(changes, [[KEY, 1]]);
+  });
+
+  test("always announces the module's own write once per debounce, and stays quiet when nothing moved", async () => {
+    monitor.watch(KEY, repository.folder, folders());
+    await startedAsync();
+    await rm(path.join(repository.folder, "a.txt"));
+
+    monitor.notifyWritten(KEY);
+    monitor.notifyWritten(KEY);
+    await fireNextAsync(DEBOUNCE);
+    await untilChangesAsync(1);
+    monitor.notifyWritten(KEY);
+    await fireNextAsync(DEBOUNCE);
+    await untilChangesAsync(2);
+    monitor.setVisible(KEY, true);
+    await fireNextAsync(DEBOUNCE);
+    monitor.notifyWritten(KEY);
+    await fireNextAsync(DEBOUNCE);
+    await untilChangesAsync(3);
+
+    assert.deepEqual(changes, [[KEY, 1], [KEY, 2], [KEY, 3]]);
+    assert.equal(supervisor.requests.filter(t => t.arguments.includes("status")).length, 4);
+  });
+
+  test("polls while the pane is visible, finding a further edit to a changed file, and stops when it is hidden, once however often", async () => {
+    monitor.watch(KEY, repository.folder, folders());
+    await startedAsync();
+    const earlier = waits.length;
+    monitor.setVisible(KEY, true);
+    monitor.setVisible(KEY, true);
+    await fireNextAsync(DEBOUNCE);
+    await untilChangesAsync(1);
+    await repository.writeAsync("a.txt", "changed once\n");
+    await fireNextAsync(POLL);
+    await fireNextAsync(DEBOUNCE);
+    await untilChangesAsync(2);
+    await repository.writeAsync("a.txt", "changed twice, longer\n");
+    await fireNextAsync(POLL);
+    await fireNextAsync(DEBOUNCE);
+    await untilChangesAsync(3);
+    const poll = await nextWaitAsync(POLL);
+
+    monitor.setVisible(KEY, false);
+    monitor.setVisible(KEY, false);
+    await monitor.disposeAsync();
+
+    assert.deepEqual(changes, [[KEY, 1], [KEY, 2], [KEY, 3]]);
+    assert.deepEqual([poll.isCleared, waits.slice(earlier).filter(t => t.milliseconds === POLL).length], [true, 3]);
+    const statuses = supervisor.requests.filter(t => t.arguments.includes("status"));
+    assert.equal(statuses.length, 3);
+    assert.ok(statuses.every(t => t.arguments.includes("--no-optional-locks")));
+  });
+
+  test("forgets an unwatched worktree and ends its waits", async () => {
+    monitor.watch(KEY, repository.folder, folders());
+    await startedAsync();
+    const earlier = waits.length;
+    monitor.setVisible(KEY, true);
+    const debounce = await nextWaitAsync(DEBOUNCE);
+    const poll = await nextWaitAsync(POLL);
+
+    monitor.unwatch(KEY);
+    monitor.notifyWritten(KEY);
+    monitor.setVisible(KEY, false);
+    await monitor.disposeAsync();
+
+    assert.deepEqual([changes, debounce.isCleared, poll.isCleared, waits.length, supervisor.requests.length], [[], true, true, earlier + 2, 0]);
+  });
+
+  test("waits on disposal for a refresh that ends after its worktree is unwatched, neither announcing nor logging it, and never waits again for the write it queued", async () => {
+    monitor.watch(KEY, repository.folder, folders());
+    await startedAsync();
+    const earlier = waits.length;
+    monitor.notifyWritten(KEY);
+    const started = supervisor.waitForStartAsync();
+    await fireNextAsync(DEBOUNCE);
+    await started;
+    monitor.notifyWritten(KEY);
+
+    monitor.unwatch(KEY);
+    await monitor.disposeAsync();
+
+    assert.deepEqual([changes, lines, supervisor.events.map(t => t.split(" ")[0]), waits.slice(earlier).map(t => t.milliseconds)], [[], [], ["start", "exit"], [DEBOUNCE]]);
+  });
+
+  test("logs a watcher's error with its folder, never the key, and closes it", async () => {
+    const earlier = vi.mocked(watch).mock.results.length;
+    monitor.watch(KEY, repository.folder, folders());
+    await startedAsync();
+    const [watcher] = watchersOf(earlier);
+    assert.ok(watcher !== undefined);
+    const close = vi.spyOn(watcher, "close");
+
+    watcher.emit("error", new Error("The folder went away."));
+
+    assert.deepEqual(lines, [`Couldn't watch ${repository.gitFolder}, so the module checks the worktree for changes every few seconds instead: Error: The folder went away.`]);
+    assert.equal(close.mock.calls.length, 1);
+    assert.equal(waits.filter(t => t.milliseconds === POLL && !t.isCleared).length, 1);
+    close.mockRestore();
+    watcher.close();
+  });
+
+  test("logs a folder it can't watch and a status it can't read, and keeps going", async () => {
+    const missing = path.join(repository.root, "missing");
+    monitor.watch(KEY, missing, new RepositoryFolders(missing, missing, missing));
+
+    monitor.notifyWritten(KEY);
+    await fireNextAsync(DEBOUNCE);
+    await untilLinesAsync(4);
+
+    assert.deepEqual(changes, []);
+    assert.equal(lines.filter(t => t.startsWith(`Couldn't watch ${missing}`)).length, 3);
+    assert.equal(lines.filter(t => t.startsWith(`Couldn't refresh the status of the worktree at ${missing}: `)).length, 1);
+    assert.equal(lines.some(t => t.includes("QA-KEY")), false);
+    assert.equal(waits.filter(t => t.milliseconds === POLL && !t.isCleared).length, 1);
+    assert.equal(await startedAsync(), WatchStart.Backstop);
+  });
+
+  test("starts once it hears its cookie in the git folder and among the branches, leaving neither, so a commit right after the start is heard", async () => {
+    const earlier = vi.mocked(watch).mock.results.length;
+    monitor.watch(KEY, repository.folder, folders());
+    const [own, branches] = watchersOf(earlier);
+    assert.ok(own !== undefined && branches !== undefined);
+    const heard: string[] = [];
+    void seenAsync(own, isCookie).then(() => heard.push("git folder"));
+    void seenAsync(branches, isCookie).then(() => heard.push("branches"));
+
+    const start = await startedAsync();
+    const left = await cookiesAsync();
+    await repository.writeAsync("a.txt", "changed right after the start");
+    await repository.runGitAsync(["commit", "--quiet", "-am", "Changed"]);
+    await fireNextAsync(DEBOUNCE);
+    await untilChangesAsync(1);
+
+    assert.deepEqual([start, heard.sort(), left, changes, lines], [WatchStart.Seen, ["branches", "git folder"], [[], []], [[KEY, 1]], []]);
+  });
+
+  test("counts a watch whose cookie it never hears as started at the poll's first tick and logs the folder, leaving the live cookie out of git's status and another watch's cleanup", async () => {
+    const earlier = vi.mocked(watch).mock.results.length;
+    monitor.watch(KEY, repository.folder, folders());
+    const [own, branches] = watchersOf(earlier);
+    assert.ok(own !== undefined && branches !== undefined);
+    own.removeAllListeners("change");
+    await touchingAsync(seenAsync(branches, isCookie));
+    const live = await cookiesAsync();
+    const status = await new StatusReader(new ProgramRunner(supervisor.context)).readAsync(folders());
+    monitor.watch(OTHER, repository.folder, folders());
+    const other = await startedAsync(OTHER);
+    const kept = await cookiesAsync();
+
+    await fireNextAsync(POLL);
+    const start = await startedAsync();
+
+    assert.deepEqual([live.map(t => t.length), status.entries.some(t => t.path.includes("noldova-watch")), other, kept, start], [[1, 1], false, WatchStart.Seen, live, WatchStart.Backstop]);
+    assert.deepEqual([lines, await cookiesAsync()], [[`Didn't hear the watch of ${repository.gitFolder} start within a few seconds, so the module counts it as started and checks the worktree every few seconds while it is shown.`], [[], []]]);
+  });
+
+  test("hears a cookie whose first event the file system lost, as macOS's shared event stream does while it restarts, by writing the cookie again", async () => {
+    const { watch: realWatch } = await vi.importActual<typeof import("node:fs")>("node:fs");
+    const earlier = vi.mocked(watch).mock.calls.length;
+    const writes = vi.mocked(writeFile).mock.calls.length;
+    const cookieWrites = (): number => vi.mocked(writeFile).mock.calls.slice(writes)
+      .filter(([file]) => typeof file === "string" && file.startsWith(path.join(repository.gitFolder, "noldova-watch-"))).length;
+    let lost = 0;
+    vi.mocked(watch).mockImplementationOnce((folder: PathLike, _options: unknown, listener?: WatchListener<string>) =>
+      realWatch(folder, { persistent: false }, (event, name) => {
+        if (name !== null && isCookie(name) && (lost === 0 || cookieWrites() < 2)) {
+          lost++;
+          return;
+        }
+        listener?.(event, name);
+      }));
+    monitor.watch(KEY, repository.folder, folders());
+    assert.deepEqual(vi.mocked(watch).mock.calls[earlier]?.slice(0, 2), [repository.gitFolder, { persistent: false }]);
+
+    const starting = monitor.startedAsync(KEY);
+    await fireNextAsync(TOUCH);
+    const start = await touchingAsync(starting);
+
+    assert.deepEqual([start, lines, await cookiesAsync()], [WatchStart.Seen, [], [[], []]]);
+    assert.ok(lost >= 1 && cookieWrites() >= 2, `${String(lost)} lost cookie events and ${String(cookieWrites())} cookie writes`);
+  });
+
+  test("keeps writing a cookie it can't write again until the poll's first tick, and fails on any other error writing it", async () => {
+    const watchUnheardAsync = async (): Promise<void> => {
+      const earlier = vi.mocked(watch).mock.results.length;
+      monitor.watch(KEY, repository.folder, folders());
+      const [own, branches] = watchersOf(earlier);
+      assert.ok(own !== undefined && branches !== undefined);
+      own.removeAllListeners("change");
+      await touchingAsync(seenAsync(branches, isCookie));
+    };
+    const failNextWrite = (error: Error): Promise<void> => {
+      const { promise, resolve } = Promise.withResolvers<void>();
+      vi.mocked(writeFile).mockImplementationOnce(() => {
+        resolve();
+        return Promise.reject(error);
+      });
+      return promise;
+    };
+    await watchUnheardAsync();
+    await touchingAsync(failNextWrite(Object.assign(new Error("denied"), { code: "EACCES" })));
+    await fireNextAsync(POLL);
+    const denied = await startedAsync();
+    const deniedLines = [...lines];
+    await watchUnheardAsync();
+    const broken = Object.assign(new Error("broken"), { code: "EIO" });
+    await touchingAsync(failNextWrite(broken));
+
+    await assert.rejects(touchingAsync(monitor.startedAsync(KEY)), broken);
+    assert.deepEqual([denied, deniedLines, await cookiesAsync()],
+      [WatchStart.Backstop, [`Didn't hear the watch of ${repository.gitFolder} start within a few seconds, so the module counts it as started and checks the worktree every few seconds while it is shown.`], [[], []]]);
+  });
+
+  test("counts a watch whose cookie it can't write as started at the poll's first tick and logs the folder, skips a folder it can't list, and fails on any other error", async () => {
+    const earlier = vi.mocked(watch).mock.results.length;
+    vi.mocked(writeFile).mockRejectedValueOnce(Object.assign(new Error("denied"), { code: "EACCES" }));
+    monitor.watch(KEY, repository.folder, folders());
+    const [, branches] = watchersOf(earlier);
+    assert.ok(branches !== undefined);
+    await touchingAsync(seenAsync(branches, isCookie));
+    await fireNextAsync(POLL);
+    const denied = await startedAsync();
+    const left = await cookiesAsync();
+    await writeFile(path.join(repository.gitFolder, "noldova-watch-x"), "");
+    vi.mocked(readdir).mockRejectedValueOnce(Object.assign(new Error("gone"), { code: "ENOENT" }));
+    monitor.watch(KEY, repository.folder, folders());
+    const unlisted = await startedAsync();
+    const unlistedLeft = await cookiesAsync();
+    const broken = Object.assign(new Error("broken"), { code: "EIO" });
+    vi.mocked(writeFile).mockRejectedValueOnce(broken);
+    monitor.watch(KEY, repository.folder, folders());
+    const unwritten = touchingAsync(monitor.startedAsync(KEY));
+    await assert.rejects(unwritten, broken);
+    vi.mocked(readdir).mockRejectedValueOnce(broken);
+    monitor.watch(KEY, repository.folder, folders());
+
+    await assert.rejects(touchingAsync(monitor.startedAsync(KEY)), broken);
+    assert.deepEqual([denied, left, unlisted, unlistedLeft, await cookiesAsync()], [WatchStart.Backstop, [[], []], WatchStart.Seen, [["noldova-watch-x"], []], [[], []]]);
+    assert.deepEqual(lines, [`Couldn't write the file that confirms the watch of ${repository.gitFolder} has started, so the module counts it as started within a few seconds: Error: denied`]);
+  });
+
+  test("removes only the cookies an earlier run left behind before it starts", async () => {
+    await writeFile(path.join(repository.gitFolder, "noldova-watch-x"), "");
+    await writeFile(path.join(branchesFolder(), "noldova-watch-y.lock"), "");
+    await writeFile(path.join(repository.gitFolder, "noldova-watch-q.lock"), "");
+    await writeFile(path.join(repository.gitFolder, "noldova-watched"), "");
+    await repository.runGitAsync(["branch", "noldova-watch-z"]);
+
+    monitor.watch(KEY, repository.folder, folders());
+    const start = await startedAsync();
+
+    const named = async (folder: string): Promise<string[]> => (await readdir(folder)).filter(t => t.startsWith("noldova-watch")).sort();
+    assert.deepEqual([start, await named(repository.gitFolder), await named(branchesFolder())], [WatchStart.Seen, ["noldova-watch-q.lock", "noldova-watched"], ["noldova-watch-z"]]);
+  });
+
+  test("counts a watch stopped before it starts as stopped, leaving no cookie, and knows no start for a worktree it doesn't watch", async () => {
+    monitor.watch(KEY, repository.folder, folders());
+    const start = monitor.startedAsync(KEY);
+
+    monitor.unwatch(KEY);
+
+    assert.deepEqual([await start, await monitor.startedAsync(KEY), lines, await cookiesAsync()], [WatchStart.Stopped, WatchStart.Stopped, [], [[], []]]);
+  });
+});

@@ -1,0 +1,156 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.notice,
+.pr {
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: var(--nol-radius-medium);
+  background-color: var(--nol-raised);
+}
+
+.notice {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  padding: var(--nol-space-2) 0.625rem;
+  color: var(--nol-text-muted);
+}
+
+.notice-text {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--nol-text-label);
+  overflow-wrap: anywhere;
+}
+
+.notice-icon {
+  color: var(--nol-status-failed);
+}
+
+.link-failed {
+  margin-top: var(--nol-space-2);
+}
+
+.pr {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--nol-space-1);
+  padding: var(--nol-space-2) 0.625rem;
+}
+
+.line {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.state,
+.check-icon,
+.notice-mark {
+  flex: none;
+  width: var(--nol-icon);
+  height: var(--nol-icon);
+  mask: var(--nol-git-github-icon) center / var(--nol-icon) var(--nol-icon) no-repeat;
+}
+
+.state {
+  background-color: var(--nol-git-github-state);
+}
+
+.check-icon {
+  background-color: var(--nol-text-muted);
+}
+
+.notice-mark {
+  background-color: currentColor;
+}
+
+.title,
+.name {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: start;
+  overflow: hidden;
+}
+
+.text {
+  display: block;
+}
+
+.title {
+  color: var(--nol-link);
+  cursor: pointer;
+}
+
+.checks {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.125rem;
+  margin: 0.125rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.check {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  min-height: 1.375rem;
+  font-size: var(--nol-text-label);
+  color: var(--nol-text-muted);
+}
+
+.name {
+  color: var(--nol-text);
+}
+
+button.name {
+  cursor: pointer;
+}
+
+.check.failed .check-state {
+  color: var(--nol-status-failed);
+}
+
+.check.failed .check-icon {
+  background-color: var(--nol-status-failed);
+}
+
+.check.ok .check-state {
+  color: var(--nol-status-ok);
+}
+
+.check.ok .check-icon {
+  background-color: var(--nol-status-ok);
+}
+
+@media (forced-colors: active) {
+  .state,
+  .check-icon,
+  .notice-mark,
+  .check.failed .check-icon,
+  .check.ok .check-icon {
+    forced-color-adjust: none;
+    background-color: CanvasText;
+  }
+
+  .title {
+    color: LinkText;
+  }
+}

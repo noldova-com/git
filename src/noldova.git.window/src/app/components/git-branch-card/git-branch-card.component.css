@@ -1,0 +1,187 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  --nol-git-branch-list-height: 18rem;
+
+  position: relative;
+  display: grid;
+  gap: var(--nol-tab-part-gap);
+  min-width: 0;
+  padding: var(--nol-space-2) var(--nol-git-card-padding);
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: var(--nol-radius-medium);
+  background-color: var(--nol-raised);
+}
+
+.line {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.name {
+  display: inline-flex;
+  gap: var(--nol-space-1);
+  align-items: center;
+  min-width: 0;
+  min-height: var(--nol-pointer-target);
+  margin-left: calc(var(--nol-space-1) * -1);
+  padding: 0 var(--nol-space-1);
+  border: 0;
+  border-radius: var(--nol-radius-small);
+  background: none;
+  color: var(--nol-text);
+  font: inherit;
+}
+
+.name:hover:not([aria-disabled="true"]),
+.name.open {
+  background-color: var(--nol-hover);
+
+  @media (forced-colors: active) {
+    &:not(:focus-visible) {
+      outline: var(--nol-border-width) dashed Highlight;
+      outline-offset: calc(var(--nol-border-width) * -1);
+    }
+  }
+}
+
+.branch {
+  overflow: hidden;
+  color: var(--nol-text-strong);
+  font-weight: var(--nol-weight-emphasis);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.pull,
+.push {
+  flex: none;
+}
+
+.upstream {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nol-space-2);
+  align-items: center;
+  color: var(--nol-text-muted);
+  font-size: var(--nol-text-label);
+}
+
+.octicon {
+  flex: none;
+  width: var(--nol-icon);
+  height: var(--nol-icon);
+  fill: currentcolor;
+}
+
+.menu {
+  position: absolute;
+  z-index: 2;
+  top: calc(var(--nol-space-2) + var(--nol-button-height) + var(--nol-tab-part-gap));
+  right: var(--nol-space-1);
+  left: var(--nol-space-1);
+  padding: var(--nol-menu-padding);
+  border: var(--nol-border-width) solid var(--nol-menu-border);
+  border-radius: var(--nol-radius-medium);
+  background-color: var(--nol-menu);
+  box-shadow: var(--nol-shadow-large);
+  color: var(--nol-menu-text);
+}
+
+.filter {
+  box-sizing: border-box;
+  width: calc(100% - var(--nol-space-1));
+  height: var(--nol-field-height);
+  margin: var(--nol-tab-inset) var(--nol-tab-inset) var(--nol-space-1);
+  padding: 0 var(--nol-field-padding);
+  border: var(--nol-border-width) solid var(--nol-accent);
+  border-radius: var(--nol-radius-small);
+  outline: none;
+  background-color: var(--nol-input);
+  color: var(--nol-text);
+  font: inherit;
+}
+
+.filter::placeholder {
+  color: var(--nol-placeholder);
+}
+
+.list {
+  max-height: var(--nol-git-branch-list-height);
+  overflow-y: auto;
+}
+
+.item {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  height: var(--nol-menu-item-height);
+  padding: 0 var(--nol-menu-item-padding);
+  border-radius: var(--nol-radius-small);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.item:hover:not(.active) {
+  background-color: var(--nol-hover);
+
+  @media (forced-colors: active) {
+    outline: var(--nol-border-width) dashed Highlight;
+    outline-offset: calc(var(--nol-border-width) * -1);
+  }
+}
+
+.item.current,
+.item.active {
+  --nol-text-muted: var(--nol-list-active-text);
+
+  background-color: var(--nol-list-active);
+  color: var(--nol-list-active-text);
+}
+
+.item.active {
+  @media (forced-colors: active) {
+    --nol-text: HighlightText;
+    --nol-text-muted: HighlightText;
+    --nol-menu-text: HighlightText;
+    --nol-icon-color: HighlightText;
+    --nol-list-active-text: HighlightText;
+
+    background-color: Highlight;
+    color: HighlightText;
+    forced-color-adjust: none;
+  }
+}
+
+.item .hidden {
+  visibility: hidden;
+}
+
+.item .title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.label {
+  padding: var(--nol-menu-label-padding);
+  color: var(--nol-text-muted);
+  font-size: var(--nol-text-label);
+}
+
+.separator {
+  height: var(--nol-border-width);
+  margin: var(--nol-menu-separator-spacing) 0;
+  background-color: var(--nol-menu-separator);
+}

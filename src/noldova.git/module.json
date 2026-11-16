@@ -1,0 +1,43 @@
+{
+  "id": "git",
+  "version": "0.0.1",
+  "displayName": "Git",
+  "description": "Shows a folder's Git state, stages, commits, switches branches, pushes and pulls, and lets AI agents do the same through permission requests.",
+  "parts": ["runtime", "window"],
+  "dependencies": {},
+  "noldovaDesktop": ">=0.0.1 <0.1.0",
+  "contributes": {
+    "methods": [
+      "git.status",
+      "git.diff",
+      "git.branches",
+      "git.log",
+      "git.worktrees",
+      "git.pullHooks",
+      "git.watch",
+      "git.unwatch",
+      "git.stage",
+      "git.unstage",
+      "git.createBranch",
+      "git.switchBranch",
+      "git.commit",
+      "git.push",
+      "git.pull"
+    ],
+    "events": ["git.changed"],
+    "views": ["git.view"],
+    "tools": [
+      "git_status",
+      "git_diff",
+      "git_log",
+      "git_branches",
+      "git_stage",
+      "git_unstage",
+      "git_create_branch",
+      "git_switch_branch",
+      "git_commit",
+      "git_push",
+      "git_pull"
+    ]
+  }
+}

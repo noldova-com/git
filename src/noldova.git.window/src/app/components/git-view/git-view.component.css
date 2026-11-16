@@ -1,0 +1,114 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  --nol-git-card-padding: 0.625rem;
+  --nol-git-empty-icon: 1.25rem;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  color: var(--nol-text);
+  font-family: var(--nol-font-sans);
+  font-size: var(--nol-text-panel);
+  line-height: var(--nol-line-panel);
+}
+
+.body {
+  display: grid;
+  gap: var(--nol-space-2);
+  align-content: start;
+  padding: var(--nol-space-1) var(--nol-space-2) var(--nol-space-3);
+}
+
+.banner {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: flex-start;
+  padding: var(--nol-space-2) var(--nol-git-card-padding);
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: var(--nol-radius-medium);
+  background-color: var(--nol-raised);
+}
+
+.banner-icon {
+  flex: none;
+  margin-top: var(--nol-tab-inset);
+  font-size: var(--nol-icon);
+}
+
+.banner-text {
+  display: grid;
+  flex: 1;
+  gap: var(--nol-tab-inset);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.banner-action {
+  flex: none;
+}
+
+.warning {
+  color: var(--nol-warning);
+}
+
+.failed {
+  color: var(--nol-status-failed);
+}
+
+.strong {
+  color: var(--nol-text-strong);
+  font-weight: var(--nol-weight-emphasis);
+}
+
+.muted,
+.quiet {
+  color: var(--nol-text-muted);
+}
+
+.quiet {
+  margin: 0;
+  padding: 0 var(--nol-git-card-padding);
+}
+
+.empty {
+  display: grid;
+  gap: var(--nol-space-2);
+  justify-items: start;
+  padding: var(--nol-space-3) var(--nol-space-4);
+}
+
+.empty-icon {
+  width: var(--nol-git-empty-icon);
+  height: var(--nol-git-empty-icon);
+  color: var(--nol-text-muted);
+  font-size: var(--nol-git-empty-icon);
+}
+
+.heading {
+  margin: 0;
+  color: var(--nol-text-strong);
+  font-size: inherit;
+  font-weight: var(--nol-weight-emphasis);
+  line-height: inherit;
+}
+
+.text {
+  margin: 0;
+  color: var(--nol-text-muted);
+}
+
+.actions {
+  display: flex;
+  gap: var(--nol-space-2);
+}

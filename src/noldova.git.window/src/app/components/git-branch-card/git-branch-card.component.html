@@ -1,0 +1,67 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<div class="line">
+  <button #trigger type="button" class="name" [class.open]="isOpen()" [attr.aria-expanded]="isOpen()" aria-haspopup="listbox" [attr.aria-label]="resources.formatSwitchBranch(name())"
+    [nolTooltip]="resources.switchBranchLabel" [attr.aria-disabled]="state.busy()" (click)="toggle()">
+    <svg class="octicon" viewBox="0 0 16 16" aria-hidden="true"><path [attr.d]="resources.branchIconPath" /></svg>
+    <span class="branch" data-truncates [nolTooltip]="name()" [nolTooltipTruncated]="true">{{ name() }}</span>
+    <span class="material-symbols-rounded" aria-hidden="true">{{ isOpen() ? resources.menuOpenIcon : resources.menuClosedIcon }}</span>
+  </button>
+  <span class="spacer"></span>
+  @if (status().branch !== null) {
+    @if (upstream(); as upstream) {
+      <button nol-button type="button" class="pull" [variant]="secondary" [disabled]="upstream.gone || state.busy()"
+        [nolTooltip]="resources.formatPullHooks(state.pullHooks())" (pointerenter)="loadPullHooks()" (focus)="loadPullHooks()" (click)="pull()">
+        <span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.pullIcon }}</span>{{ resources.formatPull(upstream.behind) }}
+      </button>
+      <button nol-button type="button" class="push" [variant]="secondary" [disabled]="upstream.ahead === 0 || state.busy()" (click)="push()">
+        <span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.pushIcon }}</span>{{ resources.formatPush(upstream.ahead) }}
+      </button>
+    } @else {
+      <button nol-button type="button" class="push" [variant]="secondary" [disabled]="state.busy()" (click)="push()">
+        <span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.publishIcon }}</span>{{ resources.publishLabel }}
+      </button>
+    }
+  }
+</div>
+<div class="upstream">
+  @if (upstream(); as upstream) {
+    @if (upstream.gone) {
+      <span>{{ resources.formatUpstreamGone(upstream.name) }}</span>
+    } @else {
+      <span>{{ upstream.name }}</span>
+      <span>{{ resources.formatAheadBehind(upstream.ahead, upstream.behind) }}</span>
+    }
+  } @else {
+    <span>{{ resources.noUpstream }}</span>
+  }
+</div>
+@if (isOpen()) {
+  <div class="menu">
+    <input #filter class="filter" type="text" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="git-branch-list"
+      [attr.aria-label]="resources.branchPickerLabel" [attr.aria-activedescendant]="items().length > 0 ? resources.formatBranchOptionId(active()) : null"
+      [placeholder]="resources.branchPickerLabel" [ngModel]="query()" (ngModelChange)="find($event)" (keydown)="onKey($event)" />
+    <div id="git-branch-list" class="list" role="listbox" [attr.aria-label]="resources.branchPickerLabel">
+      @for (item of items(); track resources.formatBranchItemKey(item.kind, item.title); let index = $index) {
+        @let previous = items()[index - 1];
+        @if (item.kind !== kinds.Create && previous?.kind !== item.kind) {
+          @if (previous?.kind === kinds.Create) {
+            <div class="separator" role="presentation"></div>
+          }
+          <div class="label" role="presentation">{{ item.kind === kinds.Local ? resources.localBranchesLabel : resources.remoteBranchesLabel }}</div>
+        }
+        <div [id]="resources.formatBranchOptionId(index)" class="item" role="option" [class.active]="index === active()" [class.current]="item.isCurrent"
+          [attr.aria-selected]="index === active()" (pointerdown)="$event.preventDefault()" (pointerenter)="chosen.set(index)" (click)="choose(item)">
+          <span class="material-symbols-rounded" [class.hidden]="item.kind !== kinds.Create && !item.isCurrent" aria-hidden="true">{{ item.kind === kinds.Create ? resources.createBranchIcon : resources.currentBranchIcon }}</span>
+          <span class="title" data-truncates [nolTooltip]="item.title" [nolTooltipTruncated]="true">{{ item.title }}</span>
+        </div>
+      }
+    </div>
+  </div>
+}

@@ -1,0 +1,72 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<h3 class="header">
+  <span class="title">{{ resources.groupTitles[group().kind] }}</span>
+  <span class="count">{{ group().rows.length }}</span>
+  <span class="spacer"></span>
+  @if (group().kind !== kinds.Conflicts) {
+    @let label = group().kind === kinds.Staged ? resources.unstageAllLabel : resources.stageAllLabel;
+    <button nol-icon-button type="button" class="move-all" [icon]="group().kind === kinds.Staged ? resources.unstageIcon : resources.stageIcon" [label]="label"
+      [nolTooltip]="label" [disabled]="state.busy()" (click)="moveAll()"></button>
+  }
+</h3>
+<ul class="files">
+  @for (row of shownRows(); track row.key) {
+    @let isOpen = open().has(row.key);
+    @let moveLabel = row.group === kinds.Staged ? resources.formatUnstage(row.path) : resources.formatStage(row.path);
+    <li>
+      <div class="file" [class.open]="isOpen">
+        @if (row.group === kinds.Conflicts) {
+          <div class="name" [nolTooltip]="row.path">
+            <ng-container [ngTemplateOutlet]="nameOf" [ngTemplateOutletContext]="{ $implicit: row }" />
+          </div>
+        } @else {
+          <button type="button" class="name" [nolTooltip]="row.path" [attr.aria-expanded]="isOpen" (click)="toggle(row)">
+            <ng-container [ngTemplateOutlet]="nameOf" [ngTemplateOutletContext]="{ $implicit: row }" />
+          </button>
+        }
+        @if (isOpen) {
+          @let wrapLabel = wrapped().has(row.key) ? resources.unwrapLinesLabel : resources.wrapLinesLabel;
+          <button nol-icon-button type="button" class="wrap" [icon]="resources.wrapIcon" [pressed]="wrapped().has(row.key)" [label]="wrapLabel" [nolTooltip]="wrapLabel"
+            (click)="toggleWrap(row)"></button>
+        }
+        @if (row.group !== kinds.Conflicts) {
+          @let diffLabel = isOpen ? resources.hideDiffLabel : resources.showDiffLabel;
+          <button nol-icon-button type="button" class="expand" [icon]="isOpen ? resources.collapseIcon : resources.expandIcon" [label]="diffLabel" [nolTooltip]="diffLabel"
+            [attr.aria-expanded]="isOpen" (click)="toggle(row)"></button>
+        }
+        <button nol-icon-button type="button" class="move" [icon]="row.group === kinds.Staged ? resources.unstageIcon : resources.stageIcon" [label]="moveLabel"
+          [nolTooltip]="moveLabel" [disabled]="state.busy()" (click)="move(row)"></button>
+      </div>
+      @if (isOpen) {
+        <div class="diff" [class.wrapped]="wrapped().has(row.key)">
+          @for (line of rowsOf(row); track $index) {
+            <div [class.added-line]="line.kind === lineKinds.Added" [class.removed-line]="line.kind === lineKinds.Removed" [class.meta-line]="line.kind === lineKinds.Meta">{{ line.text }}</div>
+          }
+        </div>
+      }
+    </li>
+  }
+  @if (hiddenCount() > 0) {
+    <li>
+      <button type="button" class="more" (click)="showsAll.set(true)">{{ resources.formatMoreFiles(hiddenCount()) }}</button>
+    </li>
+  }
+</ul>
+
+<ng-template #nameOf let-row>
+  <span class="state" [attr.data-tone]="row.tone">{{ row.letter }}</span>
+  <nol-file-badge [fileName]="row.fileName" />
+  <span class="path"><span class="directory">{{ row.directory }}</span>{{ row.fileName }}</span>
+  @if (row.kind; as kind) {
+    <span class="kind">{{ kind }}</span>
+  } @else if (row.counts; as counts) {
+    <span class="counts"><span class="added">{{ resources.addedPrefix }}{{ counts.added }}</span>@if (row.tone !== tones.Untracked) {<span class="removed">{{ resources.removedPrefix }}{{ counts.removed }}</span>}</span>
+  }
+</ng-template>

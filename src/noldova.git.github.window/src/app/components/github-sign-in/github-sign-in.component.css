@@ -1,0 +1,108 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  display: block;
+}
+
+.nol-git-github-setting {
+  display: grid;
+  gap: var(--nol-settings-item-control-gap);
+  margin-inline: calc(-1 * var(--nol-settings-edge, 0rem));
+  padding: var(--nol-settings-item-padding);
+  border-radius: var(--nol-radius-small);
+}
+
+.nol-git-github-heading {
+  display: grid;
+  gap: var(--nol-settings-item-control-gap);
+}
+
+.nol-git-github-action {
+  display: inline-flex;
+}
+
+.nol-git-github-setting-title {
+  margin: 0;
+  font: inherit;
+  color: var(--nol-setting-title);
+  font-weight: var(--nol-weight-emphasis);
+}
+
+.nol-git-github-setting-note {
+  margin: calc(var(--nol-settings-item-description-gap) - var(--nol-settings-item-control-gap)) 0 0;
+  color: var(--nol-text-muted);
+}
+
+.nol-git-github-row {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.nol-git-github-code {
+  font-family: var(--nol-font-mono);
+  font-size: 1.75rem;
+  letter-spacing: 0.12em;
+  color: var(--nol-text-strong);
+  padding: var(--nol-field-padding) var(--nol-settings-item-padding-inline);
+  border: var(--nol-border-width) dashed var(--nol-input-border);
+  border-radius: var(--nol-radius-medium);
+  background: var(--nol-input);
+}
+
+.nol-git-github-cancel {
+  margin-left: var(--nol-space-2);
+}
+
+.nol-git-github-account {
+  display: flex;
+  gap: 0.625rem;
+  align-items: center;
+}
+
+.nol-git-github-account-text,
+.nol-git-github-banner-text {
+  display: grid;
+}
+
+.nol-git-github-banner-text {
+  gap: 0.125rem;
+}
+
+.nol-git-github-strong {
+  color: var(--nol-text-strong);
+  font-weight: var(--nol-weight-emphasis);
+}
+
+.nol-git-github-muted {
+  color: var(--nol-text-muted);
+}
+
+.nol-git-github-label {
+  font-size: var(--nol-text-label);
+}
+
+.nol-git-github-banner {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: flex-start;
+  padding: var(--nol-space-2) 0.625rem;
+  border-radius: var(--nol-radius-medium);
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  background: var(--nol-raised);
+}
+
+.nol-git-github-banner-icon {
+  margin-top: 0.125rem;
+  font-size: var(--nol-icon);
+  width: var(--nol-icon);
+  height: var(--nol-icon);
+  color: var(--nol-error);
+}

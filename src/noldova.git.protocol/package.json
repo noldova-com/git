@@ -1,0 +1,33 @@
+{
+  "name": "@noldova/git.protocol",
+  "version": "0.0.1",
+  "description": "The Git module's messages that its runtime and window parts exchange: status, diffs, worktrees and the protocol's failures.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/noldova-com/git.git",
+    "directory": "src/noldova.git.protocol"
+  },
+  "homepage": "https://github.com/noldova-com/git#readme",
+  "bugs": {
+    "url": "https://github.com/noldova-com/git/issues"
+  },
+  "exports": {
+    ".": "./src/api/index.ts",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src/**/*.js",
+    "src/**/*.js.map",
+    "src/**/*.d.ts"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "peerDependencies": {
+    "@noldova/context.exceptions": ">=0.0.7 <0.1.0",
+    "@noldova/context.json": ">=0.0.7 <0.1.0"
+  }
+}
