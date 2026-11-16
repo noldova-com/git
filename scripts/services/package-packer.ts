@@ -154,7 +154,8 @@ export class PackagePacker {
     const [dependencies, pinned] = await PackageImports.resolveAsync(path.join(output, Resources.sourceFolder),
       new Map([...PackagePacker.readPins(manifest, Resources.dependenciesField, file), ...declaredPeers]), version, file, ownPeers);
     const noldovaDesktop = await this.readNoldovaDesktopAsync(module);
-    const peers = new Map([...pinned].map(([name, pin]): [string, string] => [name, declaredPeers.get(name) ?? PackagePacker.readPeerRange(name, pin, noldovaDesktop)]));
+    const peers = new Map([...pinned].map(([name, pin]): [string, string] => [name, declaredPeers.get(name)
+      ?? (ownPeers.includes(name) ? VersionRange.sibling(version).toString() : PackagePacker.readPeerRange(name, pin, noldovaDesktop))]));
     const { dependencies: _, devDependencies: __, scripts: ___, allowScripts: ____, ...published } = manifest;
     const sorted = (pins: ReadonlyMap<string, string>): JsonObject => Object.fromEntries([...pins].sort(([a], [b]) => PackagePacker.compareOrdinal(a, b)));
     await this.finishAsync(folder, output, PackagePacker.manifestOf({

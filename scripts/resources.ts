@@ -542,6 +542,10 @@ export class Resources {
     return `${archiveName} names ${name} at ${pin} in ${field}, not at a range of the form >=<the Angular it builds with> <the next major>.`;
   }
 
+  public static formatArchiveSiblingPeerDiffers(archiveName: string, peer: string, range: string, expected: string): string {
+    return `${archiveName}: its peer ${peer} is "${range}", not "${expected}".`;
+  }
+
   public static formatArchivePinInexact(archiveName: string, name: string, pin: string, field: string, isRanged: boolean): string {
     return `${archiveName} names ${name} at ${pin} in ${field}, not at one exact version${isRanged ? Resources.rangeAlternative : ''}.`;
   }
@@ -576,6 +580,10 @@ export class Resources {
 
   public static formatNextMinor(minor: number): string {
     return `0.${minor + 1}.0`;
+  }
+
+  public static formatSiblingRefused(major: number, minor: number): string {
+    return `${major}.${minor + 1}.0`;
   }
 
   public static formatNextMajor(major: number): string {

@@ -44,7 +44,7 @@ class PackedPeersCheck {
   private static checkWindowPeer(gitWindow: FixtureManifest, gitHubWindow: FixtureManifest): void {
     const peer: string | undefined = gitHubWindow.peerDependencies[InstalledPackageResources.gitWindowName];
     const isDependency: boolean = gitHubWindow.dependencies[InstalledPackageResources.gitWindowName] !== undefined;
-    if (peer !== gitWindow.version || isDependency)
+    if (peer !== VersionRange.sibling(gitWindow.version).toString() || isDependency)
       throw new InstalledPackageCheckFailedException(InstalledPackageResources.formatWindowPeerDiffers(gitWindow.version, peer, isDependency));
   }
 
