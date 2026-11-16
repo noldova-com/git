@@ -7,7 +7,7 @@
  */
 
 import assert from "node:assert/strict";
-import { access, appendFile, readdir, rename, rm, truncate, writeFile } from "node:fs/promises";
+import { access, appendFile, readdir, realpath, rename, rm, truncate, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
@@ -34,6 +34,7 @@ describe("WorktreeService", () => {
   let runner: ScriptedRunnerFixture;
   let gate: PermissionGateFixture;
   let service: WorktreeService;
+  let work: string;
 
   beforeAll(async () => {
     template = await RepositoryFixture.createAsync();
@@ -49,6 +50,7 @@ describe("WorktreeService", () => {
     runner = new ScriptedRunnerFixture(desktop.context);
     gate = new PermissionGateFixture();
     service = new WorktreeService(desktop.context, runner);
+    work = await realpath(await desktop.context.getWorkFolderAsync());
   });
 
   afterEach(async () => {
@@ -93,7 +95,7 @@ describe("WorktreeService", () => {
 
       assert.equal(record.key, KEY);
       assert.equal(record.repository, path.resolve(repository.folder));
-      assert.equal(path.dirname(record.path), desktop.workFolder);
+      assert.equal(path.dirname(record.path), work);
       assert.match(path.basename(record.path), /^[0-9a-f]{16}$/);
       assert.equal(record.branch, `noldova/${path.basename(record.path)}`);
       assert.equal(record.base, await headAsync("HEAD"));
@@ -453,7 +455,7 @@ describe("WorktreeService", () => {
     test("skips the branch of a create that never finished, and clears its record", async () => {
       const table = new WorktreeTable(desktop.context.database);
       const base = await headAsync("HEAD");
-      table.insertPending(new WorktreeRecord(KEY, path.resolve(repository.folder), path.join(desktop.workFolder, "0123456789abcdef"), "noldova/0123456789abcdef", base));
+      table.insertPending(new WorktreeRecord(KEY, path.resolve(repository.folder), path.join(work, "0123456789abcdef"), "noldova/0123456789abcdef", base));
 
       await service.removeWorktreeAsync(KEY, { gate, context, keepBranch: false });
 
@@ -518,10 +520,10 @@ describe("WorktreeService", () => {
       const [locked, plain] = await addForeignAsync();
       const kept = await createAsync("kept");
       const table = new WorktreeTable(desktop.context.database);
-      const interrupted = new WorktreeRecord("interrupted", kept.repository, path.join(desktop.workFolder, "0123456789abcdef"), "noldova/0123456789abcdef", kept.base);
+      const interrupted = new WorktreeRecord("interrupted", kept.repository, path.join(work, "0123456789abcdef"), "noldova/0123456789abcdef", kept.base);
       table.insertPending(interrupted);
       await repository.runGitAsync(["worktree", "add", "--quiet", "--lock", "--reason", LOCK_REASON, "-b", interrupted.branch, interrupted.path, "HEAD"]);
-      table.insertPending(new WorktreeRecord("never-added", kept.repository, path.join(desktop.workFolder, "fedcba9876543210"), "noldova/fedcba9876543210", kept.base));
+      table.insertPending(new WorktreeRecord("never-added", kept.repository, path.join(work, "fedcba9876543210"), "noldova/fedcba9876543210", kept.base));
 
       await service.reconcileAsync();
 
