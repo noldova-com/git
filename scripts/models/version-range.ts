@@ -30,6 +30,11 @@ export class VersionRange {
     return new VersionRange(lowest, major === 0 ? Resources.formatNextMinor(minor) : Resources.formatNextMajor(major));
   }
 
+  public static sibling(version: string): VersionRange {
+    const [major = 0, minor = 0] = version.split(Resources.dot).map(Number);
+    return new VersionRange(version, Resources.formatSiblingRefused(major, minor));
+  }
+
   public static isRanged(name: string): boolean {
     return Resources.rangedPrefixes.some(t => name.startsWith(t)) || Resources.rangedNames.includes(name);
   }

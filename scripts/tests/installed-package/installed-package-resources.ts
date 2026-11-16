@@ -64,7 +64,7 @@ export class InstalledPackageResources {
   }
 
   public static formatWindowPeerDiffers(version: string, peer: string | undefined, isDependency: boolean): string {
-    return `The GitHub window part takes the Git window part ${version} as the peer ${peer ?? InstalledPackageResources.noPeer}`
+    return `The GitHub window part takes the Git window part ${version} as the peer ${peer ?? InstalledPackageResources.noPeer}, not from it to the next minor`
       + `${isDependency ? InstalledPackageResources.asDependency : ""}.`;
   }
 

@@ -95,7 +95,7 @@ export class ArchiveCheck {
 
     const context = Resources.formatArchiveManifestContext(archiveName);
     const manifest = ArchiveCheck.parseObject(content.toString(Resources.encoding), context);
-    const findings: string[] = [...ArchiveCheck.checkContents(archiveName, manifest, entries, noldovaDesktop)];
+    const findings: string[] = [...ArchiveCheck.checkContents(archiveName, manifest, entries, noldovaDesktop, names)];
     const name = JsonValue.text(manifest, Resources.nameField, context);
     if (name !== archive.part.name)
       findings.push(Resources.formatArchiveFieldDiffers(archiveName, Resources.nameField, name, archive.part.name));
@@ -118,6 +118,12 @@ export class ArchiveCheck {
           findings.push(Resources.formatArchiveDependencyDiffers(archiveName, dependency, range, version));
       }
 
+    const peers = manifest[Resources.peersField];
+    const sibling = VersionRange.sibling(version).toString();
+    for (const [peer, range] of JsonValue.isObject(peers) ? Object.entries(peers).filter(([t]) => names.includes(t)) : [])
+      if (range !== sibling)
+        findings.push(Resources.formatArchiveSiblingPeerDiffers(archiveName, peer, String(range), sibling));
+
     return findings;
   }
 
@@ -136,7 +142,8 @@ export class ArchiveCheck {
     return `${name.replace(Resources.scopePattern, Resources.scopeReplacement)}${Resources.dash}${version}${Resources.archiveExtension}`;
   }
 
-  private static checkContents(archiveName: string, manifest: JsonObject, entries: ReadonlyMap<string, Buffer>, noldovaDesktop: string | null): readonly string[] {
+  private static checkContents(archiveName: string, manifest: JsonObject, entries: ReadonlyMap<string, Buffer>, noldovaDesktop: string | null,
+    names: readonly string[]): readonly string[] {
     const findings: string[] = [];
     const exports = manifest[Resources.exportsField];
     const targets = typeof exports === "object" && exports !== null
@@ -155,6 +162,8 @@ export class ArchiveCheck {
     for (const field of Resources.pinFields) {
       const pins = manifest[field];
       for (const [name, pin] of typeof pins === "object" && pins !== null ? Object.entries(pins) : []) {
+        if (field === Resources.peersField && names.includes(name))
+          continue;
         if (noldovaDesktop !== null && field === Resources.peersField && VersionRange.isCore(name)) {
           if (pin !== noldovaDesktop)
             findings.push(Resources.formatArchiveCorePeerDiffers(archiveName, name, String(pin), field, noldovaDesktop));
