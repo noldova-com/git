@@ -4,23 +4,16 @@
 
 Each version's section is written by the pull request that changes the version, from the pull requests merged since the previous version; other pull requests don't edit this file.
 
-## Next version
-
-- **Breaking, `@noldova/git.protocol`:** `ProtocolException` is now abstract and has no `code`; a refused field throws `ProtocolFieldException`, whose `field` and `expectation` name what was refused. Catch `ProtocolException` as before, or `ProtocolFieldException` for the field.
-- **Breaking, `@noldova/git.hosting.protocol`:** `HostingProtocolException` is now an abstract base; a refused field throws `HostingFieldException`, and `ArgumentException` is renamed `HostingArgumentException`. Replace `ArgumentException` with `HostingArgumentException`, and catch `HostingProtocolException` for either.
-- **Added, `@noldova/git.protocol`:** `GitCode.FolderUnreadable`, for a folder the person's account may not read; the Git window shows it as its own empty state.
-- **Added, `@noldova/git.hosting.protocol`:** `SignInFailure.Unforgotten`, for a sign-out whose token couldn't be removed from this computer's secrets; the GitHub window names it.
-- **Breaking, every module package:** the modules run on Noldova Desktop 0.0.1, `@noldova/desktop.*` from npm, in place of the earlier `@noldova-com/desktop-*` packages: the peers on its packages are `>=0.0.1 <0.1.0`, `module.json` names that range as `noldovaDesktop`, and the peers on context's packages are `>=0.0.7 <0.1.0`, the version Noldova Desktop 0.0.1 takes. Install `@noldova/desktop.*` 0.0.1 and context 0.0.7 or later below 0.1.0.
-- **Breaking, `@noldova/git.protocol` and `@noldova/git.hosting.protocol`:** `DiffScope`'s JSON leaves out `from` and `to` unless the kind is `Range`, and refuses `null`; `pathBytes`, `oldPathBytes` and `originalPathBytes` are `undefined` when absent; `HostPerson`'s `url` is a required argument; `HostSignIn.signedOut`'s failure is optional. Check these for `undefined` in place of `null`, and pass a `url` to `HostPerson`.
-- A repository git calls unsafe, and a pull's host-key, refused-key and sign-in failures, are now classified as fetch and push classify them.
-- `git.watch` answers once the watch has started, so a change made right after it is heard on macOS too.
-- **Changed, `@noldova/git.window` and `@noldova/git.github.window`:** context's packages are peers at `>=0.0.7 <0.1.0`, never dependencies, so an app on context 0.0.8, whose packages pin their siblings exactly, holds one copy of `@noldova/context.core`.
-- **Changed, `@noldova/git.github.protocol`:** `IGitHubAccess.accessAsync` answers a `GitHubAccessGrant`, which holds the token, or a `GitHubAccessRefusal`; a check for `"token" in answer` still tells them apart.
-- The GitHub module keeps the token it was saving when the app quits mid-save, rather than removing it.
-- The GitHub sign-in in Settings no longer says the sign-in didn't answer when a newer sign-in has already arrived.
-- Each package's exceptions extend one base, and `@noldova/context.exceptions` is a peer of `@noldova/git`, `@noldova/git.github`, `@noldova/git.protocol` and `@noldova/git.hosting.protocol`; `@noldova/git` also takes `@noldova/context.json` as a peer.
-
 ## 0.0.1
 
-- The first version of Git's seven packages, the Git and GitHub modules, their protocols and window parts, and the hosting protocol, published to npm under the MIT License.
-- The seven packages move together, as always.
+- The first version of Git's seven packages, under the MIT License: `@noldova/git`, `@noldova/git.window` and `@noldova/git.protocol` for the local Git module, `@noldova/git.github`, `@noldova/git.github.window` and `@noldova/git.github.protocol` for the GitHub module, and `@noldova/git.hosting.protocol`, which every host module shares.
+  The seven packages move together.
+- `@noldova/git` holds `module.json`, the module `git`, and exports `./runtime` and `./window`, which give Noldova Desktop the runtime part and the window part; `module.json` names `>=0.0.1 <0.1.0` as its `noldovaDesktop` range.
+  Its runtime part runs the person's own `git`, 2.39 or later, and answers `git.status`, `git.diff`, `git.branches`, `git.log`, `git.worktrees`, `git.pullHooks`, `git.watch` and `git.unwatch`, and the writes `git.stage`, `git.unstage`, `git.createBranch`, `git.switchBranch`, `git.commit`, `git.push` and `git.pull`, each a person's own click in the window; `git.changed` tells a watching window that a folder's status moved.
+- It gives an agent 11 tools: `git_status`, `git_diff`, `git_log`, `git_branches`, `git_stage`, `git_unstage`, `git_create_branch`, `git_switch_branch`, `git_commit`, `git_push` and `git_pull`; each write first raises a permission request, and the app's policy decides whether the person is asked.
+- `@noldova/git.window` gives the Git view, `git.view`: a folder's branch, changes, diff and commit.
+- `@noldova/git.github` holds `module.json`, the module `git-github`, which depends on `git`, and exports `./runtime`, `./window` and the type `IGitHubAccess`.
+  Its runtime part signs in to GitHub with GitHub's device flow and keeps the token in Noldova Desktop's secrets on this computer; it reads issues, pull requests and checks, and opens pull requests, and gives an agent 3 tools: `git_github_read`, `git_github_pr_checks` and `git_github_pr_create`, the last asking the person first, every time.
+  Its window part adds the GitHub page in Settings, `git-github.account`, and a branch's pull request and checks in the Git view.
+- `@noldova/git.protocol`, `@noldova/git.github.protocol` and `@noldova/git.hosting.protocol` hold what the parts exchange.
+- The module packages take Noldova Desktop's `@noldova/desktop.protocol` and `@noldova/desktop.runtime` at `>=0.0.1 <0.1.0` as peers; `@noldova/git`, `@noldova/git.github`, `@noldova/git.protocol` and `@noldova/git.hosting.protocol` take context's `@noldova/context.exceptions` and `@noldova/context.json` at `>=0.0.7 <0.1.0`, and the window packages also `@noldova/context.core`, as peers.
