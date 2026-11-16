@@ -270,9 +270,8 @@ describe("StatusReader", () => {
     assert.deepEqual([existsSync(clean), existsSync(processed), existsSync(own)], [false, false, true]);
     await assert.rejects(repository.runGitAsync(["diff", "--quiet", "--", "a.txt"]), { code: 1 });
     assert.equal(existsSync(clean), true, "git itself runs the configured filter, so the read above turned it off");
-    const hungUp = process.platform === "win32" ? { code: 1 } : { code: 128, stderr: "fatal: the remote end hung up unexpectedly" + line };
-    await assert.rejects(repository.runGitAsync(["diff", "--quiet", "--", "b.md"]), hungUp,
-      "the process filter quits without answering git's handshake: on Linux and macOS git stops as the remote end hung up, on Windows the diff fails");
+    await assert.rejects(repository.runGitAsync(["diff", "--quiet", "--", "b.md"]), (error: unknown) => error instanceof Error && "code" in error && (error.code === 1 || error.code === 128),
+      "the process filter quits without answering git's handshake, so git fails the diff: git 2.53 with 128, as the remote end hung up, and git 2.55 and later and Git for Windows with 1");
     assert.equal(existsSync(processed), true, "git itself runs the configured process filter, so the read above turned it off");
   });
 
