@@ -154,7 +154,7 @@ Runs of different inputs go side by side; a second run of the same `ref` and the
 ## Releases
 
 The seven packages are published to npm together, at one version, by the "Release npm packages" workflow, `.github/workflows/release-npm.yml`, and a release never deletes a published version.
-The first publish uses a one-time token that only the `release` environment holds, `NPM_FIRST_PUBLISH_TOKEN`, since npm's trusted publishing needs each package to exist; every later publish uses trusted publishing, so no token is stored.
+It publishes through npm's trusted publishing, with provenance, so no token is stored: each package's trusted publisher on npm is this repository's `release-npm.yml` in the `release` environment.
 [documents/ARCHITECTURE.md](documents/ARCHITECTURE.md#the-package) says how a version is built, checked and released, and [CHANGELOG.md](CHANGELOG.md) what each version changed.
 
 ## License
