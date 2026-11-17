@@ -56,7 +56,7 @@ npm run build
 npm test
 ```
 
-`npm run build` installs the repository's exact versions with `npm ci` when there is no `node_modules`, then builds and packs the seven packages into `_packages`, one after another, installing each archive as it is packed, so the packages built after it and every test use the packed package, as an app does.
+`npm run build` installs the repository's exact versions with `npm ci` when there is no `node_modules`, logging each request npm makes and its time, so a slow install shows which download stalled, then builds and packs the seven packages into `_packages`, one after another, installing each archive as it is packed, so the packages built after it and every test use the packed package, as an app does.
 `npm test` runs the checks and every package's tests, and last installs the packed packages into a fixture app, so it runs after the build.
 [documents/TESTING.md](documents/TESTING.md) says what the checks cover and on which targets.
 
