@@ -398,32 +398,44 @@ describe("ChangeMonitor", () => {
   });
 
   test("keeps writing a cookie it can't write again until the poll's first tick, and fails on any other error writing it", async () => {
-    const watchUnheardAsync = async (): Promise<void> => {
+    const { writeFile: realWriteFile } = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
+    const touched: unknown[] = [];
+    const watchUnheardAsync = async (): Promise<(typeof waits)[number]> => {
       const earlier = vi.mocked(watch).mock.results.length;
+      const writes = vi.mocked(writeFile).mock.calls.length;
       monitor.watch(KEY, repository.folder, folders());
       const [own, branches] = watchersOf(earlier);
       assert.ok(own !== undefined && branches !== undefined);
       own.removeAllListeners("change");
-      await touchingAsync(seenAsync(branches, isCookie));
+      const touch = await nextWaitAsync(TOUCH);
+      const branchCookie = vi.mocked(writeFile).mock.calls.slice(writes).map(([file]) => String(file)).find(t => path.dirname(t) === branchesFolder());
+      assert.ok(branchCookie !== undefined);
+      branches.emit("change", "rename", path.basename(branchCookie));
+      return touch;
     };
-    const failNextWrite = (error: Error): Promise<void> => {
+    const failTouchAsync = async (touch: (typeof waits)[number], error: Error): Promise<void> => {
       const { promise, resolve } = Promise.withResolvers<void>();
-      vi.mocked(writeFile).mockImplementationOnce(() => {
+      vi.mocked(writeFile).mockImplementation(async (...values: Parameters<typeof writeFile>) => {
+        const [file] = values;
+        if (values.length !== 2 || !isCookie(path.basename(String(file))))
+          return await realWriteFile(...values);
+        vi.mocked(writeFile).mockImplementation(realWriteFile);
+        touched.push(file);
         resolve();
-        return Promise.reject(error);
+        throw error;
       });
-      return promise;
+      touch.fire();
+      await touchingAsync(promise);
     };
-    await watchUnheardAsync();
-    await touchingAsync(failNextWrite(Object.assign(new Error("denied"), { code: "EACCES" })));
+    await failTouchAsync(await watchUnheardAsync(), Object.assign(new Error("denied"), { code: "EACCES" }));
     await fireNextAsync(POLL);
     const denied = await startedAsync();
     const deniedLines = [...lines];
-    await watchUnheardAsync();
     const broken = Object.assign(new Error("broken"), { code: "EIO" });
-    await touchingAsync(failNextWrite(broken));
+    await failTouchAsync(await watchUnheardAsync(), broken);
 
     await assert.rejects(touchingAsync(monitor.startedAsync(KEY)), broken);
+    assert.deepEqual(touched.map(t => path.dirname(String(t))), [repository.gitFolder, repository.gitFolder]);
     assert.deepEqual([denied, deniedLines, await cookiesAsync()],
       [WatchStart.Backstop, [`Didn't hear the watch of ${repository.gitFolder} start within a few seconds, so the module counts it as started and checks the worktree every few seconds while it is shown.`], [[], []]]);
   });
