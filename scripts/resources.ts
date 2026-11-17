@@ -161,7 +161,7 @@ export class Resources {
   public static readonly npmListPathField: string = "path";
   public static readonly npmListProblemsCode: string = "ELSPROBLEMS";
   public static readonly packArguments: readonly string[] = ["pack", "--ignore-scripts", "--loglevel=error", "--pack-destination"];
-  public static readonly cleanInstallArguments: readonly string[] = ["ci", "--ignore-scripts", "--no-audit", "--no-fund"];
+  public static readonly cleanInstallArguments: readonly string[] = ["ci", "--ignore-scripts", "--no-audit", "--no-fund", "--loglevel=http"];
   public static readonly noldovaPrefix: string = "@noldova/";
   public static readonly rootPinFields: readonly string[] = [Resources.dependenciesField, Resources.devDependenciesField];
   public static readonly archiveInstallArguments: readonly string[] = ["install", "--no-save", "--ignore-scripts", "--no-audit", "--no-fund", "--loglevel=error"];
