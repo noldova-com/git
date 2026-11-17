@@ -424,8 +424,12 @@ describe("ChangeMonitor", () => {
         resolve();
         throw error;
       });
-      touch.fire();
-      await touchingAsync(promise);
+      try {
+        touch.fire();
+        await touchingAsync(promise);
+      } finally {
+        vi.mocked(writeFile).mockImplementation(realWriteFile);
+      }
     };
     await failTouchAsync(await watchUnheardAsync(), Object.assign(new Error("denied"), { code: "EACCES" }));
     await fireNextAsync(POLL);
