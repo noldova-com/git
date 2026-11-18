@@ -4,6 +4,12 @@
 
 Each version's section is written by the pull request that changes the version, from the pull requests merged since the previous version; other pull requests don't edit this file.
 
+## 0.0.3
+
+- The GitHub module opens GitHub's device sign-in page, from Settings → GitHub and from the Git view's GitHub row, and its page for the app's access, Manage access on GitHub, in the person's own browser whatever the Links setting says, since both need the person's GitHub session; a pull request and a check's run still open where the setting says (#44).
+- Both modules take Noldova Desktop 0.0.5: `module.json`'s `noldovaDesktop` range and the runtime packages' Noldova Desktop peers start at 0.0.5, the window packages take Noldova Desktop 0.0.5's packages, and the context peers start at 0.0.8 (#18, #30, #39).
+- The window packages take `@noldova/ui.components.angular` 0.0.12 and its size tokens in place of the windows' own sizes, at the same values (#28).
+
 ## 0.0.2
 
 - The packages are published through npm's trusted publishing, with provenance, so the release stores no token.
