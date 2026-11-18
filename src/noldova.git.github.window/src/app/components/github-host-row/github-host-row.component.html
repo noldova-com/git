@@ -78,6 +78,6 @@ LICENSE file in the root directory of this source tree.
   <div class="notice link-failed" role="alert">
     <span class="material-symbols-rounded notice-icon" aria-hidden="true">{{ resources.failureIcon }}</span>
     <span class="notice-text">{{ resources.hostRowLinkNotOpened }}</span>
-    <button type="button" nol-button [variant]="secondary" (click)="openAsync(link)">{{ resources.openAgain }}</button>
+    <button type="button" nol-button [variant]="secondary" (click)="openAsync(link[0], link[1])">{{ resources.openAgain }}</button>
   </div>
 }

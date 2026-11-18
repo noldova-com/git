@@ -7,7 +7,7 @@
  */
 
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
-import { SettingsRow, WindowPartTokens } from "@noldova/desktop.window";
+import { LinkPlace, SettingsRow, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { DeviceCode, HostAccount, HostSignIn, SignInFailure } from "@noldova/git.hosting.protocol";
@@ -30,6 +30,7 @@ const picture: string = "data:image/png;base64,iVBORw0KGgo=";
 
 class Page {
   public readonly context: FakeWindowPartContext = new FakeWindowPartContext();
+  public readonly browser = { placeFor: (): LinkPlace => LinkPlace.InApp, openAsync: (): Promise<void> => Promise.resolve() };
   public readonly requests: RequestAnswers = new RequestAnswers(this.context);
   public fixture: ComponentFixture<GitHubSignInComponent> | null = null;
 
@@ -54,7 +55,14 @@ class Page {
   }
 
   public get places(): readonly unknown[] {
-    return this.context.callsOf("openLinkAsync").map(t => t[1] ?? null);
+    return this.context.callsOf("openLinkAsync").map(t => {
+      const options = t[1];
+      return typeof options === "object" && options !== null && "place" in options ? options.place : this.browser.placeFor();
+    });
+  }
+
+  public registerInAppBrowser(): void {
+    this.context.registerInAppBrowser(this.browser);
   }
 
   public refuseClipboard(): void {
@@ -170,9 +178,10 @@ describe("GitHubSignInComponent", () => {
     ]);
   });
 
-  it("starts a sign-in, shows its code, copies it and opens GitHub's page where the Links setting says, and copies or opens it again", async () => {
+  it("starts a sign-in, shows its code, copies it and opens GitHub's page in the system's browser while the in-app browser takes other links, and copies or opens it again", async () => {
     vi.useFakeTimers({ now: NOW, toFake: ["Date", "setInterval", "clearInterval"] });
     const page = await new Page().openAsync(HostSignIn.signedOut());
+    page.registerInAppBrowser();
     page.requests.answer(GitHubNames.startSignInMethod, HostSignIn.waiting(code).toJson());
     const onClipboardAtOpen: string[][] = [];
     page.context.answer("openLinkAsync", async () => {
@@ -189,7 +198,7 @@ describe("GitHubSignInComponent", () => {
     expect([page.links, page.clipboard]).toEqual([["https://github.com/login/device", "https://github.com/login/device"],
       ["WDJB-MJHT", "WDJB-MJHT", "WDJB-MJHT"]]);
     expect(onClipboardAtOpen).toEqual([["WDJB-MJHT"], ["WDJB-MJHT", "WDJB-MJHT", "WDJB-MJHT"]]);
-    expect(page.places).toEqual([null, null]);
+    expect(page.places).toEqual([LinkPlace.System, LinkPlace.System]);
   });
 
   it("says a code is copied only while it is the code the clipboard took, not for a newer one started elsewhere", async () => {
@@ -247,8 +256,9 @@ describe("GitHubSignInComponent", () => {
     expect([page.requests.methods.at(-1), page.labels()]).toEqual([GitHubNames.cancelSignInMethod, ["Sign in to GitHub"]]);
   });
 
-  it("shows the account and its access, signs out, and opens GitHub's page for the app's access where the Links setting says", async () => {
+  it("shows the account and its access, signs out, and opens GitHub's page for the app's access in the system's browser while the in-app browser takes other links", async () => {
     const page = await new Page().openAsync(HostSignIn.signedIn(account));
+    page.registerInAppBrowser();
     const shown = [...page.texts(".nol-git-github-account-text > span"), page.element.querySelector("nol-avatar")?.textContent?.trim()];
     page.requests.answer(GitHubNames.signOutMethod, HostSignIn.signedOut().toJson());
     page.context.answer("openLinkAsync", async () => undefined);
@@ -258,7 +268,7 @@ describe("GitHubSignInComponent", () => {
 
     expect(shown).toEqual(["example-user", "Signed in on this computer · access to your repositories", "E"]);
     expect([page.links, page.requests.methods.at(-1), page.labels()]).toEqual([[GitHubNames.manageAccessUrl], GitHubNames.signOutMethod, ["Sign in to GitHub"]]);
-    expect(page.places).toEqual([null]);
+    expect(page.places).toEqual([LinkPlace.System]);
   });
 
   it("tints the account's avatar from its login, so each person keeps their own color", async () => {
