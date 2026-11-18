@@ -1,6 +1,6 @@
 {
   "name": "@noldova/git.github",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "The GitHub module for apps on Noldova Desktop: the sign-in to GitHub, its issues, pull requests and checks, and agent tools that use GitHub through permission requests.",
   "type": "module",
   "license": "MIT",
@@ -29,10 +29,10 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@noldova/git.github.protocol": "0.0.2",
-    "@noldova/git.protocol": "0.0.2",
-    "@noldova/git.github.window": "0.0.2",
-    "@noldova/git.hosting.protocol": "0.0.2"
+    "@noldova/git.github.protocol": "0.0.3",
+    "@noldova/git.protocol": "0.0.3",
+    "@noldova/git.github.window": "0.0.3",
+    "@noldova/git.hosting.protocol": "0.0.3"
   },
   "peerDependencies": {
     "@noldova/desktop.protocol": ">=0.0.5 <0.1.0",
