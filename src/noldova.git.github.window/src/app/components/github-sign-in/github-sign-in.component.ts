@@ -8,7 +8,7 @@
 
 import { NgTemplateOutlet } from "@angular/common";
 import { Component, DestroyRef, effect, inject, type OnInit, PendingTasks, signal, type WritableSignal } from "@angular/core";
-import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
+import { type IWindowPartContext, LinkPlace, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { type DeviceCode, type HostAccount, HostSignIn, SignInState } from "@noldova/git.hosting.protocol";
 import { AvatarComponent, ButtonComponent, ButtonVariant, ClipboardWriter, SpinnerComponent } from "@noldova/ui.components.angular";
@@ -116,7 +116,7 @@ export class GitHubSignInComponent implements OnInit {
   protected async openAsync(url: string): Promise<void> {
     const done = this.tasks.add();
     try {
-      await this.context.openLinkAsync(url);
+      await this.context.openLinkAsync(url, { place: LinkPlace.System });
     }
     catch (error) {
       if (!(error instanceof WindowException))
