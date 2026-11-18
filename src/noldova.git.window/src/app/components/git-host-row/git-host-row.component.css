@@ -15,7 +15,7 @@
   display: flex;
   gap: var(--nol-space-2);
   align-items: center;
-  padding: var(--nol-space-2) var(--nol-git-card-padding);
+  padding: var(--nol-space-2) var(--nol-view-padding-inline);
   border: var(--nol-border-width) solid var(--nol-card-border);
   border-radius: var(--nol-radius-medium);
   background-color: var(--nol-raised);
