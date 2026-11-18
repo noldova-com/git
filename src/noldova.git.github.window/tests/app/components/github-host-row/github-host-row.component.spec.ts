@@ -7,7 +7,7 @@
  */
 
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
-import { WindowPartTokens } from "@noldova/desktop.window";
+import { LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { BranchPullRequest, BranchQuery, CheckState, DeviceCode, HostAccount, HostChanges, HostCheck, HostItem, HostReference, HostSignIn, ReferenceKind,
@@ -50,6 +50,7 @@ function wordsOf(node: Node): string {
 
 class Page {
   public readonly context: FakeWindowPartContext = new FakeWindowPartContext();
+  public readonly browser = { placeFor: (): LinkPlace => LinkPlace.InApp, openAsync: (): Promise<void> => Promise.resolve() };
   public readonly requests: RequestAnswers = new RequestAnswers(this.context);
   public fixture: ComponentFixture<GitHubHostRowComponent> | null = null;
 
@@ -84,7 +85,14 @@ class Page {
   }
 
   public get places(): readonly unknown[] {
-    return this.context.callsOf("openLinkAsync").map(t => t[1] ?? null);
+    return this.context.callsOf("openLinkAsync").map(t => {
+      const options = t[1];
+      return typeof options === "object" && options !== null && "place" in options ? options.place : this.browser.placeFor();
+    });
+  }
+
+  public registerInAppBrowser(): void {
+    this.context.registerInAppBrowser(this.browser);
   }
 
   public async openAsync(first: HostSignIn | null, branch: string | null = "feature/readme", where: GitRemote = remote): Promise<this> {
@@ -179,8 +187,9 @@ describe("GitHubHostRowComponent", () => {
     expect(page.texts("span.name")).toEqual(["Lint"]);
   });
 
-  it("opens the pull request from its title and its open button, and a check's run from its name, and says and logs a link that doesn't open", async () => {
+  it("opens the pull request from its title and its open button, and a check's run from its name, where the Links setting says, and says, logs and opens again a link that doesn't open", async () => {
     const page = new Page();
+    page.registerInAppBrowser();
     page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
     page.context.answer("openLinkAsync", async () => undefined);
     await page.openAsync(signedIn);
@@ -192,10 +201,13 @@ describe("GitHubHostRowComponent", () => {
       throw new WindowFailure("The link was refused.");
     });
     await page.clickElementAsync(".title");
+    const failed = page.texts("[role=alert]");
+    page.context.answer("openLinkAsync", async () => undefined);
+    await page.clickAsync("Open the page again");
 
-    expect(page.links).toEqual([pullRequest.url, pullRequest.url, `${runs}4`, pullRequest.url]);
-    expect(page.places).toEqual([null, null, null, null]);
-    expect(page.texts("[role=alert]")).toEqual(["error The page couldn't be opened; the app's log has the details. Open the page again"]);
+    expect(page.links).toEqual([pullRequest.url, pullRequest.url, `${runs}4`, pullRequest.url, pullRequest.url]);
+    expect(page.places).toEqual([LinkPlace.InApp, LinkPlace.InApp, LinkPlace.InApp, LinkPlace.InApp, LinkPlace.InApp]);
+    expect(failed).toEqual(["error The page couldn't be opened; the app's log has the details. Open the page again"]);
     expect(page.texts(".title")).toEqual(["#7 Sample pull request title"]);
     expect(page.logs).toEqual([`The GitHub module couldn't open ${pullRequest.url}: WindowFailure: The link was refused.`]);
   });
@@ -404,8 +416,9 @@ describe("GitHubHostRowComponent", () => {
     expect([page.logs, page.element.querySelector("[role=alert]")]).toEqual([[], null]);
   });
 
-  it("offers to sign in when signed out, copies the code and opens GitHub's page where the Links setting says, copies it again and cancels", async () => {
+  it("offers to sign in when signed out, copies the code and opens GitHub's page in the system's browser while the in-app browser takes other links, copies it again and cancels", async () => {
     const page = new Page();
+    page.registerInAppBrowser();
     page.requests.answer(GitHubNames.startSignInMethod, HostSignIn.waiting(code).toJson());
     page.requests.answer(GitHubNames.cancelSignInMethod, HostSignIn.signedOut().toJson());
     await page.openAsync(HostSignIn.signedOut());
@@ -424,7 +437,7 @@ describe("GitHubHostRowComponent", () => {
     expect([page.links, page.clipboard, page.requests.methods]).toEqual([[code.verificationUri], [code.userCode, code.userCode],
       [GitHubNames.readSignInMethod, GitHubNames.startSignInMethod, GitHubNames.cancelSignInMethod]]);
     expect(onClipboardAtOpen).toEqual([[code.userCode]]);
-    expect(page.places).toEqual([null]);
+    expect(page.places).toEqual([LinkPlace.System]);
     expect(page.text).toContain("Sign in to GitHub to see this branch's pull request and its checks.");
   });
 
@@ -457,8 +470,9 @@ describe("GitHubHostRowComponent", () => {
       [code.userCode]]);
   });
 
-  it("keeps the code shown and copyable when GitHub's page can't open, and opens the page again from the failure's notice", async () => {
+  it("keeps the code shown and copyable when GitHub's page can't open, and opens the page again in the system's browser from the failure's notice", async () => {
     const page = new Page();
+    page.registerInAppBrowser();
     page.requests.answer(GitHubNames.startSignInMethod, HostSignIn.waiting(code).toJson());
     await page.openAsync(HostSignIn.signedOut());
     page.context.answer("openLinkAsync", async () => {
@@ -476,6 +490,7 @@ describe("GitHubHostRowComponent", () => {
     expect([page.links, page.element.querySelector("[role=alert]"), page.texts(".notice")])
       .toEqual([[code.verificationUri, code.verificationUri], null, ["Paste the code WDJB-MJHT on GitHub's page; it's copied. Copy code Cancel"]]);
     expect(page.logs).toEqual([`The GitHub module couldn't open ${code.verificationUri}: WindowFailure: No browser.`]);
+    expect(page.places).toEqual([LinkPlace.System, LinkPlace.System]);
   });
 
   it("says and logs a sign-in that doesn't start, and offers the sign-in again on Try again", async () => {

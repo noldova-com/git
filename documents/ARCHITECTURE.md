@@ -197,7 +197,7 @@ The module declares its own Settings page, `git-github.account` titled GitHub, i
 It reads the sign-in when it opens and follows `git-github.signInChanged` until it closes.
 Signed out, it says what signing in brings, or why the last sign-in ended, and offers the sign-in.
 While a sign-in waits, it shows the code, copies it and opens GitHub's page for it, offers to copy the code and to copy it and open the page again, and counts down to the code's expiry each second.
-The page opens where the Links setting says, like every link; in the app's Browser its tab covers Settings, so the code is on the clipboard to paste, and the note says so only when the clipboard took it.
+GitHub's page for the code, and its page for the app's access, open in the person's own browser whatever the Links setting says, with `LinkPlace.System`, since both need the person's GitHub session, which the app's Browser doesn't have; the code is on the clipboard to paste there, and the note says so only when the clipboard took it.
 Signed in, it shows the account's login beside its avatar, or its initial when it has none, and whether it reaches the person's repositories, and offers to sign out or to open GitHub's page for the app's access.
 It holds its sign-in, cancel and sign-out buttons while a request is out.
 A request that fails logs why and shows a banner, "GitHub's sign-in didn't answer.", which says to try again; when the first read fails, the page shows only that banner under its title, with Try again, which reads the sign-in again.
@@ -215,8 +215,9 @@ The row, `GitHubHostRowComponent`, reads the sign-in and follows `git-github.sig
 It shows the pull request's state icon in GitHub's look, its number and title, which open it on GitHub as its open button does, and its checks worst first, failed then running, queued, passed and skipped, each with its state's Octicon and label; a check's name opens its run.
 A title or name the row cuts off is marked `data-truncates`, as the kit does, and shows in full in the kit's tooltip only while it is cut.
 A branch with no pull request, or a detached HEAD, shows "No pull request for this branch".
-Signed out, it offers the sign-in, then shows the code with Copy code and Cancel, copies it and opens GitHub's page for it; while GitHub doesn't answer, it says so and offers Try again.
-A page the row can't open, GitHub's page for the code during a sign-in, a pull request or a check's run, logs why and shows the notice "The page couldn't be opened" under the row, with Open the page again, which opens that page again, so beside the device code the person still reaches GitHub's page when the first opening failed.
+Signed out, it offers the sign-in, then shows the code with Copy code and Cancel, copies it and opens GitHub's page for it in the person's own browser, as the sign-in page does; while GitHub doesn't answer, it says so and offers Try again.
+A pull request and a check's run open where the Links setting says, like every link.
+A page the row can't open, GitHub's page for the code during a sign-in, a pull request or a check's run, logs why and shows the notice "The page couldn't be opened" under the row, with Open the page again, which opens that page again in the same place, so beside the device code the person still reaches GitHub's page when the first opening failed.
 The notice clears at the next opening and when the sign-in's state changes; as on the sign-in page, an event in the same state leaves it.
 The GitHub window takes `@noldova/git.window` from the root's install, where the build installs the Git window's packed archive before it compiles the GitHub window, so its compile and its tests use the real `GitHostRows` as an app gets it.
 

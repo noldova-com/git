@@ -8,7 +8,7 @@
 
 import { Component, computed, DestroyRef, effect, inject, input, type InputSignal, type OnInit, PendingTasks, type Signal,
   signal, untracked, type WritableSignal } from "@angular/core";
-import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
+import { type IWindowPartContext, LinkPlace, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { BranchPullRequest, BranchQuery, CheckState, type HostCheck, HostSignIn, SignInState } from "@noldova/git.hosting.protocol";
 import type { GitRemote } from "@noldova/git.protocol";
@@ -54,7 +54,7 @@ export class GitHubHostRowComponent implements OnInit {
   protected readonly signIn: WritableSignal<HostSignIn | null> = signal<HostSignIn | null>(null);
   protected readonly answer: WritableSignal<BranchPullRequest | null> = signal<BranchPullRequest | null>(null);
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
-  protected readonly failedLink: WritableSignal<string | null> = signal<string | null>(null);
+  protected readonly failedLink: WritableSignal<readonly [url: string, place: LinkPlace | null] | null> = signal<readonly [url: string, place: LinkPlace | null] | null>(null);
   protected readonly isBusy: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly copiedCode: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly isReading: WritableSignal<boolean> = signal<boolean>(false);
@@ -133,7 +133,7 @@ export class GitHubHostRowComponent implements OnInit {
     const code = answer?.deviceCode ?? null;
     if (code !== null) {
       await this.copyAsync(code.userCode);
-      await this.openAsync(code.verificationUri);
+      await this.openAsync(code.verificationUri, LinkPlace.System);
     }
   }
 
@@ -151,17 +151,17 @@ export class GitHubHostRowComponent implements OnInit {
     }
   }
 
-  protected async openAsync(url: string): Promise<void> {
+  protected async openAsync(url: string, place: LinkPlace | null = null): Promise<void> {
     const done = this.tasks.add();
     this.failedLink.set(null);
     try {
-      await this.context.openLinkAsync(url);
+      await (place === null ? this.context.openLinkAsync(url) : this.context.openLinkAsync(url, { place }));
     }
     catch (error) {
       if (!(error instanceof WindowException))
         throw error;
       this.context.log(Resources.formatLinkFailed(url, String(error)));
-      this.failedLink.set(url);
+      this.failedLink.set([url, place]);
     }
     finally {
       done();
