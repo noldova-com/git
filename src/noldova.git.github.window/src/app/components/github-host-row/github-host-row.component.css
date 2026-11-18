@@ -22,7 +22,7 @@
   display: flex;
   gap: var(--nol-space-2);
   align-items: center;
-  padding: var(--nol-space-2) 0.625rem;
+  padding: var(--nol-space-2) var(--nol-view-padding-inline);
   color: var(--nol-text-muted);
 }
 
@@ -45,7 +45,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--nol-space-1);
-  padding: var(--nol-space-2) 0.625rem;
+  padding: var(--nol-space-2) var(--nol-view-padding-inline);
 }
 
 .line {
@@ -101,8 +101,8 @@
 .checks {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 0.125rem;
-  margin: 0.125rem 0 0;
+  gap: var(--nol-space-half);
+  margin: var(--nol-space-half) 0 0;
   padding: 0;
   list-style: none;
 }
@@ -111,7 +111,7 @@
   display: flex;
   gap: var(--nol-space-2);
   align-items: center;
-  min-height: 1.375rem;
+  min-height: var(--nol-icon-button);
   font-size: var(--nol-text-label);
   color: var(--nol-text-muted);
 }

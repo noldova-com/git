@@ -48,8 +48,8 @@
 
 .nol-git-github-code {
   font-family: var(--nol-font-mono);
-  font-size: 1.75rem;
-  letter-spacing: 0.12em;
+  font-size: var(--nol-text-display);
+  letter-spacing: var(--nol-letter-spacing-display);
   color: var(--nol-text-strong);
   padding: var(--nol-field-padding) var(--nol-settings-item-padding-inline);
   border: var(--nol-border-width) dashed var(--nol-input-border);
@@ -63,7 +63,7 @@
 
 .nol-git-github-account {
   display: flex;
-  gap: 0.625rem;
+  gap: var(--nol-view-gap);
   align-items: center;
 }
 
@@ -73,7 +73,7 @@
 }
 
 .nol-git-github-banner-text {
-  gap: 0.125rem;
+  gap: var(--nol-space-half);
 }
 
 .nol-git-github-strong {
@@ -93,14 +93,14 @@
   display: flex;
   gap: var(--nol-space-2);
   align-items: flex-start;
-  padding: var(--nol-space-2) 0.625rem;
+  padding: var(--nol-space-2) var(--nol-view-padding-inline);
   border-radius: var(--nol-radius-medium);
   border: var(--nol-border-width) solid var(--nol-card-border);
   background: var(--nol-raised);
 }
 
 .nol-git-github-banner-icon {
-  margin-top: 0.125rem;
+  margin-top: var(--nol-space-half);
   font-size: var(--nol-icon);
   width: var(--nol-icon);
   height: var(--nol-icon);

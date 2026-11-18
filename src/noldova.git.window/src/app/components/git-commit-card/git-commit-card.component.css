@@ -7,8 +7,6 @@
  */
 
 :host {
-  --nol-git-message-height: 4.25rem;
-
   display: grid;
   gap: var(--nol-space-2);
   min-width: 0;
@@ -21,7 +19,7 @@
 .field {
   box-sizing: border-box;
   width: 100%;
-  min-height: var(--nol-git-message-height);
+  min-height: var(--nol-text-area-min-height);
 }
 
 .commit {
