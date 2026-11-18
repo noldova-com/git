@@ -7,9 +7,6 @@
  */
 
 :host {
-  --nol-git-card-padding: 0.625rem;
-  --nol-git-empty-icon: 1.25rem;
-
   position: relative;
   display: flex;
   flex-direction: column;
@@ -34,7 +31,7 @@
   display: flex;
   gap: var(--nol-space-2);
   align-items: flex-start;
-  padding: var(--nol-space-2) var(--nol-git-card-padding);
+  padding: var(--nol-space-2) var(--nol-view-padding-inline);
   border: var(--nol-border-width) solid var(--nol-card-border);
   border-radius: var(--nol-radius-medium);
   background-color: var(--nol-raised);
@@ -78,7 +75,7 @@
 
 .quiet {
   margin: 0;
-  padding: 0 var(--nol-git-card-padding);
+  padding: 0 var(--nol-view-padding-inline);
 }
 
 .empty {
@@ -89,10 +86,10 @@
 }
 
 .empty-icon {
-  width: var(--nol-git-empty-icon);
-  height: var(--nol-git-empty-icon);
+  width: var(--nol-empty-icon);
+  height: var(--nol-empty-icon);
   color: var(--nol-text-muted);
-  font-size: var(--nol-git-empty-icon);
+  font-size: var(--nol-empty-icon);
 }
 
 .heading {
