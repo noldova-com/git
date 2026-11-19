@@ -20,6 +20,8 @@ export class Resources {
   public static readonly viewName: string = "git.view";
   public static readonly viewTitle: string = "Git";
   public static readonly viewIcon: string = "account_tree";
+  public static readonly viewDefaultGroup: number = 0;
+  public static readonly viewDefaultOrder: number = 20;
   public static readonly getGitAddress: string = "https://git-scm.com/downloads";
   public static readonly slash: string = "/";
   public static readonly dot: string = ".";

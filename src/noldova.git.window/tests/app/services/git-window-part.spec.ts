@@ -30,7 +30,7 @@ describe("GitWindowPart", () => {
     expect(context.calls.map(t => t.member)).toEqual(["registerView"]);
   });
 
-  it("registers the Git view in the right dock, shown by default, with no padding, loading the view's component", async () => {
+  it("registers the Git view in the right dock's first group at order 20, shown by default, with no padding, loading the view's component", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const views: ViewContribution[] = [];
     context.answer("registerView", t => {
@@ -41,8 +41,8 @@ describe("GitWindowPart", () => {
     await new GitWindowPart().activateAsync(context);
     const [view] = views;
 
-    expect([view?.name, view?.title, view?.icon, view?.defaultSide, view?.isShownByDefault, view?.padding])
-      .toEqual(["git.view", "Git", "account_tree", DockSide.Right, true, ContentPadding.None]);
+    expect([view?.name, view?.title, view?.icon, view?.defaultSide, view?.isShownByDefault, view?.padding, view?.defaultGroup, view?.defaultOrder])
+      .toEqual(["git.view", "Git", "account_tree", DockSide.Right, true, ContentPadding.None, 0, 20]);
     expect(await view?.loadComponent()).toBe(GitViewComponent);
     expect(context.callsOf("registerView")).toEqual([[view]]);
   });

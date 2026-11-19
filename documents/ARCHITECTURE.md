@@ -72,7 +72,7 @@ A build or publish that fails keeps its tag, so the same version can be released
 | Part | Where it runs | What it does today |
 |---|---|---|
 | Runtime | The app's main process, activated by Noldova Desktop | Activates and deactivates; the local module's registers `git.status`, `git.diff`, `git.branches`, `git.log`, `git.worktrees`, `git.pullHooks`, `git.watch` and `git.unwatch`, the writes `git.stage`, `git.unstage`, `git.createBranch`, `git.switchBranch`, `git.commit`, `git.push` and `git.pull`, and declares `git.changed`, as "The local runtime part" says, and offers its agent tools, as "Agent tools" says, and the GitHub module's signs in to GitHub, as "Signing in to GitHub" says. |
-| Window | Each window, activated by Noldova Desktop | Activates, reconnects while active, and deactivates. The local module's part registers the Git view, `git.view`, in the right dock; the GitHub module's registers no view yet. |
+| Window | Each window, activated by Noldova Desktop | Activates, reconnects while active, and deactivates. The local module's part registers the Git view, `git.view`, in the right dock, in its first group at order 20, where a new layout opens it; the GitHub module's registers no view yet. |
 
 - **Node's API:** the runtime parts run in the app's main process on the Node.js that Electron embeds, 24.22.0 in Noldova Desktop 0.0.2's Electron 44.9.1, so they call only what that Node has. The build type-checks them against `@types/node` 26 and the tests run on Node 26.13.1, so a call only Node 26 has passes both, and a review keeps it out.
 
