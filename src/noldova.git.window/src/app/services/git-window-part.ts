@@ -24,7 +24,8 @@ export class GitWindowPart implements IWindowPart {
   public async activateAsync(context: IWindowPartContext): Promise<void> {
     this.context = context;
     context.registerView(new ViewContribution(Resources.viewName, Resources.viewTitle, Resources.viewIcon, DockSide.Right, true,
-      () => import("../components/git-view/git-view.component.ts").then(t => t.GitViewComponent), ContentPadding.None));
+      () => import("../components/git-view/git-view.component.ts").then(t => t.GitViewComponent), ContentPadding.None,
+      { defaultGroup: Resources.viewDefaultGroup, defaultOrder: Resources.viewDefaultOrder }));
   }
 
   public async reconnectAsync(): Promise<boolean> {
