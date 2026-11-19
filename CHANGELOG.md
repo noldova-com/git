@@ -4,6 +4,11 @@
 
 Each version's section is written by the pull request that changes the version, from the pull requests merged since the previous version; other pull requests don't edit this file.
 
+## 0.0.4
+
+- In a new layout, the Git view opens in the right dock's first group at order 20, so an app can put its own views at orders 10 and 30 around it in that group (#54).
+- Both modules take Noldova Desktop 0.0.7: `module.json`'s `noldovaDesktop` range and the runtime packages' Noldova Desktop peers start at 0.0.7, and the window packages take Noldova Desktop 0.0.7's packages, Angular 22.3.0 and `@noldova/ui.components.angular` 0.0.15 (#41, #50).
+
 ## 0.0.3
 
 - The GitHub module opens GitHub's device sign-in page, from Settings → GitHub and from the Git view's GitHub row, and its page for the app's access, Manage access on GitHub, in the person's own browser whatever the Links setting says, since both need the person's GitHub session; a pull request and a check's run still open where the setting says (#45).
