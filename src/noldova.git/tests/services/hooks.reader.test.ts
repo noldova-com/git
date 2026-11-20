@@ -15,6 +15,7 @@ import { FailureCode } from "@noldova/git.protocol";
 
 import { HooksUnreadableException } from "../../src/exceptions/hooks-unreadable.exception.ts";
 import { HooksReader } from "../../src/services/hooks.reader.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
@@ -23,6 +24,7 @@ describe("HooksReader", () => {
   const names = ["pre-commit", "prepare-commit-msg", "commit-msg", "post-commit"];
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let runner: ScriptedRunnerFixture;
   let hooks: HooksReader;
@@ -37,14 +39,15 @@ describe("HooksReader", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => supervisor.disposeAsync());
     runner = new ScriptedRunnerFixture(supervisor.context);
     hooks = new HooksReader(runner);
   });
 
   afterEach(async () => {
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   const hookAsync = async (folder: string, name: string, content: string, mode: number): Promise<void> => {

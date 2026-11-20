@@ -16,6 +16,7 @@ import { FakeModuleLog } from "@noldova/desktop.runtime/testing";
 import type { JsonObject } from "@noldova/git.protocol";
 
 import { RuntimePart } from "../../src/api/index.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { FakeAnswerer } from "../fixtures/fake-answerer.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
@@ -23,6 +24,7 @@ import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 describe("GitWriteTool", () => {
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let part: RuntimePart;
   let answerer: FakeAnswerer;
@@ -38,18 +40,19 @@ describe("GitWriteTool", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => supervisor.disposeAsync());
     part = new RuntimePart();
     await part.activateAsync(supervisor.context);
+    cleanUps.add(() => part.deactivateAsync());
     answerer = new FakeAnswerer();
     supervisor.permissions.registerAnswerer("app", answerer, new FakeModuleLog());
     session = supervisor.registry.openSession("chat-1", { "git.folder": repository.folder });
   });
 
   afterEach(async () => {
-    await part.deactivateAsync();
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   const callAsync = (name: string, input: JsonObject): Promise<ToolResult | ToolFailure> => session.callAsync(name, input);

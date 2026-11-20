@@ -26,6 +26,7 @@ import { GitArguments } from "../../src/models/git-arguments.ts";
 import { ProgramLimits } from "../../src/models/program-limits.ts";
 import { ProgramRun } from "../../src/models/program-run.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { FakeGhFixture } from "../fixtures/fake-gh.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
@@ -34,6 +35,7 @@ describe("ProgramRunner", () => {
   const limits = new ProgramLimits(1024 * 1024, 30_000);
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let runner: ProgramRunner;
 
@@ -47,14 +49,15 @@ describe("ProgramRunner", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     await FakeGhFixture.createAsync(repository.programs);
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment([repository.programs, process.env["PATH"] ?? ""].join(path.delimiter)));
+    cleanUps.add(() => supervisor.disposeAsync());
     runner = new ProgramRunner(supervisor.context);
   });
 
   afterEach(async () => {
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   const write = (gitArguments: GitArguments, gitFolder: string = repository.gitFolder): ProgramRun =>

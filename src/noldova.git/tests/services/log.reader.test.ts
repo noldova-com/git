@@ -17,6 +17,7 @@ import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts
 import { UnreadableOutputException } from "../../src/exceptions/unreadable-output.exception.ts";
 import { LogReader } from "../../src/services/log.reader.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
@@ -26,6 +27,7 @@ describe("LogReader", () => {
   const NUL = String.fromCharCode(0);
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let reader: LogReader;
 
@@ -39,13 +41,14 @@ describe("LogReader", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => supervisor.disposeAsync());
     reader = new LogReader(new ProgramRunner(supervisor.context));
   });
 
   afterEach(async () => {
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   test("reads HEAD's newest commits with their parents, author's name, time and subject, never the email, and whether more were left out", async () => {

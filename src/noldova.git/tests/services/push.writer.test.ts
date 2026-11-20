@@ -39,6 +39,7 @@ import { PushWriter } from "../../src/services/push.writer.ts";
 import { RepositoryReader } from "../../src/services/repository.reader.ts";
 import { SessionBranches } from "../../src/services/session-branches.ts";
 import { StatusReader } from "../../src/services/status.reader.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { FakeAnswerer } from "../fixtures/fake-answerer.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
@@ -60,6 +61,7 @@ describe("PushWriter", () => {
   const always = [PermissionOption.AllowOnce, PermissionOption.AllowAlways, PermissionOption.Deny];
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let runner: PausingPushRunner;
   let repositories: RepositoryReader;
@@ -78,6 +80,7 @@ describe("PushWriter", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     remote = path.join(repository.root, "remote.git");
     await repository.runGitAsync(["clone", "--quiet", "--bare", repository.folder, remote]);
     await repository.runGitAsync(["remote", "add", "origin", remote]);
@@ -85,6 +88,7 @@ describe("PushWriter", () => {
     await repository.runGitAsync(["branch", "--quiet", "--set-upstream-to=origin/main"]);
     await repository.runGitAsync(["remote", "set-head", "origin", "main"]);
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => supervisor.disposeAsync());
     runner = new PausingPushRunner(supervisor.context);
     repositories = new RepositoryReader(runner, new GitVersionReader(runner));
     statuses = new StatusReader(runner);
@@ -93,8 +97,7 @@ describe("PushWriter", () => {
   });
 
   afterEach(async () => {
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   const readAsync = async (folder: string = repository.folder): Promise<[RepositoryFolders, GitStatus]> => {

@@ -41,6 +41,7 @@ import { ProgramRunner } from "../../src/services/program-runner.ts";
 import { PullWriter } from "../../src/services/pull.writer.ts";
 import { StatusReader } from "../../src/services/status.reader.ts";
 import { WriteRunner } from "../../src/services/write.runner.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
@@ -58,6 +59,7 @@ class ThrowingRunner extends ProgramRunner {
 describe("PullWriter", () => {
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let runner: ScriptedRunnerFixture;
   let folders: RepositoryFolders;
@@ -74,7 +76,9 @@ describe("PullWriter", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => supervisor.disposeAsync());
     runner = new ScriptedRunnerFixture(supervisor.context);
     commands = [];
     runner.starting = command => commands.push(command);
@@ -83,8 +87,7 @@ describe("PullWriter", () => {
   });
 
   afterEach(async () => {
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   const trackAsync = async (): Promise<void> => {

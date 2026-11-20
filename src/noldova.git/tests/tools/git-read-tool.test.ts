@@ -18,6 +18,7 @@ import { KeyQueue } from "../../src/services/key-queue.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
 import { RepositoryReader } from "../../src/services/repository.reader.ts";
 import { GitReadTool } from "../../src/tools/git-read-tool.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
@@ -32,6 +33,7 @@ describe("GitReadTool", () => {
   };
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let repositories: RepositoryReader;
 
@@ -45,14 +47,15 @@ describe("GitReadTool", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => supervisor.disposeAsync());
     const runner = new ProgramRunner(supervisor.context);
     repositories = new RepositoryReader(runner, new GitVersionReader(runner));
   });
 
   afterEach(async () => {
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   const callOf = (folder: string): ToolCall => new ToolCall("session-1", "conversation-1", { "git.folder": folder }, {}, Date.now() + 60_000, new AbortController().signal);

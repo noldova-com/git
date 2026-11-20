@@ -14,6 +14,7 @@ import { FailureCode, GitCode, UntrustedSource } from "@noldova/git.protocol";
 import { GitTooOldException } from "../../src/exceptions/git-too-old.exception.ts";
 import { GitVersionReader } from "../../src/services/git-version.reader.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
@@ -21,6 +22,7 @@ import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
 describe("GitVersionReader", () => {
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let runner: ScriptedRunnerFixture;
 
@@ -34,13 +36,14 @@ describe("GitVersionReader", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => supervisor.disposeAsync());
     runner = new ScriptedRunnerFixture(supervisor.context);
   });
 
   afterEach(async () => {
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   test("accepts git 2.39 and later, and refuses an older or unreadable version, naming the version as the protocol carries it", async () => {
