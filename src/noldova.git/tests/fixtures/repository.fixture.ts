@@ -61,7 +61,7 @@ export class RepositoryFixture {
       return await RepositoryFixture.prepareAsync(new RepositoryFixture(root, await RepositoryFixture.findGitAsync()), template);
     }
     catch (error) {
-      await rm(root, { recursive: true, force: true });
+      await Promise.allSettled([rm(root, { recursive: true, force: true })]);
       throw error;
     }
   }

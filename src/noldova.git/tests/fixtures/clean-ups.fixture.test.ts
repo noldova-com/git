@@ -47,4 +47,21 @@ describe("CleanUps", () => {
 
     assert.deepEqual(ran, ["desktop", "repository"]);
   });
+
+  test("throws the first failure when several steps fail", async () => {
+    const cleanUps = new CleanUps();
+    const ran: string[] = [];
+    cleanUps.add(() => {
+      ran.push("repository");
+      throw new Error("repository");
+    });
+    cleanUps.add(() => {
+      ran.push("desktop");
+      throw new Error("desktop");
+    });
+
+    await assert.rejects(cleanUps.runAsync(), /^Error: desktop$/v);
+
+    assert.deepEqual(ran, ["desktop", "repository"]);
+  });
 });

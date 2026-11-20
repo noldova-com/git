@@ -14,18 +14,16 @@ export class CleanUps {
   }
 
   public async runAsync(): Promise<void> {
-    await CleanUps.runEachAsync(this.steps.splice(0).reverse());
-  }
-
-  private static async runEachAsync(steps: readonly (() => Promise<void> | void)[]): Promise<void> {
-    const [first, ...rest] = steps;
-    if (first === undefined)
-      return;
-    try {
-      await first();
+    let failure: { readonly error: unknown } | undefined;
+    for (const step of this.steps.splice(0).reverse()) {
+      try {
+        await step();
+      }
+      catch (error) {
+        failure ??= { error };
+      }
     }
-    finally {
-      await CleanUps.runEachAsync(rest);
-    }
+    if (failure !== undefined)
+      throw failure.error;
   }
 }
