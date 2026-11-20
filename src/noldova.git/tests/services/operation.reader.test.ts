@@ -15,11 +15,13 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vite
 import { OperationKind } from "@noldova/git.protocol";
 
 import { OperationReader } from "../../src/services/operation.reader.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
 describe("OperationReader", () => {
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let other: string;
 
   beforeAll(async () => {
@@ -38,11 +40,12 @@ describe("OperationReader", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     other = (await repository.runGitAsync(["rev-parse", "other"])).trim();
   });
 
   afterEach(async () => {
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   const read = async (): Promise<unknown> => (await OperationReader.readAsync(repository.gitFolder))?.toJson() ?? null;

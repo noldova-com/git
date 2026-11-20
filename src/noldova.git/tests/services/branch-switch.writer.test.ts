@@ -29,12 +29,14 @@ import { HooksReader } from "../../src/services/hooks.reader.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
 import { RepositoryReader } from "../../src/services/repository.reader.ts";
 import { StatusReader } from "../../src/services/status.reader.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
 describe("BranchSwitchWriter", () => {
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let runner: ProgramRunner;
   let repositories: RepositoryReader;
@@ -53,7 +55,9 @@ describe("BranchSwitchWriter", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => supervisor.disposeAsync());
     runner = new ProgramRunner(supervisor.context);
     repositories = new RepositoryReader(runner, new GitVersionReader(runner));
     statuses = new StatusReader(runner);
@@ -62,8 +66,7 @@ describe("BranchSwitchWriter", () => {
   });
 
   afterEach(async () => {
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   const readAsync = async (folder: string = repository.folder): Promise<[RepositoryFolders, GitStatus]> => {

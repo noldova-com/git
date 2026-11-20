@@ -21,6 +21,7 @@ import { RepositoryFolders } from "../../src/models/repository-folders.ts";
 import { ChangeMonitor } from "../../src/services/change-monitor.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
 import { StatusReader } from "../../src/services/status.reader.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
@@ -35,6 +36,7 @@ describe("ChangeMonitor", () => {
   const TOUCH = 100;
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let monitor: ChangeMonitor;
   let changes: [string, number][];
@@ -53,7 +55,12 @@ describe("ChangeMonitor", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => supervisor.disposeAsync());
+    cleanUps.add(() => {
+      vi.restoreAllMocks();
+    });
     changes = [];
     lines = [];
     waits = [];
@@ -95,13 +102,11 @@ describe("ChangeMonitor", () => {
       changes.push([key, sequence]);
       hear();
     });
+    cleanUps.add(() => monitor.disposeAsync());
   });
 
   afterEach(async () => {
-    await monitor.disposeAsync();
-    vi.restoreAllMocks();
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   const folders = (): RepositoryFolders => new RepositoryFolders(repository.folder, repository.gitFolder, repository.gitFolder);

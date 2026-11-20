@@ -22,16 +22,17 @@ import { WatchStart } from "../src/enums/watch-start.ts";
 import { ColumnInvalidException } from "../src/exceptions/column-invalid.exception.ts";
 import { ChangeMonitor } from "../src/services/change-monitor.ts";
 import { WorktreeTable } from "../src/services/worktree-table.ts";
+import { CleanUps } from "./fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "./fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "./fixtures/repository.fixture.ts";
 
 describe("RuntimePart", () => {
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let context: FakeRuntimePartContext;
   let part: RuntimePart;
-  const cleanups: (() => Promise<void>)[] = [];
 
   beforeAll(async () => {
     template = await RepositoryFixture.createAsync();
@@ -43,18 +44,17 @@ describe("RuntimePart", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
-    cleanups.push(() => repository.disposeAsync());
+    cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
-    cleanups.push(() => supervisor.disposeAsync());
+    cleanUps.add(() => supervisor.disposeAsync());
     context = supervisor.context;
     part = new RuntimePart();
     await part.activateAsync(context);
-    cleanups.push(() => part.deactivateAsync());
+    cleanUps.add(() => part.deactivateAsync());
   });
 
   afterEach(async () => {
-    for (const cleanup of cleanups.splice(0).reverse())
-      await cleanup();
+    await cleanUps.runAsync();
   });
 
   const callAsync = async (name: string, payload: JsonValue): Promise<JsonValue> => {

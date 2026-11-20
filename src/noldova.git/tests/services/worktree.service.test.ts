@@ -19,6 +19,7 @@ import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts
 import { RequestDeniedException } from "../../src/exceptions/request-denied.exception.ts";
 import { WorktreeService } from "../../src/services/worktree.service.ts";
 import { WorktreeTable } from "../../src/services/worktree-table.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { PermissionGateFixture } from "../fixtures/permission-gate.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
@@ -30,6 +31,7 @@ describe("WorktreeService", () => {
   const context = { scope: "project-1", sessionId: "session-1" };
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let desktop: DesktopFixture;
   let runner: ScriptedRunnerFixture;
   let gate: PermissionGateFixture;
@@ -46,7 +48,9 @@ describe("WorktreeService", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     desktop = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => desktop.disposeAsync());
     runner = new ScriptedRunnerFixture(desktop.context);
     gate = new PermissionGateFixture();
     service = new WorktreeService(desktop.context, runner);
@@ -54,8 +58,7 @@ describe("WorktreeService", () => {
   });
 
   afterEach(async () => {
-    await desktop.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   const lines = (): string[] => desktop.context.log.callsOf("write").map(t => String(t[0]));

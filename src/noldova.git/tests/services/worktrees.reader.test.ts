@@ -17,6 +17,7 @@ import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts
 import { ProgramRunner } from "../../src/services/program-runner.ts";
 import { WorktreeListParser } from "../../src/services/worktree-list.parser.ts";
 import { WorktreesReader } from "../../src/services/worktrees.reader.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
@@ -24,6 +25,7 @@ import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
 describe("WorktreesReader", () => {
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let reader: WorktreesReader;
 
@@ -37,13 +39,14 @@ describe("WorktreesReader", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => supervisor.disposeAsync());
     reader = new WorktreesReader(new ProgramRunner(supervisor.context));
   });
 
   afterEach(async () => {
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   test("reads the main worktree first, then the linked ones in git's order by folder, with each one's head, branch, lock and prune state", async () => {

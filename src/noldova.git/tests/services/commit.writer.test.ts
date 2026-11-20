@@ -27,6 +27,7 @@ import { HooksReader } from "../../src/services/hooks.reader.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
 import { RepositoryReader } from "../../src/services/repository.reader.ts";
 import { StatusReader } from "../../src/services/status.reader.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
@@ -34,6 +35,7 @@ describe("CommitWriter", () => {
   const call = { session: "session-1", requestPermissionAsync: () => Promise.reject(new Error("never raised here")), markSending: () => undefined };
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let runner: ProgramRunner;
   let repositories: RepositoryReader;
@@ -50,7 +52,9 @@ describe("CommitWriter", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => supervisor.disposeAsync());
     runner = new ProgramRunner(supervisor.context);
     repositories = new RepositoryReader(runner, new GitVersionReader(runner));
     statuses = new StatusReader(runner);
@@ -58,8 +62,7 @@ describe("CommitWriter", () => {
   });
 
   afterEach(async () => {
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   const readAsync = async (): Promise<[RepositoryFolders, GitStatus]> => {

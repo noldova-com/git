@@ -57,7 +57,16 @@ export class RepositoryFixture {
 
   public static async createAsync(template?: RepositoryFixture): Promise<RepositoryFixture> {
     const root = await realpath(await mkdtemp(path.join(tmpdir(), RepositoryFixture.PREFIX)));
-    const fixture = new RepositoryFixture(root, await RepositoryFixture.findGitAsync());
+    try {
+      return await RepositoryFixture.prepareAsync(new RepositoryFixture(root, await RepositoryFixture.findGitAsync()), template);
+    }
+    catch (error) {
+      await rm(root, { recursive: true, force: true });
+      throw error;
+    }
+  }
+
+  private static async prepareAsync(fixture: RepositoryFixture, template: RepositoryFixture | undefined): Promise<RepositoryFixture> {
     for (const folder of [fixture.folder, fixture.home, fixture.configuration, fixture.programs, path.dirname(fixture.prompt)])
       await mkdir(folder, { recursive: true });
     await writeFile(path.join(fixture.home, ".gitconfig"), RepositoryFixture.GIT_CONFIGURATION);

@@ -21,6 +21,7 @@ import { RemoteReader } from "../../src/services/remote.reader.ts";
 import { RepositoryStatuses } from "../../src/services/repository-statuses.ts";
 import { RepositoryReader } from "../../src/services/repository.reader.ts";
 import { StatusReader } from "../../src/services/status.reader.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
@@ -28,6 +29,7 @@ describe("RepositoryStatuses", () => {
   const signal = new AbortController().signal;
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let statuses: RepositoryStatuses;
 
@@ -41,14 +43,15 @@ describe("RepositoryStatuses", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => supervisor.disposeAsync());
     const runner = new ProgramRunner(supervisor.context);
     statuses = new RepositoryStatuses(new RepositoryReader(runner, new GitVersionReader(runner)), new StatusReader(runner), new RemoteReader(runner), new KeyQueue());
   });
 
   afterEach(async () => {
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   const failure = (code: DesktopCode, gitCode: FailureCode): ((error: unknown) => boolean) => (error: unknown): boolean => {

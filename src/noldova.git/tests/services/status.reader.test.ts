@@ -21,12 +21,14 @@ import { GitVersionReader } from "../../src/services/git-version.reader.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
 import { RepositoryReader } from "../../src/services/repository.reader.ts";
 import { StatusReader } from "../../src/services/status.reader.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
 describe("StatusReader", () => {
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let reader: StatusReader;
   let repositories: RepositoryReader;
@@ -41,15 +43,16 @@ describe("StatusReader", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => supervisor.disposeAsync());
     const runner = new ProgramRunner(supervisor.context);
     reader = new StatusReader(runner);
     repositories = new RepositoryReader(runner, new GitVersionReader(runner));
   });
 
   afterEach(async () => {
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   const headAsync = async (folder: string = repository.folder): Promise<string> => (await repository.runGitAsync(["-C", folder, "rev-parse", "HEAD"])).trim();

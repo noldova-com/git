@@ -20,6 +20,7 @@ import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts
 import type { GitFailureException } from "../../src/exceptions/git-failure.exception.ts";
 import { Resources } from "../../src/resources.ts";
 import { FilterOptionsReader } from "../../src/services/filter-options.reader.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
@@ -27,6 +28,7 @@ import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
 describe("FilterOptionsReader", () => {
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let runner: ScriptedRunnerFixture;
   let reader: FilterOptionsReader;
@@ -41,14 +43,15 @@ describe("FilterOptionsReader", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => supervisor.disposeAsync());
     runner = new ScriptedRunnerFixture(supervisor.context);
     reader = new FilterOptionsReader(runner);
   });
 
   afterEach(async () => {
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   const switchedOff = (name: string): string[] => ["-c", `filter.${name}.clean=`, "-c", `filter.${name}.process=`, "-c", `filter.${name}.required=false`];
