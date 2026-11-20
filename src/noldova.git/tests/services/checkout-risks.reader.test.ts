@@ -17,12 +17,14 @@ import { CheckoutRisksReader } from "../../src/services/checkout-risks.reader.ts
 import { FilterOptionsReader } from "../../src/services/filter-options.reader.ts";
 import { HooksReader } from "../../src/services/hooks.reader.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
 describe("CheckoutRisksReader", () => {
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let risks: CheckoutRisksReader;
 
@@ -36,14 +38,15 @@ describe("CheckoutRisksReader", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => supervisor.disposeAsync());
     const runner = new ProgramRunner(supervisor.context);
     risks = new CheckoutRisksReader(new HooksReader(runner), new FilterOptionsReader(runner));
   });
 
   afterEach(async () => {
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   const hookAsync = async (folder: string, name: string): Promise<void> => {

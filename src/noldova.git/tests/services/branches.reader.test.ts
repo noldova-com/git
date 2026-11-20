@@ -16,6 +16,7 @@ import { FailureCode, UntrustedSource } from "@noldova/git.protocol";
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import { BranchesReader } from "../../src/services/branches.reader.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
@@ -23,6 +24,7 @@ import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
 describe("BranchesReader", () => {
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let reader: BranchesReader;
 
@@ -36,13 +38,14 @@ describe("BranchesReader", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => supervisor.disposeAsync());
     reader = new BranchesReader(new ProgramRunner(supervisor.context));
   });
 
   afterEach(async () => {
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   test("reads the local branches in git's order, the one checked out, the remotes and their branches without each remote's HEAD", async () => {

@@ -7,14 +7,19 @@
  */
 
 import assert from "node:assert/strict";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, test, vi } from "vitest";
 
+import { CleanUps } from "./clean-ups.fixture.ts";
 import { RepositoryFixture } from "./repository.fixture.ts";
 
 describe("RepositoryFixture", () => {
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
 
   beforeAll(async () => {
     template = await RepositoryFixture.createAsync();
@@ -26,10 +31,11 @@ describe("RepositoryFixture", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
   });
 
   afterEach(async () => {
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   const isRefusedByTheFake = (error: unknown): boolean =>
@@ -49,6 +55,26 @@ describe("RepositoryFixture", () => {
     assert.equal(await repository.runGitAsync(["log", "--format=%s"]), "Start\n");
     assert.equal(await repository.runGitAsync(["status", "--porcelain"]), "?? b.txt\n");
     assert.equal(await template.runGitAsync(["status", "--porcelain"]), "");
+  });
+
+  test("its git runs no automatic maintenance, whose lock a copy of the repository would race", async () => {
+    assert.equal(await repository.runGitAsync(["config", "--get", "maintenance.auto"]), "false\n");
+  });
+
+  test("a fixture that fails while it is made leaves no folder behind", async () => {
+    const gone = await RepositoryFixture.createAsync();
+    await gone.disposeAsync();
+    const temporary = await mkdtemp(path.join(tmpdir(), "noldova-git-fixture-"));
+    cleanUps.add(() => rm(temporary, { recursive: true, force: true }));
+    for (const name of ["TMPDIR", "TEMP", "TMP"])
+      vi.stubEnv(name, temporary);
+    cleanUps.add(() => {
+      vi.unstubAllEnvs();
+    });
+
+    await assert.rejects(RepositoryFixture.createAsync(gone), { code: "ENOENT" });
+
+    assert.deepEqual(await readdir(temporary), []);
   });
 
   test("a git call that exits before it reads its input still gives its output", async () => {

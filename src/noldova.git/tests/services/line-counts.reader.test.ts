@@ -15,6 +15,7 @@ import { FailureCode, FileState, GitCode, StatusEntry, UntrustedSource } from "@
 
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import { LineCountsReader } from "../../src/services/line-counts.reader.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
@@ -22,6 +23,7 @@ import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
 describe("LineCountsReader", () => {
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let runner: ScriptedRunnerFixture;
   let reader: LineCountsReader;
@@ -36,14 +38,15 @@ describe("LineCountsReader", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => supervisor.disposeAsync());
     runner = new ScriptedRunnerFixture(supervisor.context);
     reader = new LineCountsReader(runner);
   });
 
   afterEach(async () => {
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   const entry = (file: string, index: FileState, worktree: FileState, pathBytes?: string): StatusEntry =>

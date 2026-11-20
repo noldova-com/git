@@ -36,6 +36,7 @@ import { ProgramRunner } from "../../src/services/program-runner.ts";
 import { RepositoryReader } from "../../src/services/repository.reader.ts";
 import { StatusReader } from "../../src/services/status.reader.ts";
 import { WriteRunner } from "../../src/services/write.runner.ts";
+import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
@@ -80,6 +81,7 @@ describe("WriteRunner", () => {
   });
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
+  const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let statuses: StatusReader;
   let folders: RepositoryFolders;
@@ -97,7 +99,9 @@ describe("WriteRunner", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => supervisor.disposeAsync());
     const runner = new ProgramRunner(supervisor.context);
     statuses = new StatusReader(runner);
     folders = await new RepositoryReader(runner, new GitVersionReader(runner)).readAsync(repository.folder);
@@ -107,8 +111,7 @@ describe("WriteRunner", () => {
   });
 
   afterEach(async () => {
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   const basedOnAsync = async (): Promise<string> => (await statuses.readAsync(folders)).fingerprint;
