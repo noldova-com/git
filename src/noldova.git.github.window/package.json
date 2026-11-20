@@ -34,7 +34,7 @@
     "@angular/core": "22.3.0",
     "@angular/forms": "22.3.0",
     "@angular/platform-browser": "22.3.0",
-    "@noldova/ui.components.angular": "0.0.17",
+    "@noldova/ui.components.angular": "0.0.18",
     "@noldova/desktop.protocol": "0.0.9",
     "@noldova/desktop.window": "0.0.9",
     "rxjs": "7.8.2",
