@@ -31,6 +31,7 @@ describe("RuntimePart", () => {
   let supervisor: DesktopFixture;
   let context: FakeRuntimePartContext;
   let part: RuntimePart;
+  const cleanups: (() => Promise<void>)[] = [];
 
   beforeAll(async () => {
     template = await RepositoryFixture.createAsync();
@@ -42,16 +43,18 @@ describe("RuntimePart", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanups.push(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanups.push(() => supervisor.disposeAsync());
     context = supervisor.context;
     part = new RuntimePart();
     await part.activateAsync(context);
+    cleanups.push(() => part.deactivateAsync());
   });
 
   afterEach(async () => {
-    await part.deactivateAsync();
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    for (const cleanup of cleanups.splice(0).reverse())
+      await cleanup();
   });
 
   const callAsync = async (name: string, payload: JsonValue): Promise<JsonValue> => {

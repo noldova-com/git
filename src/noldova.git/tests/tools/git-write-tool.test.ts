@@ -25,6 +25,7 @@ describe("GitWriteTool", () => {
   let repository: RepositoryFixture;
   let supervisor: DesktopFixture;
   let part: RuntimePart;
+  const cleanups: (() => Promise<void>)[] = [];
   let answerer: FakeAnswerer;
   let session: ToolSession;
 
@@ -38,18 +39,20 @@ describe("GitWriteTool", () => {
 
   beforeEach(async () => {
     repository = await RepositoryFixture.createAsync(template);
+    cleanups.push(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanups.push(() => supervisor.disposeAsync());
     part = new RuntimePart();
     await part.activateAsync(supervisor.context);
+    cleanups.push(() => part.deactivateAsync());
     answerer = new FakeAnswerer();
     supervisor.permissions.registerAnswerer("app", answerer, new FakeModuleLog());
     session = supervisor.registry.openSession("chat-1", { "git.folder": repository.folder });
   });
 
   afterEach(async () => {
-    await part.deactivateAsync();
-    await supervisor.disposeAsync();
-    await repository.disposeAsync();
+    for (const cleanup of cleanups.splice(0).reverse())
+      await cleanup();
   });
 
   const callAsync = (name: string, input: JsonObject): Promise<ToolResult | ToolFailure> => session.callAsync(name, input);

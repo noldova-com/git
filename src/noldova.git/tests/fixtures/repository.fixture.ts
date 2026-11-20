@@ -30,6 +30,8 @@ export class RepositoryFixture {
     "\tdefaultBranch = main",
     "[core]",
     "\tautocrlf = false",
+    "[maintenance]",
+    "\tauto = false",
     ""
   ].join("\n");
   private readonly git: string;

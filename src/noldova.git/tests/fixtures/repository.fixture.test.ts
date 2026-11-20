@@ -51,6 +51,10 @@ describe("RepositoryFixture", () => {
     assert.equal(await template.runGitAsync(["status", "--porcelain"]), "");
   });
 
+  test("its git runs no automatic maintenance, whose lock a copy of the repository would race", async () => {
+    assert.equal(await repository.runGitAsync(["config", "--get", "maintenance.auto"]), "false\n");
+  });
+
   test("a git call that exits before it reads its input still gives its output", async () => {
     const output = await repository.runGitAsync(["--version"], "x".repeat(4 * 1024 * 1024));
 
