@@ -18,14 +18,16 @@ describe("The hosting protocol's Resources", () => {
     assert.deepEqual([
       Resources.unknownField, Resources.nonBlankTextExpected, Resources.httpsAddressExpected, Resources.positiveExpected, Resources.countExpected,
       Resources.nameExpected, Resources.pathExpected, Resources.commitExpected, Resources.pullRequestStateExpected, Resources.issueStateExpected,
-      Resources.changesExpected, Resources.pullRequestExpected, Resources.checksExpected, Resources.otherBranchExpected, Resources.avatarExpected,
+      Resources.changesExpected, Resources.pullRequestExpected, Resources.checksExpected, Resources.reviewDecisionExpected,
+      Resources.otherBranchExpected, Resources.avatarExpected,
       Resources.closedAtExpected, Resources.deviceCodeExpected, Resources.accountExpected, Resources.failureExpected
     ], [
       "none, since the model doesn't define it", "a text that isn't blank", "an https address with no user name or password", "a whole number above zero",
       "a whole number, zero or more", "a name of letters, digits, '.', '_' and '-', other than '.' and '..'",
       "names of letters, digits, '.', '_' and '-' joined by '/', none of them '.' or '..'", "a full commit hash, 40 or 64 lowercase hexadecimal digits",
       "Open, Draft, Merged or Closed, the states of a pull request", "Open, ClosedDone or ClosedNotPlanned, the states of an issue",
-      "changes exactly for a pull request", "a pull request", "no checks, since there is no pull request", "a branch other than the head branch",
+      "changes exactly for a pull request", "a pull request", "no checks, since there is no pull request",
+      "a review decision exactly for a pull request", "a branch other than the head branch",
       "a PNG, JPEG, GIF or WebP image of at most 64 KiB as a base64 data address", "a time exactly when the item is merged or closed",
       "a device code exactly while the sign-in waits for the person", "an account exactly while signed in", "null, since only a sign-out has a failure"
     ]);
@@ -38,11 +40,12 @@ describe("The hosting protocol's Resources", () => {
       Resources.repositoryField, Resources.numberField, Resources.referenceField, Resources.kindField, Resources.titleField, Resources.urlField,
       Resources.authorField, Resources.createdAtField, Resources.closedAtField, Resources.commentsField, Resources.changesField, Resources.additionsField,
       Resources.deletionsField, Resources.changedFilesField, Resources.headBranchField, Resources.baseBranchField, Resources.headCommitField,
-      Resources.pathField, Resources.branchField, Resources.pullRequestField, Resources.checksField, Resources.bodyField, Resources.isDraftField
+      Resources.pathField, Resources.branchField, Resources.pullRequestField, Resources.checksField, Resources.reviewDecisionField, Resources.bodyField,
+      Resources.isDraftField
     ], [
       "state", "deviceCode", "account", "failure", "userCode", "verificationUri", "expiresAt", "login", "name", "avatar", "scopes", "host", "owner",
       "repository", "number", "reference", "kind", "title", "url", "author", "createdAt", "closedAt", "comments", "changes", "additions", "deletions",
-      "changedFiles", "headBranch", "baseBranch", "headCommit", "path", "branch", "pullRequest", "checks", "body", "isDraft"
+      "changedFiles", "headBranch", "baseBranch", "headCommit", "path", "branch", "pullRequest", "checks", "reviewDecision", "body", "isDraft"
     ]);
     assert.equal(Resources.httpsProtocol, "https:");
     assert.equal(Resources.maximumAvatarLength, 87_384);

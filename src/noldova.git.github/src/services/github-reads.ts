@@ -9,7 +9,7 @@
 import type { JsonReader } from "@noldova/context.json";
 import { FailureCode } from "@noldova/desktop.protocol";
 import { BranchPullRequest, type BranchQuery, CheckState, HostChanges, HostCheck, HostItem, HostPerson, HostReference, type PullRequestDraft,
-  ReferenceKind, ReferenceState } from "@noldova/git.hosting.protocol";
+  ReferenceKind, ReferenceState, ReviewDecision } from "@noldova/git.hosting.protocol";
 import { GitHubNames } from "@noldova/git.github.protocol";
 
 import type { IGitHubToken } from "../interfaces/i-github-token.ts";
@@ -55,7 +55,8 @@ export class GitHubReads {
         return none;
       const pullRequest: HostItem = GitHubApi.read(() => GitHubReads.pullRequestOf(new HostReference(GitHubNames.moduleId, repository.owner, repository.name, number), pull, null));
       const commit: string = query.headCommit ?? GitHubApi.read(() => pull.readObject(Resources.headField).readString(Resources.shaField));
-      return new BranchPullRequest(pullRequest, await this.readChecksAsync(repository, commit, token, signal));
+      const checks: HostCheck[] = await this.readChecksAsync(repository, commit, token, signal);
+      return new BranchPullRequest(pullRequest, checks, await this.readReviewDecisionAsync(repository, number, token, signal));
     });
     return this.signIn.token === token ? answer : none;
   }
@@ -110,6 +111,23 @@ export class GitHubReads {
       if (read.length === 0 || checks.length >= total)
         return checks;
     }
+  }
+
+  private async readReviewDecisionAsync(repository: GitHubRepository, number: number, token: string, signal: AbortSignal): Promise<ReviewDecision> {
+    const latest: Map<string, string> = new Map<string, string>();
+    for (let page: number = 1; ; page++) {
+      const reviews: JsonReader | null = await this.api.getAsync(repository.pathOf(Resources.formatReviewsPath(number, page)), token, signal);
+      const read: readonly (readonly [string | null, string])[] = reviews === null ? []
+        : GitHubApi.read(() => reviews.readObjectArray(Resources.itemsField).map(GitHubReads.reviewOf));
+      for (const [login, state] of read)
+        if (login !== null && (state === Resources.approvedReview || state === Resources.changesRequestedReview || state === Resources.dismissedReview))
+          latest.set(login, state);
+      if (read.length < Resources.reviewsPageSize)
+        break;
+    }
+    const verdicts: readonly string[] = [...latest.values()];
+    return verdicts.includes(Resources.changesRequestedReview) ? ReviewDecision.ChangesRequested
+      : verdicts.includes(Resources.approvedReview) ? ReviewDecision.Approved : ReviewDecision.Waiting;
   }
 
   private async askAsync<T>(token: string, ask: () => Promise<T>): Promise<T> {
@@ -167,6 +185,10 @@ export class GitHubReads {
     const state: CheckState = status !== Resources.completedCheckStatus ? (status === Resources.runningCheckStatus ? CheckState.Running : CheckState.Queued)
       : GitHubReads.conclusionOf(run.readString(Resources.conclusionField));
     return new HostCheck(run.readNonBlankString(Resources.nameField), state, run.readNullableString(Resources.htmlUrlField));
+  }
+
+  private static reviewOf(review: JsonReader): readonly [string | null, string] {
+    return [review.readNullableObject(Resources.userField)?.readString(Resources.loginField) ?? null, review.readString(Resources.stateField)];
   }
 
   private static conclusionOf(conclusion: string): CheckState {

@@ -212,6 +212,38 @@ export declare const CheckState: {
  */
 export type CheckState = (typeof CheckState)[keyof typeof CheckState];
 
+/**
+ * Where a pull request's review stands, from each reviewer's latest review that approves or requests changes.
+ *
+ * @example
+ * ```ts
+ * import { ReviewDecision } from "@noldova/git.hosting.protocol";
+ *
+ * console.log(ReviewDecision.ChangesRequested);
+ * ```
+ */
+export declare const ReviewDecision: {
+  /**
+   * No reviewer's latest review approves or requests changes.
+   */
+  readonly Waiting: "Waiting";
+
+  /**
+   * A reviewer's latest review requests changes.
+   */
+  readonly ChangesRequested: "ChangesRequested";
+
+  /**
+   * A reviewer's latest review approves, and none requests changes.
+   */
+  readonly Approved: "Approved";
+};
+
+/**
+ * Where a pull request's review stands.
+ */
+export type ReviewDecision = (typeof ReviewDecision)[keyof typeof ReviewDecision];
+
 
 /**
  * The base of the hosting protocol's own exceptions; catch it to catch them all.
@@ -1272,7 +1304,7 @@ export declare class BranchQuery {
 }
 
 /**
- * A branch's pull request on a host, or none, and the checks on its commit.
+ * A branch's pull request on a host, or none, the checks on its commit and where its review stands.
  *
  * @example
  * ```ts
@@ -1295,15 +1327,21 @@ export declare class BranchPullRequest {
   public readonly checks: readonly HostCheck[];
 
   /**
+   * Where the pull request's review stands, or null when there is no pull request.
+   */
+  public readonly reviewDecision: ReviewDecision | null;
+
+  /**
    * Makes an answer from its parts.
    *
    * @param pullRequest The pull request, an item of the kind `PullRequest`, or null.
    * @param checks The checks, none when the pull request is null.
+   * @param reviewDecision Where the review stands, null exactly when the pull request is; `Waiting` for a pull request, and null without one, by default.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
-   * @throws {HostingArgumentException} Without a reader, when the item isn't a pull request or there are checks with no pull request, naming the field
-   * as the parameter, `pullRequest` or `checks`.
-   * @throws {HostingFieldException} With a reader, when the item isn't a pull request or there are checks with no pull request, naming the
-   * field by its path, such as `$.checks`.
+   * @throws {HostingArgumentException} Without a reader, when the item isn't a pull request, there are checks with no pull request, or the review
+   * decision is null for a pull request or set without one, naming the field as the parameter, `pullRequest`, `checks` or `reviewDecision`.
+   * @throws {HostingFieldException} With a reader, when the item isn't a pull request, there are checks with no pull request, or the review
+   * decision is null for a pull request or set without one, naming the field by its path, such as `$.checks`.
    * @example
    * ```ts
    * import { BranchPullRequest } from "@noldova/git.hosting.protocol";
@@ -1311,7 +1349,7 @@ export declare class BranchPullRequest {
    * const none = new BranchPullRequest(null, []);
    * ```
    */
-  public constructor(pullRequest: HostItem | null, checks: readonly HostCheck[], reader?: JsonReader);
+  public constructor(pullRequest: HostItem | null, checks: readonly HostCheck[], reviewDecision?: ReviewDecision | null, reader?: JsonReader);
 
   /**
    * The worst state among the checks, in the order `Failed`, `Running`, `Queued`, `Succeeded` and `Neutral`, or null when there are no checks.
@@ -1330,12 +1368,14 @@ export declare class BranchPullRequest {
   /**
    * Reads an answer from its JSON.
    *
-   * @param value The JSON, with exactly the fields `toJson` writes.
+   * @param value The JSON, with the fields `toJson` writes; without `reviewDecision`, as an older module answers, a pull request's review reads as
+   * `Waiting`.
    * @param path The JSON's path, `$` by default.
    * @returns The answer.
-   * @throws {JsonException} When the value isn't an object, or a field is missing or of the wrong type; it comes from `@noldova/context.json`.
-   * @throws {HostingFieldException} When the value holds an unknown field, a field is out of its range, the item isn't a pull request, or
-   * there are checks with no pull request.
+   * @throws {JsonException} When the value isn't an object, a field is missing or of the wrong type, or the review decision isn't one of
+   * `ReviewDecision`'s; it comes from `@noldova/context.json`.
+   * @throws {HostingFieldException} When the value holds an unknown field, a field is out of its range, the item isn't a pull request,
+   * there are checks with no pull request, or the review decision is null for a pull request or set without one.
    * @example
    * ```ts
    * import { BranchPullRequest } from "@noldova/git.hosting.protocol";
@@ -1346,7 +1386,7 @@ export declare class BranchPullRequest {
   public static fromJson(value: unknown, path?: string): BranchPullRequest;
 
   /**
-   * Writes the answer as JSON: `pullRequest`, null when there is none, and `checks`.
+   * Writes the answer as JSON: `pullRequest`, null when there is none, `checks` and `reviewDecision`, null without a pull request.
    *
    * @returns The JSON.
    * @example

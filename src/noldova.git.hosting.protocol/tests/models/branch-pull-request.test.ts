@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
 import { BranchPullRequest, CheckState, HostChanges, HostCheck, HostingArgumentException, HostingFieldException, HostItem, HostPerson, HostReference,
-  ReferenceKind, ReferenceState } from "../../src/api/index.ts";
+  ReferenceKind, ReferenceState, ReviewDecision } from "../../src/api/index.ts";
 
 const commit: string = "6dcb09b5b57875f334f61aebed695e2e4193db5e";
 const pullRequest: HostItem = new HostItem(new HostReference("git-github", "octocat", "hello-world", 1), ReferenceKind.PullRequest, ReferenceState.Draft,
@@ -39,7 +39,8 @@ describe("BranchPullRequest", () => {
       checks: [
         { name: "build", state: "Succeeded", url: "https://github.com/octocat/hello-world/actions/runs/1" },
         { name: "lint", state: "Running", url: null }
-      ]
+      ],
+      reviewDecision: "Waiting"
     });
     assert.deepEqual(BranchPullRequest.fromJson(JSON.parse(JSON.stringify(found.toJson()))), found);
   });
@@ -47,9 +48,40 @@ describe("BranchPullRequest", () => {
   it("takes no pull request and no checks for a branch without one, and returns it as JSON that reads back the same", () => {
     const none: BranchPullRequest = new BranchPullRequest(null, []);
 
-    assert.deepEqual(none.toJson(), { pullRequest: null, checks: [] });
+    assert.deepEqual(none.toJson(), { pullRequest: null, checks: [], reviewDecision: null });
     assert.deepEqual(BranchPullRequest.fromJson(none.toJson()), none);
     assert.equal(none.checksState, null);
+  });
+
+  it("carries each review decision of a pull request, and reads it back from its JSON", () => {
+    const decisions: readonly ReviewDecision[] = [ReviewDecision.Waiting, ReviewDecision.ChangesRequested, ReviewDecision.Approved];
+
+    const read = decisions.map(t => BranchPullRequest.fromJson(new BranchPullRequest(pullRequest, [build], t).toJson()).reviewDecision);
+
+    assert.deepEqual(read, ["Waiting", "ChangesRequested", "Approved"]);
+  });
+
+  it("reads an answer without a review decision as waiting for a pull request, and none without one", () => {
+    const json = new BranchPullRequest(pullRequest, [build]).toJson();
+    const { reviewDecision: _found, ...older } = json;
+
+    assert.equal(BranchPullRequest.fromJson(older).reviewDecision, ReviewDecision.Waiting);
+    assert.equal(BranchPullRequest.fromJson({ pullRequest: null, checks: [] }).reviewDecision, null);
+  });
+
+  it("refuses a review decision without a pull request, or a pull request without one, naming the decision", () => {
+    assert.throws(() => new BranchPullRequest(null, [], ReviewDecision.Approved), { name: "HostingArgumentException", parameterName: "reviewDecision",
+      message: "The argument reviewDecision is invalid: expected a review decision exactly for a pull request." });
+    assert.throws(() => new BranchPullRequest(pullRequest, [], null), { name: "HostingArgumentException", parameterName: "reviewDecision" });
+    assert.throws(() => BranchPullRequest.fromJson({ pullRequest: null, checks: [], reviewDecision: "Approved" }),
+      { name: "HostingFieldException", field: "$.reviewDecision" });
+    assert.throws(() => BranchPullRequest.fromJson({ pullRequest: pullRequest.toJson(), checks: [], reviewDecision: null }),
+      { name: "HostingFieldException", field: "$.reviewDecision" });
+  });
+
+  it("refuses a review decision it doesn't know, naming its path", () => {
+    assert.throws(() => BranchPullRequest.fromJson({ pullRequest: pullRequest.toJson(), checks: [], reviewDecision: "Dismissed" }),
+      { name: "JsonException", path: "$.reviewDecision" });
   });
 
   it("refuses an issue in place of the pull request, naming the pull request", () => {
