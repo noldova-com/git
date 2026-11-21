@@ -19,7 +19,7 @@ describe("GitHubPrChecksTool", () => {
   it("answers the newest pull request of the session's branch, the check runs of its HEAD and its review, as untrusted text from github.com", async () => {
     const rig = new PrToolsRig();
     rig.github.answer(FakeGitHub.json([pull]), FakeGitHub.json(pull), FakeGitHub.json({ total_count: 1, check_runs: [{ name: "build", status: "completed",
-      conclusion: "success", html_url: null }] }), FakeGitHub.json([{ user: { login: "hubot" }, state: "APPROVED" }]));
+      conclusion: "success", html_url: null }] }), FakeGitHub.json([{ user: { login: "hubot" }, state: "APPROVED", author_association: "MEMBER" }]));
 
     const answer = textOf(await rig.checksAsync());
 

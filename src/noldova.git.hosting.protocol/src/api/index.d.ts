@@ -214,6 +214,8 @@ export type CheckState = (typeof CheckState)[keyof typeof CheckState];
 
 /**
  * Where a pull request's review stands, from each reviewer's latest review that approves or requests changes.
+ * A host counts the reviewers it takes to speak for the repository; GitHub's module takes its owner, members and collaborators, which is close to
+ * the people with write access but not exact.
  *
  * @example
  * ```ts

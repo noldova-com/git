@@ -293,15 +293,18 @@ describe("GitHubReads", () => {
     ], 5]);
   });
 
-  it("reads where the pull request's review stands from each reviewer's latest review that approves, requests changes or was dismissed", async () => {
-    const review = (login: string, state: string): object => ({ user: { login }, state });
+  it("reads the review decision from each owner's, member's or collaborator's latest review that approves, requests changes or was dismissed", async () => {
+    const review = (login: string, state: string, association: string = "MEMBER"): object => ({ user: { login }, state, author_association: association });
     const pages: readonly (readonly object[])[] = [
       [],
       [review("hubot", "COMMENTED"), review("monalisa", "APPROVED"), review("hubot", "PENDING")],
       [review("monalisa", "CHANGES_REQUESTED"), review("hubot", "APPROVED"), review("monalisa", "COMMENTED")],
       [review("monalisa", "CHANGES_REQUESTED"), review("monalisa", "APPROVED")],
       [review("monalisa", "CHANGES_REQUESTED"), review("monalisa", "DISMISSED"), review("hubot", "APPROVED")],
-      [review("monalisa", "APPROVED"), review("monalisa", "DISMISSED"), { user: null, state: "CHANGES_REQUESTED" }]
+      [review("monalisa", "APPROVED"), review("monalisa", "DISMISSED"), { user: null, state: "CHANGES_REQUESTED", author_association: "OWNER" }],
+      [review("octocat", "APPROVED", "OWNER"), review("outsider", "CHANGES_REQUESTED", "CONTRIBUTOR")],
+      [review("hubot", "APPROVED", "COLLABORATOR"), review("monalisa", "COMMENTED"), review("outsider", "APPROVED", "NONE")],
+      [review("outsider", "APPROVED", "FIRST_TIME_CONTRIBUTOR")]
     ];
     const decisions: (ReviewDecision | null)[] = [];
     for (const reviews of pages) {
@@ -312,14 +315,14 @@ describe("GitHubReads", () => {
     }
 
     assert.deepEqual(decisions, [ReviewDecision.Waiting, ReviewDecision.Approved, ReviewDecision.ChangesRequested, ReviewDecision.Approved,
-      ReviewDecision.Approved, ReviewDecision.Waiting]);
+      ReviewDecision.Approved, ReviewDecision.Waiting, ReviewDecision.Approved, ReviewDecision.Approved, ReviewDecision.Waiting]);
   });
 
   it("reads every page of the reviews, and takes none when GitHub has no reviews to show", async () => {
-    const approved = Array.from({ length: 100 }, (_, index) => ({ user: { login: `reviewer${index}` }, state: "APPROVED" }));
+    const approved = Array.from({ length: 100 }, (_, index) => ({ user: { login: `reviewer${index}` }, state: "APPROVED", author_association: "MEMBER" }));
     const paged = new Rig();
     paged.github.answer(FakeGitHub.json([pull]), FakeGitHub.json(pull), FakeGitHub.json({ total_count: 0, check_runs: [] }), FakeGitHub.json(approved),
-      FakeGitHub.json([{ user: { login: "reviewer7" }, state: "CHANGES_REQUESTED" }]));
+      FakeGitHub.json([{ user: { login: "reviewer7" }, state: "CHANGES_REQUESTED", author_association: "MEMBER" }]));
     const missing = new Rig();
     missing.github.answer(FakeGitHub.json([pull]), FakeGitHub.json(pull), FakeGitHub.json({ total_count: 0, check_runs: [] }), FakeGitHub.json({}, 404));
     const query = new BranchQuery("github.com", "octocat/hello-world", "fix-bug", null);
@@ -335,14 +338,15 @@ describe("GitHubReads", () => {
 
   it("fails as Unavailable for a reviews answer it can't read", async () => {
     const failures: (string | null)[] = [];
-    for (const reviews of [{ message: "x" }, [{ user: { login: "hubot" } }], [{ user: { login: 7 }, state: "APPROVED" }]]) {
+    for (const reviews of [{ message: "x" }, [{ user: { login: "hubot" }, author_association: "MEMBER" }],
+      [{ user: { login: 7 }, state: "APPROVED", author_association: "MEMBER" }], [{ user: { login: "hubot" }, state: "APPROVED" }]]) {
       const rig = new Rig();
       rig.github.answer(FakeGitHub.json([pull]), FakeGitHub.json(pull), FakeGitHub.json({ total_count: 0, check_runs: [] }), FakeGitHub.json(reviews));
       failures.push(await rig.reads.readBranchPullRequestAsync(new BranchQuery("github.com", "octocat/hello-world", "fix-bug", null), signal)
         .then(() => null, codeOf));
     }
 
-    assert.deepEqual(failures, [FailureCode.Unavailable, FailureCode.Unavailable, FailureCode.Unavailable]);
+    assert.deepEqual(failures, [FailureCode.Unavailable, FailureCode.Unavailable, FailureCode.Unavailable, FailureCode.Unavailable]);
   });
 
   it("fails as Unavailable for a completed check run with no conclusion, rather than guessing it failed", async () => {

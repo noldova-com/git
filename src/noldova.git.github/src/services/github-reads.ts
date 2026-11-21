@@ -188,7 +188,9 @@ export class GitHubReads {
   }
 
   private static reviewOf(review: JsonReader): readonly [string | null, string] {
-    return [review.readNullableObject(Resources.userField)?.readString(Resources.loginField) ?? null, review.readString(Resources.stateField)];
+    const login: string | null = review.readNullableObject(Resources.userField)?.readString(Resources.loginField) ?? null;
+    const isReviewer: boolean = Resources.reviewerAssociations.includes(review.readString(Resources.authorAssociationField));
+    return [isReviewer ? login : null, review.readString(Resources.stateField)];
   }
 
   private static conclusionOf(conclusion: string): CheckState {

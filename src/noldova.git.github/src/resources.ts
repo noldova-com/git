@@ -199,6 +199,8 @@ export class Resources {
   public static readonly approvedReview: string = "APPROVED";
   public static readonly changesRequestedReview: string = "CHANGES_REQUESTED";
   public static readonly dismissedReview: string = "DISMISSED";
+  public static readonly authorAssociationField: string = "author_association";
+  public static readonly reviewerAssociations: readonly string[] = ["OWNER", "MEMBER", "COLLABORATOR"];
   public static readonly totalCountField: string = "total_count";
   public static readonly objectType: string = "object";
   public static readonly stringType: string = "string";
