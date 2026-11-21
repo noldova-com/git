@@ -1,10 +1,10 @@
 {
   "id": "git-github",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "displayName": "GitHub",
   "description": "Signs in to GitHub, shows its issues, pull requests and checks, and opens pull requests, and lets AI agents do the same through permission requests.",
   "parts": ["runtime", "window"],
-  "dependencies": { "git": "0.0.5" },
+  "dependencies": { "git": "0.0.6" },
   "noldovaDesktop": ">=0.0.11 <0.1.0",
   "contributes": {
     "methods": ["git-github.readSignIn", "git-github.startSignIn", "git-github.cancelSignIn", "git-github.signOut", "git-github.readReference",
