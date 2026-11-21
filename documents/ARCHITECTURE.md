@@ -228,7 +228,7 @@ The GitHub module's runtime part reads issues, pull requests and checks, and ope
 | Member | What it does |
 |---|---|
 | `git-github.readReference` | Takes a `HostReference` and answers its issue or pull request as a `HostItem`, or null, with the author's avatar as a data address. |
-| `git-github.readBranchPullRequest` | Takes a `BranchQuery`, with the remote's host and `owner/repository` path as the Git module reads them, and answers a `BranchPullRequest`: the branch's newest pull request in the repository, and the check runs of the query's head commit, or of the pull request's head when the query names none. |
+| `git-github.readBranchPullRequest` | Takes a `BranchQuery`, with the remote's host and `owner/repository` path as the Git module reads them, and answers a `BranchPullRequest`: the branch's newest pull request in the repository, the check runs of the query's head commit, or of the pull request's head when the query names none, and its review decision: from each reviewer's latest review that approves or requests changes, `ChangesRequested` when one requests changes, else `Approved` when one approves, else `Waiting`; a dismissed review counts for neither. Only reviews by the repository's owner, members and collaborators count, by GitHub's `author_association`, which is close to write access but not exact: a member or collaborator may only read, and an organization's other members may count as `MEMBER`. |
 | `git-github.createPullRequest` | Takes a `PullRequestDraft`, opens the pull request and answers it as a `HostItem`. |
 
 Signed out, for a reference to another host module or a repository off github.com, or for what GitHub can't show the sign-in, a read answers null, or a `BranchPullRequest` with no pull request, without failing, so a link stays a plain link.
@@ -268,7 +268,7 @@ The modules' runtime parts offer agent tools through Noldova Desktop's tool regi
 | `git_push` | Git | Takes nothing and runs `git.push`'s write. |
 | `git_pull` | Git | Takes nothing and runs `git.pull`'s write. |
 | `git_github_read` | GitHub | Takes an `owner`, `repository` and `number` and answers the issue or pull request on github.com as the `HostItem`'s JSON, untrusted text from `https://github.com`. |
-| `git_github_pr_checks` | GitHub | Takes nothing and answers the newest pull request from the bound folder's branch, in any state, with the checks on its head commit, as the `BranchPullRequest`'s JSON, untrusted text from `https://github.com`. |
+| `git_github_pr_checks` | GitHub | Takes nothing and answers the newest pull request from the bound folder's branch, in any state, with the checks on its head commit and its review decision, as the `BranchPullRequest`'s JSON, untrusted text from `https://github.com`. |
 | `git_github_pr_create` | GitHub | Takes a `title`, a `base` branch, an optional `body` and `draft`, and, once the person allows it, opens a pull request from the bound folder's branch into `base`, answering it as the `HostItem`'s JSON. |
 
 - `git_github_read` is read-only and low risk, reaches GitHub, and has a 30 s deadline, at most 120 s.

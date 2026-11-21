@@ -10,27 +10,34 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { CheckState } from "../enums/check-state.ts";
 import { ReferenceKind } from "../enums/reference-kind.ts";
+import { ReviewDecision } from "../enums/review-decision.ts";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 import { HostCheck } from "./host-check.ts";
 import { HostItem } from "./host-item.ts";
 
 export class BranchPullRequest {
-  private static readonly FIELDS: readonly string[] = [Resources.pullRequestField, Resources.checksField];
+  private static readonly FIELDS: readonly string[] = [Resources.pullRequestField, Resources.checksField, Resources.reviewDecisionField];
+  private static readonly DECISIONS: readonly ReviewDecision[] = Object.values(ReviewDecision);
   private static readonly WORST_FIRST: readonly CheckState[] = [CheckState.Failed, CheckState.Running, CheckState.Queued, CheckState.Succeeded,
     CheckState.Neutral];
 
   public readonly pullRequest: HostItem | null;
   public readonly checks: readonly HostCheck[];
+  public readonly reviewDecision: ReviewDecision | null;
 
-  public constructor(pullRequest: HostItem | null, checks: readonly HostCheck[], reader?: JsonReader) {
+  public constructor(pullRequest: HostItem | null, checks: readonly HostCheck[],
+    reviewDecision: ReviewDecision | null = pullRequest === null ? null : ReviewDecision.Waiting, reader?: JsonReader) {
     if (pullRequest !== null && pullRequest.kind !== ReferenceKind.PullRequest)
       FieldCheck.fail(Resources.pullRequestField, Resources.pullRequestExpected, reader);
     if (pullRequest === null && checks.length > 0)
       FieldCheck.fail(Resources.checksField, Resources.checksExpected, reader);
+    if ((pullRequest === null) !== (reviewDecision === null))
+      FieldCheck.fail(Resources.reviewDecisionField, Resources.reviewDecisionExpected, reader);
 
     this.pullRequest = pullRequest;
     this.checks = [...checks];
+    this.reviewDecision = reviewDecision;
   }
 
   public get checksState(): CheckState | null {
@@ -40,13 +47,20 @@ export class BranchPullRequest {
   public static fromJson(value: unknown, path?: string): BranchPullRequest {
     const reader = JsonReader.fromValue(value, path);
     FieldCheck.refuseUnknownFields(reader, BranchPullRequest.FIELDS);
+    const pullRequest: HostItem | null = FieldCheck.readNullableModel(reader, Resources.pullRequestField, HostItem.fromJson);
     return new BranchPullRequest(
-      FieldCheck.readNullableModel(reader, Resources.pullRequestField, HostItem.fromJson),
+      pullRequest,
       reader.readObjectArray(Resources.checksField).map(t => HostCheck.fromJson(t.toJson(), t.path)),
+      reader.hasField(Resources.reviewDecisionField) ? FieldCheck.readNullableMember(reader, Resources.reviewDecisionField, BranchPullRequest.DECISIONS)
+        : pullRequest === null ? null : ReviewDecision.Waiting,
       reader);
   }
 
   public toJson(): JsonObject {
-    return { [Resources.pullRequestField]: this.pullRequest?.toJson() ?? null, [Resources.checksField]: this.checks.map(t => t.toJson()) };
+    return {
+      [Resources.pullRequestField]: this.pullRequest?.toJson() ?? null,
+      [Resources.checksField]: this.checks.map(t => t.toJson()),
+      [Resources.reviewDecisionField]: this.reviewDecision
+    };
   }
 }

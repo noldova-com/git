@@ -12,7 +12,7 @@ import { FailureCode } from "@noldova/desktop.protocol";
 import { MethodFailureException } from "@noldova/desktop.runtime";
 import { FakeModuleLog } from "@noldova/desktop.runtime/testing";
 import { BranchPullRequest, BranchQuery, CheckState, HostChanges, HostCheck, HostItem, HostPerson, HostReference, PullRequestDraft, ReferenceKind,
-  ReferenceState } from "@noldova/git.hosting.protocol";
+  ReferenceState, ReviewDecision } from "@noldova/git.hosting.protocol";
 import { afterEach, describe, it, vi } from "vitest";
 
 import { GitHubApi } from "../../src/services/github-api.ts";
@@ -253,7 +253,8 @@ describe("GitHubReads", () => {
       { name: "failed", status: "completed", conclusion: "failure", html_url: null },
       { name: "timed out", status: "completed", conclusion: "timed_out", html_url: null }
     ];
-    rig.github.answer(FakeGitHub.json([pull]), FakeGitHub.json(pull), FakeGitHub.json({ total_count: 8, check_runs: runs }), FakeGitHub.json({}, 404));
+    rig.github.answer(FakeGitHub.json([pull]), FakeGitHub.json(pull), FakeGitHub.json({ total_count: 8, check_runs: runs }), FakeGitHub.json([]),
+      FakeGitHub.json({}, 404));
 
     const pushed = await rig.reads.readBranchPullRequestAsync(new BranchQuery("github.com", "octocat/hello-world", "fix-bug", null), signal);
     const ahead = await rig.reads.readBranchPullRequestAsync(new BranchQuery("github.com", "octocat/hello-world.git", "fix-bug", local), signal);
@@ -267,6 +268,7 @@ describe("GitHubReads", () => {
       "https://api.github.com/repos/octocat/hello-world/pulls?head=octocat%3Afix-bug&state=all&per_page=1",
       "https://api.github.com/repos/octocat/hello-world/pulls/2",
       `https://api.github.com/repos/octocat/hello-world/commits/${head}/check-runs?per_page=100`,
+      "https://api.github.com/repos/octocat/hello-world/pulls/2/reviews?per_page=100",
       `https://api.github.com/repos/octocat/hello-world/commits/${local}/check-runs?per_page=100`
     ]);
   });
@@ -276,19 +278,75 @@ describe("GitHubReads", () => {
     const failed = { name: "failed", status: "completed", conclusion: "failure", html_url: null };
     const paged = new Rig();
     paged.github.answer(FakeGitHub.json([pull]), FakeGitHub.json(pull), FakeGitHub.json({ total_count: 101, check_runs: passed }),
-      FakeGitHub.json({ total_count: 101, check_runs: [failed] }));
+      FakeGitHub.json({ total_count: 101, check_runs: [failed] }), FakeGitHub.json([]));
     const short = new Rig();
     short.github.answer(FakeGitHub.json([pull]), FakeGitHub.json(pull), FakeGitHub.json({ total_count: 150, check_runs: passed }),
-      FakeGitHub.json({ total_count: 150, check_runs: [] }));
+      FakeGitHub.json({ total_count: 150, check_runs: [] }), FakeGitHub.json([]));
     const query = new BranchQuery("github.com", "octocat/hello-world", "fix-bug", null);
 
     const answers = [await paged.reads.readBranchPullRequestAsync(query, signal), await short.reads.readBranchPullRequestAsync(query, signal)];
 
     assert.deepEqual(answers.map(t => [t.checks.length, t.checks.at(-1)?.state]), [[101, CheckState.Failed], [100, CheckState.Succeeded]]);
-    assert.deepEqual([paged.github.urls().slice(2), short.github.urls().length], [[
+    assert.deepEqual([paged.github.urls().slice(2, 4), short.github.urls().length], [[
       `https://api.github.com/repos/octocat/hello-world/commits/${head}/check-runs?per_page=100`,
       `https://api.github.com/repos/octocat/hello-world/commits/${head}/check-runs?per_page=100&page=2`
-    ], 4]);
+    ], 5]);
+  });
+
+  it("reads the review decision from each owner's, member's or collaborator's latest review that approves, requests changes or was dismissed", async () => {
+    const review = (login: string, state: string, association: string = "MEMBER"): object => ({ user: { login }, state, author_association: association });
+    const pages: readonly (readonly object[])[] = [
+      [],
+      [review("hubot", "COMMENTED"), review("monalisa", "APPROVED"), review("hubot", "PENDING")],
+      [review("monalisa", "CHANGES_REQUESTED"), review("hubot", "APPROVED"), review("monalisa", "COMMENTED")],
+      [review("monalisa", "CHANGES_REQUESTED"), review("monalisa", "APPROVED")],
+      [review("monalisa", "CHANGES_REQUESTED"), review("monalisa", "DISMISSED"), review("hubot", "APPROVED")],
+      [review("monalisa", "APPROVED"), review("monalisa", "DISMISSED"), { user: null, state: "CHANGES_REQUESTED", author_association: "OWNER" }],
+      [review("octocat", "APPROVED", "OWNER"), review("outsider", "CHANGES_REQUESTED", "CONTRIBUTOR")],
+      [review("hubot", "APPROVED", "COLLABORATOR"), review("monalisa", "COMMENTED"), review("outsider", "APPROVED", "NONE")],
+      [review("outsider", "APPROVED", "FIRST_TIME_CONTRIBUTOR")]
+    ];
+    const decisions: (ReviewDecision | null)[] = [];
+    for (const reviews of pages) {
+      const rig = new Rig();
+      rig.github.answer(FakeGitHub.json([pull]), FakeGitHub.json(pull), FakeGitHub.json({ total_count: 0, check_runs: [] }), FakeGitHub.json(reviews));
+      const answer = await rig.reads.readBranchPullRequestAsync(new BranchQuery("github.com", "octocat/hello-world", "fix-bug", null), signal);
+      decisions.push(answer.reviewDecision);
+    }
+
+    assert.deepEqual(decisions, [ReviewDecision.Waiting, ReviewDecision.Approved, ReviewDecision.ChangesRequested, ReviewDecision.Approved,
+      ReviewDecision.Approved, ReviewDecision.Waiting, ReviewDecision.Approved, ReviewDecision.Approved, ReviewDecision.Waiting]);
+  });
+
+  it("reads every page of the reviews, and takes none when GitHub has no reviews to show", async () => {
+    const approved = Array.from({ length: 100 }, (_, index) => ({ user: { login: `reviewer${index}` }, state: "APPROVED", author_association: "MEMBER" }));
+    const paged = new Rig();
+    paged.github.answer(FakeGitHub.json([pull]), FakeGitHub.json(pull), FakeGitHub.json({ total_count: 0, check_runs: [] }), FakeGitHub.json(approved),
+      FakeGitHub.json([{ user: { login: "reviewer7" }, state: "CHANGES_REQUESTED", author_association: "MEMBER" }]));
+    const missing = new Rig();
+    missing.github.answer(FakeGitHub.json([pull]), FakeGitHub.json(pull), FakeGitHub.json({ total_count: 0, check_runs: [] }), FakeGitHub.json({}, 404));
+    const query = new BranchQuery("github.com", "octocat/hello-world", "fix-bug", null);
+
+    const answers = [await paged.reads.readBranchPullRequestAsync(query, signal), await missing.reads.readBranchPullRequestAsync(query, signal)];
+
+    assert.deepEqual(answers.map(t => t.reviewDecision), [ReviewDecision.ChangesRequested, ReviewDecision.Waiting]);
+    assert.deepEqual(paged.github.urls().slice(3), [
+      "https://api.github.com/repos/octocat/hello-world/pulls/2/reviews?per_page=100",
+      "https://api.github.com/repos/octocat/hello-world/pulls/2/reviews?per_page=100&page=2"
+    ]);
+  });
+
+  it("fails as Unavailable for a reviews answer it can't read", async () => {
+    const failures: (string | null)[] = [];
+    for (const reviews of [{ message: "x" }, [{ user: { login: "hubot" }, author_association: "MEMBER" }],
+      [{ user: { login: 7 }, state: "APPROVED", author_association: "MEMBER" }], [{ user: { login: "hubot" }, state: "APPROVED" }]]) {
+      const rig = new Rig();
+      rig.github.answer(FakeGitHub.json([pull]), FakeGitHub.json(pull), FakeGitHub.json({ total_count: 0, check_runs: [] }), FakeGitHub.json(reviews));
+      failures.push(await rig.reads.readBranchPullRequestAsync(new BranchQuery("github.com", "octocat/hello-world", "fix-bug", null), signal)
+        .then(() => null, codeOf));
+    }
+
+    assert.deepEqual(failures, [FailureCode.Unavailable, FailureCode.Unavailable, FailureCode.Unavailable, FailureCode.Unavailable]);
   });
 
   it("fails as Unavailable for a completed check run with no conclusion, rather than guessing it failed", async () => {
@@ -327,7 +385,7 @@ describe("GitHubReads", () => {
       const rig = new Rig();
       const releaseIssue = rig.github.hold();
       const releaseBranch = rig.github.hold();
-      rig.github.answer(FakeGitHub.json(pull), FakeGitHub.json({ total_count: 0, check_runs: [] }));
+      rig.github.answer(FakeGitHub.json(pull), FakeGitHub.json({ total_count: 0, check_runs: [] }), FakeGitHub.json([]));
       const reading = rig.reads.readReferenceAsync(issueReference, signal);
       const branch = rig.reads.readBranchPullRequestAsync(new BranchQuery("github.com", "octocat/hello-world", "fix-bug", null), signal);
       rig.signIn.answer("token", next);
@@ -336,7 +394,7 @@ describe("GitHubReads", () => {
       answers.push([await reading, await branch, rig.github.requests.length]);
     }
 
-    assert.deepEqual(answers, [[null, new BranchPullRequest(null, []), 4], [null, new BranchPullRequest(null, []), 4]]);
+    assert.deepEqual(answers, [[null, new BranchPullRequest(null, []), 5], [null, new BranchPullRequest(null, []), 5]]);
   });
 
   it("refuses an owner or repository outside GitHub's names without asking GitHub", async () => {

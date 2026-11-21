@@ -39,7 +39,8 @@ describe("BoundRepository", () => {
 
     const outcomes = await Promise.all(rigs.map(t => t.checksAsync()));
 
-    assert.deepEqual(outcomes.map(t => textOf(t).toJson()), [{ pullRequest: null, checks: [] }, { pullRequest: null, checks: [] }]);
+    const none = { pullRequest: null, checks: [], reviewDecision: null };
+    assert.deepEqual(outcomes.map(t => textOf(t).toJson()), [none, none]);
     assert.deepEqual(rigs.map(t => [t.github.urls(), t.repositories.remoteReads]), [true, false].map(() => [
       ["https://api.github.com/repos/monalisa/hello-world/pulls?head=monalisa%3Afix-bug&state=all&per_page=1"], [[folder, "origin"]]]));
   });

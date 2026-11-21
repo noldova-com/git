@@ -33,6 +33,7 @@ describe("The hosting protocol package's API", () => {
       "PullRequestDraft",
       "ReferenceKind",
       "ReferenceState",
+      "ReviewDecision",
       "SignInFailure",
       "SignInState"
     ]);
@@ -42,5 +43,6 @@ describe("The hosting protocol package's API", () => {
     assert.deepEqual(api.ReferenceKind, { PullRequest: "PullRequest", Issue: "Issue" });
     assert.deepEqual(api.ReferenceState, { Open: "Open", Draft: "Draft", Merged: "Merged", Closed: "Closed", ClosedDone: "ClosedDone", ClosedNotPlanned: "ClosedNotPlanned" });
     assert.deepEqual(api.CheckState, { Queued: "Queued", Running: "Running", Succeeded: "Succeeded", Failed: "Failed", Neutral: "Neutral" });
+    assert.deepEqual(api.ReviewDecision, { Waiting: "Waiting", ChangesRequested: "ChangesRequested", Approved: "Approved" });
   });
 });
