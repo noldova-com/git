@@ -1,6 +1,6 @@
 {
   "name": "@noldova/git.hosting.protocol",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "The hosting protocol that each of Git's host modules implements: a reference to an issue or pull request, the item and its checks, a branch's pull request, a pull request draft, and the sign-in's account and device code.",
   "type": "module",
   "license": "MIT",
