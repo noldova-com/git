@@ -1,6 +1,6 @@
 {
   "name": "@noldova/git.window",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "The Git module's window part: the Git view of a folder's branch, changes and commit.",
   "type": "module",
   "license": "MIT",
