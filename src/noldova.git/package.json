@@ -1,6 +1,6 @@
 {
   "name": "@noldova/git",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "The Git module for apps on Noldova Desktop: a folder's Git state and changes, and agent tools that run Git through permission requests.",
   "type": "module",
   "license": "MIT",
@@ -28,8 +28,8 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@noldova/git.protocol": "0.0.4",
-    "@noldova/git.window": "0.0.4"
+    "@noldova/git.protocol": "0.0.5",
+    "@noldova/git.window": "0.0.5"
   },
   "peerDependencies": {
     "@noldova/desktop.protocol": ">=0.0.10 <0.1.0",

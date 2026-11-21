@@ -1,6 +1,6 @@
 {
   "id": "git",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "displayName": "Git",
   "description": "Shows a folder's Git state, stages, commits, switches branches, pushes and pulls, and lets AI agents do the same through permission requests.",
   "parts": ["runtime", "window"],

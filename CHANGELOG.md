@@ -4,6 +4,12 @@
 
 Each version's section is written by the pull request that changes the version, from the pull requests merged since the previous version; other pull requests don't edit this file.
 
+## 0.0.5
+
+- `BranchPullRequest`, the answer to the GitHub module's `git-github.readBranchPullRequest`, and the agent tool `git_github_pr_checks` carry the pull request's review decision, `reviewDecision`, from each reviewer's latest review that approves or requests changes: `ChangesRequested` when one requests changes, else `Approved` when one approves, else `Waiting`, and `null` without a pull request; only the reviews of the repository's owner, members and collaborators count (#97).
+  `BranchPullRequest.fromJson` refuses a field it doesn't know, so an app reading these answers moves its Git packages to 0.0.5 with the modules.
+- Both modules take Noldova Desktop 0.0.10: `module.json`'s `noldovaDesktop` range and the runtime packages' Noldova Desktop peers start at 0.0.10, and the window packages take Noldova Desktop 0.0.10's packages and `@noldova/ui.components.angular` 0.0.20; the context peers of every package that takes context start at 0.0.9 (#57, #81, #83, #85, #88, #92, #95, #43).
+
 ## 0.0.4
 
 - In a new layout, the Git view opens in the right dock's first group at order 20, so an app can put its own views at orders 10 and 30 around it in that group (#54).
