@@ -1,6 +1,6 @@
 {
   "name": "@noldova/git.github.window",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "The GitHub module's window part: GitHub's labels, icons and colours for each kind and state of an issue or pull request, and the Git view's row with a branch's pull request and checks.",
   "type": "module",
   "license": "MIT",

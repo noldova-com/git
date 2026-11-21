@@ -4,6 +4,11 @@
 
 Each version's section is written by the pull request that changes the version, from the pull requests merged since the previous version; other pull requests don't edit this file.
 
+## 0.0.6
+
+- Both modules take Noldova Desktop 0.0.11: `module.json`'s `noldovaDesktop` range and the runtime packages' Noldova Desktop peers start at 0.0.11, and the window packages take Noldova Desktop 0.0.11's packages and `@noldova/ui.components.angular` 0.0.21; Git is built and tested with context 0.0.10, and its context peers stay at 0.0.9 and up (#100, #105, #107).
+- `documents/ARCHITECTURE.md` says why any module that names `git-github` as a dependency or an optional dependency may read `git-github.access`, the GitHub token's service (#103).
+
 ## 0.0.5
 
 - `BranchPullRequest`, the answer to the GitHub module's `git-github.readBranchPullRequest`, and the agent tool `git_github_pr_checks` carry the pull request's review decision, `reviewDecision`, from each reviewer's latest review that approves or requests changes: `ChangesRequested` when one requests changes, else `Approved` when one approves, else `Waiting`, and `null` without a pull request; only the reviews of the repository's owner, members and collaborators count (#97).
