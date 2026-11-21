@@ -18,6 +18,11 @@ describe("The GitHub module's Resources", () => {
       ["commits/6dcb09b/check-runs?per_page=100", "commits/6dcb09b/check-runs?per_page=100&page=3"]);
   });
 
+  it("adds the page to a pull request's reviews path only after the first page", () => {
+    assert.deepEqual([Resources.formatReviewsPath(2, 1), Resources.formatReviewsPath(2, 3)],
+      ["pulls/2/reviews?per_page=100", "pulls/2/reviews?per_page=100&page=3"]);
+  });
+
   it("starts a shown body on its own line and builds a repository's API path from its parts", () => {
     assert.deepEqual([Resources.formatBody("Fixes #1."), Resources.formatRepositoryPath("octocat", "hello-world", "pulls/2")],
       ["\nFixes #1.", "/repos/octocat/hello-world/pulls/2"]);

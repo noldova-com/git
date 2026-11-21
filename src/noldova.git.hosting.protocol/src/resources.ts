@@ -22,6 +22,7 @@ export class Resources {
   public static readonly changesExpected: string = "changes exactly for a pull request";
   public static readonly pullRequestExpected: string = "a pull request";
   public static readonly checksExpected: string = "no checks, since there is no pull request";
+  public static readonly reviewDecisionExpected: string = "a review decision exactly for a pull request";
   public static readonly otherBranchExpected: string = "a branch other than the head branch";
   public static readonly commitPattern: RegExp = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
   public static readonly avatarExpected: string = "a PNG, JPEG, GIF or WebP image of at most 64 KiB as a base64 data address";
@@ -66,6 +67,7 @@ export class Resources {
   public static readonly branchField: string = "branch";
   public static readonly pullRequestField: string = "pullRequest";
   public static readonly checksField: string = "checks";
+  public static readonly reviewDecisionField: string = "reviewDecision";
   public static readonly bodyField: string = "body";
   public static readonly isDraftField: string = "isDraft";
 

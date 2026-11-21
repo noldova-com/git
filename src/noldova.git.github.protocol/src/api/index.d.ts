@@ -110,7 +110,7 @@ export declare class GitHubNames {
 
   /**
    * `git_github_pr_checks`: the agent tool that reads, for the branch checked out in the repository of the session's `git.folder`, its newest
-   * pull request on github.com and the check runs of its HEAD commit, and answers the `BranchPullRequest` JSON as untrusted text from
+   * pull request on github.com, the check runs of its HEAD commit and where its review stands, and answers the `BranchPullRequest` JSON as untrusted text from
    * `https://github.com`.
    */
   public static readonly prChecksTool: string;

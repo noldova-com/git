@@ -16,17 +16,18 @@ import { HEAD } from "../fixtures/fake-tools.fixture.ts";
 import { failureOf, folder, PrToolsRig, pull, textOf } from "../fixtures/pr-tools.fixture.ts";
 
 describe("GitHubPrChecksTool", () => {
-  it("answers the newest pull request of the session's branch and the check runs of its HEAD, as untrusted text from github.com", async () => {
+  it("answers the newest pull request of the session's branch, the check runs of its HEAD and its review, as untrusted text from github.com", async () => {
     const rig = new PrToolsRig();
     rig.github.answer(FakeGitHub.json([pull]), FakeGitHub.json(pull), FakeGitHub.json({ total_count: 1, check_runs: [{ name: "build", status: "completed",
-      conclusion: "success", html_url: null }] }));
+      conclusion: "success", html_url: null }] }), FakeGitHub.json([{ user: { login: "hubot" }, state: "APPROVED", author_association: "MEMBER" }]));
 
     const answer = textOf(await rig.checksAsync());
 
-    assert.deepEqual([answer.readObject("pullRequest").readString("title"), answer.readObjectArray("checks").map(t => t.toJson()), rig.repositories.folders],
-      ["Fix the bug", [{ name: "build", state: "Succeeded", url: null }], [folder]]);
+    assert.deepEqual([answer.readObject("pullRequest").readString("title"), answer.readObjectArray("checks").map(t => t.toJson()),
+      answer.readString("reviewDecision"), rig.repositories.folders], ["Fix the bug", [{ name: "build", state: "Succeeded", url: null }], "Approved", [folder]]);
     assert.deepEqual(rig.github.urls(), ["https://api.github.com/repos/octocat/hello-world/pulls?head=octocat%3Afix-bug&state=all&per_page=1",
-      "https://api.github.com/repos/octocat/hello-world/pulls/2", `https://api.github.com/repos/octocat/hello-world/commits/${HEAD}/check-runs?per_page=100`]);
+      "https://api.github.com/repos/octocat/hello-world/pulls/2", `https://api.github.com/repos/octocat/hello-world/commits/${HEAD}/check-runs?per_page=100`,
+      "https://api.github.com/repos/octocat/hello-world/pulls/2/reviews?per_page=100"]);
   });
 
   it("is a low-risk read that reaches GitHub", () => {
@@ -45,7 +46,7 @@ describe("GitHubPrChecksTool", () => {
       failing.github.answer(FakeGitHub.json({ message: "Server Error" }, 500));
       const ending = new PrToolsRig();
       const release = ending.github.hold();
-      ending.github.answer(FakeGitHub.json(pull), FakeGitHub.json({ total_count: 0, check_runs: [] }));
+      ending.github.answer(FakeGitHub.json(pull), FakeGitHub.json({ total_count: 0, check_runs: [] }), FakeGitHub.json([]));
 
       const pending = ending.checksAsync();
       await ending.github.askedAsync(1);
