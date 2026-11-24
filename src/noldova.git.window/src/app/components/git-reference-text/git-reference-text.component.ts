@@ -16,8 +16,8 @@ import { GitLinkReferences } from "../../services/git-link-references.ts";
 /**
  * A text with the references the hosts find in it, such as AB#12 or !8, each a link to its page: the kit's chip, with a work item's state after it, once its
  * host has a look for it, and a plain link until then. A clicked one, or a link its chip's card activates, opens in the app when a host claims it and in the
- * browser otherwise, and its click goes no further, so a row it sits in neither selects nor opens. Given a link, the whole text is one plain reference for the
- * row it names, such as a pull request's number, drawn as the row's text: its click goes on to the row, which opens it the row's way, once.
+ * browser otherwise, and its click goes no further, so a row it sits in neither selects nor opens. Given a link, the whole text is one reference for the row it
+ * names, such as a pull request's number, drawn the same way: its click goes on to the row, which opens it the row's way, once.
  */
 @Component({
   selector: "nol-git-reference-text",
@@ -48,9 +48,9 @@ export class GitReferenceTextComponent {
     return link === null ? GitReferencePart.of(this.text(), source) : GitReferencePart.linked(this.text(), link, source);
   });
 
-  /** The look a part's chip draws: its host's, once it has one, for a reference the text writes; null for a plain link. */
+  /** The look a part's chip draws: its host's, once it has one; null for a plain link. */
   protected chipOf(part: GitReferencePart): LinkReference | null {
-    return this.link() === null ? part.reference?.() ?? null : null;
+    return part.reference?.() ?? null;
   }
 
   protected activate(event: MouseEvent, url: string): void {

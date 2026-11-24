@@ -154,13 +154,13 @@ describe("GitReferenceTextComponent", () => {
     expect(row.errors).toEqual([failure]);
   });
 
-  it("links a whole text to the address it's given as one plain reference whose click the row takes, once, and takes it out of the tab order when asked", async () => {
+  it("links a whole text to the address it's given as one reference, the host's chip once it has a look for it, whose click the row takes, once, and takes it out of the tab order when asked", async () => {
     const row = new Row(() => true, { text: "!12", link: ISSUE, chipTabIndex: -1 });
     await row.fixture.whenStable();
 
     row.links[0]?.click();
 
     expect([row.links.map(t => [t.matches("[nol-link-reference-chip]"), t.textContent, t.getAttribute("href"), t.getAttribute("tabindex")]), row.opened,
-      row.context.callsOf("openLinkAsync"), row.rowClicks]).toEqual([[[false, "Bug 12", ISSUE, "-1"]], [], [], 1]);
+      row.context.callsOf("openLinkAsync"), row.rowClicks]).toEqual([[[true, "Bug 12", ISSUE, "-1"]], [], [], 1]);
   });
 });

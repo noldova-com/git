@@ -23,12 +23,12 @@ describe("GitCommitPullRequest", () => {
     const merged: GitBranchPullRequest = GitBranchPullRequest.of(row, GitPullRequestState.Merged, false);
     const card = (answer: GitBranchPullRequest | null): readonly unknown[] | null => {
       const shown: GitCommitPullRequest | null = GitCommitPullRequest.of(host, answer);
-      return shown === null ? null : [shown.host === host, shown.row.key, shown.state, shown.title, shown.stateLabel, shown.note];
+      return shown === null ? null : [shown.host === host, shown.row.key, shown.state, shown.stateLabel, shown.note];
     };
 
     expect([card(merged), card(GitBranchPullRequest.reading(merged))]).toEqual([
-      [true, "pull-212", "Merged", "Pull request #212", "Merged", "2 approvals · 1 of 6 checks running"],
-      [true, "pull-212", "Merged", "Pull request #212", "Merged", "2 approvals · 1 of 6 checks running"]
+      [true, "pull-212", "Merged", "Merged", "2 approvals · 1 of 6 checks running"],
+      [true, "pull-212", "Merged", "Merged", "2 approvals · 1 of 6 checks running"]
     ]);
     expect([null, GitBranchPullRequest.reading(), GitBranchPullRequest.none(1, 0, 0), GitBranchPullRequest.signedOut(), GitBranchPullRequest.failed(null)].map(t => card(t)))
       .toEqual([null, null, null, null, null]);

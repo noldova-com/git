@@ -78,9 +78,9 @@ describe("GitCommitDetailComponent's pull request", () => {
       await view.untilAsync(() => view.all(".pull-request").length === 0);
 
       expect([seen, empty]).toEqual([[`${GitFixtures.folder} example-owner/example-repository ${id}`], 0]);
-      expect(merged).toEqual([[["alt_route", "Pull request #212", "Merged"], ["2 approvals · 6 of 6 checks passed"]], "Merged", "Follow renames in the history"]);
+      expect(merged).toEqual([[["alt_route", "#212 Follow renames in the history", "Merged"], ["2 approvals · 6 of 6 checks passed"]], "Merged", "Follow renames in the history"]);
       expect([open, view.context.callsOf("openLinkAsync"), card.tagName, card.querySelector(".pull-request-title a")?.getAttribute("href")]).toEqual([
-        [["alt_route", "Pull request #212", "Open"]], [[url, { place: LinkPlace.System }], [url, { place: LinkPlace.System }]], "DIV", url]);
+        [["alt_route", "#212 Follow renames in the history", "Open"]], [[url, { place: LinkPlace.System }], [url, { place: LinkPlace.System }]], "DIV", url]);
     });
 
   it("opens the pull request in its host's own page when it has one, else in the browser, reporting a host's open that throws and a link the window couldn't open",
@@ -108,7 +108,7 @@ describe("GitCommitDetailComponent's pull request", () => {
       await view.clickAsync(".pull-request");
       await GitFixtures.untilAsync(() => handled().length === 3);
 
-      expect(note).toEqual([["alt_route", "Pull request #212", "Draft"], ["1 approval · 1 of 3 checks failed"]]);
+      expect(note).toEqual([["alt_route", "#212 Follow renames in the history", "Draft"], ["1 approval · 1 of 3 checks failed"]]);
       expect([opened.length, view.context.callsOf("openLinkAsync").length, [...handled()].sort()]).toEqual([3, 2, ["Error: no browser", "Error: no browser", "RangeError: open broke"]]);
     });
 
@@ -175,6 +175,6 @@ describe("GitCommitDetailComponent's pull request", () => {
     await view.waitForAsync(".pull-request");
 
     expect([before, asked]).toEqual([[GitFixtures.folder], [GitFixtures.folder, other]]);
-    expect(cardOf(view)).toEqual([["alt_route", "Pull request #212", "Merged"], ["1 of 1 checks passed"]]);
+    expect(cardOf(view)).toEqual([["alt_route", "#212 Follow renames in the history", "Merged"], ["1 of 1 checks passed"]]);
   });
 });

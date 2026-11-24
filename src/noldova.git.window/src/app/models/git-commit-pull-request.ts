@@ -18,7 +18,6 @@ export class GitCommitPullRequest {
   public readonly host: IGitPullRequests;
   public readonly row: GitPullRequestRow;
   public readonly state: GitPullRequestState;
-  public readonly title: string;
   public readonly stateLabel: string;
   /** Its approvals and checks, such as "2 approvals · 6 of 6 checks passed", or empty when it has neither. */
   public readonly note: string;
@@ -27,7 +26,6 @@ export class GitCommitPullRequest {
     this.host = host;
     this.row = row;
     this.state = state;
-    this.title = Resources.formatCommitPullRequest(row.label);
     this.stateLabel = Resources.commitPullRequestStates[state];
     this.note = Resources.formatCommitPullRequestNote(row.approvals, answer.passed, answer.failing, answer.pending);
   }

@@ -26,7 +26,6 @@ import type { GitCommitComments } from "../../models/git-commit-comments.ts";
 import { GitCommitPullRequest } from "../../models/git-commit-pull-request.ts";
 import { GitBranchView } from "../../models/git-branch-view.ts";
 import { GitRefChip } from "../../models/git-ref-chip.ts";
-import { GitReferencePart } from "../../models/git-reference-part.ts";
 import { CommitLabels } from "../../services/commit-labels.ts";
 import { GitLinkReferences } from "../../services/git-link-references.ts";
 import { GitPullRequests } from "../../services/git-pull-requests.ts";
@@ -58,7 +57,6 @@ export class GitCommitDetailComponent {
   protected readonly resources: typeof Resources = Resources;
   /** Whether the app turned the module's AI features on, which shows its button. */
   protected readonly showsAiFeatures: Signal<boolean> = GitViewOptions.showsAiFeatures;
-  protected readonly around: typeof GitReferencePart.around = GitReferencePart.around;
   protected readonly secondary: ButtonVariant = ButtonVariant.Secondary;
   /** The new branch's name while "Branch here" asks for one, or null. */
   protected readonly branchName: WritableSignal<string | null> = signal<string | null>(null);

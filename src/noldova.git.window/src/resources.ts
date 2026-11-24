@@ -815,10 +815,6 @@ export class Resources {
     [GitPullRequestState.Closed]: "Closed"
   };
 
-  public static formatCommitPullRequest(label: string): string {
-    return `Pull request ${label}`;
-  }
-
   /** The commit's pull request card's note, such as "2 approvals · 6 of 6 checks passed": its approvals, then its failing, running or passed checks. */
   public static formatCommitPullRequestNote(approvals: number, passed: number, failing: number, pending: number): string {
     const total: number = passed + failing + pending;
