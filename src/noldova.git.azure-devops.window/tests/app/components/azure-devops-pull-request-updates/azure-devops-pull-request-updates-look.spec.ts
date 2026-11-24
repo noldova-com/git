@@ -22,15 +22,15 @@ import { AzureDevOpsPullRequestUpdatesComponent } from "../../../../src/app/comp
 import { AzureDevOpsPullRequestHost } from "../../../../src/app/services/azure-devops-pull-request-host.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 
-const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", "3f2504e0-4f89-11d3-9a0c-0305e82c3301", 482);
+const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", "3f2504e0-4f89-11d3-9a0c-0305e82c3301", 752);
 const HEAD: string = "9fceb02d0ae598e95dc970b74767f19372d61af8";
 const AT: number = Date.UTC(2026, 0, 5, 12);
 
 @Component({
   selector: "nol-git-azure-devops-document",
   imports: [AzureDevOpsPullRequestUpdatesComponent, GitPullRequestCommitsComponent],
-  template: "<div class=\"document\"><nol-git-pull-request-commits [host]=\"host\" [reference]=\"reference\" url=\"https://dev.azure.com/fabrikam/web/_git/site/pullrequest/482\" />"
-    + "<nol-git-azure-devops-pull-request-updates [reference]=\"reference\" url=\"https://dev.azure.com/fabrikam/web/_git/site/pullrequest/482\" /></div>",
+  template: "<div class=\"document\"><nol-git-pull-request-commits [host]=\"host\" [reference]=\"reference\" url=\"https://dev.azure.com/fabrikam/web/_git/site/pullrequest/752\" />"
+    + "<nol-git-azure-devops-pull-request-updates [reference]=\"reference\" url=\"https://dev.azure.com/fabrikam/web/_git/site/pullrequest/752\" /></div>",
   styles: [
     ".document { box-sizing: border-box; width: 30rem; color: var(--nol-text); font-family: var(--nol-font-sans); font-size: var(--nol-text-panel);"
     + " line-height: var(--nol-line-panel); }"

@@ -25,9 +25,9 @@ function statusAt(head: string | null, remote: GitRemote | null = azure): GitSta
   return new GitStatus("main", head, null, [], false, "f1", null, remote);
 }
 
-const graph: GitGraph = new GitGraph([new GitGraphCommit(new GitCommit("a".repeat(40), [], "Mona Lisa", "2026-11-22T10:00:00Z", "Fold tag case #4832"),
-  "ana@fabrikam.com", [])], false);
-const messages: GitMessageReferences = new GitMessageReferences([new GitMessageReference("a".repeat(40), [4700])], false);
+const graph: GitGraph = new GitGraph([new GitGraphCommit(new GitCommit("a".repeat(40), [], "Mona Lisa", "2026-11-22T10:00:00Z", "Fold tag case #7532"),
+  "kim@fabrikam.com", [])], false);
+const messages: GitMessageReferences = new GitMessageReferences([new GitMessageReference("a".repeat(40), [7400])], false);
 
 describe("AzureDevOpsLinkedCommits", () => {
   it("reads the status, then the last 1,000 commits and their messages' AB#N once for each HEAD, sharing the history among reads at the same HEAD", async () => {
@@ -42,8 +42,8 @@ describe("AzureDevOpsLinkedCommits", () => {
     const again: LinkedHistory = await reads.readAsync(FOLDER);
     const moved: LinkedHistory = await reads.readAsync(FOLDER);
 
-    expect([again === first, moved === first, first.commitsOf("fabrikam", 4832).map(t => t.subject), first.commitsOf("fabrikam", 4700).length]).toEqual([true, false,
-      ["Fold tag case #4832"], 1]);
+    expect([again === first, moved === first, first.commitsOf("fabrikam", 7532).map(t => t.subject), first.commitsOf("fabrikam", 7400).length]).toEqual([true, false,
+      ["Fold tag case #7532"], 1]);
     expect([requests.methods, requests.payloads.slice(0, 3)]).toEqual([[GitNames.statusMethod, GitNames.graphMethod, GitNames.messageReferencesMethod,
       GitNames.statusMethod, GitNames.statusMethod, GitNames.graphMethod, GitNames.messageReferencesMethod], [new GitFolderParams(FOLDER).toJson(),
       new GitGraphParams(FOLDER, 1000, 0).toJson(), new GitMessageReferencesParams(FOLDER, GitMessageReferenceKind.AzureBoards, 1000).toJson()]]);

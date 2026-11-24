@@ -681,7 +681,7 @@ describe("GitHubReads", () => {
 
   it("keeps the comment's page only when it is an https page on github.com with no user name or password, and answers none otherwise", async () => {
     const pages = ["https://example.com/octocat/hello-world/commit/1", "http://github.com/octocat/hello-world/commit/1",
-      "https://ana:secret@github.com/octocat/hello-world/commit/1", "https://github.com.example.com/octocat/hello-world/commit/1", "not an address",
+      "https://kim:secret@github.com/octocat/hello-world/commit/1", "https://github.com.example.com/octocat/hello-world/commit/1", "not an address",
       "https://GitHub.com/octocat/hello-world/commit/1"];
     const answers: HostCommitComments[] = [];
 

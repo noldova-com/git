@@ -13,13 +13,13 @@ import { describe, it } from "vitest";
 import { HostingFieldException, HostWorkItemLink, HostWorkItemType, WorkItemCategory } from "../../src/api/index.ts";
 
 const story: HostWorkItemType = new HostWorkItemType("User Story", "009CCC", "icon_book");
-const url: string = "https://dev.azure.com/fabrikam/_workitems/edit/4821";
+const url: string = "https://dev.azure.com/fabrikam/_workitems/edit/7521";
 
 describe("HostWorkItemLink", () => {
   it("returns its id, title, type, state, state category and page as JSON that reads back the same", () => {
-    const link: HostWorkItemLink = new HostWorkItemLink(4821, "Export notes as Markdown files", story, "Active", WorkItemCategory.InProgress, url);
+    const link: HostWorkItemLink = new HostWorkItemLink(7521, "Export notes as Markdown files", story, "Active", WorkItemCategory.InProgress, url);
 
-    assert.deepEqual(link.toJson(), { id: 4821, title: "Export notes as Markdown files", type: story.toJson(), state: "Active", category: "InProgress", url });
+    assert.deepEqual(link.toJson(), { id: 7521, title: "Export notes as Markdown files", type: story.toJson(), state: "Active", category: "InProgress", url });
     assert.deepEqual(HostWorkItemLink.fromJson(JSON.parse(JSON.stringify(link.toJson()))), link);
   });
 

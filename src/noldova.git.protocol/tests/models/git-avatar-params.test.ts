@@ -14,9 +14,9 @@ import { GitAvatarParams } from "../../src/models/git-avatar-params.ts";
 
 describe("GitAvatarParams", () => {
   it("keeps its email as written, and reads back the same", () => {
-    const params = new GitAvatarParams("Ana.Pop@Example.com ");
+    const params = new GitAvatarParams("Kim.Lee@Example.com ");
 
-    assert.deepEqual(params.toJson(), { email: "Ana.Pop@Example.com " });
+    assert.deepEqual(params.toJson(), { email: "Kim.Lee@Example.com " });
     assert.deepEqual(GitAvatarParams.fromJson(JSON.parse(JSON.stringify(params.toJson()))), params);
   });
 

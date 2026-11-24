@@ -33,26 +33,26 @@ describe("AzureDevOpsCommitPrefixes", () => {
   });
 
   it("keeps a branch's prefix in the module's own storage, one per folder and branch, and drops it when asked", () => {
-    AzureDevOpsCommitPrefixes.keep("/work/site", "users/ana/42-sign-in", 41);
-    AzureDevOpsCommitPrefixes.keep("/work/site", "users/ana/42-sign-in", 42);
-    AzureDevOpsCommitPrefixes.keep("/work/app", "users/ana/42-sign-in", 7);
+    AzureDevOpsCommitPrefixes.keep("/work/site", "users/kim/42-sign-in", 41);
+    AzureDevOpsCommitPrefixes.keep("/work/site", "users/kim/42-sign-in", 42);
+    AzureDevOpsCommitPrefixes.keep("/work/app", "users/kim/42-sign-in", 7);
     const kept = stored();
-    AzureDevOpsCommitPrefixes.drop("/work/app", "users/ana/42-sign-in");
+    AzureDevOpsCommitPrefixes.drop("/work/app", "users/kim/42-sign-in");
     AzureDevOpsCommitPrefixes.drop("/work/app", "main");
 
-    expect(kept).toEqual([{ folder: "/work/site", branch: "users/ana/42-sign-in", id: 42 }, { folder: "/work/app", branch: "users/ana/42-sign-in", id: 7 }]);
-    expect([prefixes.prefixFor("/work/site", "users/ana/42-sign-in"), prefixes.prefixFor("/work/app", "users/ana/42-sign-in"),
-      prefixes.prefixFor("/work/site", "main"), stored()]).toEqual(["#42 ", null, null, [{ folder: "/work/site", branch: "users/ana/42-sign-in", id: 42 }]]);
+    expect(kept).toEqual([{ folder: "/work/site", branch: "users/kim/42-sign-in", id: 42 }, { folder: "/work/app", branch: "users/kim/42-sign-in", id: 7 }]);
+    expect([prefixes.prefixFor("/work/site", "users/kim/42-sign-in"), prefixes.prefixFor("/work/app", "users/kim/42-sign-in"),
+      prefixes.prefixFor("/work/site", "main"), stored()]).toEqual(["#42 ", null, null, [{ folder: "/work/site", branch: "users/kim/42-sign-in", id: 42 }]]);
   });
 
   it("reads back what it kept, leaves out what doesn't read, and starts empty from storage that isn't a list or isn't JSON", () => {
-    localStorage.setItem(KEY, JSON.stringify([{ folder: "/work/site", branch: "users/ana/42-sign-in", id: 42 }, { folder: "", branch: "x", id: 1 }, "x"]));
+    localStorage.setItem(KEY, JSON.stringify([{ folder: "/work/site", branch: "users/kim/42-sign-in", id: 42 }, { folder: "", branch: "x", id: 1 }, "x"]));
     AzureDevOpsCommitPrefixes.restore();
-    const restored = [prefixes.prefixFor("/work/site", "users/ana/42-sign-in"), prefixes.prefixFor("", "x")];
+    const restored = [prefixes.prefixFor("/work/site", "users/kim/42-sign-in"), prefixes.prefixFor("", "x")];
     const empty = ["{}", "{not json"].map(t => {
       localStorage.setItem(KEY, t);
       AzureDevOpsCommitPrefixes.restore();
-      return prefixes.prefixFor("/work/site", "users/ana/42-sign-in");
+      return prefixes.prefixFor("/work/site", "users/kim/42-sign-in");
     });
 
     expect([restored, empty]).toEqual([["#42 ", null], [null, null]]);
@@ -96,24 +96,24 @@ describe("AzureDevOpsCommitPrefixes", () => {
     async () => {
       const context = new FakeWindowPartContext();
       const requests = new RequestAnswers(context);
-      requests.answer(GitNames.branchesMethod, BranchDialogData.branchesOf("main", "users/ana/42-sign-in"), BranchDialogData.branchesOf("main", "users/ana/42-sign-in"));
-      AzureDevOpsCommitPrefixes.keep("/work/site", "users/ana/42-sign-in", 42);
-      AzureDevOpsCommitPrefixes.keep("/work/site", "users/ana/43-gone", 43);
-      AzureDevOpsCommitPrefixes.keep("/work/app", "users/ana/43-gone", 43);
+      requests.answer(GitNames.branchesMethod, BranchDialogData.branchesOf("main", "users/kim/42-sign-in"), BranchDialogData.branchesOf("main", "users/kim/42-sign-in"));
+      AzureDevOpsCommitPrefixes.keep("/work/site", "users/kim/42-sign-in", 42);
+      AzureDevOpsCommitPrefixes.keep("/work/site", "users/kim/43-gone", 43);
+      AzureDevOpsCommitPrefixes.keep("/work/app", "users/kim/43-gone", 43);
       const withdraw = AzureDevOpsCommitPrefixes.provide(context);
-      const provided = ["users/ana/42-sign-in", "users/ana/43-gone"].map(t => GitCommitPrefixes.prefixFor("/work/site", t));
+      const provided = ["users/kim/42-sign-in", "users/kim/43-gone"].map(t => GitCommitPrefixes.prefixFor("/work/site", t));
 
       context.raiseEvent(GitNames.changedEvent, new GitChanged("/work/elsewhere").toJson());
       context.raiseEvent(GitNames.changedEvent, new GitChanged("/work/site").toJson());
-      await Wait.until(() => expect(prefixes.prefixFor("/work/site", "users/ana/43-gone")).toBeNull());
+      await Wait.until(() => expect(prefixes.prefixFor("/work/site", "users/kim/43-gone")).toBeNull());
       const pruned = stored();
       context.raiseEvent(GitNames.changedEvent, new GitChanged("/work/site").toJson());
       await requests.askedAsync(2);
       withdraw();
 
       expect(provided).toEqual(["#42 ", "#43 "]);
-      expect(pruned).toEqual([{ folder: "/work/site", branch: "users/ana/42-sign-in", id: 42 }, { folder: "/work/app", branch: "users/ana/43-gone", id: 43 }]);
-      expect([requests.payloads, stored(), GitCommitPrefixes.prefixFor("/work/site", "users/ana/42-sign-in")]).toEqual([
+      expect(pruned).toEqual([{ folder: "/work/site", branch: "users/kim/42-sign-in", id: 42 }, { folder: "/work/app", branch: "users/kim/43-gone", id: 43 }]);
+      expect([requests.payloads, stored(), GitCommitPrefixes.prefixFor("/work/site", "users/kim/42-sign-in")]).toEqual([
         [{ folder: "/work/site" }, { folder: "/work/site" }], pruned, null]);
     });
 
@@ -121,7 +121,7 @@ describe("AzureDevOpsCommitPrefixes", () => {
     const context = new FakeWindowPartContext();
     const requests = new RequestAnswers(context);
     requests.fail(GitNames.branchesMethod, new WindowFailure("Not connected."));
-    AzureDevOpsCommitPrefixes.keep("/work/site", "users/ana/43-gone", 43);
+    AzureDevOpsCommitPrefixes.keep("/work/site", "users/kim/43-gone", 43);
     const withdraw = AzureDevOpsCommitPrefixes.provide(context);
 
     context.raiseEvent(GitNames.changedEvent, { folder: 7 });
@@ -131,7 +131,7 @@ describe("AzureDevOpsCommitPrefixes", () => {
 
     expect(context.callsOf("log").map(t => t[0])).toEqual([expect.stringMatching(/^The Azure DevOps module's git\.changed event couldn't be read: /),
       "The Azure DevOps module's git.branches request failed: WindowFailure: Not connected."]);
-    expect(stored()).toEqual([{ folder: "/work/site", branch: "users/ana/43-gone", id: 43 }]);
+    expect(stored()).toEqual([{ folder: "/work/site", branch: "users/kim/43-gone", id: 43 }]);
   });
 
   it("passes on a failure of the branch read or of the change event that isn't the window's or the protocol's", async () => {

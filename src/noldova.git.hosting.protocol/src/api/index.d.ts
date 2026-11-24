@@ -2281,7 +2281,7 @@ export declare class HostWorkItemList {
  * import { HostWorkItemDetail } from "@noldova/git.hosting.protocol";
  *
  * declare const item: import("@noldova/git.hosting.protocol").HostWorkItem;
- * const detail = new HostWorkItemDetail(item, 5, null, null, 1000, "Readers see a due date.", [4830, 4831], [], 5, ["users/ana/4821-export-notes"]);
+ * const detail = new HostWorkItemDetail(item, 5, null, null, 1000, "Readers see a due date.", [7530, 7531], [], 5, ["users/kim/7521-export-notes"]);
  * console.log(detail.toJson());
  * ```
  */
@@ -3134,8 +3134,8 @@ export declare class HostPullRequest {
  * ```ts
  * import { HostWorkItemLink, HostWorkItemType, WorkItemCategory } from "@noldova/git.hosting.protocol";
  *
- * const link = new HostWorkItemLink(4821, "Export notes as Markdown files", new HostWorkItemType("User Story", "009CCC", "icon_book"), "Active",
- *   WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/_workitems/edit/4821");
+ * const link = new HostWorkItemLink(7521, "Export notes as Markdown files", new HostWorkItemType("User Story", "009CCC", "icon_book"), "Active",
+ *   WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/_workitems/edit/7521");
  * ```
  */
 export declare class HostWorkItemLink {
@@ -3185,8 +3185,8 @@ export declare class HostWorkItemLink {
    * ```ts
    * import { HostWorkItemLink, HostWorkItemType, WorkItemCategory } from "@noldova/git.hosting.protocol";
    *
-   * const link = new HostWorkItemLink(4799, "Due dates ignore local times", new HostWorkItemType("Bug", "CC293D", "icon_insect"), "Active",
-   *   WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/_workitems/edit/4799");
+   * const link = new HostWorkItemLink(7499, "Due dates ignore local times", new HostWorkItemType("Bug", "CC293D", "icon_insect"), "Active",
+   *   WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/_workitems/edit/7499");
    * ```
    */
   public constructor(id: number, title: string, type: HostWorkItemType, state: string, category: WorkItemCategory, url: string, reader?: JsonReader);
@@ -3203,9 +3203,9 @@ export declare class HostWorkItemLink {
    * ```ts
    * import { HostWorkItemLink } from "@noldova/git.hosting.protocol";
    *
-   * const link = HostWorkItemLink.fromJson({ id: 4821, title: "Export notes as Markdown files",
+   * const link = HostWorkItemLink.fromJson({ id: 7521, title: "Export notes as Markdown files",
    *   type: { name: "User Story", color: "009CCC", icon: "icon_book" }, state: "Active", category: "InProgress",
-   *   url: "https://dev.azure.com/fabrikam/_workitems/edit/4821" });
+   *   url: "https://dev.azure.com/fabrikam/_workitems/edit/7521" });
    * ```
    */
   public static fromJson(value: unknown, path?: string): HostWorkItemLink;

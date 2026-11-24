@@ -18,11 +18,11 @@ const id: string = "0123456789abcdef0123456789abcdef01234567";
 
 describe("GitMessageReferences", () => {
   it("keeps each commit's id and reference numbers, and whether older commits went unread, and reads back the same", () => {
-    const numbers: number[] = [4831, 9_999_999_999];
+    const numbers: number[] = [7531, 9_999_999_999];
     const references = new GitMessageReferences([new GitMessageReference(id, numbers)], true);
     numbers.push(1);
 
-    assert.deepEqual(references.toJson(), { commits: [{ id, numbers: [4831, 9_999_999_999] }], truncated: true });
+    assert.deepEqual(references.toJson(), { commits: [{ id, numbers: [7531, 9_999_999_999] }], truncated: true });
     assert.deepEqual(GitMessageReferences.fromJson(JSON.parse(JSON.stringify(references.toJson()))), references);
   });
 

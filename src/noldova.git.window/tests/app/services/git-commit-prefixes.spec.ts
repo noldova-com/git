@@ -17,18 +17,18 @@ describe("GitCommitPrefixes", () => {
 
   it("gives the first added host's prefix that isn't null, and none once each is removed", () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    const first: IGitCommitPrefixes = { prefixFor: (_folder, branch) => branch.startsWith("users/") ? "AB#4821 " : null };
+    const first: IGitCommitPrefixes = { prefixFor: (_folder, branch) => branch.startsWith("users/") ? "AB#7521 " : null };
     const second: IGitCommitPrefixes = { prefixFor: (at, branch) => `${at}:${branch} ` };
     const removeFirst: () => void = GitCommitPrefixes.provide(context, first);
     const removeSecond: () => void = GitCommitPrefixes.provide(context, second);
 
-    const found: (string | null)[] = [GitCommitPrefixes.prefixFor(folder, "users/ana/4821"), GitCommitPrefixes.prefixFor(folder, "main")];
+    const found: (string | null)[] = [GitCommitPrefixes.prefixFor(folder, "users/kim/7521"), GitCommitPrefixes.prefixFor(folder, "main")];
     removeFirst();
-    found.push(GitCommitPrefixes.prefixFor(folder, "users/ana/4821"));
+    found.push(GitCommitPrefixes.prefixFor(folder, "users/kim/7521"));
     removeSecond();
     found.push(GitCommitPrefixes.prefixFor(folder, "main"));
 
-    expect(found).toEqual(["AB#4821 ", "/work/project:main ", "/work/project:users/ana/4821 ", null]);
+    expect(found).toEqual(["AB#7521 ", "/work/project:main ", "/work/project:users/kim/7521 ", null]);
   });
 
   it("logs a host whose answer throws to the context that provided it, and asks the next host", () => {

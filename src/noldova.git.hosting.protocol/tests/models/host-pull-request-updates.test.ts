@@ -15,10 +15,10 @@ import { HostingFieldException, HostPerson, HostPullRequestUpdate, HostPullReque
 const SOURCE: string = "9fceb02d0ae598e95dc970b74767f19372d61af8";
 const COMMON: string = "0123456789abcdef0123456789abcdef01234567";
 const AT: number = Date.UTC(2026, 10, 23, 10);
-const ana: HostPerson = new HostPerson("ana@fabrikam.com", null, null);
+const kim: HostPerson = new HostPerson("kim@fabrikam.com", null, null);
 
 function updatesOf(count: number): HostPullRequestUpdate[] {
-  return Array.from({ length: count }, (_, i) => new HostPullRequestUpdate(i + 1, ana, AT, SOURCE, COMMON));
+  return Array.from({ length: count }, (_, i) => new HostPullRequestUpdate(i + 1, kim, AT, SOURCE, COMMON));
 }
 
 describe("HostPullRequestUpdates", () => {

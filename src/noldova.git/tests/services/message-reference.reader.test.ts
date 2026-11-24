@@ -36,9 +36,9 @@ describe("MessageReferenceReader", () => {
 
   beforeAll(async () => {
     template = await RepositoryFixture.createAsync();
-    await commitAsync(template, "Read local times", "Closes AB#4702 and AB#4831, then AB#4702 again.");
+    await commitAsync(template, "Read local times", "Closes AB#7402 and AB#7531, then AB#7402 again.");
     await template.runGitAsync(["switch", "--quiet", "--create", "side"]);
-    await commitAsync(template, "Fold tag case AB#4832", "See https://dev.azure.com/fabrikam/_workitems/AB#9, src/AB#7, xAB#6, AB#5a, AB#0 and AB#12345678901.");
+    await commitAsync(template, "Fold tag case AB#7532", "See https://dev.azure.com/fabrikam/_workitems/AB#9, src/AB#7, xAB#6, AB#5a, AB#0 and AB#12345678901.");
     await commitAsync(template, "Rename src/AB#7 to lib/AB#7", "Only xAB#6 and AB#5a, which name nothing.");
     await commitAsync(template, "Tidy imports");
     await template.runGitAsync(["switch", "--quiet", "main"]);
@@ -64,8 +64,8 @@ describe("MessageReferenceReader", () => {
     const [side, main] = [(await repository.runGitAsync(["rev-parse", "side~2"])).trim(), (await repository.runGitAsync(["rev-parse", "main"])).trim()];
 
     assert.deepEqual(await reader.readAsync(repository.folder, 10),
-      new GitMessageReferences([new GitMessageReference(side, [4832]), new GitMessageReference(main, [4702, 4831])], false));
-    assert.deepEqual(await reader.readAsync(repository.folder, 3), new GitMessageReferences([new GitMessageReference(side, [4832])], true));
+      new GitMessageReferences([new GitMessageReference(side, [7532]), new GitMessageReference(main, [7402, 7531])], false));
+    assert.deepEqual(await reader.readAsync(repository.folder, 3), new GitMessageReferences([new GitMessageReference(side, [7532])], true));
     assert.deepEqual(await reader.readAsync(repository.folder, 2), new GitMessageReferences([], true));
   });
 

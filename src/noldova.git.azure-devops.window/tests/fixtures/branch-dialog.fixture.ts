@@ -21,10 +21,10 @@ import { BranchRequest } from "../../src/app/models/branch-request.ts";
 import { RequestAnswers } from "./request-answers.fixture.ts";
 
 export class BranchDialogData {
-  public static readonly request: BranchRequest = new BranchRequest("/repository", "fabrikam", 4832, "Tag filter ignores case in note titles");
+  public static readonly request: BranchRequest = new BranchRequest("/repository", "fabrikam", 7532, "Tag filter ignores case in note titles");
   public static readonly azure: GitRemote = new GitRemote("origin", "dev.azure.com", "fabrikam/Sample Project/_git/garden-web", RemoteTransport.Https);
   public static readonly head: string = "1a2b3c4d".repeat(5);
-  public static readonly parentBranch: string = "users/ana/4821-export-notes-markdown";
+  public static readonly parentBranch: string = "users/kim/7521-export-notes-markdown";
   public static readonly task: HostWorkItemType = new HostWorkItemType("Task", "A4880A", "icon_clipboard");
   public static readonly story: HostWorkItemType = new HostWorkItemType("User Story", "009CCC", "icon_book");
 
@@ -53,15 +53,15 @@ export class BranchDialogData {
   }
 
   public static itemOf(parent: number | null, category: WorkItemCategory = WorkItemCategory.Proposed, title: string = "Tag filter ignores case in note titles"): JsonValue {
-    return new HostWorkItem(AzureDevOpsNames.moduleId, "fabrikam", "Sample Project", 4832, BranchDialogData.task, title, "New", category,
-      "https://dev.azure.com/fabrikam/Sample%20Project/_workitems/edit/4832", null, "Sample Project\\Sprint 47", "Sample Project\\Notes app", parent).toJson();
+    return new HostWorkItem(AzureDevOpsNames.moduleId, "fabrikam", "Sample Project", 7532, BranchDialogData.task, title, "New", category,
+      "https://dev.azure.com/fabrikam/Sample%20Project/_workitems/edit/7532", null, "Sample Project\\Sprint 17", "Sample Project\\Notes app", parent).toJson();
   }
 
   public static parentsOf(...branches: readonly string[]): JsonValue {
-    const item = new HostWorkItem(AzureDevOpsNames.moduleId, "fabrikam", "Sample Project", 4821, BranchDialogData.story, "Export notes as Markdown files", "Active",
-      WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/Sample%20Project/_workitems/edit/4821", null, null, null, 4790);
-    const pullRequest = new HostReference(AzureDevOpsNames.moduleId, "fabrikam", "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0", 482);
-    return new HostWorkItemList([new HostWorkItemDetail(item, 5, 6, 8, null, null, [4830, 4831, 4832], [pullRequest], 5, branches)], false).toJson();
+    const item = new HostWorkItem(AzureDevOpsNames.moduleId, "fabrikam", "Sample Project", 7521, BranchDialogData.story, "Export notes as Markdown files", "Active",
+      WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/Sample%20Project/_workitems/edit/7521", null, null, null, 7490);
+    const pullRequest = new HostReference(AzureDevOpsNames.moduleId, "fabrikam", "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0", 752);
+    return new HostWorkItemList([new HostWorkItemDetail(item, 5, 6, 8, null, null, [7530, 7531, 7532], [pullRequest], 5, branches)], false).toJson();
   }
 
   public static readonly noParents: JsonValue = new HostWorkItemList([], false).toJson();
@@ -71,8 +71,8 @@ export class BranchDialogReads {
   public status: JsonValue = BranchDialogData.statusOf(BranchDialogData.azure).toJson();
   public branches: JsonValue = BranchDialogData.branchesOf("main", BranchDialogData.parentBranch, "release");
   public signIn: JsonValue = BranchDialogData.signedIn("Mona.Lisa@fabrikam.com");
-  public item: JsonValue = BranchDialogData.itemOf(4821);
-  public parents: JsonValue = BranchDialogData.parentsOf("users/ana/gone", BranchDialogData.parentBranch);
+  public item: JsonValue = BranchDialogData.itemOf(7521);
+  public parents: JsonValue = BranchDialogData.parentsOf("users/kim/gone", BranchDialogData.parentBranch);
 }
 
 export class BranchDialog {

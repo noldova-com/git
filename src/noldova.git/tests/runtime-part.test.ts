@@ -306,12 +306,12 @@ describe("RuntimePart", () => {
   });
 
   it("registers git.messageReferences, which answers the commits whose messages name AB#N", async () => {
-    await repository.runGitAsync(["commit", "--quiet", "--allow-empty", "-m", "Guard tag case", "-m", "Fixes AB#4831."]);
+    await repository.runGitAsync(["commit", "--quiet", "--allow-empty", "-m", "Guard tag case", "-m", "Fixes AB#7531."]);
     const id = (await repository.runGitAsync(["rev-parse", "HEAD"])).trim();
 
     const answer = GitMessageReferences.fromJson(await callAsync(GitNames.messageReferencesMethod, { folder: repository.folder, kind: "AzureBoards", limit: 10 }));
 
-    assert.deepEqual(answer, new GitMessageReferences([new GitMessageReference(id, [4831])], false));
+    assert.deepEqual(answer, new GitMessageReferences([new GitMessageReference(id, [7531])], false));
   });
 
   it("registers git.repositoryItems, which answers the repository's tags, stashes and submodules", async () => {
@@ -366,7 +366,7 @@ describe("RuntimePart", () => {
       vi.unstubAllGlobals();
     });
 
-    assert.deepEqual(await callAsync(GitNames.avatarMethod, { email: "ana@example.com" }), { image: "data:image/png;base64,AQID" });
+    assert.deepEqual(await callAsync(GitNames.avatarMethod, { email: "kim@example.com" }), { image: "data:image/png;base64,AQID" });
     assert.equal(asked.length, 1);
     await assert.rejects(callAsync(GitNames.avatarMethod, {}), { name: "JsonException", path: "$.email" });
   });
@@ -382,7 +382,7 @@ describe("RuntimePart", () => {
     });
     context.settings.answer("read", (name: string) => name === "git.gravatar" ? false : null);
 
-    assert.deepEqual([await callAsync(GitNames.avatarMethod, { email: "ana@example.com" }), asked], [{ image: null }, []]);
+    assert.deepEqual([await callAsync(GitNames.avatarMethod, { email: "kim@example.com" }), asked], [{ image: null }, []]);
   });
 
   it("registers git.watch and git.unwatch and declares git.changed, which each window watching a folder of a changed repository hears, answering a watch once it has started", async () => {

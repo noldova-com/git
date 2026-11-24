@@ -20,10 +20,10 @@ import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixt
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
 const REPOSITORY: string = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
-const URL: string = "https://example.com/fabrikam/site/pulls/482";
+const URL: string = "https://example.com/fabrikam/site/pulls/752";
 const HEAD: string = "0123456789abcdef0123456789abcdef01234567";
 const FOLDER: string = "/work/site";
-const reference: HostReference = new HostReference("git-example", "fabrikam", REPOSITORY, 482);
+const reference: HostReference = new HostReference("git-example", "fabrikam", REPOSITORY, 752);
 const other: HostReference = new HostReference("git-example", "fabrikam", REPOSITORY, 7);
 const changes: HostChanges = new HostChanges(null, null, null, "users/monalisa/export-notes", "main", HEAD);
 const conflicts: HostPullRequestConflicts = new HostPullRequestConflicts(["src/app.ts", "README.md"], false);

@@ -72,8 +72,8 @@ describe("GitRuntimeClient", () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     GitFixtures.answerWith(context, { "git.avatar": { image: "data:image/png;base64,QQ==" } });
 
-    expect(await new GitRuntimeClient(context).avatarAsync("ana@example.com")).toEqual(new GitAvatar("data:image/png;base64,QQ=="));
-    expect(context.callsOf("requestAsync")).toEqual([["git.avatar", { email: "ana@example.com" }]]);
+    expect(await new GitRuntimeClient(context).avatarAsync("kim@example.com")).toEqual(new GitAvatar("data:image/png;base64,QQ=="));
+    expect(context.callsOf("requestAsync")).toEqual([["git.avatar", { email: "kim@example.com" }]]);
   });
 
   it("sends a branch's rename and delete and a tag's create and delete with the fingerprint each was based on", async () => {

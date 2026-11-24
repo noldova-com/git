@@ -25,14 +25,14 @@ function shapeOf(rows: readonly WorkItemRow[]): readonly string[] {
 
 describe("WorkItemRow", () => {
   it("places each work item under its parent, a level deeper, keeping the read's order among siblings", () => {
-    const details: readonly HostWorkItemDetail[] = [detail(4702, null), detail(4821, 4790), detail(4790, 4702), detail(4830, 4821), detail(4811, null),
-      detail(4799, 4790)];
+    const details: readonly HostWorkItemDetail[] = [detail(7402, null), detail(7521, 7490), detail(7490, 7402), detail(7530, 7521), detail(7511, null),
+      detail(7499, 7490)];
 
-    expect(shapeOf(WorkItemRow.rowsOf(details))).toEqual(["4702@0", "4790@1", "4821@2", "4830@3", "4799@2", "4811@0"]);
+    expect(shapeOf(WorkItemRow.rowsOf(details))).toEqual(["7402@0", "7490@1", "7521@2", "7530@3", "7499@2", "7511@0"]);
   });
 
   it("starts a work item whose parent wasn't read at the top level", () => {
-    expect(shapeOf(WorkItemRow.rowsOf([detail(4830, 4821), detail(4831, 4830)]))).toEqual(["4830@0", "4831@1"]);
+    expect(shapeOf(WorkItemRow.rowsOf([detail(7530, 7521), detail(7531, 7530)]))).toEqual(["7530@0", "7531@1"]);
   });
 
   it("gives no rows for no work items", () => {

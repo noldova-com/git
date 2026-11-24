@@ -27,12 +27,12 @@ const FOLDER: string = "/work/site";
 const COMMENTED: string = "6dcb09b5b57875f334f61aebed695e2e4193db5e";
 const UNCOMMENTED: string = "7638417db6d59f3c431d3e1f261cc637155684cd";
 const UNANSWERED: string = "GitHub didn't answer. Try again to read this repository's pull requests.";
-const URL: string = "https://github.com/octocat/site/pull/482";
+const URL: string = "https://github.com/octocat/site/pull/752";
 const remote: GitRemote = new GitRemote("origin", "github.com", "octocat/site", RemoteTransport.Https);
 const other: GitRemote = new GitRemote("origin", "github.com", "octocat/docs", RemoteTransport.Https);
-const row: HostPullRequestRow = new HostPullRequestRow(new HostReference("git-github", "octocat", "site", 482), "Export notes as Markdown files",
+const row: HostPullRequestRow = new HostPullRequestRow(new HostReference("git-github", "octocat", "site", 752), "Export notes as Markdown files",
   URL, true, 1, 2, 0, 1, "export-notes", "main");
-const shown: GitPullRequestRow = new GitPullRequestRow("octocat/site#482", "#482", "Export notes as Markdown files", URL, true, 1, 2, 0, 1, "export-notes", "main");
+const shown: GitPullRequestRow = new GitPullRequestRow("octocat/site#752", "#752", "Export notes as Markdown files", URL, true, 1, 2, 0, 1, "export-notes", "main");
 const request: HostReviewRequest = new HostReviewRequest(new HostReference("git-github", "octocat", "site", 533), "Sign in with a passkey",
   "https://github.com/octocat/site/pull/533", true, Date.parse("2026-11-20T09:00:00Z"));
 const asked: GitPullRequestRow = new GitPullRequestRow("octocat/site#533", "#533", "Sign in with a passkey", "https://github.com/octocat/site/pull/533", true, 0,
@@ -231,7 +231,7 @@ describe("GitHubPullRequests", () => {
 
   it("reads a commit's review comments once for each remote and commit, and gives another commit its own read", async () => {
     const host = new Host();
-    host.requests.answer(GitHubNames.readCommitCommentsMethod, new HostCommitComments(3, true, "https://github.com/octocat/site/pull/482#discussion_r7").toJson());
+    host.requests.answer(GitHubNames.readCommitCommentsMethod, new HostCommitComments(3, true, "https://github.com/octocat/site/pull/752#discussion_r7").toJson());
     host.requests.answer(GitHubNames.readCommitCommentsMethod, HostCommitComments.none().toJson());
     const comments = host.pullRequests.commentsFor(FOLDER, remote, COMMENTED);
     const before = comments();
@@ -247,7 +247,7 @@ describe("GitHubPullRequests", () => {
         throw new Error("The other commit's comments aren't read yet.");
     });
 
-    expect([before, comments(), again === comments, otherCommit()]).toEqual([null, new GitCommitComments(3, true, "https://github.com/octocat/site/pull/482#discussion_r7"), true,
+    expect([before, comments(), again === comments, otherCommit()]).toEqual([null, new GitCommitComments(3, true, "https://github.com/octocat/site/pull/752#discussion_r7"), true,
       new GitCommitComments(0, false, null)]);
     expect([host.requests.methods, host.requests.payloads]).toEqual([[GitHubNames.readCommitCommentsMethod, GitHubNames.readCommitCommentsMethod],
       [new CommitQuery("github.com", "octocat/site", COMMENTED).toJson(), new CommitQuery("github.com", "octocat/site", UNCOMMENTED).toJson()]]);
@@ -257,7 +257,7 @@ describe("GitHubPullRequests", () => {
     async () => {
       const host = new Host();
       host.requests.fail(GitHubNames.readCommitCommentsMethod, new RuntimeRequestException(FailureCode.Unavailable, "GitHub refused the request (503)."));
-      host.requests.answer(GitHubNames.readCommitCommentsMethod, new HostCommitComments(2, false, "https://github.com/octocat/site/pull/482#discussion_r7").toJson());
+      host.requests.answer(GitHubNames.readCommitCommentsMethod, new HostCommitComments(2, false, "https://github.com/octocat/site/pull/752#discussion_r7").toJson());
       const unexpected = new TypeError("Unexpected.");
       host.requests.fail(GitHubNames.readCommitCommentsMethod, unexpected);
 
@@ -277,7 +277,7 @@ describe("GitHubPullRequests", () => {
       host.pullRequests.commentsFor(FOLDER, other, COMMENTED);
 
       expect([failed(), retried === failed, retried(), hostless, pathless, await rejected, host.requests.methods.length]).toEqual([null, false,
-        new GitCommitComments(2, false, "https://github.com/octocat/site/pull/482#discussion_r7"), null, null, unexpected, 3]);
+        new GitCommitComments(2, false, "https://github.com/octocat/site/pull/752#discussion_r7"), null, null, unexpected, 3]);
       expect(host.context.callsOf("log").map(t => String(t[0]))).toEqual([
         "The GitHub module's git-github.readCommitComments request failed: RuntimeRequestException: GitHub refused the request (503)."]);
     });

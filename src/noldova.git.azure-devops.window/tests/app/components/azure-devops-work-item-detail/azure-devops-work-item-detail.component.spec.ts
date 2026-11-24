@@ -25,20 +25,20 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
     const page = new Page().answerMine();
     page.requests.answer(AzureDevOpsNames.readWorkItemsMethod, listOf(tasks));
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson());
-    await page.openAsync(`${INSTANCE}/4821`);
+    await page.openAsync(`${INSTANCE}/7521`);
     await page.requests.askedAsync(3);
     await page.settleAsync();
 
-    expect(page.requests.payloads.slice(1)).toEqual([childrenQuery([4830, 4831, 4832]).toJson(), pr482.toJson()]);
-    expect(page.texts(".kind")).toEqual(["menu_book User Story 4821 open_in_new"]);
+    expect(page.requests.payloads.slice(1)).toEqual([childrenQuery([7530, 7531, 7532]).toJson(), pr482.toJson()]);
+    expect(page.texts(".kind")).toEqual(["menu_book User Story 7521 open_in_new"]);
     expect(page.texts(".detail-title")).toEqual(["Export notes as Markdown files"]);
-    expect(page.texts(".fields")).toEqual(["State Active Assigned A ana@fabrikam.com Iteration Sample Project\\Sprint 47 Area Sample Project\\Notes app"
-      + " Points 5 Parent emoji_events 4790 Markdown export"]);
+    expect(page.texts(".fields")).toEqual(["State Active Assigned A kim@fabrikam.com Iteration Sample Project\\Sprint 17 Area Sample Project\\Notes app"
+      + " Points 5 Parent emoji_events 7490 Markdown export"]);
     expect(page.texts(".acceptance")).toEqual(["Acceptance criteria Readers see a due date 48 h and 2 h before it is due."]);
     expect(page.texts(".section")).toEqual([
-      "Tasks 6 h of 14 h left assignment 4830 Note card with tag chips 0 h assignment 4831 Local times from settings 2 h"
-      + " assignment 4832 Tag filter ignores letter case 4 h",
-      "Development alt_route users/ana/4821-export-notes-markdown merge !482 · 3 of 4 policies error commit five commits on this branch"
+      "Tasks 6 h of 14 h left assignment 7530 Note card with tag chips 0 h assignment 7531 Local times from settings 2 h"
+      + " assignment 7532 Tag filter ignores letter case 4 h",
+      "Development alt_route users/kim/7521-export-notes-markdown merge !752 · 3 of 4 policies error commit five commits on this branch"
     ]);
     expect(page.texts(".actions")).toEqual(["alt_route Create branch"]);
   });
@@ -46,11 +46,11 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
   it("shows a work item with nothing planned, linked or assigned plainly, its unread parent by id", async () => {
     const page = new Page().answerMine();
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, null);
-    await page.openAsync(`${INSTANCE}/4811`);
+    await page.openAsync(`${INSTANCE}/7511`);
     await page.requests.askedAsync(2);
     await page.settleAsync();
 
-    expect(page.texts(".fields")).toEqual(["State Resolved Assigned Unassigned Iteration — Area — Points — Parent 4999"]);
+    expect(page.texts(".fields")).toEqual(["State Resolved Assigned Unassigned Iteration — Area — Points — Parent 7699"]);
     expect(page.texts(".acceptance")).toEqual([]);
     expect(page.texts(".section")).toEqual([expect.stringMatching(/^Development merge !479$/)]);
     expect(page.requests.methods).toEqual([AzureDevOpsNames.readWorkItemsMethod, AzureDevOpsNames.readPullRequestMethod]);
@@ -67,22 +67,22 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
 
   it("lists tasks without hours when the host records none, and leaves out a pull request's policies when none blocks or none was read", async () => {
     const page = new Page().answerMine();
-    page.requests.answer(AzureDevOpsNames.readWorkItemsMethod, listOf([detailOf(itemOf(4830, task, "Card", "New", WorkItemCategory.Proposed, 4821))]));
+    page.requests.answer(AzureDevOpsNames.readWorkItemsMethod, listOf([detailOf(itemOf(7530, task, "Card", "New", WorkItemCategory.Proposed, 7521))]));
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, new HostPullRequest(pullRequest.item, [], [
       new HostPolicy("Optional check", PolicyState.Rejected, false, null)], [], false, "", null, []).toJson());
-    await page.openAsync(`${INSTANCE}/4821`);
+    await page.openAsync(`${INSTANCE}/7521`);
     await page.requests.askedAsync(3);
     await page.settleAsync();
 
-    expect(page.texts(".section")[0]).toBe("Tasks assignment 4830 Card");
-    expect(page.texts(".section")[1]).toContain("merge !482 commit");
+    expect(page.texts(".section")[0]).toBe("Tasks assignment 7530 Card");
+    expect(page.texts(".section")[1]).toContain("merge !752 commit");
     expect(page.element.querySelector(".warning")).toBeNull();
   });
 
   it("shows a pull request without its policies when Azure DevOps shows none for it", async () => {
     const page = new Page().answerMine();
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, null);
-    await page.openAsync(`${INSTANCE}/4811`);
+    await page.openAsync(`${INSTANCE}/7511`);
     await page.requests.askedAsync(2);
     await page.settleAsync();
 
@@ -93,20 +93,20 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
     const page = new Page().answerMine();
     page.requests.fail(AzureDevOpsNames.readWorkItemsMethod, new WindowFailure("Busy."));
     page.requests.fail(AzureDevOpsNames.readPullRequestMethod, new WindowFailure("Gone."));
-    await page.openAsync(`${INSTANCE}/4821`);
+    await page.openAsync(`${INSTANCE}/7521`);
     await page.requests.askedAsync(3);
     await page.settleAsync();
 
     expect(page.logs).toEqual([`The Azure DevOps module's ${AzureDevOpsNames.readWorkItemsMethod} request failed: WindowFailure: Busy.`,
       `The Azure DevOps module's ${AzureDevOpsNames.readPullRequestMethod} request failed: WindowFailure: Gone.`]);
-    expect(page.texts(".section")).toEqual([expect.stringMatching(/^Development .* merge !482 commit five commits on this branch$/)]);
+    expect(page.texts(".section")).toEqual([expect.stringMatching(/^Development .* merge !752 commit five commits on this branch$/)]);
   });
 
   it("rethrows a failure of a task read that isn't the window's", async () => {
     const page = new Page().answerMine();
     const rejection: Promise<unknown> = UnhandledRejections.nextAsync();
     page.requests.fail(AzureDevOpsNames.readWorkItemsMethod, new RangeError("Unexpected."));
-    await page.openAsync(`${INSTANCE}/4790`);
+    await page.openAsync(`${INSTANCE}/7490`);
 
     expect(await rejection).toBeInstanceOf(RangeError);
   });
@@ -115,12 +115,12 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
     const page = new Page().answerMine();
     const releaseTasks = page.requests.hold(AzureDevOpsNames.readWorkItemsMethod);
     const releasePull = page.requests.hold(AzureDevOpsNames.readPullRequestMethod);
-    page.open(`${INSTANCE}/4821`);
+    page.open(`${INSTANCE}/7521`);
     await page.requests.askedAsync(3);
     await Wait.until(() => expect(page.texts(".item")).toHaveLength(6));
 
     page.find(".item:nth-of-type(6)").click();
-    await Wait.until(() => expect(page.find(".detail").getAttribute("aria-label")).toBe("Work item 4832"));
+    await Wait.until(() => expect(page.find(".detail").getAttribute("aria-label")).toBe("Work item 7532"));
     releaseTasks(listOf(tasks));
     releasePull(pullRequest.toJson());
     await page.settleAsync();
@@ -137,7 +137,7 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
     await page.clickAsync(".open");
     await Wait.until(() => expect(page.logs).toHaveLength(1));
 
-    expect(page.logs).toEqual([`The Azure DevOps module couldn't open ${urlOf(4702)}: WindowFailure: No browser.`]);
+    expect(page.logs).toEqual([`The Azure DevOps module couldn't open ${urlOf(7402)}: WindowFailure: No browser.`]);
   });
 
   it("rethrows a failure to open the work item page that isn't the window's", async () => {
@@ -160,7 +160,7 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
     page.requests.answer(GitNames.messageReferencesMethod, noMessages);
     await page.openAsync();
 
-    await Wait.until(() => expect(page.texts(".history-empty")).toEqual(["No commit read names 4702."]));
+    await Wait.until(() => expect(page.texts(".history-empty")).toEqual(["No commit read names 7402."]));
   });
 
   it("can't open the branch dialog without an open repository", async () => {
@@ -181,7 +181,7 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
     await Wait.until(() => expect(page.find(".create").hasAttribute("disabled")).toBe(false));
     page.find(".create").click();
 
-    await Wait.until(() => expect(document.querySelector("nol-dialog")?.textContent).toContain("4702"));
+    await Wait.until(() => expect(document.querySelector("nol-dialog")?.textContent).toContain("7402"));
   });
 
   it("lists the open repository's commits among its last 1,000 that name the shown work item in the subject or AB#N in the message, newest first, saying the read stops there",
@@ -199,17 +199,17 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
 
       const first: readonly string[] = shown();
       const note: readonly string[] = page.texts(".history-note");
-      await page.chooseRowAsync(4832);
+      await page.chooseRowAsync(7532);
       const second: readonly string[] = shown();
-      await page.chooseRowAsync(4821);
+      await page.chooseRowAsync(7521);
 
       expect([first, note, second, shown()]).toEqual([
-        ["Linked in your history", "Read local times assignment AB#4831 and workspace_premium AB#4702 bbbbbbb · Mona Lisa · 2 h",
+        ["Linked in your history", "Read local times assignment AB#7531 and workspace_premium AB#7402 bbbbbbb · Mona Lisa · 2 h",
           "It covers the repository's last 1,000 commits."],
-        ["Commits in this repository that name 4702: #4702 or AB#4702 in the subject, or AB#4702 in its message."],
-        ["Linked in your history", "Fold the tag case in the note list filter assignment #4832 aaaaaaa · Mona Lisa · 12 min",
+        ["Commits in this repository that name 7402: #7402 or AB#7402 in the subject, or AB#7402 in its message."],
+        ["Linked in your history", "Fold the tag case in the note list filter assignment #7532 aaaaaaa · Mona Lisa · 12 min",
           "It covers the repository's last 1,000 commits."],
-        ["Linked in your history", "Tidy x#4702 and ab#4702 ccccccc · Mona Lisa · 3 d", "It covers the repository's last 1,000 commits."]
+        ["Linked in your history", "Tidy x#7402 and ab#7402 ccccccc · Mona Lisa · 3 d", "It covers the repository's last 1,000 commits."]
       ]);
       expect(page.requests.payloads[page.requests.methods.indexOf(GitNames.graphMethod)]).toEqual(new GitGraphParams("/work/garden-web", 1000, 0).toJson());
       expect(page.requests.methods.filter(t => t === GitNames.graphMethod)).toHaveLength(1);
@@ -221,22 +221,22 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
       const page = new Page().answerMine();
       page.requests.answer(GitNames.statusMethod, azureStatus.toJson());
       page.requests.answer(GitNames.graphMethod, new GitGraph([new GitGraphCommit(new GitCommit("d".repeat(40), [], "Mona Lisa", "2025-01-05T12:00:00Z",
-        "Guard AB#4999 behind #4702"), "ana@fabrikam.com", [])], false).toJson());
+        "Guard AB#7699 behind #7402"), "kim@fabrikam.com", [])], false).toJson());
       page.requests.answer(GitNames.messageReferencesMethod, noMessages);
       const release = page.requests.hold(AzureDevOpsNames.readWorkItemsMethod);
       await page.openAsync();
       const reading: readonly string[] = page.texts(".history .commit");
 
-      release(listOf([new HostWorkItemDetail(itemOf(4999, bug, "Times drift past midnight", "Active", WorkItemCategory.InProgress, null), null, null, null, null,
+      release(listOf([new HostWorkItemDetail(itemOf(7699, bug, "Times drift past midnight", "Active", WorkItemCategory.InProgress, null), null, null, null, null,
         null, [], [], 0, [])]));
-      await Wait.until(() => expect(page.texts(".history .chip.ref")).toEqual(["bug_report AB#4999", "workspace_premium #4702"]));
+      await Wait.until(() => expect(page.texts(".history .chip.ref")).toEqual(["bug_report AB#7699", "workspace_premium #7402"]));
       const colours: readonly string[] = [...page.element.querySelectorAll<HTMLElement>(".history .chip-icon")].map(t => getComputedStyle(t).color);
 
       expect([reading, page.texts(".history .commit"), colours, page.requests.payloads[page.requests.methods.lastIndexOf(AzureDevOpsNames.readWorkItemsMethod)],
         page.requests.methods.filter(t => t === AzureDevOpsNames.readWorkItemsMethod).length]).toEqual([
-        ["Guard description AB#4999 behind workspace_premium #4702 ddddddd · Mona Lisa · Jan 5"],
-        ["Guard bug_report AB#4999 behind workspace_premium #4702 ddddddd · Mona Lisa · Jan 5"], ["rgb(204, 41, 61)", "rgb(255, 123, 0)"],
-        new WorkItemsQuery(HOST, "fabrikam", PROJECT, WorkItemScope.Ids, [4999]).toJson(), 2]);
+        ["Guard description AB#7699 behind workspace_premium #7402 ddddddd · Mona Lisa · Jan 5"],
+        ["Guard bug_report AB#7699 behind workspace_premium #7402 ddddddd · Mona Lisa · Jan 5"], ["rgb(204, 41, 61)", "rgb(255, 123, 0)"],
+        new WorkItemsQuery(HOST, "fabrikam", PROJECT, WorkItemScope.Ids, [7699]).toJson(), 2]);
     });
 
   it("shows a commit in the Git module's history at a click, and logs a history the window can't open", async () => {
@@ -260,7 +260,7 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
 
     expect([page.context.callsOf("runCommandAsync"), page.logs, page.find(".history .commit").getAttribute("aria-label")]).toEqual([
       [["git.openHistory", { folder: "/work/garden-web" }], ["git.openHistory", { folder: "/work/garden-web" }]],
-      ["The Azure DevOps module's git.openHistory request failed: WindowFailure: No Git module."], "Show Read local times AB#4831 and AB#4702 in the history"]);
+      ["The Azure DevOps module's git.openHistory request failed: WindowFailure: No Git module."], "Show Read local times AB#7531 and AB#7402 in the history"]);
   });
 
   it("rethrows a failure to open the history that isn't the window's", async () => {

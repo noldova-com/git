@@ -677,7 +677,7 @@ describe("GitViewStateService", () => {
 
   it("starts an empty message with a host's prefix for the branch, swaps an untouched prefix when the branch changes, and keeps typed text", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    let branch: string | null = "feature/4821";
+    let branch: string | null = "feature/7521";
     GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": () => GitFixtures.status([], null, { branch }).toJson() });
     onTestFinished(GitCommitPrefixes.provide(context, { prefixFor: (_folder, name) => name === "main" ? null : `AB#${name.slice(8)} ` }));
     const { state } = start(context);
@@ -691,14 +691,14 @@ describe("GitViewStateService", () => {
     TestBed.tick();
 
     const filled: string = state.message();
-    const swapped: string = await nextAsync("feature/4830");
+    const swapped: string = await nextAsync("feature/7530");
     const emptied: string = await nextAsync("main");
-    const refilled: string = await nextAsync("feature/4821");
+    const refilled: string = await nextAsync("feature/7521");
     const detached: string = await nextAsync(null);
     state.message.set("Typed");
-    const kept: string = await nextAsync("feature/4830");
+    const kept: string = await nextAsync("feature/7530");
 
-    expect([filled, swapped, emptied, refilled, detached, kept]).toEqual(["AB#4821 ", "AB#4830 ", "", "AB#4821 ", "", "Typed"]);
+    expect([filled, swapped, emptied, refilled, detached, kept]).toEqual(["AB#7521 ", "AB#7530 ", "", "AB#7521 ", "", "Typed"]);
   });
 
   it("leaves a cleared message empty until a commit or amending turned off fills it again, and amends over an untouched prefix while keeping it through a branch change", async () => {

@@ -18,7 +18,7 @@ import { AzureDevOpsAuthorAvatars } from "../../../src/app/services/azure-devops
 import { AzureDevOpsPullRequestHost } from "../../../src/app/services/azure-devops-pull-request-host.ts";
 import { RequestAnswers } from "../../fixtures/request-answers.fixture.ts";
 
-const URL: string = "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/482";
+const URL: string = "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/752";
 const FOLDER: string = "/work/site";
 const statusOf = (path: string | null): GitStatus => new GitStatus("main", "a".repeat(40), null, [], false, "f1", null,
   path === null ? null : new GitRemote("origin", "dev.azure.com", path, RemoteTransport.Https));
@@ -36,7 +36,7 @@ describe("AzureDevOpsPullRequestHost", () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     onTestFinished(() => AzureDevOpsAuthorAvatars.release(context));
     const host: AzureDevOpsPullRequestHost = new AzureDevOpsPullRequestHost(context);
-    const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", "3f2504e0-4f89-11d3-9a0c-0305e82c3301", 482);
+    const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", "3f2504e0-4f89-11d3-9a0c-0305e82c3301", 752);
 
     expect([host.readThreadsMethod, host.replyToThreadMethod, host.changeThreadMethod, host.personAvatarOf(reference, "[Web Site]\\Web Team"),
       host.personAvatarOf(reference, "monalisa@fabrikam.com")]).toEqual([AzureDevOpsNames.readPullRequestThreadsMethod, AzureDevOpsNames.replyToThreadMethod,

@@ -24,7 +24,7 @@ function documentInjector(): EnvironmentInjector {
 describe("GitDetailView", () => {
   it("shows the front choice, keeps it while no followed document is in front, empties for a front without one, and once all are destroyed", () => {
     const detail = viewOf(new FakeWindowPartContext());
-    const first: WritableSignal<number | null> = signal(4702);
+    const first: WritableSignal<number | null> = signal(7402);
     const second: WritableSignal<number | null> = signal(null);
     const firstActive: WritableSignal<boolean> = signal(true);
     const secondActive: WritableSignal<boolean> = signal(false);
@@ -41,9 +41,9 @@ describe("GitDetailView", () => {
     look();
     secondActive.set(true);
     look();
-    second.set(4790);
+    second.set(7490);
     look();
-    first.set(4821);
+    first.set(7521);
     secondActive.set(false);
     look();
     secondDocument.destroy();
@@ -53,13 +53,13 @@ describe("GitDetailView", () => {
     firstDocument.destroy();
     look();
 
-    expect(seen).toEqual([[null, undefined], [4702, 4702], [4702, undefined], [null, null], [4790, 4790], [4790, undefined], [4790, undefined],
-      [4821, 4821], [null, undefined]]);
+    expect(seen).toEqual([[null, undefined], [7402, 7402], [7402, undefined], [null, null], [7490, 7490], [7490, undefined], [7490, undefined],
+      [7521, 7521], [null, undefined]]);
   });
 
   it("shows nothing while the followed documents it first hears of are behind another kind of document", () => {
     const detail = viewOf(new FakeWindowPartContext());
-    detail.follow(signal(4702), signal(false), documentInjector());
+    detail.follow(signal(7402), signal(false), documentInjector());
 
     expect([detail.shown(), detail.front()]).toEqual([null, undefined]);
   });
@@ -69,34 +69,34 @@ describe("GitDetailView", () => {
     const detail = viewOf(context);
     const stop = detail.listen();
     const open: boolean[] = [detail.isOpen()];
-    detail.showOnce(4702);
-    detail.showOnce(4790);
-    detail.showChosen(4790);
+    detail.showOnce(7402);
+    detail.showOnce(7490);
+    detail.showChosen(7490);
     context.raiseViewClosed("notes.detail", "other");
     open.push(detail.isOpen());
-    detail.showChosen(4811);
+    detail.showChosen(7511);
     context.raiseViewClosed("notes.detail", "selected");
     open.push(detail.isOpen());
-    detail.showOnce(4821);
-    detail.showChosen(4832);
+    detail.showOnce(7521);
+    detail.showChosen(7532);
     open.push(detail.isOpen());
-    detail.showChosen(4840);
+    detail.showChosen(7540);
     const listening: number = context.activeCallsOf("onViewClosed").length;
     stop();
 
     expect([context.callsOf("openView"), context.callsOf("showView"), listening, context.activeCallsOf("onViewClosed").length, open])
-      .toEqual([[["notes.detail", "selected", "Note 4702"], ["notes.detail", "selected", "Note 4832"]], [], 1, 0, [false, true, false, true]]);
+      .toEqual([[["notes.detail", "selected", "Note 7402"], ["notes.detail", "selected", "Note 7532"]], [], 1, 0, [false, true, false, true]]);
   });
 
   it("opens the view for each choice shown in front, titled for it, also while it is open, never with the focus", () => {
     const context = new FakeWindowPartContext();
     const detail = viewOf(context);
-    detail.showInFront(4790);
-    detail.showInFront(4811);
-    detail.showChosen(4821);
+    detail.showInFront(7490);
+    detail.showInFront(7511);
+    detail.showChosen(7521);
 
     expect([context.callsOf("openView"), context.callsOf("showView"), detail.isOpen()])
-      .toEqual([[["notes.detail", "selected", "Note 4790"], ["notes.detail", "selected", "Note 4811"]], [], true]);
+      .toEqual([[["notes.detail", "selected", "Note 7490"], ["notes.detail", "selected", "Note 7511"]], [], true]);
   });
 
   it("brings the view forward at once for the front document's choice, else at the next choice shown once, and only that next one, never with the focus", () => {
@@ -104,16 +104,16 @@ describe("GitDetailView", () => {
     const detail = viewOf(context);
     const choice: WritableSignal<number | null> = signal(null);
     detail.follow(choice, signal(true), documentInjector());
-    detail.showOnce(4702);
+    detail.showOnce(7402);
     detail.bringForward();
     const waiting: number = context.callsOf("openView").length;
-    detail.showOnce(4790);
-    detail.showOnce(4811);
-    choice.set(4821);
+    detail.showOnce(7490);
+    detail.showOnce(7511);
+    choice.set(7521);
     detail.bringForward();
 
-    expect([waiting, context.callsOf("openView"), context.callsOf("showView")]).toEqual([1, [["notes.detail", "selected", "Note 4702"],
-      ["notes.detail", "selected", "Note 4790"], ["notes.detail", "selected", "Note 4821"]], []]);
+    expect([waiting, context.callsOf("openView"), context.callsOf("showView")]).toEqual([1, [["notes.detail", "selected", "Note 7402"],
+      ["notes.detail", "selected", "Note 7490"], ["notes.detail", "selected", "Note 7521"]], []]);
   });
 
   it("keeps an ask to bring the view forward for the document in front then, or the first one to come to the front, and drops it once another one does", () => {
@@ -121,12 +121,12 @@ describe("GitDetailView", () => {
     const detail = viewOf(context);
     const firstActive: WritableSignal<boolean> = signal(true);
     detail.follow(signal(null), firstActive, documentInjector());
-    detail.showOnce(4702);
+    detail.showOnce(7402);
     detail.bringForward();
     firstActive.set(false);
     const secondActive: WritableSignal<boolean> = signal(true);
     detail.follow(signal(null), secondActive, documentInjector());
-    detail.showOnce(4790);
+    detail.showOnce(7490);
     secondActive.set(false);
     TestBed.tick();
     detail.bringForward();
@@ -135,7 +135,7 @@ describe("GitDetailView", () => {
     TestBed.tick();
     thirdActive.set(true);
     TestBed.tick();
-    detail.showOnce(4811);
+    detail.showOnce(7511);
     detail.bringForward();
     const fourthActive: WritableSignal<boolean> = signal(false);
     detail.follow(signal(null), fourthActive, documentInjector());
@@ -143,27 +143,44 @@ describe("GitDetailView", () => {
     thirdActive.set(false);
     fourthActive.set(true);
     TestBed.tick();
-    detail.showOnce(4821);
+    detail.showOnce(7521);
 
-    expect(context.callsOf("openView")).toEqual([["notes.detail", "selected", "Note 4702"], ["notes.detail", "selected", "Note 4811"]]);
+    expect(context.callsOf("openView")).toEqual([["notes.detail", "selected", "Note 7402"], ["notes.detail", "selected", "Note 7511"]]);
+  });
+
+  it("keeps an ask to bring the view forward when the document it belongs to leaves the front and comes back", () => {
+    const context = new FakeWindowPartContext();
+    const detail = viewOf(context);
+    const active: WritableSignal<boolean> = signal(true);
+    detail.follow(signal(null), active, documentInjector());
+    detail.showOnce(7402);
+    detail.bringForward();
+    TestBed.tick();
+    active.set(false);
+    TestBed.tick();
+    active.set(true);
+    TestBed.tick();
+    detail.showOnce(7490);
+
+    expect(context.callsOf("openView")).toEqual([["notes.detail", "selected", "Note 7402"], ["notes.detail", "selected", "Note 7490"]]);
   });
 
   it("opens the view for a choice made before any document showed one", () => {
     const context = new FakeWindowPartContext();
     const detail = viewOf(context);
-    detail.showChosen(4790);
-    detail.showOnce(4702);
+    detail.showChosen(7490);
+    detail.showOnce(7402);
 
-    expect(context.callsOf("openView")).toEqual([["notes.detail", "selected", "Note 4790"]]);
+    expect(context.callsOf("openView")).toEqual([["notes.detail", "selected", "Note 7490"]]);
   });
 
   it("gives the group's front back when the person leaves the followed documents, and brings the view forward when they come back", () => {
     const context = new FakeWindowPartContext();
     const detail = viewOf(context);
     const active: WritableSignal<boolean> = signal(true);
-    detail.follow(signal(4702), active, documentInjector());
+    detail.follow(signal(7402), active, documentInjector());
     TestBed.tick();
-    detail.showOnce(4702);
+    detail.showOnce(7402);
     active.set(false);
     TestBed.tick();
     const returned: number = context.callsOf("returnView").length;
@@ -174,7 +191,7 @@ describe("GitDetailView", () => {
     TestBed.tick();
 
     expect([returned, context.callsOf("returnView"), context.callsOf("openView")])
-      .toEqual([1, [["notes.detail", "selected"]], [["notes.detail", "selected", "Note 4702"], ["notes.detail", "selected", "Note 4702"]]]);
+      .toEqual([1, [["notes.detail", "selected"]], [["notes.detail", "selected", "Note 7402"], ["notes.detail", "selected", "Note 7402"]]]);
   });
 
   it("gives nothing back before the view opened, while the person moves between followed documents, or once they closed the view", () => {
@@ -183,14 +200,14 @@ describe("GitDetailView", () => {
     const stop = detail.listen();
     const firstActive: WritableSignal<boolean> = signal(true);
     const secondActive: WritableSignal<boolean> = signal(false);
-    detail.follow(signal(4702), firstActive, documentInjector());
-    detail.follow(signal(4790), secondActive, documentInjector());
+    detail.follow(signal(7402), firstActive, documentInjector());
+    detail.follow(signal(7490), secondActive, documentInjector());
     TestBed.tick();
     firstActive.set(false);
     TestBed.tick();
     firstActive.set(true);
     TestBed.tick();
-    detail.showOnce(4702);
+    detail.showOnce(7402);
     firstActive.set(false);
     secondActive.set(true);
     TestBed.tick();
@@ -199,17 +216,17 @@ describe("GitDetailView", () => {
     TestBed.tick();
     stop();
 
-    expect([context.callsOf("returnView"), context.callsOf("openView")]).toEqual([[], [["notes.detail", "selected", "Note 4702"]]]);
+    expect([context.callsOf("returnView"), context.callsOf("openView")]).toEqual([[], [["notes.detail", "selected", "Note 7402"]]]);
   });
 
   it("comes back to a document with nothing chosen without bringing the view forward, and brings it once one with a choice is in front again", () => {
     const context = new FakeWindowPartContext();
     const detail = viewOf(context);
-    const choice: WritableSignal<number | null> = signal(4702);
+    const choice: WritableSignal<number | null> = signal(7402);
     const active: WritableSignal<boolean> = signal(true);
     detail.follow(choice, active, documentInjector());
     TestBed.tick();
-    detail.showOnce(4702);
+    detail.showOnce(7402);
     active.set(false);
     TestBed.tick();
     choice.set(null);
@@ -217,11 +234,11 @@ describe("GitDetailView", () => {
     TestBed.tick();
     active.set(false);
     TestBed.tick();
-    choice.set(4790);
+    choice.set(7490);
     active.set(true);
     TestBed.tick();
 
     expect([context.callsOf("returnView").length, context.callsOf("openView")])
-      .toEqual([2, [["notes.detail", "selected", "Note 4702"], ["notes.detail", "selected", "Note 4790"]]]);
+      .toEqual([2, [["notes.detail", "selected", "Note 7402"], ["notes.detail", "selected", "Note 7490"]]]);
   });
 });

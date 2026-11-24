@@ -18,9 +18,9 @@ const detailOf = (id: number, parent: number | null): HostWorkItemDetail => new 
 
 describe("WorkItemChoice", () => {
   it("holds the chosen work item's project, its detail and the work items read with it", () => {
-    const place = new WorkItemsPlace("fabrikam", "Sample Project", 4821);
-    const detail = detailOf(4821, 4790);
-    const known = [detailOf(4790, null)];
+    const place = new WorkItemsPlace("fabrikam", "Sample Project", 7521);
+    const detail = detailOf(7521, 7490);
+    const known = [detailOf(7490, null)];
 
     const choice = new WorkItemChoice(place, detail, known);
 

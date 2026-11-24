@@ -50,7 +50,7 @@ describe("AzureDevOpsReferenceLinks", () => {
 
   it("names the organization and project a page's address gives, decoded, on either host", () => {
     expect([
-      "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/482",
+      "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/752",
       "http://fabrikam.visualstudio.com/DefaultCollection/web/_git/site/pullrequest/7",
       "https://fabrikam.visualstudio.com/web/_workitems/edit/3"
     ].map(t => AzureDevOpsReferenceLinks.projectOf(t))).toEqual([["fabrikam", "Web Site"], ["fabrikam", "web"], ["fabrikam", "web"]]);

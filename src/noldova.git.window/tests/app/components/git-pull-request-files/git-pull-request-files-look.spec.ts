@@ -21,15 +21,15 @@ import { GitPullRequestFilesComponent } from "../../../../src/app/components/git
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { TestPullRequestHost } from "../../../fixtures/test-pull-request-host.fixture.ts";
 
-const reference: HostReference = new HostReference("git-example", "fabrikam", "3f2504e0-4f89-11d3-9a0c-0305e82c3301", 482);
+const reference: HostReference = new HostReference("git-example", "fabrikam", "3f2504e0-4f89-11d3-9a0c-0305e82c3301", 752);
 const HEAD: string = "9fceb02d0ae598e95dc970b74767f19372d61af8";
 const LONG: string = `src/${"markdown-note-exports/".repeat(8)}timeline.ts`;
 
 @Component({
   selector: "nol-git-test-document",
   imports: [GitPullRequestConflictsComponent, GitPullRequestFilesComponent],
-  template: "<div class=\"document\"><nol-git-pull-request-files [host]=\"host\" [reference]=\"reference\" url=\"https://example.com/fabrikam/site/pulls/482\" />"
-    + "<nol-git-pull-request-conflicts [host]=\"host\" [reference]=\"reference\" url=\"https://example.com/fabrikam/site/pulls/482\" [changes]=\"changes\" /></div>",
+  template: "<div class=\"document\"><nol-git-pull-request-files [host]=\"host\" [reference]=\"reference\" url=\"https://example.com/fabrikam/site/pulls/752\" />"
+    + "<nol-git-pull-request-conflicts [host]=\"host\" [reference]=\"reference\" url=\"https://example.com/fabrikam/site/pulls/752\" [changes]=\"changes\" /></div>",
   styles: [
     ".document { box-sizing: border-box; width: 30rem; color: var(--nol-text); font-family: var(--nol-font-sans); font-size: var(--nol-text-panel);"
     + " line-height: var(--nol-line-panel); }"

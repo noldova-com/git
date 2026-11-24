@@ -22,8 +22,8 @@ const issue: HostItem = new HostItem(new HostReference("git-github", "octocat", 
 const reviewer: HostReviewer = new HostReviewer(new HostPerson("octocat", null, null), 0.5, "Approved with suggestions", true);
 const policy: HostPolicy = new HostPolicy("Build", PolicyState.Running, true, null);
 const build: HostBuild = new HostBuild("web-ci", CheckState.Running, null, 1_800_000_000_000, null);
-const workItem: HostWorkItemLink = new HostWorkItemLink(4821, "Export notes as Markdown files", new HostWorkItemType("User Story", "009CCC", "icon_book"), "Active",
-  WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/_workitems/edit/4821");
+const workItem: HostWorkItemLink = new HostWorkItemLink(7521, "Export notes as Markdown files", new HostWorkItemType("User Story", "009CCC", "icon_book"), "Active",
+  WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/_workitems/edit/7521");
 const pullRequest: HostPullRequest = new HostPullRequest(item, [reviewer], [policy], [build], true, "Readers see **due dates**.", 5, [workItem], "squash", true);
 
 describe("HostPullRequest", () => {

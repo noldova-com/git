@@ -25,7 +25,7 @@ import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 const REPOSITORY: string = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
 const PUBLISHED: number = Date.UTC(2026, 10, 20, 12);
 const UNANSWERED: string = "Example didn't answer. Try again to read the comments.";
-const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 482);
+const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752);
 const other: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 7);
 const monalisa: HostPerson = new HostPerson("monalisa@fabrikam.com", null, null);
 const octocat: HostPerson = new HostPerson("octocat@fabrikam.com", null, null);

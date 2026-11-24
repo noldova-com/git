@@ -15,8 +15,8 @@ describe("GitPullRequestRow", () => {
     row.headBranch, row.baseBranch];
 
   it("holds the pull request's key, label, title, page, draft state, approvals, checks and branches", () => {
-    expect(read(new GitPullRequestRow("octocat/site#482", "#482", "Export notes as Markdown files", "https://github.com/octocat/site/pull/482", true, 1, 2, 3, 4, "export-notes",
-      "main"))).toEqual(["octocat/site#482", "#482", "Export notes as Markdown files", "https://github.com/octocat/site/pull/482", true, 1, 2, 3, 4, "export-notes", "main"]);
+    expect(read(new GitPullRequestRow("octocat/site#752", "#752", "Export notes as Markdown files", "https://github.com/octocat/site/pull/752", true, 1, 2, 3, 4, "export-notes",
+      "main"))).toEqual(["octocat/site#752", "#752", "Export notes as Markdown files", "https://github.com/octocat/site/pull/752", true, 1, 2, 3, 4, "export-notes", "main"]);
   });
 
   it("has no base branch when the host didn't say", () => {

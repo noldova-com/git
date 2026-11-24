@@ -18,11 +18,11 @@ function remote(host: string | null, path: string | null): GitRemote {
 describe("WorkItemsPlace", () => {
   it("reads an organization and project, with or without a work item, from a document's instance and writes it back", () => {
     const project: WorkItemsPlace | null = WorkItemsPlace.ofInstance("fabrikam/Sample%20Project");
-    const item: WorkItemsPlace | null = WorkItemsPlace.ofInstance("fabrikam/Sample%20Project/4821");
+    const item: WorkItemsPlace | null = WorkItemsPlace.ofInstance("fabrikam/Sample%20Project/7521");
 
     expect(project).toEqual(new WorkItemsPlace("fabrikam", "Sample Project", null));
-    expect(item).toEqual(new WorkItemsPlace("fabrikam", "Sample Project", 4821));
-    expect([project?.instance, item?.instance]).toEqual(["fabrikam/Sample%20Project", "fabrikam/Sample%20Project/4821"]);
+    expect(item).toEqual(new WorkItemsPlace("fabrikam", "Sample Project", 7521));
+    expect([project?.instance, item?.instance]).toEqual(["fabrikam/Sample%20Project", "fabrikam/Sample%20Project/7521"]);
   });
 
   it("reads no place from an empty instance, a bad organization, a blank or badly escaped project, or an id that isn't above zero", () => {

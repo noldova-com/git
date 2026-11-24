@@ -30,7 +30,7 @@ class TestSignInComponent {
 
 const signedOut: GitHostCard = new GitHostCard("GitHub", "Sign in to see pull requests.", GitHostCardState.SignedOut, "Sign in");
 const failed: GitHostCard = new GitHostCard("GitHub", "GitHub's sign-in couldn't be read.", GitHostCardState.Failed, "Sign in");
-const signedIn: GitHostCard = new GitHostCard("Azure DevOps · ana@example.com", "Signed in on this computer", GitHostCardState.SignedIn, "Signed in");
+const signedIn: GitHostCard = new GitHostCard("Azure DevOps · kim@example.com", "Signed in on this computer", GitHostCardState.SignedIn, "Signed in");
 const waiting: GitHostCard = new GitHostCard("Azure DevOps", "Finish signing in in the browser.", GitHostCardState.Waiting, "Waiting for the browser");
 
 class Page {
@@ -117,7 +117,7 @@ describe("GitAccountsComponent", () => {
 
     expect(before).toEqual([
       ["GH", "GitHub", "Sign in to see pull requests.", "Sign in", "", "", ""],
-      ["Az", "Azure DevOps · ana@example.com", "Signed in on this computer", "", "Signed in", "on", "Manage the Azure DevOps account"],
+      ["Az", "Azure DevOps · kim@example.com", "Signed in on this computer", "", "Signed in", "on", "Manage the Azure DevOps account"],
       ["Az", "Azure DevOps", "Finish signing in in the browser.", "", "Waiting for the browser", "status", "Manage the Azure DevOps account"]
     ]);
     expect(cards()[0]).toEqual(["GH", "GitHub", "GitHub's sign-in couldn't be read.", "Sign in", "", "", ""]);

@@ -46,36 +46,36 @@ describe("GitHubAuthorAvatars", () => {
   });
 
   it("waits for the folder's repository, then reads each author's picture once on github.com, whatever the email's case or spaces", async () => {
-    const before = avatars.avatarOf("/work/teamrun", "Ana@Example.com ", commit);
+    const before = avatars.avatarOf("/work/teamrun", "Kim@Example.com ", commit);
 
-    await Wait.until(() => expect(avatars.avatarOf("/work/teamrun", "Ana@Example.com ", commit)).toBe(picture));
-    const again = avatars.avatarOf("/work/teamrun", "ana@example.com", "b".repeat(40));
+    await Wait.until(() => expect(avatars.avatarOf("/work/teamrun", "Kim@Example.com ", commit)).toBe(picture));
+    const again = avatars.avatarOf("/work/teamrun", "kim@example.com", "b".repeat(40));
 
     expect([before, again]).toEqual([undefined, picture]);
-    expect(asked()).toEqual([new AuthorQuery("github.com", "octocat/hello-world", "Ana@Example.com ", commit).toJson()]);
+    expect(asked()).toEqual([new AuthorQuery("github.com", "octocat/hello-world", "Kim@Example.com ", commit).toJson()]);
   });
 
   it("has none for a folder whose remote isn't GitHub's, and none for a picture GitHub has none of or that couldn't be read", async () => {
     answer = t => t.email === "none@example.com" ? new HostAvatar(null).toJson() : Promise.reject(new Error("GitHub is away."));
-    avatars.avatarOf("/work/plain", "ana@example.com", commit);
+    avatars.avatarOf("/work/plain", "kim@example.com", commit);
     avatars.avatarOf("/work/teamrun", "none@example.com", commit);
     avatars.avatarOf("/work/teamrun", "down@example.com", commit);
 
-    await Wait.until(() => expect([avatars.avatarOf("/work/plain", "ana@example.com", commit), avatars.avatarOf("/work/teamrun", "none@example.com", commit),
+    await Wait.until(() => expect([avatars.avatarOf("/work/plain", "kim@example.com", commit), avatars.avatarOf("/work/teamrun", "none@example.com", commit),
       avatars.avatarOf("/work/teamrun", "down@example.com", commit)]).toEqual([null, null, null]));
     expect(asked().length).toBe(2);
   });
 
   it("reads each picture again once the sign-in changes, and no longer follows it once stopped", async () => {
-    avatars.avatarOf("/work/teamrun", "ana@example.com", commit);
-    await Wait.until(() => expect(avatars.avatarOf("/work/teamrun", "ana@example.com", commit)).toBe(picture));
+    avatars.avatarOf("/work/teamrun", "kim@example.com", commit);
+    await Wait.until(() => expect(avatars.avatarOf("/work/teamrun", "kim@example.com", commit)).toBe(picture));
 
     context.emitModule("git-github.signInChanged", HostSignIn.signedOut().toJson());
-    const reading = avatars.avatarOf("/work/teamrun", "ana@example.com", commit);
-    await Wait.until(() => expect(avatars.avatarOf("/work/teamrun", "ana@example.com", commit)).toBe(picture));
+    const reading = avatars.avatarOf("/work/teamrun", "kim@example.com", commit);
+    await Wait.until(() => expect(avatars.avatarOf("/work/teamrun", "kim@example.com", commit)).toBe(picture));
     avatars.stop();
     context.emitModule("git-github.signInChanged", HostSignIn.signedOut().toJson());
 
-    expect([reading, avatars.avatarOf("/work/teamrun", "ana@example.com", commit) === undefined, asked().length]).toEqual([undefined, true, 3]);
+    expect([reading, avatars.avatarOf("/work/teamrun", "kim@example.com", commit) === undefined, asked().length]).toEqual([undefined, true, 3]);
   });
 });

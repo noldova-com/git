@@ -14,9 +14,9 @@ import { PullRequestChoice } from "../../../src/app/models/pull-request-choice.t
 import { PullRequestSelection } from "../../../src/app/services/pull-request-selection.ts";
 
 describe("PullRequestSelection", () => {
-  const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", "site", 482);
+  const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", "site", 752);
   const pullRequest: HostPullRequest = new HostPullRequest(new HostItem(reference, ReferenceKind.PullRequest, ReferenceState.Open, "Export notes",
-    "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/482", new HostPerson("monalisa@fabrikam.com", null, null), Date.UTC(2026, 10, 20), null, 0,
+    "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/752", new HostPerson("monalisa@fabrikam.com", null, null), Date.UTC(2026, 10, 20), null, 0,
     new HostChanges(null, null, null, "export-notes", "main", "0123456789abcdef0123456789abcdef01234567")), [], [], [], false, "", 1, []);
 
   it("keeps one Pull request view per window", () => {
@@ -30,6 +30,6 @@ describe("PullRequestSelection", () => {
     const context = new FakeWindowPartContext();
     PullRequestSelection.of(context).showOnce(new PullRequestChoice(pullRequest, pullRequest.reviewers, 0, { changed: () => undefined, added: () => undefined }));
 
-    expect([context.callsOf("openView"), context.callsOf("showView")]).toEqual([[["git-azure-devops.pullRequestDetail", "selected", "Pull request !482"]], []]);
+    expect([context.callsOf("openView"), context.callsOf("showView")]).toEqual([[["git-azure-devops.pullRequestDetail", "selected", "Pull request !752"]], []]);
   });
 });

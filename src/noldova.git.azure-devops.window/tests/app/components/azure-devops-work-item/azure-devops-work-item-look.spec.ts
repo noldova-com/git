@@ -29,7 +29,7 @@ import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 @Component({
   selector: "nol-git-azure-devops-document",
   imports: [AzureDevOpsWorkItemComponent, AzureDevOpsWorkItemDetailComponent],
-  template: "<div class=\"window\"><div class=\"document\"><nol-git-azure-devops-work-item instance=\"fabrikam/Sample%20Project/4821\" /></div>"
+  template: "<div class=\"window\"><div class=\"document\"><nol-git-azure-devops-work-item instance=\"fabrikam/Sample%20Project/7521\" /></div>"
     + "<div class=\"dock\"><nol-git-azure-devops-work-item-detail instance=\"selected\" /></div></div>",
   styles: [
     ".window { display: flex; height: 40rem; color: var(--nol-text); font-family: var(--nol-font-sans); font-size: var(--nol-text-panel);"
@@ -46,37 +46,37 @@ const REPOSITORY: string = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
 const screenshots: string = "../../../../../../_build/azure-devops-window/screenshots";
 const story: HostWorkItemType = new HostWorkItemType("User Story", "009CCC", "icon_book");
 const task: HostWorkItemType = new HostWorkItemType("Task", "F2CB1D", "icon_clipboard");
-const pr482: HostReference = new HostReference(HOST, "fabrikam", REPOSITORY, 482);
+const pr482: HostReference = new HostReference(HOST, "fabrikam", REPOSITORY, 752);
 
 function itemOf(id: number, type: HostWorkItemType, title: string, state: string, category: WorkItemCategory, parent: number | null): HostWorkItem {
   return new HostWorkItem(HOST, "fabrikam", "Sample Project", id, type, title, state, category,
-    `https://dev.azure.com/fabrikam/Sample%20Project/_workitems/edit/${id}`, new HostPerson("ana@fabrikam.com", null, null), "Sample Project\\Sprint 47",
+    `https://dev.azure.com/fabrikam/Sample%20Project/_workitems/edit/${id}`, new HostPerson("kim@fabrikam.com", null, null), "Sample Project\\Sprint 17",
     "Sample Project\\Notes app", parent);
 }
 
 const mine: readonly HostWorkItemDetail[] = [
-  new HostWorkItemDetail(itemOf(4702, new HostWorkItemType("Epic", "FF7B00", "icon_crown"), "Note sharing and sync", "Active", WorkItemCategory.InProgress,
-    null), null, null, null, null, null, [4790], [], 0, []),
-  new HostWorkItemDetail(itemOf(4790, new HostWorkItemType("Feature", "773B93", "icon_trophy"), "Markdown export", "Active", WorkItemCategory.InProgress,
-    4702), null, null, null, null, null, [4821], [], 0, []),
-  new HostWorkItemDetail(itemOf(4821, story, "Export notes as Markdown files", "Active", WorkItemCategory.InProgress, 4790), 5, null, null, null,
-    "Readers see a due date 48 h and 2 h before it is due. No export runs during the user's local night hours.", [4830, 4831], [pr482], 5,
-    ["users/ana/4821-export-notes-markdown"]),
-  new HostWorkItemDetail(itemOf(4830, task, "Note card with tag chips, with a title long enough to run past its column so the row cuts it short", "Closed",
-    WorkItemCategory.Completed, 4821), null, 0, 6, null, null, [], [], 3, []),
-  new HostWorkItemDetail(itemOf(4831, task, "Read local times from the app settings", "New", WorkItemCategory.Proposed, 4821), null, 2, 2, null, null, [], [],
+  new HostWorkItemDetail(itemOf(7402, new HostWorkItemType("Epic", "FF7B00", "icon_crown"), "Note sharing and sync", "Active", WorkItemCategory.InProgress,
+    null), null, null, null, null, null, [7490], [], 0, []),
+  new HostWorkItemDetail(itemOf(7490, new HostWorkItemType("Feature", "773B93", "icon_trophy"), "Markdown export", "Active", WorkItemCategory.InProgress,
+    7402), null, null, null, null, null, [7521], [], 0, []),
+  new HostWorkItemDetail(itemOf(7521, story, "Export notes as Markdown files", "Active", WorkItemCategory.InProgress, 7490), 5, null, null, null,
+    "Readers see a due date 48 h and 2 h before it is due. No export runs during the user's local night hours.", [7530, 7531], [pr482], 5,
+    ["users/kim/7521-export-notes-markdown"]),
+  new HostWorkItemDetail(itemOf(7530, task, "Note card with tag chips, with a title long enough to run past its column so the row cuts it short", "Closed",
+    WorkItemCategory.Completed, 7521), null, 0, 6, null, null, [], [], 3, []),
+  new HostWorkItemDetail(itemOf(7531, task, "Read local times from the app settings", "New", WorkItemCategory.Proposed, 7521), null, 2, 2, null, null, [], [],
     0, [])
 ];
 const pullRequest: HostPullRequest = new HostPullRequest(new HostItem(pr482, ReferenceKind.PullRequest, ReferenceState.Open, "Export notes",
-  "https://dev.azure.com/fabrikam/Sample%20Project/_git/garden-web/pullrequest/482", null, 1_800_000_000_000, null, 0, 
-  new HostChanges(null, null, null, "users/ana/4821-export-notes-markdown", "main", "0123456789abcdef0123456789abcdef01234567")), [],
+  "https://dev.azure.com/fabrikam/Sample%20Project/_git/garden-web/pullrequest/752", null, 1_800_000_000_000, null, 0, 
+  new HostChanges(null, null, null, "users/kim/7521-export-notes-markdown", "main", "0123456789abcdef0123456789abcdef01234567")), [],
 [new HostPolicy("Build", PolicyState.Approved, true, null), new HostPolicy("Comments", PolicyState.Rejected, true, null)], [], false, "", null, []);
 
 const history: GitGraph = new GitGraph([
   new GitGraphCommit(new GitCommit("a91c40e".padEnd(40, "0"), [], "Mona Lisa", "2026-11-22T10:00:00Z",
-    "Show the note card with its tag chip choices, with a subject long enough to run past the row so the row cuts it short #4821"), "ana@fabrikam.com", []),
-  new GitGraphCommit(new GitCommit("5f02b7d".padEnd(40, "0"), [], "Mona Lisa", "2026-11-22T08:00:00Z", "Local times AB#4821"),
-    "ana@fabrikam.com", [])
+    "Show the note card with its tag chip choices, with a subject long enough to run past the row so the row cuts it short #7521"), "kim@fabrikam.com", []),
+  new GitGraphCommit(new GitCommit("5f02b7d".padEnd(40, "0"), [], "Mona Lisa", "2026-11-22T08:00:00Z", "Local times AB#7521"),
+    "kim@fabrikam.com", [])
 ], true);
 
 const picture: string = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
@@ -325,7 +325,7 @@ describe("AzureDevOpsWorkItemComponent in the kit's look", () => {
     const fills = [getComputedStyle(chip).backgroundColor, getComputedStyle(selected).backgroundColor];
     const [lighter = 0, darker = 0] = fills.map(luminance).toSorted((a, b) => b - a);
 
-    expect([chip.textContent, plain.textContent]).toEqual(["!482", "1 child"]);
+    expect([chip.textContent, plain.textContent]).toEqual(["!752", "1 child"]);
     AppearanceFixture.expectPixels(chip.getBoundingClientRect().left, column.left);
     AppearanceFixture.expectPixels(plain.getBoundingClientRect().left, column.left);
     expect(fills[0]).not.toMatch(/^rgba\(0, 0, 0, 0\)$/);

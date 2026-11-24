@@ -13,14 +13,14 @@ import { CommitPrefixChoice } from "../../../src/app/models/commit-prefix-choice
 
 describe("CommitPrefixChoice", () => {
   it("writes a repository's branch and its work item as JSON and reads them back", () => {
-    const choice: CommitPrefixChoice = new CommitPrefixChoice("/work/garden", "users/ana/4832-tag-filter", 4832);
+    const choice: CommitPrefixChoice = new CommitPrefixChoice("/work/garden", "users/kim/7532-tag-filter", 7532);
 
-    expect(choice.toJson()).toEqual({ folder: "/work/garden", branch: "users/ana/4832-tag-filter", id: 4832 });
+    expect(choice.toJson()).toEqual({ folder: "/work/garden", branch: "users/kim/7532-tag-filter", id: 7532 });
     expect(CommitPrefixChoice.fromJson(JsonReader.fromValue(choice.toJson()))).toEqual(choice);
   });
 
   it("is for its own repository and branch only", () => {
-    const choice: CommitPrefixChoice = new CommitPrefixChoice("/work/garden", "main", 4832);
+    const choice: CommitPrefixChoice = new CommitPrefixChoice("/work/garden", "main", 7532);
 
     expect([choice.isFor("/work/garden", "main"), choice.isFor("/work/site", "main"), choice.isFor("/work/garden", "develop")]).toEqual([true, false, false]);
   });

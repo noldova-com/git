@@ -15,7 +15,7 @@ import { GitGraphLayout } from "../../../src/app/services/git-graph-layout.ts";
 describe("GitGraphLayout", () => {
   const id = (name: string): string => name.charCodeAt(0).toString(16).padStart(40, "0");
   const commit = (name: string, ...parents: string[]): GitGraphCommit =>
-    new GitGraphCommit(new GitCommit(id(name), parents.map(id), "Ana", "2026-11-21T10:00:00Z", `Commit ${name}`), "ana@example.com", []);
+    new GitGraphCommit(new GitCommit(id(name), parents.map(id), "Kim", "2026-11-21T10:00:00Z", `Commit ${name}`), "kim@example.com", []);
   const shapeOf = (rows: readonly GitGraphRow[]): readonly string[] =>
     rows.map(row => `${row.lane}/${row.width}: ${row.lines.map(t => `${t.fromLane}${t.fromMiddle ? "m" : "t"}-${t.toLane}${t.toMiddle ? "m" : "b"}`).join(" ")}`);
 

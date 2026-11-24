@@ -40,19 +40,19 @@ describe("AzureDevOpsChipItems", () => {
     requests.answer(AzureDevOpsNames.readWorkItemsMethod, listOf().toJson());
     const items: AzureDevOpsChipItems = new AzureDevOpsChipItems(context);
 
-    const first = items.itemOf("fabrikam", PROJECT, 4999);
-    const missing = items.itemOf("fabrikam", PROJECT, 4702);
-    const again = items.itemOf("fabrikam", PROJECT, 4999);
-    const other = items.itemOf("contoso", PROJECT, 4999);
+    const first = items.itemOf("fabrikam", PROJECT, 7699);
+    const missing = items.itemOf("fabrikam", PROJECT, 7402);
+    const again = items.itemOf("fabrikam", PROJECT, 7699);
+    const other = items.itemOf("contoso", PROJECT, 7699);
     await requests.askedAsync(1);
     const before: HostWorkItem | null = first();
-    release(listOf(itemOf("fabrikam", 4999), itemOf("fabrikam", 4800)).toJson());
-    await Wait.until(() => expect(first()).toEqual(itemOf("fabrikam", 4999)));
+    release(listOf(itemOf("fabrikam", 7699), itemOf("fabrikam", 7500)).toJson());
+    await Wait.until(() => expect(first()).toEqual(itemOf("fabrikam", 7699)));
     await requests.askedAsync(2);
-    items.itemOf("fabrikam", PROJECT, 4999);
+    items.itemOf("fabrikam", PROJECT, 7699);
 
     expect([again === first, before, missing(), other(), requests.payloads]).toEqual([true, null, null, null,
-      [queryOf("fabrikam", [4999, 4702]).toJson(), queryOf("contoso", [4999]).toJson()]]);
+      [queryOf("fabrikam", [7699, 7402]).toJson(), queryOf("contoso", [7699]).toJson()]]);
   });
 
   it("asks at most 200 ids a request, one request at a time", async () => {
@@ -78,10 +78,10 @@ describe("AzureDevOpsChipItems", () => {
     requests.fail(AzureDevOpsNames.readWorkItemsMethod, new WindowFailure("Not connected."));
     const items: AzureDevOpsChipItems = new AzureDevOpsChipItems(context);
 
-    const item = items.itemOf("fabrikam", PROJECT, 4999);
+    const item = items.itemOf("fabrikam", PROJECT, 7699);
     await Wait.until(() => expect(context.callsOf("log")).toHaveLength(1));
 
-    expect([item(), items.itemOf("fabrikam", PROJECT, 4999)(), requests.methods, context.callsOf("log").map(t => t[0])]).toEqual([null, null,
+    expect([item(), items.itemOf("fabrikam", PROJECT, 7699)(), requests.methods, context.callsOf("log").map(t => t[0])]).toEqual([null, null,
       [AzureDevOpsNames.readWorkItemsMethod], ["The Azure DevOps module's git-azure-devops.readWorkItems request failed: WindowFailure: Not connected."]]);
   });
 
@@ -91,7 +91,7 @@ describe("AzureDevOpsChipItems", () => {
     requests.fail(AzureDevOpsNames.readWorkItemsMethod, new RangeError("Unexpected."));
     const rejection: Promise<unknown> = UnhandledRejections.nextAsync();
 
-    new AzureDevOpsChipItems(context).itemOf("fabrikam", PROJECT, 4999);
+    new AzureDevOpsChipItems(context).itemOf("fabrikam", PROJECT, 7699);
 
     expect(await rejection).toBeInstanceOf(RangeError);
   });

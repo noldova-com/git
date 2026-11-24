@@ -16,7 +16,7 @@ const mine: WorkItemsQuery = new WorkItemsQuery("git-azure-devops", "fabrikam", 
 
 describe("WorkItemsQuery", () => {
   it("returns each scope's parts as JSON that reads back the same", () => {
-    const queries: readonly WorkItemsQuery[] = [mine, new WorkItemsQuery("git-azure-devops", "fabrikam", "Web Site", WorkItemScope.Ids, [4830, 4831])];
+    const queries: readonly WorkItemsQuery[] = [mine, new WorkItemsQuery("git-azure-devops", "fabrikam", "Web Site", WorkItemScope.Ids, [7530, 7531])];
 
     assert.deepEqual(mine.toJson(), { host: "git-azure-devops", organization: "fabrikam", project: "Web Site", scope: "Mine", ids: [] });
     for (const query of queries)
@@ -24,12 +24,12 @@ describe("WorkItemsQuery", () => {
   });
 
   it("keeps its own copy of the ids", () => {
-    const ids: number[] = [4830];
+    const ids: number[] = [7530];
     const query: WorkItemsQuery = new WorkItemsQuery("git-azure-devops", "fabrikam", "Web Site", WorkItemScope.Ids, ids);
 
-    ids.push(4831);
+    ids.push(7531);
 
-    assert.deepEqual(query.ids, [4830]);
+    assert.deepEqual(query.ids, [7530]);
   });
 
   it("refuses a host or organization that isn't a name and a blank project, naming the parameter", () => {

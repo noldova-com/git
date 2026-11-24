@@ -30,7 +30,7 @@ export const story: HostWorkItemType = new HostWorkItemType("User Story", "009CC
 export const task: HostWorkItemType = new HostWorkItemType("Task", "F2CB1D", "icon_clipboard");
 const issue: HostWorkItemType = new HostWorkItemType("Issue", "339933", "icon_unknown");
 export const bug: HostWorkItemType = new HostWorkItemType("Bug", "CC293D", "icon_insect");
-export const pr482: HostReference = new HostReference(HOST, "fabrikam", REPOSITORY, 482);
+export const pr482: HostReference = new HostReference(HOST, "fabrikam", REPOSITORY, 752);
 const pr479: HostReference = new HostReference(HOST, "fabrikam", REPOSITORY, 479);
 
 export function urlOf(id: number): string {
@@ -67,8 +67,8 @@ const unlinked: Linked = new Linked([], [], 0, []);
 const unplanned: Planned = new Planned(null, null, null);
 
 export function itemOf(id: number, type: HostWorkItemType, title: string, state: string, category: WorkItemCategory, parent: number | null): HostWorkItem {
-  return new HostWorkItem(HOST, "fabrikam", PROJECT, id, type, title, state, category, urlOf(id), new HostPerson("ana@fabrikam.com", null, null),
-    "Sample Project\\Sprint 47", "Sample Project\\Notes app", parent);
+  return new HostWorkItem(HOST, "fabrikam", PROJECT, id, type, title, state, category, urlOf(id), new HostPerson("kim@fabrikam.com", null, null),
+    "Sample Project\\Sprint 17", "Sample Project\\Notes app", parent);
 }
 
 export function detailOf(item: HostWorkItem, links: Linked = unlinked, plan: Planned = unplanned, acceptance: string | null = null): HostWorkItemDetail {
@@ -80,27 +80,27 @@ export function listOf(details: readonly HostWorkItemDetail[]): JsonObject {
   return new HostWorkItemList(details, false).toJson();
 }
 
-export const epicItem: HostWorkItem = itemOf(4702, epic, "Note sharing and sync", "Active", WorkItemCategory.InProgress, null);
-const featureItem: HostWorkItem = itemOf(4790, feature, "Markdown export", "Active", WorkItemCategory.InProgress, 4702);
-const storyItem: HostWorkItem = itemOf(4821, story, "Export notes as Markdown files", "Active", WorkItemCategory.InProgress, 4790);
+export const epicItem: HostWorkItem = itemOf(7402, epic, "Note sharing and sync", "Active", WorkItemCategory.InProgress, null);
+const featureItem: HostWorkItem = itemOf(7490, feature, "Markdown export", "Active", WorkItemCategory.InProgress, 7402);
+const storyItem: HostWorkItem = itemOf(7521, story, "Export notes as Markdown files", "Active", WorkItemCategory.InProgress, 7490);
 export const mine: readonly HostWorkItemDetail[] = [
   detailOf(epicItem),
-  detailOf(featureItem, new Linked([4821], [], 0, [])),
-  detailOf(storyItem, new Linked([4830, 4831, 4832], [pr482], 5, ["users/ana/4821-export-notes-markdown"]), new Planned(5, null, null),
+  detailOf(featureItem, new Linked([7521], [], 0, [])),
+  detailOf(storyItem, new Linked([7530, 7531, 7532], [pr482], 5, ["users/kim/7521-export-notes-markdown"]), new Planned(5, null, null),
     "Readers see a due date 48 h and 2 h before it is due."),
-  detailOf(itemOf(4831, task, "Read local times from the app settings", "Active", WorkItemCategory.InProgress, 4821), new Linked([], [], 1, [])),
-  detailOf(itemOf(4832, task, "Tag filter ignores case in note titles", "New", WorkItemCategory.Proposed, 4821)),
-  detailOf(new HostWorkItem(HOST, "fabrikam", PROJECT, 4811, issue, "Note due dates show UTC times", "Resolved", WorkItemCategory.Resolved, urlOf(4811),
-    null, null, null, 4999), new Linked([], [pr479], 0, []))
+  detailOf(itemOf(7531, task, "Read local times from the app settings", "Active", WorkItemCategory.InProgress, 7521), new Linked([], [], 1, [])),
+  detailOf(itemOf(7532, task, "Tag filter ignores case in note titles", "New", WorkItemCategory.Proposed, 7521)),
+  detailOf(new HostWorkItem(HOST, "fabrikam", PROJECT, 7511, issue, "Note due dates show UTC times", "Resolved", WorkItemCategory.Resolved, urlOf(7511),
+    null, null, null, 7699), new Linked([], [pr479], 0, []))
 ];
 export const tasks: readonly HostWorkItemDetail[] = [
-  detailOf(itemOf(4830, task, "Note card with tag chips", "Closed", WorkItemCategory.Completed, 4821), unlinked, new Planned(null, 0, 6)),
-  detailOf(itemOf(4831, task, "Local times from settings", "Active", WorkItemCategory.InProgress, 4821), unlinked, new Planned(null, 2, 2)),
-  detailOf(itemOf(4832, task, "Tag filter ignores letter case", "New", WorkItemCategory.Proposed, 4821), unlinked, new Planned(null, 4, null))
+  detailOf(itemOf(7530, task, "Note card with tag chips", "Closed", WorkItemCategory.Completed, 7521), unlinked, new Planned(null, 0, 6)),
+  detailOf(itemOf(7531, task, "Local times from settings", "Active", WorkItemCategory.InProgress, 7521), unlinked, new Planned(null, 2, 2)),
+  detailOf(itemOf(7532, task, "Tag filter ignores letter case", "New", WorkItemCategory.Proposed, 7521), unlinked, new Planned(null, 4, null))
 ];
 export const pullRequest: HostPullRequest = new HostPullRequest(new HostItem(pr482, ReferenceKind.PullRequest, ReferenceState.Open, "Export notes",
-  "https://dev.azure.com/fabrikam/Sample%20Project/_git/garden-web/pullrequest/482", null, Date.UTC(2026, 10, 20), null, 0, 
-  new HostChanges(null, null, null, "users/ana/4821-export-notes-markdown", "main", "0123456789abcdef0123456789abcdef01234567")), [], [
+  "https://dev.azure.com/fabrikam/Sample%20Project/_git/garden-web/pullrequest/752", null, Date.UTC(2026, 10, 20), null, 0, 
+  new HostChanges(null, null, null, "users/kim/7521-export-notes-markdown", "main", "0123456789abcdef0123456789abcdef01234567")), [], [
   new HostPolicy("Minimum number of reviewers", PolicyState.Approved, true, null),
   new HostPolicy("Build", PolicyState.Approved, true, null),
   new HostPolicy("Work item linking", PolicyState.Approved, true, null),
@@ -114,12 +114,12 @@ export const githubStatus: GitStatus = new GitStatus("main", null, null, [], fal
 
 function commitOf(id: string, subject: string, minutesAgo: number): GitGraphCommit {
   const authoredAt: string = new Date(Date.now() - minutesAgo * 60_000).toISOString().replace(/\.\d{3}Z$/u, "Z");
-  return new GitGraphCommit(new GitCommit(id.repeat(40), [], "Mona Lisa", authoredAt, subject), "ana@fabrikam.com", []);
+  return new GitGraphCommit(new GitCommit(id.repeat(40), [], "Mona Lisa", authoredAt, subject), "kim@fabrikam.com", []);
 }
 
-export const history: GitGraph = new GitGraph([commitOf("a", "Fold the tag case in the note list filter #4832", 12), commitOf("b", "Read local times AB#4831 and AB#4702", 125),
-  commitOf("c", "Tidy x#4702 and ab#4702", 4320)], true);
-export const messages: GitMessageReferences = new GitMessageReferences([new GitMessageReference("c".repeat(40), [4821])], true);
+export const history: GitGraph = new GitGraph([commitOf("a", "Fold the tag case in the note list filter #7532", 12), commitOf("b", "Read local times AB#7531 and AB#7402", 125),
+  commitOf("c", "Tidy x#7402 and ab#7402", 4320)], true);
+export const messages: GitMessageReferences = new GitMessageReferences([new GitMessageReference("c".repeat(40), [7521])], true);
 export const noMessages: JsonObject = new GitMessageReferences([], false).toJson();
 
 export function mineQuery(): WorkItemsQuery {

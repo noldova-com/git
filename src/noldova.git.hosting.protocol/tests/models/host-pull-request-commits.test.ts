@@ -40,7 +40,7 @@ describe("HostPullRequestCommits", () => {
     const json = new HostPullRequestCommits(commitsOf(1), false).toJson();
 
     assert.throws(() => HostPullRequestCommits.fromJson({ ...json, total: 1 }), HostingFieldException);
-    assert.throws(() => HostPullRequestCommits.fromJson({ commits: [{ id: "x", subject: "", author: "Ana", authoredAt: AT }], hasMore: false }),
+    assert.throws(() => HostPullRequestCommits.fromJson({ commits: [{ id: "x", subject: "", author: "Kim", authoredAt: AT }], hasMore: false }),
       { name: "HostingFieldException", field: "$.commits.0.id" });
   });
 });

@@ -64,7 +64,7 @@ describe("GitWindowPart", () => {
     answers.push(await part.reconnectAsync(), part.isActive);
 
     expect(answers).toEqual([false, true, true, false, false]);
-    expect(GitAvatars.imageOf("/repository", "ana@example.com", "a1")).toBeNull();
+    expect(GitAvatars.imageOf("/repository", "kim@example.com", "a1")).toBeNull();
     expect(context.calls.map(t => t.member)).toEqual(["registerView", "registerView", "registerDocument", "registerDocument", "registerDocument", "registerView",
       "registerView", "registerView", "registerView", "registerView", "onViewClosed", "onViewClosed", "onViewClosed", "onViewClosed", "registerCommand", "registerCommand", "registerCommand", "onViewClosed",
       "registerDocument", "registerCommand", "registerSettingsPage", "setSettingsRows", "registerStatusBarItem",
@@ -105,12 +105,12 @@ describe("GitWindowPart", () => {
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
     await part.activateAsync(context);
-    GitAvatars.imageOf("/repository", "ana@example.com", "a1");
-    await GitFixtures.untilAsync(() => GitAvatars.imageOf("/repository", "ana@example.com", "a1") !== null);
-    const shown = GitAvatars.imageOf("/repository", "ana@example.com", "a1");
+    GitAvatars.imageOf("/repository", "kim@example.com", "a1");
+    await GitFixtures.untilAsync(() => GitAvatars.imageOf("/repository", "kim@example.com", "a1") !== null);
+    const shown = GitAvatars.imageOf("/repository", "kim@example.com", "a1");
     await part.deactivateAsync();
 
-    expect([shown, GitAvatars.imageOf("/repository", "ana@example.com", "a1")]).toEqual(["data:image/png;base64,QQ==", null]);
+    expect([shown, GitAvatars.imageOf("/repository", "kim@example.com", "a1")]).toEqual(["data:image/png;base64,QQ==", null]);
   });
 
   it("registers the Git view in the right dock's first group at order 20, shown by default, with no padding, loading the view's component", async () => {
@@ -285,13 +285,13 @@ describe("GitWindowPart", () => {
     onTestFinished(() => part.deactivateAsync());
     const restored: readonly (readonly unknown[])[] = context.callsOf("openView");
     const command: CommandContribution | undefined = commands[1];
-    const ran: unknown[] = [command?.name, command?.title, command?.icon, await command?.runAsync({ folder: "/home/ana/site" }), await command?.runAsync({ folder: "/work/app" })];
+    const ran: unknown[] = [command?.name, command?.title, command?.icon, await command?.runAsync({ folder: "/home/kim/site" }), await command?.runAsync({ folder: "/work/app" })];
     context.raiseViewClosed("git.commands", "/work/app");
 
     expect(restored).toEqual([["git.commands", "/work/app", "Command log: app"], ["git.commands", "C:\\Repos\\commitline\\", "Command log: commitline"]]);
     expect(ran).toEqual(["git.openCommandLog", "Open the command log", "receipt_long", null, null]);
-    expect(context.callsOf("openView").slice(2)).toEqual([["git.commands", "/home/ana/site", "Command log: site"], ["git.commands", "/work/app", "Command log: app"]]);
-    expect(JSON.parse(localStorage.getItem("git.commandLogs") ?? "null")).toEqual(["C:\\Repos\\commitline\\", "/home/ana/site"]);
+    expect(context.callsOf("openView").slice(2)).toEqual([["git.commands", "/home/kim/site", "Command log: site"], ["git.commands", "/work/app", "Command log: app"]]);
+    expect(JSON.parse(localStorage.getItem("git.commandLogs") ?? "null")).toEqual(["C:\\Repos\\commitline\\", "/home/kim/site"]);
   });
 
   it("registers the history, conflict and rebase documents, loading their components with no padding, and commands that open the history and the conflicts for a folder, first among the repositories opened lately", async () => {
@@ -329,17 +329,17 @@ describe("GitWindowPart", () => {
     expect(await documents[1]?.loadComponent()).toBe(GitConflictsComponent);
     expect([documents[2]?.name, documents[2]?.padding]).toEqual(["git.interactiveRebase", ContentPadding.None]);
     expect(await documents[2]?.loadComponent()).toBe(GitRebaseComponent);
-    expect([commands[2]?.name, commands[2]?.title, commands[2]?.icon, await commands[2]?.runAsync({ folder: "/home/ana/site/" })]).toEqual([
+    expect([commands[2]?.name, commands[2]?.title, commands[2]?.icon, await commands[2]?.runAsync({ folder: "/home/kim/site/" })]).toEqual([
       "git.openConflicts", "Open conflicts", "warning", null
     ]);
-    await expect(commands[2]?.runAsync({ path: "/home/ana/site" })).rejects.toThrow();
+    await expect(commands[2]?.runAsync({ path: "/home/kim/site" })).rejects.toThrow();
     expect([command?.name, command?.title, command?.icon]).toEqual(["git.openHistory", "Open history", "history"]);
     expect(await command?.runAsync({ folder: "C:\\Repos\\commitline\\" })).toBeNull();
-    expect(await command?.runAsync({ folder: "/home/ana/site" })).toBeNull();
+    expect(await command?.runAsync({ folder: "/home/kim/site" })).toBeNull();
     expect(context.callsOf("openDocument")).toEqual([
-      ["git.conflicts", "/home/ana/site/", "Conflicts: site"],
+      ["git.conflicts", "/home/kim/site/", "Conflicts: site"],
       ["git.history", "C:\\Repos\\commitline\\", "commitline"],
-      ["git.history", "/home/ana/site", "site"]
+      ["git.history", "/home/kim/site", "site"]
     ]);
     expect(GitRecentRepositories.recent().slice(0, 2).map(t => GitRecentRepositories.nameOf(t))).toEqual(["site", "commitline"]);
   });

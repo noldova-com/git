@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 
 import { PullRequestClone } from "../../../src/app/models/pull-request-clone.ts";
 
-const URL: string = "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/482";
+const URL: string = "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/752";
 
 function remote(host: string | null, path: string | null, transport: RemoteTransport = RemoteTransport.Https): GitRemote {
   return new GitRemote("origin", host, path, transport);
@@ -35,7 +35,7 @@ describe("PullRequestClone", () => {
       remote("dev.azure.com", "fabrikam/Web%20Site/_git/site-api"), remote("github.com", "fabrikam/site"), remote("dev.azure.com", null), remote(null, null), null];
 
     expect(remotes.map(t => PullRequestClone.isCloneOf(t, URL))).toEqual(remotes.map(() => false));
-    expect(["https://dev.azure.com/fabrikam/Web%20Site/_git/site", "https://dev.azure.com/fabrikam/Web%20Site/_git/%E0%A4%A/pullrequest/482"]
+    expect(["https://dev.azure.com/fabrikam/Web%20Site/_git/site", "https://dev.azure.com/fabrikam/Web%20Site/_git/%E0%A4%A/pullrequest/752"]
       .map(t => PullRequestClone.isCloneOf(remote("dev.azure.com", "fabrikam/Web%20Site/_git/site"), t))).toEqual([false, false]);
   });
 

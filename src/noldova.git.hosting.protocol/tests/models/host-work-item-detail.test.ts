@@ -14,12 +14,12 @@ import { HostingArgumentException, HostingFieldException, HostReference, HostWor
   from "../../src/api/index.ts";
 
 const story: HostWorkItemType = new HostWorkItemType("User Story", "009CCC", "icon_book");
-const item: HostWorkItem = new HostWorkItem("git-azure-devops", "fabrikam", "Sample Project", 4821, story, "Export notes as Markdown files", "Active",
-  WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/Sample%20Project/_workitems/edit/4821", null, "Sample Project\\Sprint 47",
-  "Sample Project\\Notes app", 4790);
-const pullRequest: HostReference = new HostReference("git-azure-devops", "fabrikam", "garden-web", 482);
+const item: HostWorkItem = new HostWorkItem("git-azure-devops", "fabrikam", "Sample Project", 7521, story, "Export notes as Markdown files", "Active",
+  WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/Sample%20Project/_workitems/edit/7521", null, "Sample Project\\Sprint 17",
+  "Sample Project\\Notes app", 7490);
+const pullRequest: HostReference = new HostReference("git-azure-devops", "fabrikam", "garden-web", 752);
 const detail: HostWorkItemDetail = new HostWorkItemDetail(item, 5, 6, 8, 1000.5, "Readers see a due date 48 h and 2 h before it is due.",
-  [4830, 4831, 4832], [pullRequest], 5, ["users/ana/4821-export-notes-markdown"], true);
+  [7530, 7531, 7532], [pullRequest], 5, ["users/kim/7521-export-notes-markdown"], true);
 
 function planned(points: number | null, remaining: number | null, completed: number | null, order: number | null): HostWorkItemDetail {
   return new HostWorkItemDetail(item, points, remaining, completed, order, null, [], [], 0, []);
@@ -33,7 +33,7 @@ describe("HostWorkItemDetail", () => {
   it("returns its work item, plan and links as JSON that reads back the same", () => {
     assert.deepEqual(detail.toJson(), {
       item: item.toJson(), points: 5, remaining: 6, completed: 8, order: 1000.5, acceptance: "Readers see a due date 48 h and 2 h before it is due.",
-      children: [4830, 4831, 4832], pullRequests: [pullRequest.toJson()], commits: 5, branches: ["users/ana/4821-export-notes-markdown"],
+      children: [7530, 7531, 7532], pullRequests: [pullRequest.toJson()], commits: 5, branches: ["users/kim/7521-export-notes-markdown"],
       isWaiting: true
     });
     assert.deepEqual(HostWorkItemDetail.fromJson(JSON.parse(JSON.stringify(detail.toJson()))), detail);
@@ -53,16 +53,16 @@ describe("HostWorkItemDetail", () => {
   });
 
   it("keeps its own copies of the children, pull requests and branches", () => {
-    const children: number[] = [4830];
+    const children: number[] = [7530];
     const pullRequests: HostReference[] = [pullRequest];
-    const branches: string[] = ["users/ana/4830"];
+    const branches: string[] = ["users/kim/7530"];
     const kept: HostWorkItemDetail = new HostWorkItemDetail(item, null, null, null, null, null, children, pullRequests, 0, branches);
 
-    children.push(4831);
+    children.push(7531);
     pullRequests.pop();
     branches.push("main");
 
-    assert.deepEqual([kept.children, kept.pullRequests, kept.branches], [[4830], [pullRequest], ["users/ana/4830"]]);
+    assert.deepEqual([kept.children, kept.pullRequests, kept.branches], [[7530], [pullRequest], ["users/kim/7530"]]);
   });
 
   it("refuses points or hours below zero or not finite, and an order that isn't finite, naming the parameter", () => {
@@ -88,8 +88,8 @@ describe("HostWorkItemDetail", () => {
       message: "The argument children is invalid: expected children, each once and none the work item itself." };
 
     assert.throws(() => linked(null, [0], 0, []), HostingArgumentException);
-    assert.throws(() => linked(null, [4830, 4830], 0, []), expected);
-    assert.throws(() => linked(null, [4821], 0, []), expected);
+    assert.throws(() => linked(null, [7530, 7530], 0, []), expected);
+    assert.throws(() => linked(null, [7521], 0, []), expected);
   });
 
   it("refuses JSON with a field it doesn't define or out of its range, naming the field by its path", () => {

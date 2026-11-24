@@ -14,7 +14,7 @@ import { GitPullRequestRow } from "../../../src/app/models/git-pull-request-row.
 
 describe("GitPullRequestList", () => {
   const rows: readonly GitPullRequestRow[] = [
-    new GitPullRequestRow("octocat/site#482", "#482", "Export notes as Markdown files", "https://github.com/octocat/site/pull/482", false, 1, 2, 0, 1, "export-notes", "main")
+    new GitPullRequestRow("octocat/site#752", "#752", "Export notes as Markdown files", "https://github.com/octocat/site/pull/752", false, 1, 2, 0, 1, "export-notes", "main")
   ];
   const read = (list: GitPullRequestList): readonly unknown[] => [list.state, list.rows, list.failure, list.hasMore];
 

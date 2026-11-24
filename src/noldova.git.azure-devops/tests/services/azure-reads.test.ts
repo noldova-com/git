@@ -205,8 +205,8 @@ describe("AzureReads", () => {
       description: "Readers see **due dates**." })),
       FakeAzure.json({ value: [evaluation("approved", "Minimum number of reviewers", true), evaluation("running", "Build", false, "0609b952-1397-4640-95ec-e00a01b2c241")] }),
       FakeAzure.json({ value: [build("completed", "succeeded"), build("inProgress", null)] }), FakeAzure.json({ count: 5, value: Array.from({ length: 5 }, () => ({})) }),
-      FakeAzure.json({ value: [{ id: "4821" }, { id: "4799" }] }),
-      FakeAzure.json({ value: [workItem({ "System.Title": "Export notes as Markdown files" }), { ...workItem({ "System.WorkItemType": "Bug", "System.State": "Triaged" }), id: 4799 }] }),
+      FakeAzure.json({ value: [{ id: "7521" }, { id: "7499" }] }),
+      FakeAzure.json({ value: [workItem({ "System.Title": "Export notes as Markdown files" }), { ...workItem({ "System.WorkItemType": "Bug", "System.State": "Triaged" }), id: 7499 }] }),
       FakeAzure.json(workItemType()), FakeAzure.json({ ...workItemType("Bug"), color: "CC293D", icon: { id: "icon_insect" } }));
     const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
 
@@ -224,11 +224,11 @@ describe("AzureReads", () => {
     ], true, "Readers see **due dates**.", 5, [
       new HostWorkItemLink(42, "Export notes as Markdown files", story, "Active", WorkItemCategory.InProgress,
         "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/42"),
-      new HostWorkItemLink(4799, "Sign in with a token", new HostWorkItemType("Bug", "CC293D", "icon_insect"), "Triaged", WorkItemCategory.Proposed,
-        "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/4799")
+      new HostWorkItemLink(7499, "Sign in with a token", new HostWorkItemType("Bug", "CC293D", "icon_insect"), "Triaged", WorkItemCategory.Proposed,
+        "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/7499")
     ], "squash"));
     assert.deepEqual(azure.urls(), [pullUrl, policiesUrl, buildsUrl, commitsUrl, linksUrl,
-      "https://dev.azure.com/fabrikam/_apis/wit/workitems?ids=4821,4799&fields=System.Title,System.State,System.WorkItemType,System.TeamProject&api-version=7.1",
+      "https://dev.azure.com/fabrikam/_apis/wit/workitems?ids=7521,7499&fields=System.Title,System.State,System.WorkItemType,System.TeamProject&api-version=7.1",
       typeUrl, "https://dev.azure.com/fabrikam/Web%20Site/_apis/wit/workitemtypes/Bug?api-version=7.1"]);
   });
 
@@ -329,7 +329,7 @@ describe("AzureReads", () => {
   it("fails as Unavailable for a linked work item whose id isn't a number", async () => {
     const azure = new FakeAzure();
     azure.answer(FakeAzure.json(pull()), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }),
-      FakeAzure.json({ value: [{ id: "4821a" }] }));
+      FakeAzure.json({ value: [{ id: "7521a" }] }));
     const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
 
     assert.equal(failureOf(await reads.readPullRequestAsync(reference, signal).then(() => null, (t: unknown) => t)), FailureCode.Unavailable);
@@ -1287,7 +1287,7 @@ describe("AzureReads, work items", () => {
 
     assert.deepEqual(read, [bare(itemOf(40, "Export all notes", null)),
       new HostWorkItemDetail(storyItem, 5, null, null, 1000.5, "Readers see a due date & a note.\n\n48 h\n2 h", [43],
-        [new HostReference("git-azure-devops", "fabrikam", repositoryId, 482)], 2, ["users/ana/42-sign-in"]),
+        [new HostReference("git-azure-devops", "fabrikam", repositoryId, 752)], 2, ["users/kim/42-sign-in"]),
       new HostWorkItemDetail(itemOf(43, "Export the note", 42), 3, 4, 2.5, 20, null, [], [], 0, [])]);
     assert.deepEqual(azure.urls(), [typesUrl, wiqlUrl, batchUrl, batchUrl, typeUrl]);
     assert.deepEqual([azure.requests[1]?.init.method, azure.requests[1]?.header("Content-Type"), azure.requests[1]?.body, azure.requests[2]?.body,

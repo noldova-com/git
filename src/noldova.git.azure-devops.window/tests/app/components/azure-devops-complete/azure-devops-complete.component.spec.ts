@@ -26,14 +26,14 @@ import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixt
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
 const REPOSITORY: string = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
-const URL: string = "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/482";
+const URL: string = "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/752";
 const COMMIT: string = "0123456789abcdef0123456789abcdef01234567";
-const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 482);
-const changes: HostChanges = new HostChanges(null, null, null, "users/monalisa/4821-export-notes", "main", COMMIT);
+const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752);
+const changes: HostChanges = new HostChanges(null, null, null, "users/monalisa/7521-export-notes", "main", COMMIT);
 const story: HostWorkItemType = new HostWorkItemType("User Story", "009CCC", "icon_book");
 const ALL: JsonValue = ["noFastForward", "squash", "rebase", "rebaseMerge"];
 
-function pullRequestOf(number: number = 482, policies: readonly HostPolicy[] = [], workItems: readonly number[] = [4821, 4799], isAutoComplete: boolean = false):
+function pullRequestOf(number: number = 752, policies: readonly HostPolicy[] = [], workItems: readonly number[] = [7521, 7499], isAutoComplete: boolean = false):
   HostPullRequest {
   const item = new HostItem(new HostReference("git-azure-devops", "fabrikam", REPOSITORY, number), ReferenceKind.PullRequest, ReferenceState.Open,
     "Export notes as Markdown files", URL, new HostPerson("monalisa@fabrikam.com", null, null), 1_800_000_000_000, null, 0, changes);
@@ -200,8 +200,8 @@ describe("AzureDevOpsCompleteComponent", () => {
     expect([...panel.element.querySelectorAll("nol-radio input")].map(t => [t.getAttribute("aria-disabled"), t instanceof HTMLInputElement && t.checked]))
       .toEqual([["true", false], [null, true], ["true", false], [null, false]]);
     expect(panel.texts(".choice.on")).toEqual(["Squash commit One commit on main, history kept in the PR"]);
-    expect(panel.message.value).toBe("Merged PR 482: Export notes as Markdown files\n\nRelated work items: #4821, #4799");
-    expect(panel.texts("nol-checkbox")).toEqual(["Complete linked work items after merging", "Delete users/monalisa/4821-export-notes"]);
+    expect(panel.message.value).toBe("Merged PR 752: Export notes as Markdown files\n\nRelated work items: #7521, #7499");
+    expect(panel.texts("nol-checkbox")).toEqual(["Complete linked work items after merging", "Delete users/monalisa/7521-export-notes"]);
     expect([panel.element.querySelector(".blocking"), panel.isDisabled(".complete-merge"), panel.texts(".complete-title")]).toEqual([null, false, ["Complete"]]);
   });
 
@@ -218,19 +218,19 @@ describe("AzureDevOpsCompleteComponent", () => {
     await panel.clickAsync(".confirm-action");
     await panel.untilAsync(() => panel.host.completions() === 1);
 
-    expect(confirm).toEqual(["Complete !482 with Semi-linear merge into main, then deletes users/monalisa/4821-export-notes and completes 2 linked work items? "
+    expect(confirm).toEqual(["Complete !752 with Semi-linear merge into main, then deletes users/monalisa/7521-export-notes and completes 2 linked work items? "
       + "This merges it in Azure DevOps as you. Cancel Complete merge"]);
     expect([askedFirst, panel.completions]).toEqual([0, [{ reference: reference.toJson(), sourceCommit: COMMIT, targetBranch: "main", mergeType: "rebaseMerge",
-      message: "Merged PR 482: Export notes as Markdown files\n\nRelated work items: #4821, #4799", completeWorkItems: true, deleteSourceBranch: true }]]);
+      message: "Merged PR 752: Export notes as Markdown files\n\nRelated work items: #7521, #7499", completeWorkItems: true, deleteSourceBranch: true }]]);
   });
 
   it("sends no message for a fast-forward, the edited one otherwise, and neither option the person clears, naming only what is left", async () => {
     const panel = new Panel();
     panel.requests.answer(AzureDevOpsNames.readMergeTypesMethod, ALL);
     panel.requests.answer(AzureDevOpsNames.completePullRequestMethod, null, null);
-    await panel.openAsync(pullRequestOf(482, [], [4821]));
+    await panel.openAsync(pullRequestOf(752, [], [7521]));
 
-    await panel.typeAsync("Merged PR 482: export-notes");
+    await panel.typeAsync("Merged PR 752: export-notes");
     await panel.clickAsync(".work-items input");
     await panel.clickAsync(".delete-branch input");
     await panel.clickAsync(".complete-merge");
@@ -245,10 +245,10 @@ describe("AzureDevOpsCompleteComponent", () => {
     await panel.clickAsync(".confirm-action");
     await panel.untilAsync(() => panel.host.completions() === 2);
 
-    expect([plain, field, one]).toEqual([["Complete !482 with Merge, no fast-forward into main? This merges it in Azure DevOps as you."], null,
-      ["Complete !482 with Rebase and fast-forward into main, then completes 1 linked work item? This merges it in Azure DevOps as you."]]);
+    expect([plain, field, one]).toEqual([["Complete !752 with Merge, no fast-forward into main? This merges it in Azure DevOps as you."], null,
+      ["Complete !752 with Rebase and fast-forward into main, then completes 1 linked work item? This merges it in Azure DevOps as you."]]);
     expect(panel.completions).toEqual([
-      { reference: reference.toJson(), sourceCommit: COMMIT, targetBranch: "main", mergeType: "noFastForward", message: "Merged PR 482: export-notes",
+      { reference: reference.toJson(), sourceCommit: COMMIT, targetBranch: "main", mergeType: "noFastForward", message: "Merged PR 752: export-notes",
         completeWorkItems: false, deleteSourceBranch: false },
       { reference: reference.toJson(), sourceCommit: COMMIT, targetBranch: "main", mergeType: "rebase", message: null, completeWorkItems: true,
         deleteSourceBranch: false }]);
@@ -258,7 +258,7 @@ describe("AzureDevOpsCompleteComponent", () => {
     const panel = new Panel();
     panel.requests.answer(AzureDevOpsNames.readMergeTypesMethod, ALL);
     panel.requests.answer(AzureDevOpsNames.completePullRequestMethod, null);
-    await panel.openAsync(pullRequestOf(482, [], []));
+    await panel.openAsync(pullRequestOf(752, [], []));
 
     const checked: boolean = panel.element.querySelector<HTMLInputElement>(".work-items input")?.checked ?? false;
     await panel.clickAsync(".complete-merge");
@@ -267,16 +267,16 @@ describe("AzureDevOpsCompleteComponent", () => {
     await panel.untilAsync(() => panel.host.completions() === 1);
 
     expect([checked, confirm]).toEqual([true,
-      ["Complete !482 with Merge, no fast-forward into main, then deletes users/monalisa/4821-export-notes? This merges it in Azure DevOps as you."]]);
+      ["Complete !752 with Merge, no fast-forward into main, then deletes users/monalisa/7521-export-notes? This merges it in Azure DevOps as you."]]);
     expect(panel.completions).toEqual([{ reference: reference.toJson(), sourceCommit: COMMIT, targetBranch: "main", mergeType: "noFastForward",
-      message: "Merged PR 482: Export notes as Markdown files", completeWorkItems: false, deleteSourceBranch: true }]);
+      message: "Merged PR 752: Export notes as Markdown files", completeWorkItems: false, deleteSourceBranch: true }]);
   });
 
   it("sets auto-complete with the panel's choices after one confirm, while a required policy still blocks Complete merge", async () => {
     const panel = new Panel();
     panel.requests.answer(AzureDevOpsNames.readMergeTypesMethod, ALL);
     panel.requests.answer(AzureDevOpsNames.setAutoCompleteMethod, null);
-    await panel.openAsync(pullRequestOf(482, [new HostPolicy("Comment requirements", PolicyState.Rejected, true, null)], [4821]));
+    await panel.openAsync(pullRequestOf(752, [new HostPolicy("Comment requirements", PolicyState.Rejected, true, null)], [7521]));
 
     await panel.chooseAsync("Squash commit");
     await panel.clickAsync(".delete-branch input");
@@ -286,10 +286,10 @@ describe("AzureDevOpsCompleteComponent", () => {
     await panel.clickAsync(".confirm-action");
     await panel.untilAsync(() => panel.host.completions() === 1);
 
-    expect([held, confirm, askedFirst]).toEqual([true, ["Set !482 to complete by itself with Squash commit into main once its policies pass, then completes 1 linked "
+    expect([held, confirm, askedFirst]).toEqual([true, ["Set !752 to complete by itself with Squash commit into main once its policies pass, then completes 1 linked "
       + "work item? Azure DevOps then merges it as you, without asking again. Cancel Set auto-complete"], 0]);
     expect([panel.payloadsOf(AzureDevOpsNames.setAutoCompleteMethod), panel.completions, panel.host.pulls]).toEqual([[{ reference: reference.toJson(),
-      sourceCommit: COMMIT, targetBranch: "main", mergeType: "squash", message: "Merged PR 482: Export notes as Markdown files\n\nRelated work items: #4821",
+      sourceCommit: COMMIT, targetBranch: "main", mergeType: "squash", message: "Merged PR 752: Export notes as Markdown files\n\nRelated work items: #7521",
       completeWorkItems: true, deleteSourceBranch: false }], [], [null]]);
   });
 
@@ -309,23 +309,23 @@ describe("AzureDevOpsCompleteComponent", () => {
   it("asks nothing for auto-complete while the message is blank, and names no work items it won't complete", async () => {
     const panel = new Panel();
     panel.requests.answer(AzureDevOpsNames.readMergeTypesMethod, ALL);
-    await panel.openAsync(pullRequestOf(482, [], []));
+    await panel.openAsync(pullRequestOf(752, [], []));
 
     await panel.typeAsync(" ");
     const blank: string[] = await panel.askAsync(".set-auto-complete");
     const able: boolean = !panel.isDisabled(".set-auto-complete");
-    await panel.typeAsync("Merged PR 482");
+    await panel.typeAsync("Merged PR 752");
     const filled: string[] = await panel.askAsync(".set-auto-complete");
 
-    expect([blank, able, filled]).toEqual([[], false, ["Set !482 to complete by itself with Merge, no fast-forward into main once its policies pass, then deletes "
-      + "users/monalisa/4821-export-notes? Azure DevOps then merges it as you, without asking again. Cancel Set auto-complete"]]);
+    expect([blank, able, filled]).toEqual([[], false, ["Set !752 to complete by itself with Merge, no fast-forward into main once its policies pass, then deletes "
+      + "users/monalisa/7521-export-notes? Azure DevOps then merges it as you, without asking again. Cancel Set auto-complete"]]);
   });
 
   it("cancels auto-complete after one confirm, sending nothing when the person keeps it, and says the block then merges without them", async () => {
     const panel = new Panel();
     panel.requests.answer(AzureDevOpsNames.readMergeTypesMethod, ALL);
     panel.requests.answer(AzureDevOpsNames.cancelAutoCompleteMethod, null);
-    await panel.openAsync(pullRequestOf(482, [new HostPolicy("Comment requirements", PolicyState.Rejected, true, null)], [], true));
+    await panel.openAsync(pullRequestOf(752, [new HostPolicy("Comment requirements", PolicyState.Rejected, true, null)], [], true));
 
     const blocking: string[] = panel.texts(".blocking");
     const kept: string[] = await panel.askAsync(".cancel-auto-complete");
@@ -336,7 +336,7 @@ describe("AzureDevOpsCompleteComponent", () => {
     await panel.untilAsync(() => panel.host.completions() === 1);
 
     expect([blocking, kept, sentKept]).toEqual([["error 1 policy blocks completion Comment requirements Auto-complete then merges it without you."],
-      ["Stop !482 from completing by itself? It stays open until someone completes it. Keep auto-complete Cancel auto-complete"], 0]);
+      ["Stop !752 from completing by itself? It stays open until someone completes it. Keep auto-complete Cancel auto-complete"], 0]);
     expect([panel.payloadsOf(AzureDevOpsNames.cancelAutoCompleteMethod), panel.host.pulls]).toEqual([[reference.toJson()], [null]]);
   });
 
@@ -351,7 +351,7 @@ describe("AzureDevOpsCompleteComponent", () => {
     await panel.clickAsync(".confirm-action");
     await panel.untilAsync(() => panel.host.completions() === 1);
 
-    expect(confirm).toEqual(["Abandon !482? It closes without merging; Azure DevOps can reactivate it. Cancel Abandon"]);
+    expect(confirm).toEqual(["Abandon !752? It closes without merging; Azure DevOps can reactivate it. Cancel Abandon"]);
     expect([panel.payloadsOf(AzureDevOpsNames.abandonPullRequestMethod), panel.completions]).toEqual([[{ reference: reference.toJson(), sourceCommit: COMMIT }], []]);
   });
 
@@ -445,13 +445,13 @@ describe("AzureDevOpsCompleteComponent", () => {
   it("names the required policies that block completion and holds Complete merge while one does", async () => {
     const panel = new Panel();
     panel.requests.answer(AzureDevOpsNames.readMergeTypesMethod, ALL);
-    await panel.openAsync(pullRequestOf(482, [new HostPolicy("Minimum number of reviewers", PolicyState.Approved, true, null),
+    await panel.openAsync(pullRequestOf(752, [new HostPolicy("Minimum number of reviewers", PolicyState.Approved, true, null),
       new HostPolicy("Comment requirements", PolicyState.Rejected, true, null), new HostPolicy("Build", PolicyState.Running, true, null),
       new HostPolicy("Work item linking", PolicyState.Rejected, false, null)]));
     const two: string[] = panel.texts(".blocking");
     const held: boolean = panel.isDisabled(".complete-merge");
 
-    panel.host.pullRequest.set(pullRequestOf(482, [new HostPolicy("Comment requirements", PolicyState.Running, true, null)]));
+    panel.host.pullRequest.set(pullRequestOf(752, [new HostPolicy("Comment requirements", PolicyState.Running, true, null)]));
     await panel.settleAsync();
 
     expect([two, held, panel.texts(".blocking")]).toEqual([["error 2 policies block completion Comment requirements Build"], true,

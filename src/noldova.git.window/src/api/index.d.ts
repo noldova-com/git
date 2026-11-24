@@ -432,7 +432,7 @@ export declare enum GitPullRequestsState {
 export declare class GitPullRequestRow {
   /** The host's own key for it, such as its id; the window never reads it, and gives it back to the host's open(). */
   public readonly key: string;
-  /** The host's label for it, such as "#214" or "!482". */
+  /** The host's label for it, such as "#214" or "!752". */
   public readonly label: string;
   public readonly title: string;
   /** Its page on the host, which a click opens unless the host opens it itself. */
@@ -633,7 +633,7 @@ export declare enum GitHostCardState {
  * ```ts
  * import { GitHostCard, GitHostCardState } from "@noldova/git.window";
  *
- * export const signedIn: GitHostCard = new GitHostCard("GitHub · ana", "Device sign-in", GitHostCardState.SignedIn, "Signed in");
+ * export const signedIn: GitHostCard = new GitHostCard("GitHub · kim", "Device sign-in", GitHostCardState.SignedIn, "Signed in");
  * ```
  */
 export declare class GitHostCard {
@@ -903,7 +903,7 @@ export declare class GitAvatars {
    * ```ts
    * import { GitAvatars } from "@noldova/git.window";
    *
-   * export const picture: string | null = GitAvatars.imageOf("/home/a/repo", "ana@example.com", "0123456789abcdef0123456789abcdef01234567");
+   * export const picture: string | null = GitAvatars.imageOf("/home/a/repo", "kim@example.com", "0123456789abcdef0123456789abcdef01234567");
    * ```
    */
   public static imageOf(folder: string, email: string, commitId: string): string | null;
@@ -927,7 +927,7 @@ export declare class GitCommitPrefixes {
    * import { GitCommitPrefixes } from "@noldova/git.window";
    *
    * export function addPrefixes(context: IWindowPartContext): () => void {
-   *   return GitCommitPrefixes.provide(context, { prefixFor: (_folder, branch) => branch === "users/ana/4821-export-notes" ? "AB#4821 " : null });
+   *   return GitCommitPrefixes.provide(context, { prefixFor: (_folder, branch) => branch === "users/kim/7521-export-notes" ? "AB#7521 " : null });
    * }
    * ```
    */

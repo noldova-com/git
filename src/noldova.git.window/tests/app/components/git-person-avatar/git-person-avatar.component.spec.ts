@@ -33,7 +33,7 @@ const given: string = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAI
 class PeopleComponent {
   public static host: TestPullRequestHost = new TestPullRequestHost();
   protected readonly host: TestPullRequestHost = PeopleComponent.host;
-  protected readonly reference: HostReference = new HostReference("git-example", "fabrikam", "site", 482);
+  protected readonly reference: HostReference = new HostReference("git-example", "fabrikam", "site", 752);
   protected readonly small: AvatarSize = AvatarSize.Small;
   protected readonly given: string = given;
 }

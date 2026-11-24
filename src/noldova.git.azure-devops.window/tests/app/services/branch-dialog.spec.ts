@@ -46,6 +46,6 @@ describe("BranchDialog", () => {
     cancel.click();
     await settleAsync();
 
-    expect([title, page.requests.methods.length > 0, open, TestBed.inject(Dialog).openDialogs.length]).toEqual(["Create a branch for 4832", true, 1, 0]);
+    expect([title, page.requests.methods.length > 0, open, TestBed.inject(Dialog).openDialogs.length]).toEqual(["Create a branch for 7532", true, 1, 0]);
   });
 });

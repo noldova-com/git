@@ -24,10 +24,10 @@ function detail(id: number, type: HostWorkItemType, state: string, assignee: Hos
 }
 
 const details: readonly HostWorkItemDetail[] = [
-  detail(4830, task, "Active", monalisa, "Sample Project\\Sprint 47"),
-  detail(4799, bug, "Resolved", octocat, "Sample Project\\Sprint 47"),
-  detail(4832, task, "New", null, "Sample Project\\Sprint 48"),
-  detail(4811, bug, "Active", monalisa, null)
+  detail(7530, task, "Active", monalisa, "Sample Project\\Sprint 17"),
+  detail(7499, bug, "Resolved", octocat, "Sample Project\\Sprint 17"),
+  detail(7532, task, "New", null, "Sample Project\\Sprint 18"),
+  detail(7511, bug, "Active", monalisa, null)
 ];
 
 function idsOf(shown: readonly HostWorkItemDetail[]): readonly number[] {
@@ -37,20 +37,20 @@ function idsOf(shown: readonly HostWorkItemDetail[]): readonly number[] {
 describe("WorkItemFilter", () => {
   it("shows every work item, in its order, with nothing chosen", () => {
     expect([idsOf(WorkItemFilter.none.apply(details)), Object.values(WorkItemFacet).map(t => WorkItemFilter.none.of(t))])
-      .toEqual([[4830, 4799, 4832, 4811], [null, null]]);
+      .toEqual([[7530, 7499, 7532, 7511], [null, null]]);
   });
 
   it("shows only the work items with each chosen state and type", () => {
     const filters: readonly WorkItemFilter[] = [WorkItemFilter.none.with(WorkItemFacet.State, "Active"), WorkItemFilter.none.with(WorkItemFacet.Type, "Bug"),
       WorkItemFilter.none.with(WorkItemFacet.State, "Active").with(WorkItemFacet.Type, "Bug")];
 
-    expect(filters.map(t => idsOf(t.apply(details)))).toEqual([[4830, 4811], [4799, 4811], [4811]]);
+    expect(filters.map(t => idsOf(t.apply(details)))).toEqual([[7530, 7511], [7499, 7511], [7511]]);
   });
 
   it("shows every value again once a facet's choice is cleared, keeping the others", () => {
     const filter: WorkItemFilter = WorkItemFilter.none.with(WorkItemFacet.State, "Active").with(WorkItemFacet.Type, "Bug").with(WorkItemFacet.State, null);
 
-    expect([filter.of(WorkItemFacet.State), filter.of(WorkItemFacet.Type), idsOf(filter.apply(details))]).toEqual([null, "Bug", [4799, 4811]]);
+    expect([filter.of(WorkItemFacet.State), filter.of(WorkItemFacet.Type), idsOf(filter.apply(details))]).toEqual([null, "Bug", [7499, 7511]]);
   });
 
   it("gives each facet's values once, sorted", () => {

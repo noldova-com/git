@@ -116,7 +116,7 @@ describe("GitHubWindowPart", () => {
     answers.answer(GitHubNames.readAuthorAvatarMethod, new HostAvatar(picture).toJson());
 
     await part.activateAsync(context);
-    const imageOf = (): string | null => GitAvatars.imageOf("/repository", "ana@example.com", "6dcb09b5b57875f334f61aebed695e2e4193db5e");
+    const imageOf = (): string | null => GitAvatars.imageOf("/repository", "kim@example.com", "6dcb09b5b57875f334f61aebed695e2e4193db5e");
     const before = imageOf();
     await Wait.until(() => expect(imageOf()).toBe(picture));
     await part.deactivateAsync();

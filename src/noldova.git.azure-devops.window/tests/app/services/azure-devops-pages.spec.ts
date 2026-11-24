@@ -18,8 +18,8 @@ describe("AzureDevOpsPages", () => {
   it("opens a pull request's address as its page, its repository's id in lower case, titled with its number", () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
 
-    expect(AzureDevOpsPages.open(context, null, "https://dev.azure.com/fabrikam/web/_git/3F2504E0-4F89-11D3-9A0C-0305E82C3301/pullrequest/482")).toBe(true);
-    expect(context.callsOf("openDocument")).toEqual([["git-azure-devops.pullRequest", "fabrikam/3f2504e0-4f89-11d3-9a0c-0305e82c3301/482", "!482"]]);
+    expect(AzureDevOpsPages.open(context, null, "https://dev.azure.com/fabrikam/web/_git/3F2504E0-4F89-11D3-9A0C-0305E82C3301/pullrequest/752")).toBe(true);
+    expect(context.callsOf("openDocument")).toEqual([["git-azure-devops.pullRequest", "fabrikam/3f2504e0-4f89-11d3-9a0c-0305e82c3301/752", "!752"]]);
   });
 
   it("opens a work item's address in the My work items page of its own project, or of the open repository's project when the address names none in the same organization", () => {

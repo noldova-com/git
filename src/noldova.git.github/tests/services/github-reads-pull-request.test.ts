@@ -87,8 +87,8 @@ describe("GitHubReads, a pull request's page", () => {
       const rig = new Rig();
       const png: Uint8Array<ArrayBuffer> = Uint8Array.from([137, 80, 78, 71]);
       const reviews = [review("monalisa", "APPROVED"), review("monalisa", "COMMENTED"), review("hubot", "APPROVED"), review("mona", "CHANGES_REQUESTED"),
-        review("lisa", "APPROVED"), review("lisa", "DISMISSED"), review("ana", "COMMENTED"), { user: null, state: "APPROVED", author_association: "NONE" },
-        review("octocat", "COMMENTED"), review("pat", "PENDING"), review("ana", "PENDING")];
+        review("lisa", "APPROVED"), review("lisa", "DISMISSED"), review("kim", "COMMENTED"), { user: null, state: "APPROVED", author_association: "NONE" },
+        review("octocat", "COMMENTED"), review("pat", "PENDING"), review("kim", "PENDING")];
       const runs = [
         { name: "build", status: "completed", conclusion: "success", html_url: "https://github.com/octocat/hello-world/runs/1", started_at: at(1), completed_at: at(4) },
         { name: "lint", status: "in_progress", conclusion: null, html_url: null, started_at: at(2), completed_at: at(3) },
@@ -105,7 +105,7 @@ describe("GitHubReads, a pull request's page", () => {
       assert.deepEqual(read, new HostPullRequest(new HostItem(reference, ReferenceKind.PullRequest, ReferenceState.Open, "Fix the bug", pull.html_url,
         new HostPerson("octocat", avatar, "https://github.com/octocat"), Date.parse(created), null, 1, item.changes), [
         new HostReviewer(personOf("monalisa"), 1, "Approved", false), new HostReviewer(personOf("mona"), -1, "Changes requested", false),
-        new HostReviewer(personOf("lisa"), 0, "Commented", false), new HostReviewer(personOf("ana"), 0, "Commented", false),
+        new HostReviewer(personOf("lisa"), 0, "Commented", false), new HostReviewer(personOf("kim"), 0, "Commented", false),
         new HostReviewer(personOf("hubot"), 0, "Review requested", false), new HostReviewer(personOf("octo"), 0, "Review requested", false),
         new HostReviewer(new HostPerson("Web", null, "https://github.com/orgs/octocat/teams/web"), 0, "Review requested", false)
       ], [], [

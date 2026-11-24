@@ -19,11 +19,11 @@ describe("GitMessageReference", () => {
   const id = "0123456789abcdef0123456789abcdef01234567";
 
   it("keeps its commit id and a copy of its numbers in order, and reads back the same", () => {
-    const numbers: number[] = [4831, 1, 9_999_999_999];
+    const numbers: number[] = [7531, 1, 9_999_999_999];
     const reference = new GitMessageReference(id, numbers);
     numbers.push(2);
 
-    assert.deepEqual(reference.toJson(), { id, numbers: [4831, 1, 9_999_999_999] });
+    assert.deepEqual(reference.toJson(), { id, numbers: [7531, 1, 9_999_999_999] });
     assert.deepEqual(GitMessageReference.fromJson(JSON.parse(JSON.stringify(reference.toJson()))), reference);
   });
 

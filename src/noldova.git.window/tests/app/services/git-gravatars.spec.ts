@@ -19,11 +19,11 @@ describe("GitGravatars", () => {
     GitFixtures.answerWith(context, { "git.avatar": { image: "data:image/png;base64,QQ==" } });
     const gravatars: GitGravatars = new GitGravatars(new GitRuntimeClient(context));
 
-    const reading = gravatars.avatarOf("/repository", " Ana@Example.com", "a1");
-    await GitFixtures.untilAsync(() => gravatars.avatarOf("/other", "ana@example.com", "b2") !== undefined);
+    const reading = gravatars.avatarOf("/repository", " Kim@Example.com", "a1");
+    await GitFixtures.untilAsync(() => gravatars.avatarOf("/other", "kim@example.com", "b2") !== undefined);
 
-    expect([reading, gravatars.avatarOf("/repository", "ANA@example.com", "c3")]).toEqual([undefined, "data:image/png;base64,QQ=="]);
-    expect(context.callsOf("requestAsync")).toEqual([["git.avatar", { email: "ana@example.com" }]]);
+    expect([reading, gravatars.avatarOf("/repository", "KIM@example.com", "c3")]).toEqual([undefined, "data:image/png;base64,QQ=="]);
+    expect(context.callsOf("requestAsync")).toEqual([["git.avatar", { email: "kim@example.com" }]]);
   });
 
   it("answers null for an email Gravatar has no picture for, for one it couldn't read, and for an empty one without asking", async () => {

@@ -122,13 +122,13 @@ describe("AzureDevOpsWindowPart", () => {
       const context: FakeWindowPartContext = new FakeWindowPartContext();
       new RequestAnswers(context).answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson(), HostSignIn.signedOut().toJson());
       await part.activateAsync(context);
-      AzureDevOpsCommitPrefixes.keep("/repository", "users/ana/42-sign-in", 42);
-      const kept = ["main", "users/ana/42-sign-in"].map(t => GitCommitPrefixes.prefixFor("/repository", t));
-      const elsewhere = GitCommitPrefixes.prefixFor("/other", "users/ana/42-sign-in");
+      AzureDevOpsCommitPrefixes.keep("/repository", "users/kim/42-sign-in", 42);
+      const kept = ["main", "users/kim/42-sign-in"].map(t => GitCommitPrefixes.prefixFor("/repository", t));
+      const elsewhere = GitCommitPrefixes.prefixFor("/other", "users/kim/42-sign-in");
       await part.deactivateAsync();
-      const withdrawn = [GitCommitPrefixes.prefixFor("/repository", "users/ana/42-sign-in"), context.activeCallsOf("onEvent").length];
+      const withdrawn = [GitCommitPrefixes.prefixFor("/repository", "users/kim/42-sign-in"), context.activeCallsOf("onEvent").length];
       await part.activateAsync(context);
-      const restored = GitCommitPrefixes.prefixFor("/repository", "users/ana/42-sign-in");
+      const restored = GitCommitPrefixes.prefixFor("/repository", "users/kim/42-sign-in");
       await part.deactivateAsync();
 
       expect([kept, elsewhere, withdrawn, restored]).toEqual([[null, "#42 "], null, [null, 0], "#42 "]);
@@ -314,14 +314,14 @@ describe("AzureDevOpsWindowPart", () => {
     const selection = WorkItemSelection.of(context);
     const choiceOf = (id: number): WorkItemChoice => new WorkItemChoice(new WorkItemsPlace("fabrikam", "Sample Project", null),
       detailOf(itemOf(id, story, `Story ${id}`, "Active", WorkItemCategory.InProgress, null)), []);
-    selection.showOnce(choiceOf(4702));
-    selection.showChosen(choiceOf(4790));
+    selection.showOnce(choiceOf(7402));
+    selection.showChosen(choiceOf(7490));
     context.raiseViewClosed("git-azure-devops.workItemDetail", "selected");
-    selection.showChosen(choiceOf(4821));
+    selection.showChosen(choiceOf(7521));
     const listening: number = context.activeCallsOf("onViewClosed").length;
     await part.deactivateAsync();
 
-    expect([context.callsOf("openView").map(t => t[2]), listening, context.activeCallsOf("onViewClosed")]).toEqual([["Work item 4702", "Work item 4821"], 2, []]);
+    expect([context.callsOf("openView").map(t => t[2]), listening, context.activeCallsOf("onViewClosed")]).toEqual([["Work item 7402", "Work item 7521"], 2, []]);
   });
 
   it("opens the Pull request view again for the next pull request read once the person closed it, and stops listening when it deactivates", async () => {
@@ -364,7 +364,7 @@ describe("AzureDevOpsWindowPart", () => {
     expect(manifest.contributes.commands).toEqual(["git-azure-devops.openWorkItems"]);
     expect(ran).toEqual([null]);
     expect(context.callsOf("openDocument")).toEqual([["git-azure-devops.workItems", "fabrikam/Sample%20Project", "My work items"]]);
-    for (const instance of ["fabrikam", "fabrikam/Sample%20Project/4821", "-bad/web"])
+    for (const instance of ["fabrikam", "fabrikam/Sample%20Project/7521", "-bad/web"])
       await expect(commands[0]?.runAsync({ instance })).rejects.toMatchObject({ name: "ArgumentException", parameterName: "instance",
         message: expect.stringContaining("The command opens an Azure DevOps project named as organization/project.") });
     await expect(commands[0]?.runAsync({})).rejects.toThrow();

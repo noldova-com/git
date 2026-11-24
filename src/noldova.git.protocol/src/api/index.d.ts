@@ -3483,7 +3483,7 @@ export declare class GitWorktree {
  * @example
  * ```ts
  * import { GitAvatarParams } from "@noldova/git.protocol";
- * export const params: GitAvatarParams = new GitAvatarParams("ana@example.com");
+ * export const params: GitAvatarParams = new GitAvatarParams("kim@example.com");
  * ```
  */
 export declare class GitAvatarParams {
@@ -3500,7 +3500,7 @@ export declare class GitAvatarParams {
    * @example
    * ```ts
    * import { GitAvatarParams } from "@noldova/git.protocol";
-   * export const params: GitAvatarParams = new GitAvatarParams("ana@example.com");
+   * export const params: GitAvatarParams = new GitAvatarParams("kim@example.com");
    * ```
    */
   public constructor(email: string, reader?: JsonReader);
@@ -3515,7 +3515,7 @@ export declare class GitAvatarParams {
    * @example
    * ```ts
    * import { GitAvatarParams } from "@noldova/git.protocol";
-   * export const params: GitAvatarParams = GitAvatarParams.fromJson({ email: "ana@example.com" });
+   * export const params: GitAvatarParams = GitAvatarParams.fromJson({ email: "kim@example.com" });
    * ```
    */
   public static fromJson(value: unknown, path?: string): GitAvatarParams;
@@ -3526,7 +3526,7 @@ export declare class GitAvatarParams {
    * @example
    * ```ts
    * import { GitAvatarParams, type JsonObject } from "@noldova/git.protocol";
-   * export const json: JsonObject = new GitAvatarParams("ana@example.com").toJson();
+   * export const json: JsonObject = new GitAvatarParams("kim@example.com").toJson();
    * ```
    */
   public toJson(): JsonObject;
@@ -6379,7 +6379,7 @@ export declare class GitMarkerCheck {
  * @example
  * ```ts
  * import { GitMessageReference } from "@noldova/git.protocol";
- * export const reference: GitMessageReference = new GitMessageReference("0123456789abcdef0123456789abcdef01234567", [4831]);
+ * export const reference: GitMessageReference = new GitMessageReference("0123456789abcdef0123456789abcdef01234567", [7531]);
  * ```
  */
 export declare class GitMessageReference {

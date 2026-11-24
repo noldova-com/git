@@ -159,7 +159,7 @@ describe("GitHubApi", () => {
   it("names when GitHub's rate limit resets, for a 403 with no requests left or a 429, and calls any other 403 a refusal", async () => {
     const github = new FakeGitHub();
     github.answer(FakeGitHub.json({ message: "API rate limit exceeded" }, 403, { "X-RateLimit-Remaining": "0", "X-RateLimit-Reset": "1800003600" }),
-      FakeGitHub.json({ message: "Too many requests" }, 429), FakeGitHub.json({ message: "Forbidden" }, 403, { "X-RateLimit-Remaining": "4999" }),
+      FakeGitHub.json({ message: "Too many requests" }, 429), FakeGitHub.json({ message: "Forbidden" }, 403, { "X-RateLimit-Remaining": "7699" }),
       FakeGitHub.json({ message: "API rate limit exceeded" }, 429, { "X-RateLimit-Reset": "soon" }));
     const api = new GitHubApi(github.fetch);
     const failures: unknown[] = [];

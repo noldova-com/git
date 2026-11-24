@@ -22,7 +22,7 @@ import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixt
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
 const REPOSITORY: string = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
-const URL: string = "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/482";
+const URL: string = "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/752";
 const HEAD: string = "9fceb02d0ae598e95dc970b74767f19372d61af8";
 const COMMON: string = "0123456789abcdef0123456789abcdef01234567";
 const OLD: number = Date.UTC(2026, 0, 5, 12);
@@ -36,7 +36,7 @@ function pinNow(): void {
     vi.useRealTimers();
   });
 }
-const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 482);
+const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752);
 const other: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 7);
 const monalisa: HostPerson = new HostPerson("monalisa@fabrikam.com", null, null);
 const azureStatus: GitStatus = new GitStatus("main", "a".repeat(40), null, [], false, "f1", null,

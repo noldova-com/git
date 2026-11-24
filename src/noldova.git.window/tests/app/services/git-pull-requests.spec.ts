@@ -85,7 +85,7 @@ describe("GitPullRequests", () => {
 });
 
 describe("GitPullRequestList", () => {
-  const row: GitPullRequestRow = new GitPullRequestRow("fabrikam/0f1e/482", "!482", "Export notes as Markdown files", "https://dev.example.com/pr/482", true, 2, 3, 1, 0, "feature/export-notes");
+  const row: GitPullRequestRow = new GitPullRequestRow("fabrikam/0f1e/752", "!752", "Export notes as Markdown files", "https://dev.example.com/pr/752", true, 2, 3, 1, 0, "feature/export-notes");
 
   it("holds each state of a host's read, with its rows or why it failed", () => {
     const lists: GitPullRequestList[] = [
@@ -97,7 +97,7 @@ describe("GitPullRequestList", () => {
       [GitPullRequestsState.SignedOut, [], null], [GitPullRequestsState.Failed, [], "No answer."]
     ]);
     expect([row.key, row.label, row.title, row.url, row.isDraft, row.approvals, row.passed, row.failing, row.pending, row.headBranch, row.baseBranch]).toEqual([
-      "fabrikam/0f1e/482", "!482", "Export notes as Markdown files", "https://dev.example.com/pr/482", true, 2, 3, 1, 0, "feature/export-notes", null
+      "fabrikam/0f1e/752", "!752", "Export notes as Markdown files", "https://dev.example.com/pr/752", true, 2, 3, 1, 0, "feature/export-notes", null
     ]);
     expect(new GitPullRequestRow("1", "#1", "One", "https://dev.example.com/pr/1", false, 0, 0, 0, 0, "feature/two", "feature/one").baseBranch).toBe("feature/one");
   });

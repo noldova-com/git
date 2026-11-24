@@ -24,16 +24,16 @@ import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixt
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
 const CREATED: number = Date.UTC(2026, 10, 20, 12);
-const URL: string = "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/482";
-const ITEM_URL: string = "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/4821";
+const URL: string = "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/752";
+const ITEM_URL: string = "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/7521";
 
 function itemOf(number: number, changes: HostChanges): HostItem {
   return new HostItem(new HostReference("git-azure-devops", "fabrikam", "3f2504e0-4f89-11d3-9a0c-0305e82c3301", number), ReferenceKind.PullRequest,
     ReferenceState.Merged, "Export notes as Markdown files", URL, null, CREATED, CREATED, 0, changes);
 }
 
-const changes: HostChanges = new HostChanges(null, null, null, "users/monalisa/4821-export-notes", "main", "0123456789abcdef0123456789abcdef01234567");
-const full: HostPullRequest = new HostPullRequest(itemOf(482, changes), [
+const changes: HostChanges = new HostChanges(null, null, null, "users/monalisa/7521-export-notes", "main", "0123456789abcdef0123456789abcdef01234567");
+const full: HostPullRequest = new HostPullRequest(itemOf(752, changes), [
   new HostReviewer(new HostPerson("octocat@fabrikam.com", null, null), 0.5, "Approved with suggestions", true),
   new HostReviewer(new HostPerson("hubot@fabrikam.com", null, null), -0.5, "Waiting for the author", false),
   new HostReviewer(new HostPerson("[Web Site]\\Web Team", null, null), 0, "No vote", false),
@@ -48,7 +48,7 @@ const full: HostPullRequest = new HostPullRequest(itemOf(482, changes), [
   new HostBuild("clock skew", CheckState.Running, null, CREATED + 600_000, null),
   new HostBuild("dependency scan", CheckState.Queued, null, null, null)
 ], false, "", 5, [
-  new HostWorkItemLink(4821, "Export notes as Markdown files", new HostWorkItemType("User Story", "009CCC", "icon_book"), "Active", WorkItemCategory.InProgress,
+  new HostWorkItemLink(7521, "Export notes as Markdown files", new HostWorkItemType("User Story", "009CCC", "icon_book"), "Active", WorkItemCategory.InProgress,
     ITEM_URL)
 ]);
 const bare: HostPullRequest = new HostPullRequest(itemOf(7, changes), [], [new HostPolicy("Work item linking", PolicyState.Approved, false, null)], [], false, "",
@@ -117,7 +117,7 @@ describe("AzureDevOpsPullRequestDetailComponent", () => {
     view.show(full);
     await view.settleAsync();
 
-    expect(view.context.callsOf("updateView").at(-1)).toEqual(["git-azure-devops.pullRequestDetail", "selected", { title: "Pull request !482" }]);
+    expect(view.context.callsOf("updateView").at(-1)).toEqual(["git-azure-devops.pullRequestDetail", "selected", { title: "Pull request !752" }]);
     expect([...view.element.querySelectorAll(".reviewer")].map(t => wordsOf(t.querySelector(".vote") ?? document.createElement("span"))))
       .toEqual(["check", "schedule", "", "close"]);
     expect([view.element.querySelectorAll(".vote.approved").length, view.element.querySelectorAll(".vote.waiting").length,

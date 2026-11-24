@@ -26,11 +26,11 @@ function detailOf(id: number, type: HostWorkItemType, title: string, iteration: 
   commits, []);
 }
 
-const parent: HostWorkItemDetail = detailOf(4790, feature, "Markdown export", null, [4821, 4822], [], 0);
-const linked: HostWorkItemDetail = detailOf(4821, story, "Export notes as Markdown files", "Sample Project\\Sprint 47", [],
-  [new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 482), new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 479)], 3);
-const committed: HostWorkItemDetail = detailOf(4822, story, "Send note digest emails", "Sample Project\\Sprint 47", [], [], 2);
-const bare: HostWorkItemDetail = detailOf(4830, story, "Export preferences", null, [], [], 0);
+const parent: HostWorkItemDetail = detailOf(7490, feature, "Markdown export", null, [7521, 7522], [], 0);
+const linked: HostWorkItemDetail = detailOf(7521, story, "Export notes as Markdown files", "Sample Project\\Sprint 17", [],
+  [new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752), new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 479)], 3);
+const committed: HostWorkItemDetail = detailOf(7522, story, "Send note digest emails", "Sample Project\\Sprint 17", [], [], 2);
+const bare: HostWorkItemDetail = detailOf(7530, story, "Export preferences", null, [], [], 0);
 const rows: readonly WorkItemRow[] = [new WorkItemRow(parent, 0), new WorkItemRow(linked, 1), new WorkItemRow(committed, 1), new WorkItemRow(bare, 0)];
 
 function open(shown: readonly WorkItemRow[], selected: HostWorkItemDetail | null = null,
@@ -59,10 +59,10 @@ describe("AzureDevOpsWorkItemTableComponent", () => {
     const fixture = open(rows);
 
     expect(rowsOf(fixture).map(cellsOf)).toEqual([
-      ["4790", "Markdown export", "Active", "—", "2 children"],
-      ["4821", "Export notes as Markdown files", "Active", "Sprint 47", "!482"],
-      ["4822", "Send note digest emails", "Active", "Sprint 47", "2 commits"],
-      ["4830", "Export preferences", "Active", "—", "none"]
+      ["7490", "Markdown export", "Active", "—", "2 children"],
+      ["7521", "Export notes as Markdown files", "Active", "Sprint 17", "!752"],
+      ["7522", "Send note digest emails", "Active", "Sprint 17", "2 commits"],
+      ["7530", "Export preferences", "Active", "—", "none"]
     ]);
   });
 
@@ -84,8 +84,8 @@ describe("AzureDevOpsWorkItemTableComponent", () => {
     chip?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     chip?.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
 
-    expect([chip?.getAttribute("aria-label"), context.callsOf("openDocument"), chosen]).toEqual(["Open pull request !482",
-      [["git-azure-devops.pullRequest", `fabrikam/${REPOSITORY}/482`, "!482"]], []]);
+    expect([chip?.getAttribute("aria-label"), context.callsOf("openDocument"), chosen]).toEqual(["Open pull request !752",
+      [["git-azure-devops.pullRequest", `fabrikam/${REPOSITORY}/752`, "!752"]], []]);
   });
 
   it("indents a title by its row's depth and draws its type's icon in its type's color", () => {
@@ -122,7 +122,7 @@ describe("AzureDevOpsWorkItemTableComponent", () => {
   });
 
   it("gives each parent a chevron that collapses its children and expands them again, without choosing its row, every parent expanded at first", () => {
-    const grandchild: HostWorkItemDetail = detailOf(4840, story, "Tagging", null, [], [], 0);
+    const grandchild: HostWorkItemDetail = detailOf(7540, story, "Tagging", null, [], [], 0);
     const fixture = open([...rows.slice(0, 2), new WorkItemRow(grandchild, 2), ...rows.slice(2)]);
     const chosen: HostWorkItemDetail[] = [];
     fixture.componentInstance.chosen.subscribe(t => chosen.push(t));
@@ -137,16 +137,16 @@ describe("AzureDevOpsWorkItemTableComponent", () => {
     };
 
     const first = [ids(), toggles()];
-    click("4821");
+    click("7521");
     const inner = ids();
-    click("4790");
+    click("7490");
     const outer = [ids(), toggles()];
-    click("4790");
+    click("7490");
 
-    expect(first).toEqual([["4790", "4821", "4840", "4822", "4830"], [["1", "true", "Collapse Markdown export", "expand_more"],
+    expect(first).toEqual([["7490", "7521", "7540", "7522", "7530"], [["1", "true", "Collapse Markdown export", "expand_more"],
       ["2", "true", "Collapse Export notes as Markdown files", "expand_more"], ["3", null, null, null], ["2", null, null, null], ["1", null, null, null]]]);
-    expect([inner, outer, ids(), chosen]).toEqual([["4790", "4821", "4822", "4830"],
-      [["4790", "4830"], [["1", "false", "Expand Markdown export", "chevron_right"], ["1", null, null, null]]], ["4790", "4821", "4822", "4830"], []]);
+    expect([inner, outer, ids(), chosen]).toEqual([["7490", "7521", "7522", "7530"],
+      [["7490", "7530"], [["1", "false", "Expand Markdown export", "chevron_right"], ["1", null, null, null]]], ["7490", "7521", "7522", "7530"], []]);
   });
 
   it("keeps Enter and Space on a chevron from choosing its row, and sets an empty 1.25rem space in place of a chevron on a row without children", () => {

@@ -21,8 +21,8 @@ import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
 const reads: string[] = [GitNames.statusMethod, GitNames.branchesMethod, AzureDevOpsNames.readSignInMethod, AzureDevOpsNames.readWorkItemMethod,
   AzureDevOpsNames.readWorkItemsMethod];
-const name: string = "users/mona-lisa/4832-tag-filter-ignores-case-in-note-titles";
-const choices: readonly string[] = ["Link the branch to 4832 in Azure Boards", "Set 4832 to Active and assign it to me", "Start commit messages with #4832",
+const name: string = "users/mona-lisa/7532-tag-filter-ignores-case-in-note-titles";
+const choices: readonly string[] = ["Link the branch to 7532 in Azure Boards", "Set 7532 to Active and assign it to me", "Start commit messages with #7532",
   "Push and track it on origin"];
 
 class Step {
@@ -57,13 +57,13 @@ describe("AzureDevOpsBranchComponent", () => {
   it("names the work item and its parent, suggests a name from the signed-in person, the id and the title, and starts from the parent's branch", async () => {
     const dialog = await new BranchDialog().openAsync();
 
-    expect([dialog.title, dialog.field.value, dialog.base, dialog.texts]).toEqual(["Create a branch for 4832", name, BranchDialogData.parentBranch,
-      ["Tag filter ignores case in note titles · task under 4821", "From the pattern users/{you}/{id}-{title}", "The parent user story's branch"]]);
+    expect([dialog.title, dialog.field.value, dialog.base, dialog.texts]).toEqual(["Create a branch for 7532", name, BranchDialogData.parentBranch,
+      ["Tag filter ignores case in note titles · task under 7521", "From the pattern users/{you}/{id}-{title}", "The parent user story's branch"]]);
     expect([dialog.choices, dialog.checked, dialog.disabledChoices, dialog.labels]).toEqual([choices, [true, true, true, false], [false, false, false, false],
       ["Cancel", "Create and switch"]]);
     expect([dialog.requests.methods, dialog.requests.payloads]).toEqual([reads, [{ folder: "/repository" }, { folder: "/repository" }, null,
-      { host: "git-azure-devops", organization: "fabrikam", id: 4832 },
-      { host: "git-azure-devops", organization: "fabrikam", project: "Sample Project", scope: "Ids", ids: [4821] }]]);
+      { host: "git-azure-devops", organization: "fabrikam", id: 7532 },
+      { host: "git-azure-devops", organization: "fabrikam", project: "Sample Project", scope: "Ids", ids: [7521] }]]);
   });
 
   it("names the work item's type alone when it has no parent, and reads no parent", async () => {
@@ -82,10 +82,10 @@ describe("AzureDevOpsBranchComponent", () => {
     const line = missing.texts[0];
     const untitled = await new BranchDialog().openAsync(readsWith(t => {
       t.item = null;
-    }), new BranchRequest("/repository", "fabrikam", 4832, ""));
+    }), new BranchRequest("/repository", "fabrikam", 7532, ""));
 
     expect([line, untitled.texts[0], untitled.field.value]).toEqual(["Tag filter ignores case in note titles", "From the pattern users/{you}/{id}-{title}",
-      "users/mona-lisa/4832"]);
+      "users/mona-lisa/7532"]);
   });
 
   it("suggests the id and title alone, with no pattern note, when signed out or when the login has none of the name's letters", async () => {
@@ -97,7 +97,7 @@ describe("AzureDevOpsBranchComponent", () => {
     }));
 
     expect([signedOut.field.value, signedOut.texts.includes("From the pattern users/{you}/{id}-{title}"), unnamed.field.value])
-      .toEqual(["4832-tag-filter-ignores-case-in-note-titles", false, "4832-tag-filter-ignores-case-in-note-titles"]);
+      .toEqual(["7532-tag-filter-ignores-case-in-note-titles", false, "7532-tag-filter-ignores-case-in-note-titles"]);
   });
 
   it("keeps a name the person typed when the sign-in answers later", async () => {
@@ -110,18 +110,18 @@ describe("AzureDevOpsBranchComponent", () => {
     dialog.requests.answer(AzureDevOpsNames.readWorkItemsMethod, reading.parents);
     dialog.open();
     await dialog.requests.askedAsync(5);
-    dialog.field.value = "4832-mine";
+    dialog.field.value = "7532-mine";
     dialog.field.dispatchEvent(new Event("input"));
     dialog.render();
     release(reading.signIn);
     await dialog.settleAsync();
 
-    expect(dialog.field.value).toBe("4832-mine");
+    expect(dialog.field.value).toBe("7532-mine");
   });
 
   it("starts from the current branch when the parent's branches aren't local, or the parent can't be found among the answers", async () => {
     const elsewhere = await new BranchDialog().openAsync(readsWith(t => {
-      t.parents = BranchDialogData.parentsOf("users/ana/gone");
+      t.parents = BranchDialogData.parentsOf("users/kim/gone");
     }));
     const found = [elsewhere.base, elsewhere.texts.at(-1)];
     const none = await new BranchDialog().openAsync(readsWith(t => {
@@ -176,9 +176,9 @@ describe("AzureDevOpsBranchComponent", () => {
       expect([dialog.requests.methods.slice(5), dialog.requests.payloads.slice(5)]).toEqual([[GitNames.createBranchAtMethod, GitNames.statusMethod,
         GitNames.switchBranchMethod, AzureDevOpsNames.linkBranchMethod, AzureDevOpsNames.updateWorkItemMethod], [
         { folder: "/repository", name, id: BranchDialogData.tipOf(2), basedOn: "f1" }, { folder: "/repository" }, { folder: "/repository", name, basedOn: "f2" },
-        { host: "dev.azure.com", path: "fabrikam/Sample Project/_git/garden-web", id: 4832, branch: name },
-        { host: "git-azure-devops", organization: "fabrikam", id: 4832, state: "Active", assignToMe: true }]]);
-      expect([dialog.closes, dialog.isOpen, new AzureDevOpsCommitPrefixes().prefixFor("/repository", name)]).toEqual([1, false, "#4832 "]);
+        { host: "dev.azure.com", path: "fabrikam/Sample Project/_git/garden-web", id: 7532, branch: name },
+        { host: "git-azure-devops", organization: "fabrikam", id: 7532, state: "Active", assignToMe: true }]]);
+      expect([dialog.closes, dialog.isOpen, new AzureDevOpsCommitPrefixes().prefixFor("/repository", name)]).toEqual([1, false, "#7532 "]);
     });
 
   it("refuses a base the branches' read gave no commit for, and writes nothing", async () => {
@@ -194,23 +194,23 @@ describe("AzureDevOpsBranchComponent", () => {
 
   it("says the current branch when the person chooses it over the parent's, and creates on it without checking out", async () => {
     const dialog = await new BranchDialog().openAsync(readsWith(t => {
-      t.item = BranchDialogData.itemOf(4821, WorkItemCategory.InProgress);
+      t.item = BranchDialogData.itemOf(7521, WorkItemCategory.InProgress);
     }));
     await dialog.chooseBaseAsync("main");
     const note = dialog.texts.at(-1);
     answerWrites(dialog);
 
-    await dialog.typeAsync("  4832-tag-filter  ");
+    await dialog.typeAsync("  7532-tag-filter  ");
     await dialog.pressAsync("Enter");
 
     expect(note).toBe("The current branch");
     expect([dialog.requests.methods.slice(5), dialog.requests.payloads.at(-1), dialog.closes]).toEqual([[GitNames.createBranchMethod,
-      AzureDevOpsNames.linkBranchMethod, AzureDevOpsNames.updateWorkItemMethod], { host: "git-azure-devops", organization: "fabrikam", id: 4832, state: null,
+      AzureDevOpsNames.linkBranchMethod, AzureDevOpsNames.updateWorkItemMethod], { host: "git-azure-devops", organization: "fabrikam", id: 7532, state: null,
       assignToMe: true }, 1]);
   });
 
   it("pushes on the status after the branch is made when asked, writes nothing to Azure DevOps with its choices off, and drops a kept prefix", async () => {
-    AzureDevOpsCommitPrefixes.keep("/repository", name, 4832);
+    AzureDevOpsCommitPrefixes.keep("/repository", name, 7532);
     const dialog = await new BranchDialog().openAsync(readsWith(t => {
       t.parents = BranchDialogData.noParents;
     }));
@@ -356,7 +356,7 @@ describe("AzureDevOpsBranchComponent", () => {
     refused.requests.fail(GitNames.statusMethod, new RuntimeRequestException(FailureCode.NotFound, "The folder isn't a Git repository."));
     refused.requests.answer(GitNames.branchesMethod, BranchDialogData.branchesOf("main"));
     refused.requests.answer(AzureDevOpsNames.readSignInMethod, BranchDialogData.signedOut());
-    refused.requests.answer(AzureDevOpsNames.readWorkItemMethod, BranchDialogData.itemOf(4821));
+    refused.requests.answer(AzureDevOpsNames.readWorkItemMethod, BranchDialogData.itemOf(7521));
     refused.requests.fail(AzureDevOpsNames.readWorkItemsMethod, new WindowFailure("Not connected."));
     await refused.openAsync(null);
 
@@ -396,7 +396,7 @@ describe("AzureDevOpsBranchComponent", () => {
     await dialog.typeAsync("   ");
     const blank = dialog.button("Create and switch").disabled;
     await dialog.pressAsync("Enter");
-    await dialog.typeAsync("4832-x");
+    await dialog.typeAsync("7532-x");
     const release = dialog.requests.hold(GitNames.createBranchMethod);
     dialog.button("Create and switch").click();
     dialog.render();

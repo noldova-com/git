@@ -47,14 +47,14 @@ describe("BranchRequest", () => {
   });
 
   it("puts the suggested name under users and the owner, or gives it alone with no owner", () => {
-    const request = new BranchRequest("/r", "fabrikam", 4832, "Tag filter ignores case in note titles");
+    const request = new BranchRequest("/r", "fabrikam", 7532, "Tag filter ignores case in note titles");
 
-    expect([request.nameFor("mona-lisa"), request.nameFor(null)]).toEqual(["users/mona-lisa/4832-tag-filter-ignores-case-in-note-titles", "4832-tag-filter-ignores-case-in-note-titles"]);
+    expect([request.nameFor("mona-lisa"), request.nameFor(null)]).toEqual(["users/mona-lisa/7532-tag-filter-ignores-case-in-note-titles", "7532-tag-filter-ignores-case-in-note-titles"]);
   });
 
   it("takes the owner from a login's part before its first @, in lower case with a dash for every run of other characters, or none when nothing is left", () => {
-    const owners = ["Mona.Lisa@fabrikam.com", "ana@one@two", "FABRIKAM\\Ana", "--ana--", "Привет@fabrikam.com", "@fabrikam.com"].map(t => BranchRequest.ownerOf(t));
+    const owners = ["Mona.Lisa@fabrikam.com", "kim@one@two", "FABRIKAM\\Kim", "--kim--", "Привет@fabrikam.com", "@fabrikam.com"].map(t => BranchRequest.ownerOf(t));
 
-    expect(owners).toEqual(["mona-lisa", "ana", "fabrikam-ana", "ana", null, null]);
+    expect(owners).toEqual(["mona-lisa", "kim", "fabrikam-kim", "kim", null, null]);
   });
 });

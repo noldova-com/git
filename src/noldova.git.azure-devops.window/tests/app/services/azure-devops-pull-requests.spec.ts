@@ -29,12 +29,12 @@ const COMMENTED: string = "6dcb09b5b57875f334f61aebed695e2e4193db5e";
 const UNCOMMENTED: string = "7638417db6d59f3c431d3e1f261cc637155684cd";
 const UNANSWERED: string = "Azure DevOps didn't answer. Try again to read this repository's pull requests.";
 const REPOSITORY: string = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
-const URL: string = "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/482";
+const URL: string = "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/752";
 const remote: GitRemote = new GitRemote("origin", "dev.azure.com", "fabrikam/web/_git/site", RemoteTransport.Https);
 const other: GitRemote = new GitRemote("origin", "dev.azure.com", "fabrikam/web/_git/docs", RemoteTransport.Https);
-const row: HostPullRequestRow = new HostPullRequestRow(new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 482), "Export notes as Markdown files",
+const row: HostPullRequestRow = new HostPullRequestRow(new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752), "Export notes as Markdown files",
   URL, true, 1, 2, 0, 1, "export-notes", "main");
-const shown: GitPullRequestRow = new GitPullRequestRow(`fabrikam/${REPOSITORY}/482`, "!482", "Export notes as Markdown files", URL, true, 1, 2, 0, 1, "export-notes", "main");
+const shown: GitPullRequestRow = new GitPullRequestRow(`fabrikam/${REPOSITORY}/752`, "!752", "Export notes as Markdown files", URL, true, 1, 2, 0, 1, "export-notes", "main");
 const request: HostReviewRequest = new HostReviewRequest(new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 533), "Sign in with a passkey",
   "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/533", false, Date.parse("2026-11-20T09:00:00Z"));
 const asked: GitPullRequestRow = new GitPullRequestRow(`fabrikam/${REPOSITORY}/533`, "!533", "Sign in with a passkey",
@@ -188,10 +188,10 @@ describe("AzureDevOpsPullRequests", () => {
     const host = new Host();
 
     const opened = host.pullRequests.open(FOLDER, shown);
-    const unnamed = host.pullRequests.open(FOLDER, new GitPullRequestRow("fabrikam/482", "!482", "Other", URL, false, 0, 0, 0, 0, "other"));
+    const unnamed = host.pullRequests.open(FOLDER, new GitPullRequestRow("fabrikam/752", "!752", "Other", URL, false, 0, 0, 0, 0, "other"));
 
     expect([opened, unnamed, host.context.callsOf("openDocument")]).toEqual([true, false,
-      [["git-azure-devops.pullRequest", `fabrikam/${REPOSITORY}/482`, "!482 Export notes as Markdown files"]]]);
+      [["git-azure-devops.pullRequest", `fabrikam/${REPOSITORY}/752`, "!752 Export notes as Markdown files"]]]);
   });
 });
 
@@ -204,13 +204,13 @@ const checks: readonly HostCheck[] = [new HostCheck("site-ci", CheckState.Succee
 
 function pullRequestOf(state: ReferenceState, decision: ReviewDecision = ReviewDecision.Waiting, approvals: number | null = 2): BranchPullRequest {
   const isOpen: boolean = state === ReferenceState.Open || state === ReferenceState.Draft;
-  return new BranchPullRequest(new HostItem(new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 482), ReferenceKind.PullRequest, state,
+  return new BranchPullRequest(new HostItem(new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752), ReferenceKind.PullRequest, state,
     "Export notes as Markdown files", URL, null, 1_800_000_000_000, isOpen ? null : 1_800_000_100_000, 0, new HostChanges(null, null, null, "export-notes", "main", HEAD)),
   checks, decision, approvals);
 }
 
 function rowOf(approvals: number, isDraft: boolean = false, headBranch: string = "export-notes"): GitPullRequestRow {
-  return new GitPullRequestRow(`fabrikam/${REPOSITORY}/482`, "!482", "Export notes as Markdown files", URL, isDraft, approvals, 1, 1, 1, headBranch, "main");
+  return new GitPullRequestRow(`fabrikam/${REPOSITORY}/752`, "!752", "Export notes as Markdown files", URL, isDraft, approvals, 1, 1, 1, headBranch, "main");
 }
 
 function untilAsync(answer: Signal<GitBranchPullRequest | null>, state: GitPullRequestsState): Promise<void> {
@@ -240,7 +240,7 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
       .toEqual([null, GitBranchPullRequest.of(rowOf(2), GitPullRequestState.Open, true), read, null]);
     expect([host.requests.methods, host.requests.payloads]).toEqual([[AzureDevOpsNames.readSignInMethod, AzureDevOpsNames.readBranchPullRequestMethod],
       [null, new BranchQuery("dev.azure.com", "fabrikam/web/_git/site", "export-notes", HEAD).toJson()]]);
-    expect(host.pages).toEqual([[URL, new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 482)]]);
+    expect(host.pages).toEqual([[URL, new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752)]]);
   });
 
   it("maps each state, waits for review only while open without a decision, keeps the base branch, and answers none without a pull request", async () => {
@@ -330,7 +330,7 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
     expect([answer(), host.pullRequests.commitFor(FOLDER, remote, HEAD), host.requests.methods, host.requests.payloads]).toEqual([
       GitBranchPullRequest.of(rowOf(1, false, ""), GitPullRequestState.Merged, false), answer, [AzureDevOpsNames.readCommitPullRequestMethod],
       [new CommitQuery("dev.azure.com", "fabrikam/web/_git/site", HEAD).toJson()]]);
-    expect(host.pages).toEqual([[URL, new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 482)]]);
+    expect(host.pages).toEqual([[URL, new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752)]]);
   });
 
   it("answers a commit's failed read as failed with the runtime's message or that Azure DevOps didn't answer, logs it, never retries that ask and keeps no "
@@ -426,7 +426,7 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
 
   it("reads a commit's review comments once for each remote and commit, and gives another commit its own read", async () => {
     const host = new Host();
-    host.requests.answer(AzureDevOpsNames.readCommitCommentsMethod, new HostCommitComments(3, true, "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/482?_a=files&iteration=3").toJson());
+    host.requests.answer(AzureDevOpsNames.readCommitCommentsMethod, new HostCommitComments(3, true, "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/752?_a=files&iteration=3").toJson());
     host.requests.answer(AzureDevOpsNames.readCommitCommentsMethod, HostCommitComments.none().toJson());
     const comments = host.pullRequests.commentsFor(FOLDER, remote, COMMENTED);
     const before = comments();
@@ -442,7 +442,7 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
         throw new Error("The other commit's comments aren't read yet.");
     });
 
-    expect([before, comments(), again === comments, otherCommit()]).toEqual([null, new GitCommitComments(3, true, "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/482?_a=files&iteration=3"), true,
+    expect([before, comments(), again === comments, otherCommit()]).toEqual([null, new GitCommitComments(3, true, "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/752?_a=files&iteration=3"), true,
       new GitCommitComments(0, false, null)]);
     expect([host.requests.methods, host.requests.payloads]).toEqual([[AzureDevOpsNames.readCommitCommentsMethod, AzureDevOpsNames.readCommitCommentsMethod],
       [new CommitQuery("dev.azure.com", "fabrikam/web/_git/site", COMMENTED).toJson(), new CommitQuery("dev.azure.com", "fabrikam/web/_git/site", UNCOMMENTED).toJson()]]);
@@ -452,7 +452,7 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
     async () => {
       const host = new Host();
       host.requests.fail(AzureDevOpsNames.readCommitCommentsMethod, new RuntimeRequestException(FailureCode.Unavailable, "Azure DevOps refused the request (503)."));
-      host.requests.answer(AzureDevOpsNames.readCommitCommentsMethod, new HostCommitComments(2, false, "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/482?_a=files&iteration=3").toJson());
+      host.requests.answer(AzureDevOpsNames.readCommitCommentsMethod, new HostCommitComments(2, false, "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/752?_a=files&iteration=3").toJson());
       const unexpected = new TypeError("Unexpected.");
       host.requests.fail(AzureDevOpsNames.readCommitCommentsMethod, unexpected);
 
@@ -472,7 +472,7 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
       host.pullRequests.commentsFor(FOLDER, other, COMMENTED);
 
       expect([failed(), retried === failed, retried(), hostless, pathless, await rejected, host.requests.methods.length]).toEqual([null, false,
-        new GitCommitComments(2, false, "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/482?_a=files&iteration=3"), null, null, unexpected, 3]);
+        new GitCommitComments(2, false, "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/752?_a=files&iteration=3"), null, null, unexpected, 3]);
       expect(host.context.callsOf("log").map(t => String(t[0]))).toEqual([
         "The Azure DevOps module's git-azure-devops.readCommitComments request failed: RuntimeRequestException: Azure DevOps refused the request (503)."]);
     });

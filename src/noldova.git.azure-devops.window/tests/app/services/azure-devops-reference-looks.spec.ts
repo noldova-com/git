@@ -21,7 +21,7 @@ describe("AzureDevOpsReferenceLooks", () => {
   const svgOf = (url: string): string => decodeURIComponent(url.slice("data:image/svg+xml,".length));
   const pathOf = (url: string): string => svgOf(url).replace(/^.*<path d="([^"]+)".*$/su, "$1");
   const workItemOf = (type: HostWorkItemType = new HostWorkItemType("Bug", "CC293D", "icon_insect"), category: WorkItemCategory = WorkItemCategory.InProgress,
-    assignee: HostPerson | null = new HostPerson("monalisa@example.com", null, null), iteration: string | null = "Web Site\\Sprint 42"): HostWorkItem =>
+    assignee: HostPerson | null = new HostPerson("monalisa@example.com", null, null), iteration: string | null = "Web Site\\Sprint 12"): HostWorkItem =>
     new HostWorkItem("git-azure-devops", "fabrikam", "Web Site", 42, type, "The greeting is cut short", "Active", category,
       "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/42", assignee, iteration, "Web Site", null);
   const pullRequestOf = (state: ReferenceState, author: HostPerson | null = new HostPerson("octocat@example.com", null, null)): HostItem =>
@@ -64,7 +64,7 @@ describe("AzureDevOpsReferenceLooks", () => {
     const rootIteration = AzureDevOpsReferenceLooks.workItemOf(workItemOf(undefined, undefined, undefined, "Web Site"));
 
     expect([chip.author?.name, chip.author?.image, chip.statuses.map(t => t.text), rootIteration.statuses.map(t => t.text), chip.time])
-      .toEqual(["monalisa@example.com", null, ["Sprint 42"], ["Web Site"], null]);
+      .toEqual(["monalisa@example.com", null, ["Sprint 12"], ["Web Site"], null]);
     expect([chip.itemHref, chip.locationHref, chip.authorHref, chip.diffHref, chip.commentsHref]).toEqual(["https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/42",
       "https://dev.azure.com/fabrikam/Web%20Site", null, null, null]);
   });

@@ -20,14 +20,14 @@ import { GitPullRequestCommitsComponent } from "../../../../src/app/components/g
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { TestPullRequestHost } from "../../../fixtures/test-pull-request-host.fixture.ts";
 
-const reference: HostReference = new HostReference("git-example", "fabrikam", "3f2504e0-4f89-11d3-9a0c-0305e82c3301", 482);
+const reference: HostReference = new HostReference("git-example", "fabrikam", "3f2504e0-4f89-11d3-9a0c-0305e82c3301", 752);
 const HEAD: string = "9fceb02d0ae598e95dc970b74767f19372d61af8";
 const AT: number = Date.UTC(2026, 0, 5, 12);
 
 @Component({
   selector: "nol-git-test-document",
   imports: [GitPullRequestCommitsComponent],
-  template: "<div class=\"document\"><nol-git-pull-request-commits [host]=\"host\" [reference]=\"reference\" url=\"https://example.com/fabrikam/site/pulls/482\" /></div>",
+  template: "<div class=\"document\"><nol-git-pull-request-commits [host]=\"host\" [reference]=\"reference\" url=\"https://example.com/fabrikam/site/pulls/752\" /></div>",
   styles: [
     ".document { box-sizing: border-box; width: 30rem; color: var(--nol-text); font-family: var(--nol-font-sans); font-size: var(--nol-text-panel);"
     + " line-height: var(--nol-line-panel); }"

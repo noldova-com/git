@@ -19,7 +19,7 @@ type Answer = Response | Error | ((init: RequestInit) => Promise<Response>);
 const signal: AbortSignal = new AbortController().signal;
 const pixel: Uint8Array<ArrayBuffer> = Uint8Array.from([137, 80, 78, 71]);
 const pixelData = "data:image/png;base64,iVBORw==";
-const hash: string = createHash("sha256").update("ana@example.com").digest("hex");
+const hash: string = createHash("sha256").update("kim@example.com").digest("hex");
 
 function image(bytes: Uint8Array<ArrayBuffer> = pixel, type: string = "image/png"): Response {
   return new Response(new Blob([bytes]), { status: 200, headers: { "Content-Type": type } });
@@ -61,7 +61,7 @@ describe("GravatarReader", () => {
     const rig = new Rig();
     rig.answers.push(image());
 
-    const images = [await rig.reader.readAsync(" Ana@Example.com", signal), await rig.reader.readAsync("ana@example.com", signal)];
+    const images = [await rig.reader.readAsync(" Kim@Example.com", signal), await rig.reader.readAsync("kim@example.com", signal)];
 
     const headers = new Headers(rig.asked[0]?.init.headers);
     assert.deepEqual(images, [pixelData, pixelData]);
@@ -74,7 +74,7 @@ describe("GravatarReader", () => {
     const rig = new Rig();
     rig.answers.push(new Response("Not found", { status: 404 }));
 
-    const images = [await rig.reader.readAsync("ana@example.com", signal), await rig.reader.readAsync("ana@example.com", signal)];
+    const images = [await rig.reader.readAsync("kim@example.com", signal), await rig.reader.readAsync("kim@example.com", signal)];
 
     assert.deepEqual([images, rig.asked.length, rig.lines], [[null, null], 1, []]);
   });
@@ -98,7 +98,7 @@ describe("GravatarReader", () => {
 
     const images: (string | null)[] = [];
     for (let i = 0; i < 8; i++)
-      images.push(await rig.reader.readAsync("ana@example.com", signal));
+      images.push(await rig.reader.readAsync("kim@example.com", signal));
 
     assert.deepEqual(images, [null, null, null, null, null, null, null, pixelData]);
     assert.deepEqual(rig.lines, [
@@ -116,8 +116,8 @@ describe("GravatarReader", () => {
     const rig = new Rig();
     rig.answers.push(new RangeError("asking"), broken(new RangeError("reading")));
 
-    await assert.rejects(rig.reader.readAsync("ana@example.com", signal), { name: "RangeError", message: "asking" });
-    await assert.rejects(rig.reader.readAsync("ana@example.com", signal), { name: "RangeError", message: "reading" });
+    await assert.rejects(rig.reader.readAsync("kim@example.com", signal), { name: "RangeError", message: "asking" });
+    await assert.rejects(rig.reader.readAsync("kim@example.com", signal), { name: "RangeError", message: "reading" });
   });
 
   it("gives the read five seconds, then answers null, logs it and asks again next time", async () => {
@@ -125,13 +125,13 @@ describe("GravatarReader", () => {
     const rig = new Rig();
     rig.answers.push(init => waitForAbort(init, t => t.reason), image());
 
-    const reading = rig.reader.readAsync("ana@example.com", signal);
+    const reading = rig.reader.readAsync("kim@example.com", signal);
     await vi.advanceTimersByTimeAsync(4_999);
     const early: readonly string[] = rig.lines;
     await vi.advanceTimersByTimeAsync(1);
 
     assert.deepEqual([early, await reading, rig.lines], [[], null, ["A Gravatar picture isn't shown: it didn't arrive within 5 seconds."]]);
-    assert.equal(await rig.reader.readAsync("ana@example.com", signal), pixelData);
+    assert.equal(await rig.reader.readAsync("kim@example.com", signal), pixelData);
   });
 
   it("fails with the cancel's reason when the read is cancelled, logging nothing", async () => {
@@ -139,7 +139,7 @@ describe("GravatarReader", () => {
     const cancel = new AbortController();
     rig.answers.push(init => waitForAbort(init, () => new TypeError("aborted")));
 
-    const reading = rig.reader.readAsync("ana@example.com", cancel.signal);
+    const reading = rig.reader.readAsync("kim@example.com", cancel.signal);
     cancel.abort(new Error("Closed."));
 
     await assert.rejects(reading, { message: "Closed." });

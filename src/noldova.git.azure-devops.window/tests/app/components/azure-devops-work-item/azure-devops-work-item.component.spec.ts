@@ -26,12 +26,12 @@ describe("AzureDevOpsWorkItemComponent", () => {
 
       expect(page.requests.payloads[0]).toEqual(mineQuery().toJson());
       expect(page.texts(".item")).toEqual([
-        "workspace_premium 4702 expand_more Note sharing and sync Active Sprint 47 none",
-        "emoji_events 4790 expand_more Markdown export Active Sprint 47 1 child",
-        "menu_book 4821 expand_more Export notes as Markdown files Active Sprint 47 !482",
-        "assignment 4831 Read local times from the app settings Active Sprint 47 1 commit",
-        "assignment 4832 Tag filter ignores case in note titles New Sprint 47 none",
-        "description 4811 Note due dates show UTC times Resolved — !479"
+        "workspace_premium 7402 expand_more Note sharing and sync Active Sprint 17 none",
+        "emoji_events 7490 expand_more Markdown export Active Sprint 17 1 child",
+        "menu_book 7521 expand_more Export notes as Markdown files Active Sprint 17 !752",
+        "assignment 7531 Read local times from the app settings Active Sprint 17 1 commit",
+        "assignment 7532 Tag filter ignores case in note titles New Sprint 17 none",
+        "description 7511 Note due dates show UTC times Resolved — !479"
       ]);
       expect([...page.element.querySelectorAll<HTMLElement>(".item .cell-title")].map(t => t.style.paddingLeft))
         .toEqual(["0rem", "1rem", "2rem", "3rem", "3rem", "0rem"]);
@@ -54,16 +54,16 @@ describe("AzureDevOpsWorkItemComponent", () => {
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, null);
     await page.openAsync();
 
-    expect(page.find(".detail").getAttribute("aria-label")).toBe("Work item 4702");
-    expect(page.texts(".item[aria-selected=true]")).toEqual([expect.stringContaining("4702")]);
+    expect(page.find(".detail").getAttribute("aria-label")).toBe("Work item 7402");
+    expect(page.texts(".item[aria-selected=true]")).toEqual([expect.stringContaining("7402")]);
     await page.clickAsync(".item:nth-of-type(3)");
-    expect(page.find(".detail").getAttribute("aria-label")).toBe("Work item 4790");
+    expect(page.find(".detail").getAttribute("aria-label")).toBe("Work item 7490");
     page.element.querySelectorAll<HTMLElement>(".item")[4]?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
     await page.settleAsync();
-    expect(page.find(".detail").getAttribute("aria-label")).toBe("Work item 4832");
+    expect(page.find(".detail").getAttribute("aria-label")).toBe("Work item 7532");
     page.element.querySelectorAll<HTMLElement>(".item")[5]?.dispatchEvent(new KeyboardEvent("keydown", { key: " " }));
     await page.settleAsync();
-    expect(page.texts(".item.sel")).toEqual([expect.stringContaining("4811")]);
+    expect(page.texts(".item.sel")).toEqual([expect.stringContaining("7511")]);
   });
 
   it("finds the project from the open repository's Azure DevOps remote when the instance names none", async () => {
@@ -113,29 +113,29 @@ describe("AzureDevOpsWorkItemComponent", () => {
     const page = await new Page().answerMine().openAsync();
 
     expect(await page.chooseAsync(".type-menu", "Task")).toEqual(["* All", "Epic", "Feature", "Issue", "Task", "User Story"]);
-    expect([page.ids, page.texts(".type-menu")]).toEqual([["4831", "4832"], ["filter_list Type: Task"]]);
+    expect([page.ids, page.texts(".type-menu")]).toEqual([["7531", "7532"], ["filter_list Type: Task"]]);
     expect(await page.chooseAsync(".state-menu", "New")).toEqual(["* All", "Active", "New", "Resolved"]);
-    expect([page.ids, page.texts(".state-menu"), page.texts(".detail-title")]).toEqual([["4832"], ["State: New"], ["Tag filter ignores case in note titles"]]);
+    expect([page.ids, page.texts(".state-menu"), page.texts(".detail-title")]).toEqual([["7532"], ["State: New"], ["Tag filter ignores case in note titles"]]);
     expect(await page.chooseAsync(".type-menu", "All")).toEqual(["All", "Epic", "Feature", "Issue", "* Task", "User Story"]);
-    expect([page.ids, page.texts(".type-menu")]).toEqual([["4832"], ["filter_list Type: all"]]);
+    expect([page.ids, page.texts(".type-menu")]).toEqual([["7532"], ["filter_list Type: all"]]);
   });
 
   it("clears the filters when it reads another instance", async () => {
     const page = await new Page().answerMine().answerMine().openAsync();
     await page.chooseAsync(".type-menu", "Task");
 
-    page.fixture?.componentRef.setInput("instance", "fabrikam/Sample%20Project/4702");
+    page.fixture?.componentRef.setInput("instance", "fabrikam/Sample%20Project/7402");
     await page.requests.askedAsync(2);
     await page.settleAsync();
 
-    expect([page.texts(".type-menu"), page.ids]).toEqual([["filter_list Type: all"], ["4702", "4790", "4821", "4831", "4832", "4811"]]);
+    expect([page.texts(".type-menu"), page.ids]).toEqual([["filter_list Type: all"], ["7402", "7490", "7521", "7531", "7532", "7511"]]);
   });
 
   it("says the list and its filters cover only the work items read when Azure DevOps stopped at its limit, until a full list is read", async () => {
     const page = await new Page().answerMine(mine, true).answerMine().openAsync();
     const capped: readonly string[] = page.texts(".capped");
 
-    page.fixture?.componentRef.setInput("instance", "fabrikam/Sample%20Project/4702");
+    page.fixture?.componentRef.setInput("instance", "fabrikam/Sample%20Project/7402");
     await page.requests.askedAsync(2);
     await page.settleAsync();
 
@@ -209,14 +209,14 @@ describe("AzureDevOpsWorkItemComponent", () => {
     await page.requests.askedAsync(3);
     page.fixture?.componentRef.setInput("instance", "fabrikam/Web");
     await page.requests.askedAsync(4);
-    page.fixture?.componentRef.setInput("instance", "fabrikam/Sample%20Project/4702");
+    page.fixture?.componentRef.setInput("instance", "fabrikam/Sample%20Project/7402");
     await page.requests.askedAsync(5);
     releaseStatus(new GitStatus("main", null, null, [], false, "f1", null, null).toJson());
     releaseList(listOf(mine));
     failList(new WindowFailure("Late."));
     await Wait.until(() => expect(page.texts(".item")).toHaveLength(1));
 
-    expect(page.texts(".item")).toEqual([expect.stringContaining("4702")]);
+    expect(page.texts(".item")).toEqual([expect.stringContaining("7402")]);
     expect(page.texts("[role=alert]")).toEqual([]);
   });
 
@@ -233,7 +233,7 @@ describe("AzureDevOpsWorkItemComponent", () => {
     await page.clickAsync(".new");
     await Wait.until(() => expect(page.logs).toHaveLength(1));
 
-    expect(page.links).toEqual([urlOf(4702), "https://dev.azure.com/fabrikam/Sample%20Project/_workitems"]);
+    expect(page.links).toEqual([urlOf(7402), "https://dev.azure.com/fabrikam/Sample%20Project/_workitems"]);
     expect(page.logs).toEqual(["The Azure DevOps module couldn't open https://dev.azure.com/fabrikam/Sample%20Project/_workitems: WindowFailure: No browser."]);
   });
 
@@ -258,9 +258,9 @@ describe("AzureDevOpsWorkItemComponent", () => {
     await page.clickAsync(".item:nth-of-type(3)");
 
     expect([opened, page.context.callsOf("openView"), page.context.callsOf("showView"), page.context.callsOf("updateView").at(-1)]).toEqual([
-      [["git-azure-devops.workItemDetail", "selected", "Work item 4702"]],
-      [["git-azure-devops.workItemDetail", "selected", "Work item 4702"], ["git-azure-devops.workItemDetail", "selected", "Work item 4790"]], [],
-      ["git-azure-devops.workItemDetail", "selected", { title: "Work item 4790" }]]);
+      [["git-azure-devops.workItemDetail", "selected", "Work item 7402"]],
+      [["git-azure-devops.workItemDetail", "selected", "Work item 7402"], ["git-azure-devops.workItemDetail", "selected", "Work item 7490"]], [],
+      ["git-azure-devops.workItemDetail", "selected", { title: "Work item 7490" }]]);
   });
 
   it("opens the view again for each row chosen after the person closed it", async () => {
@@ -274,7 +274,7 @@ describe("AzureDevOpsWorkItemComponent", () => {
     await page.settleAsync();
     await page.clickAsync(".item:nth-of-type(3)");
 
-    expect(page.context.callsOf("openView").map(t => t[2])).toEqual(["Work item 4702", "Work item 4832", "Work item 4790"]);
+    expect(page.context.callsOf("openView").map(t => t[2])).toEqual(["Work item 7402", "Work item 7532", "Work item 7490"]);
   });
 
   it("opens no view for a document that isn't in front, and the view shows its work item only once it is", async () => {
@@ -288,6 +288,6 @@ describe("AzureDevOpsWorkItemComponent", () => {
     await page.settleAsync();
 
     expect([before, page.context.callsOf("openView").length, page.find(".detail").getAttribute("aria-label")]).toEqual([[0, ["Select a work item to see it here."]], 1,
-      "Work item 4702"]);
+      "Work item 7402"]);
   });
 });

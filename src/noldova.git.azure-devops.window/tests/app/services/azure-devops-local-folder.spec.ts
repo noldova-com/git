@@ -16,7 +16,7 @@ import { AzureDevOpsLocalFolder } from "../../../src/app/services/azure-devops-l
 import { RequestAnswers } from "../../fixtures/request-answers.fixture.ts";
 import { WindowFailure } from "../../fixtures/window-failure.fixture.ts";
 
-const URL: string = "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/482";
+const URL: string = "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/752";
 const FOLDER: string = "/work/site";
 const statusOf = (path: string | null): GitStatus => new GitStatus("main", "a".repeat(40), null, [], false, "f1", null,
   path === null ? null : new GitRemote("origin", "dev.azure.com", path, RemoteTransport.Https));
@@ -50,8 +50,8 @@ describe("AzureDevOpsLocalFolder", () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const requests: RequestAnswers = new RequestAnswers(context);
 
-    const found = [await AzureDevOpsLocalFolder.readAsync(context, "https://dev.azure.com/fabrikam/Web%E0%A4%A/_git/site/pullrequest/482"),
-      await AzureDevOpsLocalFolder.readAsync(context, "https://fabrikam.visualstudio.com/Web/_git/site/pullrequest/482")];
+    const found = [await AzureDevOpsLocalFolder.readAsync(context, "https://dev.azure.com/fabrikam/Web%E0%A4%A/_git/site/pullrequest/752"),
+      await AzureDevOpsLocalFolder.readAsync(context, "https://fabrikam.visualstudio.com/Web/_git/site/pullrequest/752")];
 
     expect([found, requests.methods]).toEqual([[null, null], []]);
   });

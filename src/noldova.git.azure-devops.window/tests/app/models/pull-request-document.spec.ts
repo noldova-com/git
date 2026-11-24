@@ -19,15 +19,15 @@ describe("PullRequestDocument", () => {
   });
 
   it("names a pull request's document by its organization, repository and number, and reads the reference back", () => {
-    const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 482);
+    const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752);
 
     const instance: string = PullRequestDocument.instanceOf(reference);
 
-    expect([instance, PullRequestDocument.referenceOf(instance)]).toEqual([`fabrikam/${REPOSITORY}/482`, reference]);
+    expect([instance, PullRequestDocument.referenceOf(instance)]).toEqual([`fabrikam/${REPOSITORY}/752`, reference]);
   });
 
   it("reads no reference from an instance with a missing part, a number that isn't one or more, or a name the protocol refuses", () => {
-    expect(["fabrikam/482", `fabrikam/${REPOSITORY}/0`, `fabrikam/${REPOSITORY}/x`, `fabrikam/${REPOSITORY}/482/1`, `fabrikam/a b/482`, ""]
+    expect(["fabrikam/752", `fabrikam/${REPOSITORY}/0`, `fabrikam/${REPOSITORY}/x`, `fabrikam/${REPOSITORY}/752/1`, `fabrikam/a b/752`, ""]
       .map(t => PullRequestDocument.referenceOf(t))).toEqual([null, null, null, null, null, null]);
   });
 
@@ -36,6 +36,6 @@ describe("PullRequestDocument", () => {
       throw new RangeError("Unexpected.");
     });
 
-    expect(() => PullRequestDocument.referenceOf(`fabrikam/${REPOSITORY}/482`)).toThrow(RangeError);
+    expect(() => PullRequestDocument.referenceOf(`fabrikam/${REPOSITORY}/752`)).toThrow(RangeError);
   });
 });

@@ -32,16 +32,16 @@ import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixt
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
 const REPOSITORY: string = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
-const INSTANCE: string = `fabrikam/${REPOSITORY}/482`;
-const URL: string = "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/482";
+const INSTANCE: string = `fabrikam/${REPOSITORY}/752`;
+const URL: string = "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/752";
 const CREATED: number = Date.UTC(2026, 10, 20, 12);
 const COMMIT: string = "0123456789abcdef0123456789abcdef01234567";
 const OLD: number = Date.UTC(2026, 0, 5, 12);
 const MISSING: string = "key This pull request can't be shown. Sign in to its organization in Settings → Accounts and hosts, or check that it still exists.";
-const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 482);
+const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752);
 const item: HostItem = new HostItem(reference, ReferenceKind.PullRequest, ReferenceState.Open, "Export notes as Markdown from the shared notes list", URL,
   new HostPerson("monalisa@fabrikam.com", null, null), CREATED, null, 0,
-  new HostChanges(null, null, null, "users/monalisa/4821-export-notes", "main", "0123456789abcdef0123456789abcdef01234567"));
+  new HostChanges(null, null, null, "users/monalisa/7521-export-notes", "main", "0123456789abcdef0123456789abcdef01234567"));
 const story: HostWorkItemType = new HostWorkItemType("User Story", "009CCC", "icon_book");
 const pullRequest: HostPullRequest = new HostPullRequest(item, [
   new HostReviewer(new HostPerson("octocat@fabrikam.com", null, null), 0.5, "Approved with suggestions", true),
@@ -56,9 +56,9 @@ const pullRequest: HostPullRequest = new HostPullRequest(item, [
   new HostBuild("site-ci", CheckState.Succeeded, "https://dev.azure.com/fabrikam/web/_build/results?buildId=7", CREATED, CREATED + 372_000),
   new HostBuild("dependency scan", CheckState.Queued, null, null, null)
 ], true, "Readers see **due dates** before they pass.", 5, [
-  new HostWorkItemLink(4821, "Export notes as Markdown files", story, "Active", WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/4821"),
-  new HostWorkItemLink(4799, "Due dates ignore local times", new HostWorkItemType("Bug", "CC293D", "icon_unknown"), "New",
-    WorkItemCategory.Proposed, "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/4799")
+  new HostWorkItemLink(7521, "Export notes as Markdown files", story, "Active", WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/7521"),
+  new HostWorkItemLink(7499, "Due dates ignore local times", new HostWorkItemType("Bug", "CC293D", "icon_unknown"), "New",
+    WorkItemCategory.Proposed, "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/7499")
 ]);
 
 const opened: HostPullRequest = new HostPullRequest(item, [], [], [], false, "", 5, []);
@@ -261,9 +261,9 @@ describe("AzureDevOpsPullRequestComponent", () => {
       [AzureDevOpsNames.readSignInMethod, AzureDevOpsNames.readPullRequestMethod],
       [AzureDevOpsNames.readMergeTypesMethod, AzureDevOpsNames.readPullRequestChangesMethod, AzureDevOpsNames.readPullRequestThreadsMethod,
         AzureDevOpsNames.readPullRequestUpdatesMethod, AzureDevOpsNames.readSignInMethod].sort(), [null, null], [reference.toJson()], [reference.toJson()]]);
-    expect(page.texts(".title-line")).toEqual(["radio_button_checked Active !482 Export notes as Markdown from the shared notes list open_in_new Open in Azure DevOps"]);
+    expect(page.texts(".title-line")).toEqual(["radio_button_checked Active !752 Export notes as Markdown from the shared notes list open_in_new Open in Azure DevOps"]);
     expect(page.texts(".vote-line")).toEqual(["Your vote: Rejected. Votes and comments go to Azure DevOps as you. check Approve expand_more"]);
-    expect(page.texts(".meta")).toEqual([`M monalisa@fabrikam.com wants to merge users/monalisa/4821-export-notes into main · 5 commits · opened ${opened}`
+    expect(page.texts(".meta")).toEqual([`M monalisa@fabrikam.com wants to merge users/monalisa/7521-export-notes into main · 5 commits · opened ${opened}`
       + " schedule Completes by itself once its policies pass"]);
     expect(page.texts(".tab")).toEqual(["Overview", "Files 0", "Updates 0", "Commits 5", "Conflicts"]);
     await page.untilAsync(() => page.query(".description strong") !== null);
@@ -276,7 +276,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
       "H schedule hubot@fabrikam.com Waiting for the author", "groups Web Team No vote yet · optional", "M close monalisa@fabrikam.com Rejected"]);
     expect([page.queryAll(".vote.approved").length, page.queryAll(".vote.waiting").length,
       page.queryAll(".vote.rejected").length]).toEqual([1, 1, 1]);
-    expect(page.texts("button.row")).toEqual(["menu_book 4821 Export notes as Markdown files Active", "description 4799 Due dates ignore local times New"]);
+    expect(page.texts("button.row")).toEqual(["menu_book 7521 Export notes as Markdown files Active", "description 7499 Due dates ignore local times New"]);
     expect([...page.queryAll<HTMLElement>(".work-state .dot")].map(t => t.style.backgroundColor)).toEqual(["var(--nol-accent)", "var(--nol-text-muted)"]);
     expect(page.texts("div.row")).toEqual(["check_circle site-ci · 6 min 12 s open_in_new", "schedule dependency scan"]);
   });
@@ -303,8 +303,8 @@ describe("AzureDevOpsPullRequestComponent", () => {
       await page.settleAsync();
 
       expect([page.context.callsOf("openView"), page.context.callsOf("showView"), first, page.context.callsOf("updateView").at(-1)])
-        .toEqual([[["git-azure-devops.pullRequestDetail", "selected", "Pull request !482"]], [],
-          ["git-azure-devops.pullRequestDetail", "selected", { title: "Pull request !482" }], ["git-azure-devops.pullRequestDetail", "selected", { title: "Pull request !7" }]]);
+        .toEqual([[["git-azure-devops.pullRequestDetail", "selected", "Pull request !752"]], [],
+          ["git-azure-devops.pullRequestDetail", "selected", { title: "Pull request !752" }], ["git-azure-devops.pullRequestDetail", "selected", { title: "Pull request !7" }]]);
     });
 
   it("keeps the last pull request in the view while another kind of document is in front, and says to open one once no pull request is open", async () => {
@@ -361,7 +361,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     page.find("div.row button").click();
     await page.settleAsync();
 
-    expect(page.links).toEqual([URL, "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/4821",
+    expect(page.links).toEqual([URL, "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/7521",
       "https://dev.azure.com/fabrikam/web/_build/results?buildId=7"]);
   });
 
@@ -558,7 +558,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
   });
 
   it("says so, without asking Azure DevOps, for a document that names no pull request", async () => {
-    const page = await new Page().openAsync("fabrikam/482");
+    const page = await new Page().openAsync("fabrikam/752");
 
     expect([page.text, page.requests.methods]).toEqual([MISSING, [AzureDevOpsNames.readSignInMethod]]);
   });
@@ -643,7 +643,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     await page.clickAsync("Export notes as Markdown files");
 
     expect(page.context.callsOf("log").map(t => t[0]))
-      .toEqual(["The Azure DevOps module couldn't open https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/4821: WindowFailure: No browser."]);
+      .toEqual(["The Azure DevOps module couldn't open https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/7521: WindowFailure: No browser."]);
     expect(await rejection).toBeInstanceOf(RangeError);
   });
 
@@ -715,9 +715,9 @@ describe("AzureDevOpsPullRequestComponent", () => {
   it("shows the Azure DevOps references in the description and comments as chips, opens a work item or pull request in the app, and others through the window",
     async () => {
       const page = new Page([new HostThread(3, ThreadStatus.Active, null, null,
-        [new HostComment(1, null, new HostPerson("octocat@fabrikam.com", null, null), CREATED, "Also #4799.")])]);
+        [new HostComment(1, null, new HostPerson("octocat@fabrikam.com", null, null), CREATED, "Also #7499.")])]);
       page.requests.answer(AzureDevOpsNames.readPullRequestMethod, new HostPullRequest(item, [], [], [], false,
-        `Fixes AB#4821, follows [!12](https://dev.azure.com/fabrikam/Web%20Site/_git/${REPOSITORY}/pullrequest/12) and https://dev.azure.com/contoso/_workitems/edit/3.`,
+        `Fixes AB#7521, follows [!12](https://dev.azure.com/fabrikam/Web%20Site/_git/${REPOSITORY}/pullrequest/12) and https://dev.azure.com/contoso/_workitems/edit/3.`,
         5, []).toJson());
       page.context.answer("openLinkAsync", async () => undefined);
       await page.openAsync();
@@ -729,9 +729,9 @@ describe("AzureDevOpsPullRequestComponent", () => {
       await page.settleAsync();
 
       expect(links.map(t => [t.matches("[nol-link-reference-chip]"), wordsOf(t)]))
-        .toEqual([[true, "Work item 4821"], [true, "!12"], [true, "Work item 3"], [true, "Work item 4799"]]);
-      expect(page.context.callsOf("openDocument")).toEqual([["git-azure-devops.workItems", "fabrikam/Web%20Site/4821", "My work items"],
-        ["git-azure-devops.pullRequest", `fabrikam/${REPOSITORY}/12`, "!12"], ["git-azure-devops.workItems", "fabrikam/Web%20Site/4799", "My work items"]]);
+        .toEqual([[true, "Work item 7521"], [true, "!12"], [true, "Work item 3"], [true, "Work item 7499"]]);
+      expect(page.context.callsOf("openDocument")).toEqual([["git-azure-devops.workItems", "fabrikam/Web%20Site/7521", "My work items"],
+        ["git-azure-devops.pullRequest", `fabrikam/${REPOSITORY}/12`, "!12"], ["git-azure-devops.workItems", "fabrikam/Web%20Site/7499", "My work items"]]);
       expect(page.links).toEqual(["https://dev.azure.com/contoso/_workitems/edit/3"]);
     });
 
@@ -793,7 +793,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
   it("rethrows a sign-in read's failure that isn't the window's", async () => {
     const page = new Page([], new RangeError("Unexpected."));
     const rejection: Promise<unknown> = UnhandledRejections.nextAsync();
-    page.create("fabrikam/482");
+    page.create("fabrikam/752");
 
     expect(await rejection).toBeInstanceOf(RangeError);
   });
@@ -831,7 +831,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     const footer: Element | null = page.element.querySelector(".set-auto-complete, .cancel-auto-complete");
 
     expect([footer, page.detail.querySelector(".complete-panel .cancel-auto-complete") !== null]).toEqual([null, true]);
-    expect(confirm).toEqual(["Set !482 to complete by itself with Merge, no fast-forward into main once its policies pass, then deletes users/monalisa/4821-export-notes? "
+    expect(confirm).toEqual(["Set !752 to complete by itself with Merge, no fast-forward into main once its policies pass, then deletes users/monalisa/7521-export-notes? "
       + "Azure DevOps then merges it as you, without asking again."]);
     expect([page.payloadsOf(AzureDevOpsNames.setAutoCompleteMethod).length, page.payloadsOf(AzureDevOpsNames.readPullRequestMethod).length,
       page.query(".set-auto-complete")]).toEqual([1, 2, null]);
@@ -851,7 +851,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     message.dispatchEvent(new Event("input"));
     await page.settleAsync();
     const held: boolean = page.find(".set-auto-complete").hasAttribute("disabled");
-    message.value = "Merged PR 482";
+    message.value = "Merged PR 752";
     message.dispatchEvent(new Event("input"));
     await page.settleAsync();
     await page.clickAsync("Complete merge");

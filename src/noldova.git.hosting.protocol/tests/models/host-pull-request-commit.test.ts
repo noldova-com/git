@@ -25,13 +25,13 @@ describe("HostPullRequestCommit", () => {
   });
 
   it("refuses an id that isn't a commit, a blank author and a time that isn't positive", () => {
-    assert.throws(() => new HostPullRequestCommit("9fceb02", "x", "Ana", AT), { name: "HostingArgumentException", parameterName: "id" });
+    assert.throws(() => new HostPullRequestCommit("9fceb02", "x", "Kim", AT), { name: "HostingArgumentException", parameterName: "id" });
     assert.throws(() => new HostPullRequestCommit(ID, "x", " ", AT), { name: "HostingArgumentException", parameterName: "author" });
-    assert.throws(() => new HostPullRequestCommit(ID, "x", "Ana", 0), { name: "HostingArgumentException", parameterName: "authoredAt" });
+    assert.throws(() => new HostPullRequestCommit(ID, "x", "Kim", 0), { name: "HostingArgumentException", parameterName: "authoredAt" });
   });
 
   it("refuses JSON with a field it doesn't define or of the wrong type, naming the field by its path", () => {
-    const json = new HostPullRequestCommit(ID, "x", "Ana", AT).toJson();
+    const json = new HostPullRequestCommit(ID, "x", "Kim", AT).toJson();
 
     assert.throws(() => HostPullRequestCommit.fromJson({ ...json, email: "a@b" }), HostingFieldException);
     assert.throws(() => HostPullRequestCommit.fromJson({ ...json, id: "x" }, "$.commits[0]"), { name: "HostingFieldException", field: "$.commits[0].id" });

@@ -32,7 +32,7 @@ const screenshots: string = "../../../../../../_build/azure-devops-window/screen
 @Component({
   selector: "nol-git-azure-devops-document",
   imports: [AzureDevOpsPullRequestComponent, AzureDevOpsPullRequestDetailComponent],
-  template: "<div class=\"window\"><div class=\"document\" [style.width.rem]=\"width()\"><nol-git-azure-devops-pull-request instance=\"fabrikam/site/482\" /></div>"
+  template: "<div class=\"window\"><div class=\"document\" [style.width.rem]=\"width()\"><nol-git-azure-devops-pull-request instance=\"fabrikam/site/752\" /></div>"
     + "<div class=\"view\"><nol-git-azure-devops-pull-request-detail instance=\"selected\" /></div></div>",
   styles: [
     ".window { display: flex; width: max-content; height: 40rem; color: var(--nol-text); font-family: var(--nol-font-sans); font-size: var(--nol-text-panel);"
@@ -45,17 +45,17 @@ class DocumentComponent {
   public readonly width: InputSignal<number> = input<number>(60);
 }
 
-const URL: string = "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/482";
-const item: HostItem = new HostItem(new HostReference("git-azure-devops", "fabrikam", "site", 482), ReferenceKind.PullRequest, ReferenceState.Open,
+const URL: string = "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/752";
+const item: HostItem = new HostItem(new HostReference("git-azure-devops", "fabrikam", "site", 752), ReferenceKind.PullRequest, ReferenceState.Open,
   "Export notes as Markdown from the shared notes list, with a title long enough to run past the header's width so the header cuts it short", URL,
   new HostPerson("monalisa@fabrikam.com", null, null), 1_800_000_000_000, null, 0,
-  new HostChanges(null, null, null, "users/monalisa/4821-export-notes", "main", "0123456789abcdef0123456789abcdef01234567"));
+  new HostChanges(null, null, null, "users/monalisa/7521-export-notes", "main", "0123456789abcdef0123456789abcdef01234567"));
 const pullRequestWith = (reviewers: readonly HostReviewer[]): HostPullRequest => new HostPullRequest(item, reviewers,
   [new HostPolicy("Minimum number of reviewers", PolicyState.Approved, true, null), new HostPolicy("Comment requirements", PolicyState.Rejected, true, null)],
   [new HostBuild("site-ci", CheckState.Succeeded, "https://dev.azure.com/fabrikam/web/_build/results?buildId=7", 1_800_000_000_000, 1_800_000_372_000)],
   true, "Readers see **due dates** before they pass.", 5,
-  [new HostWorkItemLink(4821, "Export notes as Markdown files", new HostWorkItemType("User Story", "009CCC", "icon_book"), "Active",
-    WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/web/_workitems/edit/4821")]);
+  [new HostWorkItemLink(7521, "Export notes as Markdown files", new HostWorkItemType("User Story", "009CCC", "icon_book"), "Active",
+    WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/web/_workitems/edit/7521")]);
 const pullRequest: HostPullRequest = pullRequestWith([new HostReviewer(new HostPerson("octocat@fabrikam.com", null, null), 1, "Approved", true)]);
 
 const picture: string = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
@@ -389,14 +389,14 @@ describe("AzureDevOpsPullRequestComponent in the kit's look", () => {
 
   it.each(AppearanceFixture.modes)("names a group reviewer without its project, on one line cut with an ellipsis inside the view, the whole name its tooltip, in %s mode",
     async mode => {
-      const group: string = "[Sample]\\sample_reviewers_for_the_long_running_markdown_export_release_train";
+      const group: string = "[Sample]\\owls_and_otters_triage_rota_for_the_quarterly_platform_upgrade_window";
       const fixture = await openAsync(mode, 60, pullRequestWith([new HostReviewer(new HostPerson(group, null, null), 0, "No vote", true)]));
       const root: HTMLElement = fixture.nativeElement;
       const name = find(root, ".reviewer .name");
       const style = getComputedStyle(name);
 
       expect([name.textContent, name.title, style.textOverflow, name.scrollWidth > name.clientWidth])
-        .toEqual(["sample_reviewers_for_the_long_running_markdown_export_release_train", group, "ellipsis", true]);
+        .toEqual(["owls_and_otters_triage_rota_for_the_quarterly_platform_upgrade_window", group, "ellipsis", true]);
       AppearanceFixture.expectPixels(name.getBoundingClientRect().height, parseFloat(style.lineHeight));
       expect(name.getBoundingClientRect().right).toBeLessThanOrEqual(boxOf(root, ".detail .list").right);
     });

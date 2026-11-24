@@ -165,7 +165,7 @@ describe("RuntimePart", () => {
     await part.activateAsync(context.fake);
     const answers = [await callAsync(context, "git-github.readReference", new HostReference("git-github", "octocat", "hello-world", 1).toJson()),
       await callAsync(context, "git-github.readBranchPullRequest", new BranchQuery("github.com", "octocat/hello-world", "fix-bug", null).toJson()),
-      await callAsync(context, "git-github.readAuthorAvatar", new AuthorQuery("github.com", "octocat/hello-world", "ana@example.com", "6dcb09b5b57875f334f61aebed695e2e4193db5e").toJson()),
+      await callAsync(context, "git-github.readAuthorAvatar", new AuthorQuery("github.com", "octocat/hello-world", "kim@example.com", "6dcb09b5b57875f334f61aebed695e2e4193db5e").toJson()),
       await callAsync(context, "git-github.readPullRequests", new RepositoryQuery("github.com", "octocat/hello-world").toJson()),
       await callAsync(context, "git-github.readReviewRequests", new RepositoryQuery("github.com", "octocat/hello-world").toJson()),
       await callAsync(context, "git-github.readCommitComments", new CommitQuery("github.com", "octocat/hello-world", "6dcb09b5b57875f334f61aebed695e2e4193db5e").toJson()),
