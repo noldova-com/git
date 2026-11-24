@@ -76,6 +76,24 @@ describe("LogReader", () => {
     assert.deepEqual((await reader.readAsync(repository.folder, 1)).commits[0]?.parents, parents);
   });
 
+  test("shows a commit whose author offset git prints malformed at the same moment in UTC, with the rest of the log", async () => {
+    const head = (await repository.runGitAsync(["rev-parse", "HEAD"])).trim();
+    const tree = (await repository.runGitAsync(["rev-parse", "HEAD^{tree}"])).trim();
+    const commit = [`tree ${tree}`, `parent ${head}`, "author A <a@example.invalid> 1700000000 +051800", "committer A <a@example.invalid> 1700000000 +0000", "", "Odd zone", ""]
+      .join("\n");
+    const odd = (await repository.runGitAsync(["hash-object", "-t", "commit", "-w", "--literally", "--stdin"], commit)).trim();
+    await repository.runGitAsync(["update-ref", "HEAD", odd]);
+
+    const log = await reader.readAsync(repository.folder, 10);
+
+    assert.deepEqual(log.commits.map(t => [t.id, t.authoredAt === "2023-11-14T22:13:20Z" || t.id !== odd]), [[odd, true], [head, true]]);
+  });
+
+  test("keeps a date git printed with a well-formed offset, and one whose seconds it can't read, for the protocol to judge", () => {
+    assert.deepEqual([LogReader.dateOf("2026-11-06T09:30:00-08:00", "1794000600"), LogReader.dateOf("2026-11-06T09:30:00+518:00", "soon"),
+      LogReader.dateOf("2026-11-06T09:30:00+518:00", "1794000600")], ["2026-11-06T09:30:00-08:00", "2026-11-06T09:30:00+518:00", "2026-11-06T21:30:00Z"]);
+  });
+
   test("answers no commits before the first commit", async () => {
     const empty = path.join(repository.root, "empty");
     await repository.runGitAsync(["init", "--quiet", empty]);
@@ -113,9 +131,9 @@ describe("LogReader", () => {
       return scripted.readAsync(repository.folder, 10);
     };
 
-    await assert.rejects(readAsync(record([id, "", "Sample Author", "2026-11-06T17:30:00Z"])), unreadable);
-    await assert.rejects(readAsync(record([id, "", "Sample Author", "2026-11-06T17:30:00Z", "First"]).slice(0, -1)), unreadable);
-    await assert.rejects(readAsync(record([id, "", "Sample Author", "yesterday", "First"])), (error: unknown): boolean => {
+    await assert.rejects(readAsync(record([id, "", "Sample Author", "2026-11-06T17:30:00Z", "1794000600"])), unreadable);
+    await assert.rejects(readAsync(record([id, "", "Sample Author", "2026-11-06T17:30:00Z", "1794000600", "First"]).slice(0, -1)), unreadable);
+    await assert.rejects(readAsync(record([id, "", "Sample Author", "yesterday", "soon", "First"])), (error: unknown): boolean => {
       assert.ok(error instanceof UnreadableOutputException);
       assert.equal(error.gitCode, GitCode.UnreadableOutput);
       assert.ok(error.cause instanceof ProtocolFieldException);

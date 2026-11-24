@@ -6,19 +6,21 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { type EffectRef, effect, Injector, type Provider, signal, type WritableSignal } from "@angular/core";
+import { type EffectRef, effect, type EnvironmentProviders, Injector, type Provider, signal, type WritableSignal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import type { JsonValue } from "@noldova/context.json";
 import { UnansweredCallException } from "@noldova/desktop.protocol/testing";
 import { WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import type { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import {
-  type ConflictKind, DiffFile, DiffHunk, DiffLine, FileChange, type FailureCode, FileState, GitBranches, type GitCode, GitDiff, GitFailure, type GitOperation,
-  type GitRemote, GitStatus, LineCounts, LineKind, StatusEntry, type StatusUpstream
+  type ConflictKind, DiffFile, DiffHunk, DiffLine, FileChange, type FailureCode, FileState, GitBranches, type GitBranchTrack, type GitCode, GitCommandLog, GitCommitSignature, GitCommitSigning, GitDiff, GitFailure, type GitOperation, GitPrediction,
+  type GitRemote, GitStatus, LineCounts, LineKind, PredictionOutcome, SignatureState, SigningFormat, StatusEntry, type StatusUpstream
 } from "@noldova/git.protocol";
 import { onTestFinished } from "vitest";
 
 import { GitFolder } from "../../src/app/services/git-folder.ts";
+import { GitPendingSwitch } from "../../src/app/services/git-pending-switch.ts";
+import { GitRecentRepositories } from "../../src/app/services/git-recent-repositories.ts";
 
 export class FailedRequest extends WindowException {
   public override readonly name: string = "FailedRequest";
@@ -32,7 +34,11 @@ export class FailedRequest extends WindowException {
 
 export class GitFixtures {
   public static readonly folder: string = "/work/project";
-  public static readonly watching: Readonly<Record<string, JsonValue>> = { "git.watch": null, "git.unwatch": null };
+  public static readonly watching: Readonly<Record<string, JsonValue>> = {
+    "git.watch": null, "git.unwatch": null, "git.predict": new GitPrediction(PredictionOutcome.Unavailable, []).toJson(), "git.commandLog": new GitCommandLog([]).toJson(),
+    "git.commitSignature": new GitCommitSignature("0".repeat(40), SignatureState.None, null, null).toJson(),
+    "git.commitSigning": new GitCommitSigning(false, SigningFormat.OpenPgp).toJson()
+  };
 
   public static entry(path: string, index: FileState, worktree: FileState, counts: LineCounts | null = new LineCounts(2, 1),
     conflict: ConflictKind | null = null): StatusEntry {
@@ -43,15 +49,16 @@ export class GitFixtures {
 
   public static status(entries: readonly StatusEntry[] = [], upstream: StatusUpstream | null = null, options: {
     readonly branch?: string | null; readonly head?: string | null; readonly operation?: GitOperation | null; readonly remote?: GitRemote | null; readonly truncated?: boolean;
-    readonly fingerprint?: string;
+    readonly fingerprint?: string; readonly uncheckedLfsFiles?: number; readonly fetchedAt?: string | null;
   } = {}): GitStatus {
     return new GitStatus(options.branch === undefined ? "main" : options.branch,
       options.head === undefined ? "0123456789abcdef0123456789abcdef01234567" : options.head, upstream, entries,
-      options.truncated ?? false, options.fingerprint ?? "f1", options.operation ?? null, options.remote ?? null);
+      options.truncated ?? false, options.fingerprint ?? "f1", options.operation ?? null, options.remote ?? null,
+      options.uncheckedLfsFiles ?? 0, options.fetchedAt ?? null);
   }
 
-  public static branches(current: string | null, branches: readonly string[], remoteBranches: readonly string[] = []): GitBranches {
-    return new GitBranches(current, branches, remoteBranches.map(t => t.slice(0, t.indexOf("/"))).filter((t, i, all) => all.indexOf(t) === i), remoteBranches);
+  public static branches(current: string | null, branches: readonly string[], remoteBranches: readonly string[] = [], tracks: readonly GitBranchTrack[] = []): GitBranches {
+    return new GitBranches(current, branches, remoteBranches.map(t => t.slice(0, t.indexOf("/"))).filter((t, i, all) => all.indexOf(t) === i), remoteBranches, tracks);
   }
 
   public static diff(path: string, ...lines: readonly [LineKind, string][]): GitDiff {
@@ -69,11 +76,16 @@ export class GitFixtures {
     return new FailedRequest(message);
   }
 
-  public static setUp(context: FakeWindowPartContext, providers: readonly Provider[] = []): WritableSignal<string | null> {
+  public static setUp(context: FakeWindowPartContext, providers: readonly (Provider | EnvironmentProviders)[] = []): WritableSignal<string | null> {
     const folder: WritableSignal<string | null> = signal(GitFixtures.folder);
     const unregister: () => void = GitFolder.provide(context, folder);
-    TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: context }, ...providers] });
+    TestBed.configureTestingModule({
+      providers: [{ provide: WindowPartTokens.context, useValue: context }, { provide: WindowPartTokens.activeDocument, useValue: signal(true) }, ...providers]
+    });
     onTestFinished(unregister);
+    onTestFinished(() => GitPendingSwitch.target.set(null));
+    const recent: readonly string[] = GitRecentRepositories.recent();
+    onTestFinished(() => GitRecentRepositories.forget(new Set(GitRecentRepositories.recent().filter(t => !recent.includes(t)))));
     return folder;
   }
 

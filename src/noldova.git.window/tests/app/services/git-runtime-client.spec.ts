@@ -7,7 +7,10 @@
  */
 
 import type { JsonValue } from "@noldova/context.json";
-import { DiffScope, DiffScopeKind, FailureCode, GitBranches, GitDiff, GitFailure, GitHooks, GitStatus } from "@noldova/git.protocol";
+import {
+  ConflictKind, ConflictResolution, DiffScope, DiffScopeKind, FailureCode, GitAvatar, GitBranches, GitBranchTrack, GitCommitSigning, GitConflict, GitDiff, GitFailure, GitHooks, GitJournal, GitMarkerCheck, GitPrediction, GitRebaseCheck, GitRebaseCommit, GitRebasePlan, GitRebaseStepCheck, GitRemoteTracks, GitStatus, OperationKind,
+  PredictionAction, PredictionOutcome, RebaseAction, RebaseCheckOutcome, RebaseStep, SigningFormat
+} from "@noldova/git.protocol";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { describe, expect, it } from "vitest";
 
@@ -25,6 +28,24 @@ class DetailedError extends Error {
 
 describe("GitRuntimeClient", () => {
   const folder: string = "/work/project";
+
+  it("reads the remote branches' counts against HEAD, and parses the answer", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    const tracks: GitRemoteTracks = new GitRemoteTracks([new GitBranchTrack("origin/main", 1, 2)]);
+    GitFixtures.answerWith(context, { "git.remoteTracks": tracks.toJson() });
+
+    expect(await new GitRuntimeClient(context).remoteTracksAsync(folder)).toEqual(tracks);
+    expect(context.callsOf("requestAsync")).toEqual([["git.remoteTracks", { folder }]]);
+  });
+
+  it("reads how the folder's repository signs commits, and parses the answer", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    const signing: GitCommitSigning = new GitCommitSigning(true, SigningFormat.Ssh);
+    GitFixtures.answerWith(context, { "git.commitSigning": signing.toJson() });
+
+    expect(await new GitRuntimeClient(context).commitSigningAsync(folder)).toEqual(signing);
+    expect(context.callsOf("requestAsync")).toEqual([["git.commitSigning", { folder }]]);
+  });
 
   it("reads the status, branches and a diff of the folder, and parses each answer", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
@@ -47,10 +68,39 @@ describe("GitRuntimeClient", () => {
     ]);
   });
 
+  it("reads an author's picture by their email, and parses the answer", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { "git.avatar": { image: "data:image/png;base64,QQ==" } });
+
+    expect(await new GitRuntimeClient(context).avatarAsync("ana@example.com")).toEqual(new GitAvatar("data:image/png;base64,QQ=="));
+    expect(context.callsOf("requestAsync")).toEqual([["git.avatar", { email: "ana@example.com" }]]);
+  });
+
+  it("sends a branch's rename and delete and a tag's create and delete with the fingerprint each was based on", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { "git.renameBranch": null, "git.deleteBranch": null, "git.createTag": null, "git.deleteTag": null });
+    const client: GitRuntimeClient = new GitRuntimeClient(context);
+    const id: string = "0123456789abcdef0123456789abcdef01234567";
+
+    await client.renameBranchAsync(folder, "old", "new", "f1");
+    await client.deleteBranchAsync(folder, "done", "f2");
+    await client.createTagAsync(folder, "v1", id, "f3");
+    await client.deleteTagAsync(folder, "v1", "f4");
+
+    expect(context.callsOf("requestAsync")).toEqual([
+      ["git.renameBranch", { folder, name: "old", newName: "new", basedOn: "f1" }],
+      ["git.deleteBranch", { folder, name: "done", basedOn: "f2" }],
+      ["git.createTag", { folder, name: "v1", id, basedOn: "f3" }],
+      ["git.deleteTag", { folder, name: "v1", basedOn: "f4" }]
+    ]);
+  });
+
   it("sends each write with the fingerprint it was based on, and watches and unwatches the folder", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     GitFixtures.answerWith(context, {
-      ...GitFixtures.watching, "git.stage": null, "git.unstage": null, "git.createBranch": null, "git.switchBranch": null, "git.commit": null, "git.push": null, "git.pull": null
+      ...GitFixtures.watching, "git.stage": null, "git.unstage": null, "git.createBranch": null, "git.switchBranch": null, "git.commit": null, "git.push": null, "git.pull": null,
+      "git.stageLines": null, "git.unstageLines": null, "git.discard": null, "git.undo": null, "git.forcePush": null, "git.fetch": null,
+      "git.stash": null, "git.journal": new GitJournal([], true).toJson()
     });
     const client: GitRuntimeClient = new GitRuntimeClient(context);
 
@@ -60,7 +110,17 @@ describe("GitRuntimeClient", () => {
     await client.switchBranchAsync(folder, "main", "f4");
     await client.commitAsync(folder, "Fix it", "f5");
     await client.pushAsync(folder, "f6");
+    await client.forcePushAsync(folder, "0123456789abcdef0123456789abcdef01234567", "f6");
+    await client.fetchAsync(folder, "f6");
+    await client.fetchAsync(folder, "f6", true);
+    await client.stashAsync(folder, "Lanes", false, "f6");
+    await client.stashAsync(folder, null, true, "f6");
     await client.pullAsync(folder, "f7");
+    await client.stageLinesAsync(folder, "a.txt", [1, 2], "f8");
+    await client.unstageLinesAsync(folder, "b.txt", [0], "f9");
+    await client.discardAsync(folder, ["c.txt"], "f10");
+    const journal: GitJournal = await client.journalAsync(folder);
+    await client.undoAsync(folder, "7", "f11");
     await client.watchAsync(folder);
     await client.unwatchAsync(folder);
 
@@ -71,9 +131,88 @@ describe("GitRuntimeClient", () => {
       ["git.switchBranch", { folder, name: "main", basedOn: "f4" }],
       ["git.commit", { folder, message: "Fix it", basedOn: "f5" }],
       ["git.push", { folder, basedOn: "f6" }],
+      ["git.forcePush", { folder, expected: "0123456789abcdef0123456789abcdef01234567", basedOn: "f6" }],
+      ["git.fetch", { folder, basedOn: "f6" }],
+      ["git.fetch", { folder, basedOn: "f6", allRemotes: true }],
+      ["git.stash", { folder, message: "Lanes", includeUntracked: false, basedOn: "f6" }],
+      ["git.stash", { folder, message: null, includeUntracked: true, basedOn: "f6" }],
       ["git.pull", { folder, basedOn: "f7" }],
+      ["git.stageLines", { folder, path: "a.txt", lines: [1, 2], basedOn: "f8" }],
+      ["git.unstageLines", { folder, path: "b.txt", lines: [0], basedOn: "f9" }],
+      ["git.discard", { folder, paths: ["c.txt"], basedOn: "f10" }],
+      ["git.journal", { folder }],
+      ["git.undo", { folder, id: "7", basedOn: "f11" }],
       ["git.watch", { folder }],
       ["git.unwatch", { folder }]
+    ]);
+    expect(journal.checkpoints).toBe(true);
+  });
+
+  it("asks what a cherry-pick or a revert of a commit would do", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    const prediction: GitPrediction = new GitPrediction(PredictionOutcome.Conflicts, ["a.txt"]);
+    GitFixtures.answerWith(context, { "git.predict": prediction.toJson() });
+    const client: GitRuntimeClient = new GitRuntimeClient(context);
+    const id: string = "0123456789abcdef0123456789abcdef01234567";
+
+    expect(await client.predictAsync(folder, id, PredictionAction.CherryPick)).toEqual(prediction);
+    await client.predictAsync(folder, id, PredictionAction.Revert);
+
+    expect(context.callsOf("requestAsync")).toEqual([
+      ["git.predict", { folder, id, action: PredictionAction.CherryPick }],
+      ["git.predict", { folder, id, action: PredictionAction.Revert }]
+    ]);
+  });
+
+  it("reads a rebase's plan, checks its steps and starts it with the fingerprint it was based on", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    const onto: string = "1".repeat(40);
+    const id: string = "2".repeat(40);
+    const plan: GitRebasePlan = new GitRebasePlan("feature", onto, onto, 0, [new GitRebaseCommit(id, "Add b", null)], [], false);
+    const check: GitRebaseCheck = new GitRebaseCheck([new GitRebaseStepCheck(RebaseCheckOutcome.Clean, [])]);
+    GitFixtures.answerWith(context, { "git.rebasePlan": plan.toJson(), "git.rebaseCheck": check.toJson(), "git.rebase": null });
+    const client: GitRuntimeClient = new GitRuntimeClient(context);
+    const steps: RebaseStep[] = [new RebaseStep(id, RebaseAction.Pick, null)];
+
+    expect(await client.rebasePlanAsync(folder, onto)).toEqual(plan);
+    expect(await client.rebaseCheckAsync(folder, onto, steps)).toEqual(check);
+    await client.rebaseAsync(folder, onto, steps, true, "f1");
+
+    const step = { id, action: RebaseAction.Pick, message: null };
+    expect(context.callsOf("requestAsync")).toEqual([
+      ["git.rebasePlan", { folder, onto }],
+      ["git.rebaseCheck", { folder, onto, steps: [step] }],
+      ["git.rebase", { folder, onto, steps: [step], updateRefs: true, basedOn: "f1" }]
+    ]);
+  });
+
+  it("reads which files still have a conflict marker line", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { "git.markerCheck": new GitMarkerCheck(["a.txt"]).toJson() });
+
+    expect([await new GitRuntimeClient(context).markerCheckAsync(folder), context.callsOf("requestAsync")]).toEqual([
+      new GitMarkerCheck(["a.txt"]), [["git.markerCheck", { folder }]]
+    ]);
+  });
+
+  it("reads a conflict and sends its resolution, a continue and an abort with the fingerprint they were based on", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    const conflict: GitConflict = new GitConflict("a.txt", ConflictKind.BothModified, OperationKind.Merge, "b\n", "o\n", "t\n", "m\n", "main", "feature", null, null, false, false);
+    GitFixtures.answerWith(context, { "git.conflict": conflict.toJson(), "git.resolveConflict": null, "git.continueOperation": null, "git.abortOperation": null });
+    const client: GitRuntimeClient = new GitRuntimeClient(context);
+
+    expect(await client.conflictAsync(folder, "a.txt")).toEqual(conflict);
+    await client.resolveConflictAsync(folder, "a.txt", ConflictResolution.Text, "r\n", "f1");
+    await client.resolveConflictAsync(folder, "b.txt", ConflictResolution.Delete, null, "f2");
+    await client.continueOperationAsync(folder, "f3");
+    await client.abortOperationAsync(folder, "f4");
+
+    expect(context.callsOf("requestAsync")).toEqual([
+      ["git.conflict", { folder, path: "a.txt" }],
+      ["git.resolveConflict", { folder, path: "a.txt", resolution: "Text", text: "r\n", basedOn: "f1" }],
+      ["git.resolveConflict", { folder, path: "b.txt", resolution: "Delete", text: null, basedOn: "f2" }],
+      ["git.continueOperation", { folder, basedOn: "f3" }],
+      ["git.abortOperation", { folder, basedOn: "f4" }]
     ]);
   });
 

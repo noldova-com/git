@@ -31,7 +31,9 @@ export const GitCode = {
   GhMissing: "GhMissing",
   GhTooOld: "GhTooOld",
   GhSignInUnconfirmed: "GhSignInUnconfirmed",
-  GhSignInNeeded: "GhSignInNeeded"
+  GhSignInNeeded: "GhSignInNeeded",
+  PushBehind: "PushBehind",
+  NothingToStash: "NothingToStash"
 } as const;
 
 export type GitCode = (typeof GitCode)[keyof typeof GitCode];

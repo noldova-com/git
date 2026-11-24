@@ -1,0 +1,35 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (failure(); as failure) {
+  <div class="notice" role="alert">
+    <span class="material-symbols-rounded notice-icon" aria-hidden="true">{{ resources.failureIcon }}</span>
+    <span class="notice-text">{{ failure }}</span>
+    <button type="button" nol-button [variant]="secondary" (click)="retry()">{{ resources.tryAgainLabel }}</button>
+  </div>
+} @else if (isReading()) {
+  <div class="notice" role="status">
+    <nol-spinner />
+    <span class="notice-text">{{ resources.formatPullRequestCommitsReading(host().name) }}</span>
+  </div>
+} @else if (list(); as list) {
+  <section class="list" [attr.aria-label]="resources.pullRequestCommitsLabel">
+    @for (commit of list.commits; track $index) {
+      <button type="button" class="row" (click)="open(commit)">
+        <span class="sha">{{ shortOf(commit) }}</span>
+        <span class="subject">{{ commit.subject }}</span>
+        <span class="byline">{{ commit.author }} · {{ ageOf(commit) }}</span>
+      </button>
+    } @empty {
+      <p class="empty">{{ resources.pullRequestNoCommits }}</p>
+    }
+    @if (list.hasMore) {
+      <p class="cap">{{ resources.pullRequestCommitsCapped }}</p>
+    }
+  </section>
+}

@@ -76,6 +76,33 @@ describe("RemoteReader", () => {
     assert.equal(await reader.readNamedAsync(repository.folder, ""), null);
   });
 
+  test("reads a remote's URL with git's insteadOf rewrites applied, as git fetches from it", async () => {
+    await configureAsync('[url "git@github.com:"]', "\tinsteadOf = gh:", '[remote "origin"]', "\turl = gh:owner/repo", '[branch "main"]', "\tremote = origin");
+    const expected = { name: "origin", host: "github.com", path: "owner/repo", transport: RemoteTransport.Ssh };
+
+    assert.deepEqual((await reader.readAsync(repository.folder, "main"))?.toJson(), expected);
+    assert.deepEqual((await reader.readNamedAsync(repository.folder, "origin"))?.toJson(), expected);
+  });
+
+  test("takes the branch's last remote value, the one git uses", async () => {
+    await configureAsync('[remote "origin"]', "\turl = https://host/a/b", '[remote "fork"]', "\turl = https://host/c/d", '[branch "main"]', "\tremote = origin", "\tremote = fork");
+
+    assert.equal((await reader.readAsync(repository.folder, "main"))?.name, "fork");
+  });
+
+  test("takes the configured URL when git remote get-url fails or its output was cut", async () => {
+    await configureAsync('[url "git@github.com:"]', "\tinsteadOf = gh:", '[remote "origin"]', "\turl = gh:owner/repo");
+    const runner = new ScriptedRunnerFixture(supervisor.context);
+    const scripted = new RemoteReader(runner);
+    const configured = { name: "origin", host: "gh", path: "owner/repo", transport: RemoteTransport.Ssh };
+
+    runner.failing = "get-url";
+    assert.deepEqual((await scripted.readAsync(repository.folder, "main"))?.toJson(), configured);
+    runner.failing = null;
+    runner.truncating = "get-url";
+    assert.deepEqual((await scripted.readNamedAsync(repository.folder, "origin"))?.toJson(), configured);
+  });
+
   test("names no remote when no remote is set, and fails with git's output when the configuration was cut or git config failed otherwise", async () => {
     await repository.runGitAsync(["remote", "add", "origin", "https://host/a/b"]);
     const runner = new ScriptedRunnerFixture(supervisor.context);

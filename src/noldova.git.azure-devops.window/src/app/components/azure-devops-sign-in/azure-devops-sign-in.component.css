@@ -1,0 +1,107 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  display: block;
+}
+
+.nol-git-azure-devops-setting {
+  display: grid;
+  gap: var(--nol-settings-item-control-gap);
+  margin-inline: calc(-1 * var(--nol-settings-edge, 0rem));
+  padding: var(--nol-settings-item-padding);
+  border-radius: var(--nol-radius-small);
+}
+
+.nol-git-azure-devops-heading {
+  display: grid;
+  gap: var(--nol-settings-item-control-gap);
+}
+
+.nol-git-azure-devops-action {
+  display: inline-flex;
+}
+
+.nol-git-azure-devops-setting-title {
+  margin: 0;
+  font: inherit;
+  color: var(--nol-setting-title);
+  font-weight: var(--nol-weight-emphasis);
+}
+
+.nol-git-azure-devops-setting-note {
+  margin: calc(var(--nol-settings-item-description-gap) - var(--nol-settings-item-control-gap)) 0 0;
+  color: var(--nol-text-muted);
+}
+
+.nol-git-azure-devops-row {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.nol-git-azure-devops-microsoft-title {
+  margin-block-start: var(--nol-settings-item-description-gap);
+}
+
+.nol-git-azure-devops-token-row {
+  flex-wrap: nowrap;
+}
+
+.nol-git-azure-devops-token,
+.nol-git-azure-devops-organization {
+  flex: 1 1 0;
+  width: auto;
+}
+
+.nol-git-azure-devops-account {
+  display: flex;
+  gap: var(--nol-view-gap);
+  align-items: center;
+}
+
+.nol-git-azure-devops-account-text,
+.nol-git-azure-devops-banner-text {
+  display: grid;
+}
+
+.nol-git-azure-devops-banner-text {
+  gap: var(--nol-space-half);
+}
+
+.nol-git-azure-devops-strong {
+  color: var(--nol-text-strong);
+  font-weight: var(--nol-weight-emphasis);
+}
+
+.nol-git-azure-devops-muted {
+  color: var(--nol-text-muted);
+}
+
+.nol-git-azure-devops-label {
+  font-size: var(--nol-text-label);
+}
+
+.nol-git-azure-devops-banner {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: flex-start;
+  padding: var(--nol-space-2) var(--nol-view-padding-inline);
+  border-radius: var(--nol-radius-medium);
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  background: var(--nol-raised);
+}
+
+.nol-git-azure-devops-banner-icon {
+  margin-top: var(--nol-space-half);
+  font-size: var(--nol-icon);
+  width: var(--nol-icon);
+  height: var(--nol-icon);
+  color: var(--nol-error);
+}

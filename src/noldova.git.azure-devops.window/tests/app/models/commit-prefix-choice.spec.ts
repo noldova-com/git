@@ -1,0 +1,36 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import { JsonReader, type JsonValue } from "@noldova/context.json";
+import { describe, expect, it } from "vitest";
+
+import { CommitPrefixChoice } from "../../../src/app/models/commit-prefix-choice.ts";
+
+describe("CommitPrefixChoice", () => {
+  it("writes a repository's branch and its work item as JSON and reads them back", () => {
+    const choice: CommitPrefixChoice = new CommitPrefixChoice("/work/portal", "users/ana/4832-tag-filter", 4832);
+
+    expect(choice.toJson()).toEqual({ folder: "/work/portal", branch: "users/ana/4832-tag-filter", id: 4832 });
+    expect(CommitPrefixChoice.fromJson(JsonReader.fromValue(choice.toJson()))).toEqual(choice);
+  });
+
+  it("is for its own repository and branch only", () => {
+    const choice: CommitPrefixChoice = new CommitPrefixChoice("/work/portal", "main", 4832);
+
+    expect([choice.isFor("/work/portal", "main"), choice.isFor("/work/site", "main"), choice.isFor("/work/portal", "develop")]).toEqual([true, false, false]);
+  });
+
+  it("refuses a blank or missing folder or branch, and an id that isn't a whole number", () => {
+    const refusals: readonly (readonly [JsonValue, string])[] = [[{ folder: " ", branch: "main", id: 1 }, "$.folder"], [{ branch: "main", id: 1 }, "$.folder"],
+      [{ folder: "/work/portal", branch: "", id: 1 }, "$.branch"], [{ folder: "/work/portal", branch: "main", id: 1.5 }, "$.id"],
+      [{ folder: "/work/portal", branch: "main", id: "1" }, "$.id"]];
+
+    for (const [json, path] of refusals)
+      expect(() => CommitPrefixChoice.fromJson(JsonReader.fromValue(json))).toThrow(expect.objectContaining({ name: "JsonException", path }));
+  });
+});

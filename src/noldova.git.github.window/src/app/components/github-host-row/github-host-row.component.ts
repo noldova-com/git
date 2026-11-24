@@ -6,14 +6,16 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Component, computed, DestroyRef, effect, inject, input, type InputSignal, type OnInit, PendingTasks, type Signal,
+import { Component, computed, DestroyRef, effect, ElementRef, inject, input, type InputSignal, type OnInit, PendingTasks, type Signal,
   signal, untracked, type WritableSignal } from "@angular/core";
 import { type IWindowPartContext, LinkPlace, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { BranchPullRequest, BranchQuery, CheckState, type HostCheck, HostSignIn, SignInState } from "@noldova/git.hosting.protocol";
 import type { GitRemote } from "@noldova/git.protocol";
+import { FocusKeeper } from "@noldova/git.window";
 import { ButtonComponent, ButtonVariant, ClipboardWriter, IconButtonComponent, SpinnerComponent, TooltipDirective } from "@noldova/ui.components.angular";
 
+import { FailedLink } from "../../models/failed-link.ts";
 import type { GitHubLook } from "../../models/github-look.ts";
 import { ShownPullRequest } from "../../models/shown-pull-request.ts";
 import { Resources } from "../../../resources.ts";
@@ -54,7 +56,7 @@ export class GitHubHostRowComponent implements OnInit {
   protected readonly signIn: WritableSignal<HostSignIn | null> = signal<HostSignIn | null>(null);
   protected readonly answer: WritableSignal<BranchPullRequest | null> = signal<BranchPullRequest | null>(null);
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
-  protected readonly failedLink: WritableSignal<readonly [url: string, place: LinkPlace | null] | null> = signal<readonly [url: string, place: LinkPlace | null] | null>(null);
+  protected readonly failedLink: WritableSignal<FailedLink | null> = signal<FailedLink | null>(null);
   protected readonly isBusy: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly copiedCode: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly isReading: WritableSignal<boolean> = signal<boolean>(false);
@@ -73,6 +75,7 @@ export class GitHubHostRowComponent implements OnInit {
   public readonly remote: InputSignal<GitRemote> = input.required<GitRemote>();
 
   public constructor() {
+    this.destroyRef.onDestroy(FocusKeeper.keep(inject<ElementRef<HTMLElement>>(ElementRef).nativeElement));
     effect(onCleanup => {
       this.attempt();
       const query: BranchQuery | null = this.query();
@@ -161,7 +164,7 @@ export class GitHubHostRowComponent implements OnInit {
       if (!(error instanceof WindowException))
         throw error;
       this.context.log(Resources.formatLinkFailed(url, String(error)));
-      this.failedLink.set([url, place]);
+      this.failedLink.set(new FailedLink(url, place));
     }
     finally {
       done();

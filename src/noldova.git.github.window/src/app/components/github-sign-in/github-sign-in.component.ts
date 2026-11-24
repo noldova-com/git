@@ -7,10 +7,11 @@
  */
 
 import { NgTemplateOutlet } from "@angular/common";
-import { Component, DestroyRef, effect, inject, type OnInit, PendingTasks, signal, type WritableSignal } from "@angular/core";
+import { Component, DestroyRef, effect, ElementRef, inject, type OnInit, PendingTasks, signal, type WritableSignal } from "@angular/core";
 import { type IWindowPartContext, LinkPlace, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { type DeviceCode, type HostAccount, HostSignIn, SignInState } from "@noldova/git.hosting.protocol";
+import { FocusKeeper } from "@noldova/git.window";
 import { AvatarComponent, ButtonComponent, ButtonVariant, ClipboardWriter, SpinnerComponent } from "@noldova/ui.components.angular";
 
 import { SignInNotice } from "../../models/sign-in-notice.ts";
@@ -39,6 +40,7 @@ export class GitHubSignInComponent implements OnInit {
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
 
   public constructor() {
+    this.destroyRef.onDestroy(FocusKeeper.keep(inject<ElementRef<HTMLElement>>(ElementRef).nativeElement));
     effect(onCleanup => {
       if (this.signIn()?.state !== SignInState.Waiting)
         return;

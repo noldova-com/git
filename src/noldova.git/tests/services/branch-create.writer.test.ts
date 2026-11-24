@@ -93,6 +93,15 @@ describe("BranchCreateWriter", () => {
     assert.equal(branches.has("session-1", repository.folder, "feature"), false);
   });
 
+  test("gives the new branch no upstream, even when the repository's configuration sets one up for every new branch", async () => {
+    await repository.runGitAsync(["config", "branch.autoSetupMerge", "always"]);
+
+    await new BranchCreateWriter(runner, hooks, "feature", new SessionBranches(), null).runAsync(...await readAsync());
+
+    assert.equal(await currentAsync(), "feature");
+    assert.deepEqual((await repository.runGitAsync(["config", "--local", "--list"])).split("\n").filter(t => t.startsWith("branch.feature.")), []);
+  });
+
   test("remembers a branch an agent's session made, as that session's, in its repository", async () => {
     const branches = new SessionBranches();
     const [folders, status] = await readAsync();
@@ -158,7 +167,7 @@ describe("BranchCreateWriter", () => {
     const [folders, status] = await readAsync();
 
     await assert.rejects(new BranchCreateWriter(runner, hooks, "next", branches, "session-1").runAsync(folders, status),
-      failsWith(GitFailedException, FailureCode.Unavailable, null, "git switch --create failed; its output comes with the failure as untrusted text."));
+      failsWith(GitFailedException, FailureCode.Unavailable, null, "git switch --no-track failed; its output comes with the failure as untrusted text."));
 
     assert.equal(branches.has("session-1", folders.top, "next"), false);
     assert.equal(await currentAsync(), "main");

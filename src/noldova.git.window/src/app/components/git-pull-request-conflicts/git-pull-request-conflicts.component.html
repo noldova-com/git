@@ -1,0 +1,39 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (failure(); as failure) {
+  <div class="notice" role="alert">
+    <span class="material-symbols-rounded notice-icon" aria-hidden="true">{{ resources.failureIcon }}</span>
+    <span class="notice-text">{{ failure }}</span>
+    <button type="button" nol-button [variant]="secondary" (click)="retry()">{{ resources.tryAgainLabel }}</button>
+  </div>
+} @else if (isReading()) {
+  <div class="notice" role="status">
+    <nol-spinner />
+    <span class="notice-text">{{ resources.formatPullRequestConflictsReading(host().name) }}</span>
+  </div>
+} @else if (list(); as list) {
+  <section class="list" [attr.aria-label]="resources.pullRequestConflictsLabel">
+    @for (path of list.paths; track $index) {
+      @if (folder(); as folder) {
+        <button type="button" class="row" [title]="path" [attr.aria-label]="resources.formatOpenPullRequestConflict(path)" (click)="open(folder)">
+          <span class="material-symbols-rounded icon" aria-hidden="true">{{ resources.conflictIcon }}</span><span class="path">{{ path }}</span>
+        </button>
+      } @else {
+        <div class="row" [title]="path">
+          <span class="material-symbols-rounded icon" aria-hidden="true">{{ resources.conflictIcon }}</span><span class="path">{{ path }}</span>
+        </div>
+      }
+    } @empty {
+      <p class="empty">{{ resources.pullRequestNoConflicts }}</p>
+    }
+    @if (list.hasMore) {
+      <p class="cap">{{ resources.pullRequestConflictsCapped }}</p>
+    }
+  </section>
+}

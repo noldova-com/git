@@ -55,6 +55,16 @@ describe("DiffBudget", () => {
     assert.deepEqual(atHunk.toDiff().files[0], truncated([firstHunk]));
   });
 
+  test("keeps a renamed file's old path and similarity when it cuts the file's lines", () => {
+    const renamed = new DiffFile("b.txt", undefined, "a.txt", undefined, FileChange.Renamed, "100644", "100644", false, null, hunks, false, 87);
+    const budget = new DiffBudget(sizeOf(new DiffFile("b.txt", undefined, "a.txt", undefined, FileChange.Renamed, "100644", "100644", false, null, [], false, 87)) + HUNK + LINE, 1_000_000);
+
+    budget.add(renamed);
+
+    const kept = budget.toDiff().files[0];
+    assert.deepEqual([kept?.oldPath, kept?.similarity, kept?.truncated], ["a.txt", 87, true]);
+  });
+
   test("fills at the whole diff's limit, leaving out the later files", () => {
     const budget = new DiffBudget(100_000, BASE + HUNK + LINE);
 

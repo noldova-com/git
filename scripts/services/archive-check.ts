@@ -14,6 +14,7 @@ import { ArchiveFindingsException } from "../exceptions/archive-findings.excepti
 import { ArchiveFolderMissingException } from "../exceptions/archive-folder-missing.exception.ts";
 import { ArchiveManifestNotObjectException } from "../exceptions/archive-manifest-not-object.exception.ts";
 import { JsonValueNotObjectException } from "../exceptions/json-value-not-object.exception.ts";
+import { DesktopRangeRead } from "../models/desktop-range-read.ts";
 import { ReleaseArchive } from "../models/release-archive.ts";
 import { VersionRange } from "../models/version-range.ts";
 import { Resources } from "../resources.ts";
@@ -46,7 +47,7 @@ export class ArchiveCheck {
     const contents = new Map<ReleaseArchive, ReadonlyMap<string, Buffer>>();
     for (const archive of archives.filter(t => found.includes(path.basename(t.filePath))))
       contents.set(archive, await this.archiveReader.readAsync(archive.filePath));
-    const [noldovaDesktop, rangeFindings] = ArchiveCheck.readNoldovaDesktop(contents);
+    const { range: noldovaDesktop, findings: rangeFindings } = ArchiveCheck.readNoldovaDesktop(contents);
     findings.push(...rangeFindings);
     for (const [archive, entries] of contents)
       findings.push(...ArchiveCheck.checkArchive(archive, entries, version, commit, scope, names, noldovaDesktop));
@@ -57,7 +58,7 @@ export class ArchiveCheck {
     return archives;
   }
 
-  private static readNoldovaDesktop(contents: ReadonlyMap<ReleaseArchive, ReadonlyMap<string, Buffer>>): readonly [string | null, readonly string[]] {
+  private static readNoldovaDesktop(contents: ReadonlyMap<ReleaseArchive, ReadonlyMap<string, Buffer>>): DesktopRangeRead {
     const findings: string[] = [];
     const ranges = new Set<string>();
     for (const [archive, entries] of contents) {
@@ -83,7 +84,7 @@ export class ArchiveCheck {
     }
     if (ranges.size > 1)
       findings.push(Resources.formatArchiveNoldovaDesktopsDiffer([...ranges]));
-    return [findings.length === 0 && ranges.size === 1 ? [...ranges][0] ?? null : null, findings];
+    return new DesktopRangeRead(findings.length === 0 && ranges.size === 1 ? [...ranges][0] ?? null : null, findings);
   }
 
   private static checkArchive(archive: ReleaseArchive, entries: ReadonlyMap<string, Buffer>, version: string, commit: string | null, scope: string, names: readonly string[],

@@ -1,0 +1,38 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import assert from "node:assert/strict";
+
+import { describe, it } from "vitest";
+
+import { AzureRepository } from "../../src/models/azure-repository.ts";
+
+function partsOf(host: string, path: string): readonly string[] | null {
+  const repository: AzureRepository | null = AzureRepository.parse(host, path);
+  return repository === null ? null : [repository.organization, repository.project, repository.name];
+}
+
+describe("AzureRepository", () => {
+  it("reads the organization, project and repository from each kind of Azure DevOps remote", () => {
+    assert.deepEqual([
+      partsOf("dev.azure.com", "fabrikam/web/_git/site"),
+      partsOf("ssh.dev.azure.com", "v3/fabrikam/web/site"),
+      partsOf("vs-ssh.visualstudio.com", "v3/fabrikam/web/site"),
+      partsOf("fabrikam.visualstudio.com", "web/_git/site"),
+      partsOf("fabrikam.visualstudio.com", "DefaultCollection/web/_git/site")
+    ], [["fabrikam", "web", "site"], ["fabrikam", "web", "site"], ["fabrikam", "web", "site"], ["fabrikam", "web", "site"], ["fabrikam", "web", "site"]]);
+  });
+
+  it("reads no repository from another host, a path of another shape or an organization that isn't a name", () => {
+    const remotes: readonly (readonly [string, string])[] = [["github.com", "octocat/hello-world"], ["dev.azure.com", "fabrikam/web/site"],
+      ["dev.azure.com", "fabrikam/web/_git/site/extra"], ["ssh.dev.azure.com", "v2/fabrikam/web/site"], ["vs-ssh.visualstudio.com", "fabrikam/web/_git/site"],
+      ["fabrikam.visualstudio.com", "Collection/web/_git/site"], ["dev.azure.com", "-fabrikam/web/_git/site"], ["fab_rikam.visualstudio.com", "web/_git/site"]];
+
+    assert.deepEqual(remotes.map(([host, path]) => partsOf(host, path)), remotes.map(() => null));
+  });
+});

@@ -6,6 +6,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import type { HostCapabilities } from "@noldova/git.hosting.protocol";
+
 /**
  * The names the GitHub module's parts share.
  *
@@ -81,6 +83,50 @@ export declare class GitHubNames {
   public static readonly createPullRequestMethod: string;
 
   /**
+   * `git-github.readAuthorAvatar`: takes an `AuthorQuery` as JSON and answers the author's GitHub picture as `HostAvatar` JSON: for a GitHub
+   * no-reply email, the account it names, and signed in, the account GitHub links to the commit; else, and for a repository not on
+   * `github.com`, none.
+   */
+  public static readonly readAuthorAvatarMethod: string;
+
+  /**
+   * `git-github.readPullRequests`: takes a `RepositoryQuery` as JSON and answers the repository's open pull requests as `HostPullRequestList` JSON,
+   * the most recently updated first, each with its approving reviewers, the check runs on its head commit and its head branch; signed out, the signed-out list,
+   * and for a repository not on `github.com`, none.
+   */
+  public static readonly readPullRequestsMethod: string;
+
+  /**
+   * `git-github.readReviewRequests`: takes a `RepositoryQuery` as JSON and answers the open pull requests on that repository that ask the signed-in
+   * person for a review, their own or one of their teams', as `HostReviewRequestList` JSON, the newest first. It reads one search of the account's
+   * review requests at most once a minute and shares it out by repository, so `hasMore` says the account's search was cut; signed out, the signed-out
+   * list, and for a repository not on `github.com`, none.
+   */
+  public static readonly readReviewRequestsMethod: string;
+
+  /**
+   * `git-github.readCommitComments`: takes a `CommitQuery` as JSON and answers the review comments on that commit as `HostCommitComments` JSON: the
+   * commit's own comments and, in the pull request that brought it in, the review comments made on it, one page of 100 of each, and the page that
+   * shows them, kept only when it is an https page on `github.com`. Signed out, for a repository not on `github.com`, or with no comments, none.
+   */
+  public static readonly readCommitCommentsMethod: string;
+
+  /**
+   * `git-github.readPullRequest`: takes a `HostReference` as JSON and answers its pull request as `HostPullRequest` JSON: the pull request, its
+   * description, its commit count, its reviewers by their latest review, the check runs on its head as builds, and whether it conflicts with its base;
+   * no policies or work items, which GitHub doesn't have. Signed out, for another host, or for a pull request GitHub can't show, `null`.
+   */
+  public static readonly readPullRequestMethod: string;
+
+  /**
+   * `git-github.readPullRequestThreads`: takes a `HostReference` as JSON and answers its comments as `HostPullRequestThreads` JSON, the threads oldest
+   * first: each conversation comment its own thread with no path, and each review comment with its replies a thread on its file and line, with no
+   * state, since GitHub's REST API keeps none; the newest 100 of each kind, with `hasMore` when there are older ones. Signed out, for another host, or
+   * for a pull request GitHub can't show, no threads.
+   */
+  public static readonly readPullRequestThreadsMethod: string;
+
+  /**
    * `git-github.access`: the service the GitHub runtime part publishes as an `IGitHubAccess`, through which another module's runtime part,
    * such as an app's for GitHub's own MCP server, reads the signed-in token.
    */
@@ -126,6 +172,12 @@ export declare class GitHubNames {
    * GitHub's page where the person reviews or revokes the access they gave Noldova's OAuth app.
    */
   public static readonly manageAccessUrl: string;
+
+  /**
+   * What the module does today, so a window shows only that: sign-in, reading an item and a branch's pull request with its checks, opening
+   * a pull request, showing commit authors' pictures and listing a repository's open pull requests.
+   */
+  public static readonly capabilities: HostCapabilities;
 }
 
 /**

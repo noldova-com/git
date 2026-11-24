@@ -20,7 +20,7 @@ on:
         type: string
         default: ''
       filter:
-        description: The filters the script takes, separated by spaces, for npm test each a test file from the root or a test name pattern; empty runs the whole suite
+        description: The filters the script takes, separated by spaces, for npm test each a test file from the root, which Vitest takes as a file filter; empty runs the whole suite
         type: string
         default: ''
       script:

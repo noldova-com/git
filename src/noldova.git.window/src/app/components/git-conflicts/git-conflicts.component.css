@@ -1,0 +1,335 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  --ours: var(--nol-author-3);
+  --theirs: var(--nol-author-5);
+
+  display: flex;
+  container-type: inline-size;
+  flex-direction: column;
+  gap: 0.25rem;
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  padding: 0 0.25rem 0.25rem;
+  color: var(--nol-text);
+  font-family: var(--nol-font-sans);
+  font-size: var(--nol-text-panel);
+  line-height: var(--nol-line-panel);
+}
+
+/* Too narrow for the text and both buttons on one line, the buttons go whole under the text, at its right. */
+.operation {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border: var(--nol-border-width) solid color-mix(in srgb, var(--nol-warning) 45%, transparent);
+  border-radius: var(--nol-radius-large);
+  background-color: var(--nol-panel);
+}
+
+.operation-actions {
+  display: flex;
+  flex: none;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.operation-icon,
+.file-icon {
+  flex: none;
+  font-size: var(--nol-icon);
+}
+
+.clean .file-icon {
+  color: var(--nol-icon-color);
+}
+
+.operation-text {
+  flex: 1 1 10rem;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.body {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: 15rem minmax(0, 1fr);
+  gap: 0.25rem;
+  min-height: 0;
+}
+
+.files,
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: var(--nol-radius-large);
+  background-color: var(--nol-panel);
+}
+
+.files {
+  gap: 0.125rem;
+  padding: 0.5rem 0.25rem;
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  height: 1.625rem;
+  margin: 0;
+  padding: 0 0.5rem;
+  color: var(--nol-text-muted);
+  font-size: 0.75rem;
+  font-weight: normal;
+  letter-spacing: var(--nol-letter-spacing-caps);
+  text-transform: uppercase;
+}
+
+.group:not(:first-child) {
+  margin-top: 0.5rem;
+}
+
+.file {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
+  height: 1.625rem;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--nol-text);
+  font: inherit;
+  text-align: start;
+  white-space: nowrap;
+}
+
+button.file {
+  cursor: pointer;
+}
+
+button.file:hover {
+  background-color: var(--nol-hover);
+}
+
+.file.selected,
+.file.selected:hover {
+  background-color: var(--nol-selected);
+}
+
+.name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.folder {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--nol-text-muted);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+}
+
+.note {
+  flex: none;
+  color: var(--nol-text-muted);
+  font-size: 0.75rem;
+}
+
+/* The row that shows the rest of the files merged cleanly reads quieter than the files. */
+.file.more,
+.file.more .file-icon {
+  color: var(--nol-text-muted);
+}
+
+.sides {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  min-height: 0;
+}
+
+.panes {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.25rem;
+  min-height: 0;
+}
+
+/* Too narrow for its text and buttons on one line, a head's buttons go whole under the text, at its right. */
+.pane-head {
+  display: flex;
+  box-sizing: border-box;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.125rem 0.75rem;
+  border-bottom: var(--nol-border-width) solid var(--nol-border);
+  white-space: nowrap;
+}
+
+.bar {
+  flex: none;
+  width: 0.1875rem;
+  height: 1rem;
+  border-radius: 0.125rem;
+}
+
+.ours .bar {
+  background-color: var(--ours);
+}
+
+.theirs .bar {
+  background-color: var(--theirs);
+}
+
+.label {
+  flex: 1 1 4rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.label + * {
+  margin-left: auto;
+}
+
+/* A side's name gives way before its commit's short id, so a narrow head still says which commit it shows. */
+.side-label {
+  display: flex;
+  min-width: 5.5rem;
+}
+
+.side-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-commit {
+  flex: none;
+  white-space: pre;
+}
+
+.code {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 0.25rem 0.75rem;
+  overflow: auto;
+  background-color: var(--nol-code);
+  font-family: var(--nol-font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.pane-note,
+.note-line,
+.quiet,
+.failure {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+}
+
+.pane-note,
+.quiet {
+  color: var(--nol-text-muted);
+}
+
+.note-line {
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: var(--nol-radius-medium);
+  background-color: var(--nol-raised);
+}
+
+/*
+ * While the merge editor can't read the markers it shows no panes, so the frame keeps the whole-file choices in a row of its own.
+ * The row reads the editor, so it follows the editor in the template, once the editor's inputs are set; the editor's order puts the row above it.
+ */
+/* Too narrow for two columns, the files and the merge stack, and the page scrolls. */
+@container (max-width: 60rem) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: max-content;
+    overflow: auto;
+  }
+
+  .files {
+    overflow: visible;
+  }
+
+  .sides {
+    height: 22rem;
+  }
+}
+
+.merge-actions {
+  display: flex;
+  flex: none;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* The merge editor draws Ours, Theirs and the result as cards, with the frame's heads on top and the frame's gap between them. */
+.merge {
+  --nol-merge-editor-gap: 0.25rem;
+
+  flex: 1 1 auto;
+  order: 1;
+  min-height: 0;
+}
+
+.pane-icon {
+  flex: none;
+  color: var(--nol-icon-color);
+  font-size: 1rem;
+}
+
+.whole-file {
+  display: flex;
+  flex: none;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.failure {
+  color: var(--nol-status-failed);
+}
+
+.warning {
+  color: var(--nol-warning);
+}
+
+.ok {
+  color: var(--nol-status-ok);
+}
+
+.strong {
+  color: var(--nol-text-strong);
+  font-weight: var(--nol-weight-emphasis);
+}
+
+.muted {
+  color: var(--nol-text-muted);
+}

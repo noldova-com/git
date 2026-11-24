@@ -1,0 +1,77 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import { type Signal, signal, type WritableSignal } from "@angular/core";
+import { JsonReader } from "@noldova/context.json";
+
+import { GitWorkspace } from "../models/git-workspace.ts";
+import { GitWindowStorage } from "./git-window-storage.ts";
+
+/**
+ * The person's workspaces, in the order they made them, kept in the window's storage: a setting can't hold a list of them, and each
+ * setting shows on a settings page.
+ */
+export class GitWorkspaces {
+  private static readonly KEY: string = "git.workspaces";
+  private static readonly workspaces: WritableSignal<readonly GitWorkspace[]> = signal<readonly GitWorkspace[]>([]);
+
+  public static readonly list: Signal<readonly GitWorkspace[]> = GitWorkspaces.workspaces.asReadonly();
+
+  /** Reads the workspaces kept in the window's storage again; a workspace that no longer reads is dropped, and the others stay. */
+  public static restore(): void {
+    const list: GitWorkspace[] = [];
+    for (const value of GitWindowStorage.readArray(GitWorkspaces.KEY))
+      try {
+        list.push(GitWorkspace.fromJson(JsonReader.fromValue(value)));
+      }
+      catch {
+        // A workspace that no longer reads is dropped; the others stay.
+      }
+    GitWorkspaces.workspaces.set(list);
+  }
+
+  public static find(id: string): GitWorkspace | null {
+    return GitWorkspaces.workspaces().find(t => t.id === id) ?? null;
+  }
+
+  /** Makes a workspace with a name and no repositories, and returns it. */
+  public static create(name: string): GitWorkspace {
+    const workspace: GitWorkspace = new GitWorkspace(crypto.randomUUID(), name, []);
+    GitWorkspaces.save([...GitWorkspaces.workspaces(), workspace]);
+    return workspace;
+  }
+
+  public static remove(id: string): void {
+    GitWorkspaces.save(GitWorkspaces.workspaces().filter(t => t.id !== id));
+  }
+
+  public static rename(id: string, name: string): void {
+    GitWorkspaces.change(id, t => t.withName(name));
+  }
+
+  public static addFolder(id: string, folder: string): void {
+    GitWorkspaces.change(id, t => t.withFolder(folder));
+  }
+
+  public static removeFolders(id: string, folders: ReadonlySet<string>): void {
+    GitWorkspaces.change(id, t => t.withoutFolders(folders));
+  }
+
+  public static moveFolders(id: string, folders: ReadonlySet<string>, by: -1 | 1): void {
+    GitWorkspaces.change(id, t => t.withFoldersMoved(folders, by));
+  }
+
+  private static change(id: string, change: (workspace: GitWorkspace) => GitWorkspace): void {
+    GitWorkspaces.save(GitWorkspaces.workspaces().map(t => t.id === id ? change(t) : t));
+  }
+
+  private static save(list: readonly GitWorkspace[]): void {
+    GitWorkspaces.workspaces.set(list);
+    GitWindowStorage.write(GitWorkspaces.KEY, list.map(t => t.toJson()));
+  }
+}

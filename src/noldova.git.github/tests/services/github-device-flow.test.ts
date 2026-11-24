@@ -14,6 +14,7 @@ import { HostAccount, HostingArgumentException } from "@noldova/git.hosting.prot
 import { afterEach, describe, it, vi } from "vitest";
 
 import { GitHubException } from "../../src/exceptions/github.exception.ts";
+import { SignInAnswerTooLargeException } from "../../src/exceptions/sign-in-answer-too-large.exception.ts";
 import { SignInErrorException } from "../../src/exceptions/sign-in-error.exception.ts";
 import { SignInExpiryInvalidException } from "../../src/exceptions/sign-in-expiry-invalid.exception.ts";
 import { SignInRequestRefusedException } from "../../src/exceptions/sign-in-request-refused.exception.ts";
@@ -89,6 +90,23 @@ describe("GitHubDeviceFlow", () => {
     const error: unknown = await new GitHubDeviceFlow(github.fetch, unread()).requestCodeAsync(1_000, new AbortController().signal).then(() => null, (t: unknown) => t);
 
     assert.equal(error, unexpected);
+  });
+
+  it("reads a sign-in answer of 64 KiB, and refuses one past it, naming the address, without reading the rest", async () => {
+    const padded = (value: unknown, size: number): Response => {
+      const text: string = JSON.stringify(value);
+      return new Response(text + " ".repeat(size - Buffer.byteLength(text)));
+    };
+    const github = new FakeGitHub();
+    github.answer(padded(grant, 65_536), padded({ error: "authorization_pending" }, 65_537));
+    const flow = new GitHubDeviceFlow(github.fetch, unread());
+    const signal = new AbortController().signal;
+
+    const read = await flow.requestCodeAsync(1_000, signal);
+    const failure: unknown = await flow.pollAsync(grant.device_code, signal).then(() => null, (error: unknown) => error);
+
+    assert.deepEqual([read.deviceCode, failureOf(failure), failure instanceof SignInAnswerTooLargeException ? failure.url : null],
+      [grant.device_code, "SignInAnswerTooLargeException", "https://github.com/login/oauth/access_token"]);
   });
 
   it("takes five seconds when GitHub names no interval, and at least a second for an interval or a slow-down", async () => {
@@ -305,5 +323,20 @@ describe("GitHubDeviceFlow", () => {
 
     assert.deepEqual(outcomes, ["SignInRequestRefusedException", "SignInRequestRefusedException", null]);
     assert.deepEqual(unreadAnswers.map(t => t.bodyUsed), [true, true, true]);
+  });
+
+  it("follows no redirect, so the device code and the token stay with GitHub, refusing a code, a poll or an account GitHub redirects", async () => {
+    const github = new FakeGitHub();
+    const away = { Location: "https://login.fabrikam.com/oauth" };
+    github.answer(FakeGitHub.json({}, 307, away), FakeGitHub.json({}, 308, away), FakeGitHub.json({}, 302, away));
+    const flow = new GitHubDeviceFlow(github.fetch, unread());
+    const signal = new AbortController().signal;
+
+    const outcomes: unknown[] = [await flow.requestCodeAsync(Date.now(), signal).then(() => null, failureOf),
+      await flow.pollAsync(grant.device_code, signal).then(() => null, failureOf), await flow.readAccountAsync("gho_token", signal).then(() => null, failureOf)];
+
+    assert.deepEqual([outcomes, github.urls(), github.requests.map(t => t.init.redirect)], [
+      ["SignInRequestRefusedException", "SignInRequestRefusedException", "SignInRequestRefusedException"],
+      ["https://github.com/login/device/code", "https://github.com/login/oauth/access_token", "https://api.github.com/user"], ["manual", "manual", "manual"]]);
   });
 });

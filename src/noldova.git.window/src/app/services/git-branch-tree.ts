@@ -1,0 +1,55 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import { GitBranchRow } from "../models/git-branch-row.ts";
+
+/** Lays branches out as trees, in folders split at `/`, showing only what the open rows hold. */
+export class GitBranchTree {
+  private static readonly SEPARATOR: string = "/";
+
+  /** The local rows to show, a level in from their section: folders by name, then branches by name, and an open folder's contents; each key starts with `prefix`. */
+  public static localRowsOf(prefix: string, branches: readonly string[], opened: ReadonlySet<string>): GitBranchRow[] {
+    const rows: GitBranchRow[] = [];
+    GitBranchTree.addLevel(rows, prefix, "", branches, 1, opened);
+    return rows;
+  }
+
+  /** The remote rows to show, a level in from their section: each remote, then, under an open one, its folders by name, then its branches by name. */
+  public static remoteRowsOf(remotes: readonly string[], remoteBranches: readonly string[], opened: ReadonlySet<string>): GitBranchRow[] {
+    const rows: GitBranchRow[] = [];
+    for (const remote of remotes) {
+      const prefix: string = remote + GitBranchTree.SEPARATOR;
+      const names: string[] = remoteBranches.filter(t => t.startsWith(prefix)).map(t => t.slice(prefix.length));
+      rows.push(new GitBranchRow(prefix, remote, 1, true, names.length, ""));
+      if (opened.has(prefix))
+        GitBranchTree.addLevel(rows, prefix, prefix, names, 2, opened);
+    }
+    return rows;
+  }
+
+  private static addLevel(rows: GitBranchRow[], key: string, branch: string, names: readonly string[], depth: number, opened: ReadonlySet<string>): void {
+    const folders: Map<string, string[]> = new Map();
+    const branches: string[] = [];
+    for (const name of names) {
+      const at: number = name.indexOf(GitBranchTree.SEPARATOR);
+      if (at < 0)
+        branches.push(name);
+      else
+        folders.set(name.slice(0, at), [...folders.get(name.slice(0, at)) ?? [], name.slice(at + 1)]);
+    }
+    const entries: (readonly [string, readonly string[] | null])[] = [...folders, ...branches.map(t => [t, null] as const)]
+      .sort(([a, aNames], [b, bNames]) => Number(bNames !== null) - Number(aNames !== null) || a.localeCompare(b, undefined, { sensitivity: "base" }));
+    for (const [name, children] of entries) {
+      const isFolder: boolean = children !== null;
+      const folder: string = isFolder ? GitBranchTree.SEPARATOR : "";
+      rows.push(new GitBranchRow(key + name + folder, name, depth, isFolder, 0, isFolder ? "" : branch + name));
+      if (children !== null && opened.has(key + name + folder))
+        GitBranchTree.addLevel(rows, key + name + folder, branch + name + folder, children, depth + 1, opened);
+    }
+  }
+}

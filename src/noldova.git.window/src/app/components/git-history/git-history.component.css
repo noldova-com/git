@@ -1,0 +1,428 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  container: history / inline-size;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  background: var(--nol-panel);
+  color: var(--nol-text);
+  font-family: var(--nol-font-sans);
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+}
+
+.ms {
+  display: inline-block;
+  flex: none;
+  overflow: hidden;
+  width: 1rem;
+  height: 1rem;
+  color: var(--nol-icon-color);
+  font-family: "Material Symbols Rounded";
+  font-size: 1rem;
+  font-weight: 400;
+  font-style: normal;
+  line-height: 1;
+  white-space: nowrap;
+  font-feature-settings: "liga";
+}
+
+.toolbar {
+  display: flex;
+  overflow: hidden;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+  box-sizing: border-box;
+  height: 2.25rem;
+  padding: 0 0.5rem;
+  border-bottom: var(--nol-border-width) solid var(--nol-border);
+}
+
+.actions,
+.group {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sep {
+  width: 1px;
+  height: 1rem;
+  margin: 0 0.25rem;
+  background: var(--nol-border);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  flex: 0 1 17rem;
+  min-width: 7rem;
+  height: 1.625rem;
+  padding: 0 0.375rem;
+  border: var(--nol-border-width) solid var(--nol-input-border);
+  border-radius: 0.25rem;
+  background: var(--nol-input);
+}
+
+.field input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--nol-text);
+  font: inherit;
+}
+
+.field input::placeholder,
+.placeholder {
+  color: var(--nol-placeholder);
+}
+
+.grow-row {
+  display: grid;
+  grid-template-columns: 13rem var(--graph-width) minmax(0, 1fr) 9.5rem 5.5rem;
+  align-items: center;
+  box-sizing: border-box;
+  height: 1.75rem;
+  padding: 0 0.5rem;
+  white-space: nowrap;
+}
+
+.header {
+  flex: none;
+  color: var(--nol-text-muted);
+  font-size: 0.75rem;
+}
+
+.list {
+  flex: 1;
+  min-height: 0;
+  outline: none;
+}
+
+.list .grow-row:hover {
+  background: var(--nol-hover);
+}
+
+.list .grow-row.sel,
+.list .grow-row.sel:hover {
+  background: var(--nol-selected);
+}
+
+.grow-row.dim {
+  opacity: 0.4;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.message,
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.italic {
+  font-style: italic;
+}
+
+.muted {
+  color: var(--nol-text-muted);
+}
+
+.mono {
+  font-family: var(--nol-font-mono);
+}
+
+.chip {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  gap: 0.25rem;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  border-radius: 0.25rem;
+  color: var(--nol-text-strong);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.chip-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  font-size: 0.875rem;
+}
+
+.chip.current {
+  font-weight: 500;
+}
+
+.chip.more {
+  flex: none;
+}
+
+.ltag {
+  box-shadow: inset 0 0 0 1px var(--nol-border);
+}
+
+.graph {
+  display: block;
+  overflow: visible;
+}
+
+.line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.dot {
+  stroke: var(--nol-panel);
+  stroke-width: 2;
+}
+
+.ring,
+.changes {
+  fill: var(--nol-panel);
+  stroke-width: 2;
+}
+
+.changes {
+  stroke-dasharray: 3 2;
+}
+
+.av {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 50%;
+  font-size: 0.625rem;
+  font-weight: 500;
+  object-fit: cover;
+}
+
+.note {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  color: var(--nol-text-muted);
+}
+
+.note.error {
+  color: var(--nol-error);
+}
+
+.line.lane-0,
+.ring.lane-0,
+.changes.lane-0 {
+  stroke: var(--nol-author-1);
+}
+
+.dot.lane-0,
+.fill.lane-0 {
+  fill: var(--nol-author-1);
+}
+
+.l0 {
+  background: color-mix(in srgb, var(--nol-author-1) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nol-author-1) 55%, transparent);
+}
+
+.line.lane-1,
+.ring.lane-1,
+.changes.lane-1 {
+  stroke: var(--nol-author-2);
+}
+
+.dot.lane-1,
+.fill.lane-1 {
+  fill: var(--nol-author-2);
+}
+
+.l1 {
+  background: color-mix(in srgb, var(--nol-author-2) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nol-author-2) 55%, transparent);
+}
+
+.line.lane-2,
+.ring.lane-2,
+.changes.lane-2 {
+  stroke: var(--nol-author-3);
+}
+
+.dot.lane-2,
+.fill.lane-2 {
+  fill: var(--nol-author-3);
+}
+
+.l2 {
+  background: color-mix(in srgb, var(--nol-author-3) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nol-author-3) 55%, transparent);
+}
+
+.line.lane-3,
+.ring.lane-3,
+.changes.lane-3 {
+  stroke: var(--nol-author-4);
+}
+
+.dot.lane-3,
+.fill.lane-3 {
+  fill: var(--nol-author-4);
+}
+
+.l3 {
+  background: color-mix(in srgb, var(--nol-author-4) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nol-author-4) 55%, transparent);
+}
+
+.line.lane-4,
+.ring.lane-4,
+.changes.lane-4 {
+  stroke: var(--nol-author-5);
+}
+
+.dot.lane-4,
+.fill.lane-4 {
+  fill: var(--nol-author-5);
+}
+
+.l4 {
+  background: color-mix(in srgb, var(--nol-author-5) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nol-author-5) 55%, transparent);
+}
+
+.line.lane-5,
+.ring.lane-5,
+.changes.lane-5 {
+  stroke: var(--nol-author-6);
+}
+
+.dot.lane-5,
+.fill.lane-5 {
+  fill: var(--nol-author-6);
+}
+
+.l5 {
+  background: color-mix(in srgb, var(--nol-author-6) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nol-author-6) 55%, transparent);
+}
+
+.line.lane-6,
+.ring.lane-6,
+.changes.lane-6 {
+  stroke: var(--nol-author-7);
+}
+
+.dot.lane-6,
+.fill.lane-6 {
+  fill: var(--nol-author-7);
+}
+
+.l6 {
+  background: color-mix(in srgb, var(--nol-author-7) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nol-author-7) 55%, transparent);
+}
+
+.line.lane-7,
+.ring.lane-7,
+.changes.lane-7 {
+  stroke: var(--nol-author-8);
+}
+
+.dot.lane-7,
+.fill.lane-7 {
+  fill: var(--nol-author-8);
+}
+
+.l7 {
+  background: color-mix(in srgb, var(--nol-author-8) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nol-author-8) 55%, transparent);
+}
+
+.av-default {
+  background: var(--nol-avatar-default);
+  color: var(--nol-avatar-default-text);
+}
+
+.av-teal {
+  background: var(--nol-avatar-teal);
+  color: var(--nol-avatar-teal-text);
+}
+
+.av-amber {
+  background: var(--nol-avatar-amber);
+  color: var(--nol-avatar-amber-text);
+}
+
+.av-violet {
+  background: var(--nol-avatar-violet);
+  color: var(--nol-avatar-violet-text);
+}
+
+.av-green {
+  background: var(--nol-avatar-green);
+  color: var(--nol-avatar-green-text);
+}
+
+.av-pink {
+  background: var(--nol-avatar-pink);
+  color: var(--nol-avatar-pink-text);
+}
+
+.av-cyan {
+  background: var(--nol-avatar-cyan);
+  color: var(--nol-avatar-cyan-text);
+}
+
+.av-orange {
+  background: var(--nol-avatar-orange);
+  color: var(--nol-avatar-orange-text);
+}
+
+/* As the history narrows, as beside another document, the columns narrow, then the rows give up the author and age; the toolbar row fits itself. */
+@container history (width < 64rem) {
+  .grow-row {
+    grid-template-columns: 9rem var(--graph-width) minmax(0, 1fr) 8rem 5.5rem;
+  }
+}
+
+@container history (width < 44rem) {
+  /* A row shows one label here, which keeps 8rem beside its +N. */
+  .grow-row {
+    grid-template-columns: 10rem var(--graph-width) minmax(0, 1fr);
+  }
+
+  .grow-row > :nth-child(n + 4) {
+    display: none;
+  }
+}

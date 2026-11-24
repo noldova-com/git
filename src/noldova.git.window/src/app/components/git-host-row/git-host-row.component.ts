@@ -7,11 +7,12 @@
  */
 
 import { NgComponentOutlet } from "@angular/common";
-import { Component, computed, inject, Injector, input, type InputSignal, type Signal, type Type } from "@angular/core";
+import { Component, computed, inject, Injector, input, type InputSignal, type Signal } from "@angular/core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { type GitRemote, type GitStatus, RemoteTransport } from "@noldova/git.protocol";
 
 import type { IProvidedGitHostRow } from "../../interfaces/i-provided-git-host-row.ts";
+import { GitHostRowView } from "../../models/git-host-row-view.ts";
 import { Resources } from "../../../resources.ts";
 import { GitHostRows } from "../../services/git-host-rows.ts";
 
@@ -26,12 +27,11 @@ export class GitHostRowComponent {
   private readonly provided: Signal<IProvidedGitHostRow | null> = computed(() => GitHostRows.rowFor(this.remote()));
 
   protected readonly resources: typeof Resources = Resources;
-  protected readonly row: Signal<{ readonly component: Type<unknown>; readonly injector: Injector } | null> = computed(() => {
+  protected readonly row: Signal<GitHostRowView | null> = computed(() => {
     const provided: IProvidedGitHostRow | null = this.provided();
-    return provided === null ? null : {
-      component: provided.row.component,
-      injector: Injector.create({ providers: [{ provide: WindowPartTokens.context, useValue: provided.context }], parent: this.injector })
-    };
+    return provided === null ? null : new GitHostRowView(
+      provided.row.component,
+      Injector.create({ providers: [{ provide: WindowPartTokens.context, useValue: provided.context }], parent: this.injector }));
   });
   protected readonly inputs: Signal<Record<string, unknown>> = computed(() => ({
     folder: this.folder(), branch: this.status().branch, head: this.status().head, remote: this.remote()

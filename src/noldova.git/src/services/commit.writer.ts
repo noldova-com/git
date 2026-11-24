@@ -6,9 +6,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 import { type IPermissionRequest, PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
-import { FileState, GitNames, type GitStatus, type StatusEntry, UntrustedSource } from "@noldova/git.protocol";
+import { FileState, GitNames, type GitStatus, type StatusEntry, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
+import { AmendNoCommitException } from "../exceptions/amend-no-commit.exception.ts";
+import { AmendPushedException } from "../exceptions/amend-pushed.exception.ts";
 import { CommitConflictsException } from "../exceptions/commit-conflicts.exception.ts";
+import { CommitDuringOperationException } from "../exceptions/commit-during-operation.exception.ts";
 import { CommitHookFailedException } from "../exceptions/commit-hook-failed.exception.ts";
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
 import { NothingStagedException } from "../exceptions/nothing-staged.exception.ts";
@@ -26,6 +29,7 @@ import { LogReader } from "./log.reader.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
 export class CommitWriter implements IGitWrite {
+  public readonly undo: UndoMode = UndoMode.Refs;
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.writeOutputBytes, Resources.longWriteMilliseconds);
   private static readonly IDENT_LIMITS: ProgramLimits = new ProgramLimits(Resources.lineOutputBytes, Resources.gitReadMilliseconds);
   private static readonly IDENT: GitArguments = new GitArguments(Resources.identArguments);
@@ -34,16 +38,30 @@ export class CommitWriter implements IGitWrite {
   private readonly runner: ProgramRunner;
   private readonly hooks: HooksReader;
   private readonly message: string;
+  private readonly amend: boolean;
 
-  public constructor(runner: ProgramRunner, hooks: HooksReader, message: string) {
+  /** Commits the staged changes, or with `amend` replaces the last commit with one that also holds them, under the message. */
+  public constructor(runner: ProgramRunner, hooks: HooksReader, message: string, amend: boolean = false) {
     this.runner = runner;
     this.hooks = hooks;
     this.message = message;
+    this.amend = amend;
+  }
+
+  public get method(): string {
+    return this.amend ? GitNames.amendMethod : GitNames.commitMethod;
   }
 
   public refuse(status: GitStatus): void {
     if (status.entries.some(t => t.conflict !== null))
       throw new CommitConflictsException();
+    if (this.amend) {
+      if (status.head === null)
+        throw new AmendNoCommitException();
+      if (status.upstream !== null && !status.upstream.gone && status.upstream.ahead === 0)
+        throw new AmendPushedException();
+      return;
+    }
     if (!status.entries.some(CommitWriter.isStaged))
       throw new NothingStagedException();
   }
@@ -51,15 +69,17 @@ export class CommitWriter implements IGitWrite {
   public async requestAsync(folders: RepositoryFolders, status: GitStatus, _call: unknown, signal?: AbortSignal): Promise<IPermissionRequest | null> {
     if (status.truncated)
       throw new RequestTooLargeException();
+    if (status.operation !== null)
+      throw new CommitDuringOperationException();
     const ident = await this.runner.runAsync(ProgramRun.readGit(CommitWriter.IDENT, folders.top, CommitWriter.IDENT_LIMITS, signal));
     if (ident.exit.code !== 0)
       throw new GitFailedException(Resources.formatGitCommand(CommitWriter.IDENT.values), { text: ident.errors.toString(Resources.utf8Encoding), source: UntrustedSource.Repository });
     const hooks = await this.hooks.readAsync(folders.top, Resources.commitHooks, signal);
     const staged = status.entries.filter(CommitWriter.isStaged);
     return WritePermission.create(
-      GitNames.commitMethod,
+      this.method,
       folders.top,
-      Resources.formatCommitTitle(staged.length, status.branch),
+      this.amend ? Resources.formatAmendTitle(staged.length, status.branch) : Resources.formatCommitTitle(staged.length, status.branch),
       [
         { label: Resources.messageLabel, kind: PermissionDetailKind.AgentText, value: this.message },
         { label: Resources.filesLabel, kind: PermissionDetailKind.Code, value: staged.map(CommitWriter.lineOf).join(Resources.lineEnd) },
@@ -71,7 +91,7 @@ export class CommitWriter implements IGitWrite {
   }
 
   public async runAsync(folders: RepositoryFolders, _status: GitStatus, signal?: AbortSignal): Promise<void> {
-    const gitArguments = new GitArguments([...Resources.commitArguments, Resources.formatMessageOption(this.message)]);
+    const gitArguments = new GitArguments([...Resources.commitArguments, ...this.amend ? [Resources.amendOption] : [], Resources.formatMessageOption(this.message)]);
     const result = await this.runner.runAsync(ProgramRun.writeGit(gitArguments, folders.top, folders.gitFolder, folders.commonGitFolder, CommitWriter.LIMITS, signal));
     if (result.exit.code === 0)
       return;

@@ -1,0 +1,159 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import { ErrorHandler, signal, type WritableSignal } from "@angular/core";
+import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
+import { FailureCode, GitCommand, GitCommandLog } from "@noldova/git.protocol";
+import { describe, expect, it, vi } from "vitest";
+
+import { GitCommandLogComponent } from "../../../../src/app/components/git-command-log/git-command-log.component.ts";
+import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
+import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
+
+describe("GitCommandLogComponent", () => {
+  const at: string = "2026-11-22T18:05:00Z";
+  const push: GitCommand = new GitCommand("2", at, `git push --porcelain -- origin 8c41e0a:refs/heads/${"feature/".repeat(40)}graph`, 1, 1_250);
+  const commands: GitCommandLog = new GitCommandLog([new GitCommand("1", at, "git add -- a.txt", 0, 40), push, new GitCommand("3", at, "git fetch --quiet", null, 30_000)]);
+
+  const mount = (context: FakeWindowPartContext): {
+    readonly fixture: ComponentFixture<GitCommandLogComponent>; readonly element: HTMLElement; readonly handled: WritableSignal<string[]>; readonly shown: WritableSignal<string | null>
+  } => {
+    const shown: WritableSignal<string | null> = GitFixtures.setUp(context);
+    const handled: WritableSignal<string[]> = signal<string[]>([]);
+    vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.update(t => [...t, String(error)]));
+    const fixture: ComponentFixture<GitCommandLogComponent> = TestBed.createComponent(GitCommandLogComponent);
+    fixture.componentRef.setInput("instance", GitFixtures.folder);
+    fixture.autoDetectChanges();
+    return { fixture, element: fixture.nativeElement, handled, shown };
+  };
+  const until = (done: () => boolean): Promise<boolean> => vi.waitUntil(done, { timeout: 5000 });
+  const rows = (element: HTMLElement): string[][] =>
+    [...element.querySelectorAll(".command")].map(row => [...row.children].map(t => (t.children.length === 0 ? [t] : [...t.children]).map(u => (u.textContent ?? "").trim()).join(" ")));
+  const requests = (context: FakeWindowPartContext): readonly (readonly unknown[])[] => context.callsOf("requestAsync").filter(t => t[0] !== "git.status");
+  const rem = (pixels: number): number => pixels / parseFloat(getComputedStyle(document.documentElement).fontSize);
+
+  it("lists the commands newest first, with when each started, its line, how it ended and how long it took, cutting a long line in its column", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.commandLog": commands.toJson() });
+    const { element } = mount(context);
+    await until(() => element.querySelectorAll(".command").length === 3);
+    const time: string = new Date(at).toLocaleTimeString("en-US");
+    const line: HTMLElement | null = element.querySelector<HTMLElement>(".command:nth-child(2) .line");
+    const row: DOMRect = element.querySelector(".command")?.getBoundingClientRect() ?? new DOMRect();
+    const list: DOMRect = element.querySelector(".commands")?.getBoundingClientRect() ?? new DOMRect();
+
+    expect(rows(element)).toEqual([
+      [time, "git fetch --quiet", "do_not_disturb_on Didn't finish", "30.0 s"],
+      [time, push.line, "error Exit code 1", "1.3 s"],
+      [time, "git add -- a.txt", "check_circle Done", "40 ms"]
+    ]);
+    expect([...element.querySelectorAll(".exit")].map(t => t.className)).toEqual(["exit muted", "exit failure", "exit ok"]);
+    expect([line?.title, (line?.scrollWidth ?? 0) > (line?.clientWidth ?? 0), rem(row.height), rem(row.left - list.left), rem(row.width) === rem(list.width)]).toEqual([
+      push.line, true, 1.75, 0, true
+    ]);
+  });
+
+  it("says no command ran yet, and reads the log again each time the repository changes", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    let log: GitCommandLog = new GitCommandLog([]);
+    let fingerprint: number = 1;
+    GitFixtures.answerWith(context, {
+      ...GitFixtures.watching, "git.status": () => GitFixtures.status([], null, { fingerprint: `f${fingerprint}` }).toJson(), "git.commandLog": () => log.toJson()
+    });
+    const { element } = mount(context);
+    await until(() => element.querySelector(".note") !== null);
+    const empty: string | undefined = element.querySelector(".note")?.textContent?.trim();
+
+    log = commands;
+    fingerprint = 2;
+    context.raiseEvent("git.changed", { folder: GitFixtures.folder });
+    await until(() => element.querySelectorAll(".command").length === 3);
+
+    expect([empty, element.querySelector(".note")]).toEqual(["No git commands yet: each write you make here shows its command as it runs.", null]);
+  });
+
+  it("drops a read's log or failure once a later read started, keeping the later one's", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    let fingerprint: number = 1;
+    const held: GitHeldRequests = new GitHeldRequests(context, ["git.commandLog"], {
+      ...GitFixtures.watching, "git.status": () => GitFixtures.status([], null, { fingerprint: `f${fingerprint}` }).toJson()
+    });
+    const { element } = mount(context);
+    const changed = (): void => {
+      fingerprint += 1;
+      context.raiseEvent("git.changed", { folder: GitFixtures.folder });
+    };
+
+    const first = await held.nextAsync("git.commandLog");
+    changed();
+    const second = await held.nextAsync("git.commandLog");
+    first(commands.toJson());
+    second(GitFixtures.failure(FailureCode.Unavailable, null, "Git can't run."));
+    await until(() => element.querySelector(".failure") !== null);
+    const failed: readonly unknown[] = [element.querySelector(".failure")?.textContent?.trim(), element.querySelectorAll(".command").length];
+    changed();
+    const third = await held.nextAsync("git.commandLog");
+    changed();
+    const fourth = await held.nextAsync("git.commandLog");
+    third(GitFixtures.failure(FailureCode.Unavailable, null, "Old failure."));
+    fourth(new GitCommandLog([]).toJson());
+    await until(() => element.querySelector(".note:not(.failure)") !== null);
+
+    expect([failed, element.querySelector(".failure")]).toEqual([["Git can't run.", 0], null]);
+  });
+
+  it("says why a read failed, keeps a later read's log over an earlier one's, and reports a failure outside Git", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.commandLog": GitFixtures.failure(FailureCode.Unavailable, null, "Git can't run.") });
+    const { element, handled } = mount(context);
+    await until(() => element.querySelector(".failure") !== null);
+    const failed: string | undefined = element.querySelector(".failure")?.textContent?.trim();
+
+    GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status([], null, { fingerprint: "f2" }).toJson(), "git.commandLog": new Error("log broke") });
+    context.raiseEvent("git.changed", { folder: GitFixtures.folder });
+    await until(() => handled().length > 0);
+
+    expect([failed, handled()]).toEqual(["Git can't run.", ["Error: log broke"]]);
+  });
+
+  it("watches its own repository while it is open, whichever repository the Git view shows, and reads again only when that repository changes", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson() });
+    const { fixture, shown } = mount(context);
+    shown.set("/work/other");
+    await until(() => requests(context).length === 2);
+    context.raiseEvent("git.changed", { folder: "/work/other" });
+    context.raiseEvent("git.changed", { folder: GitFixtures.folder });
+    await until(() => requests(context).length === 3);
+    fixture.destroy();
+    await until(() => requests(context).length === 4);
+
+    expect(requests(context)).toEqual([
+      ["git.watch", { folder: GitFixtures.folder }], ["git.commandLog", { folder: GitFixtures.folder }], ["git.commandLog", { folder: GitFixtures.folder }],
+      ["git.unwatch", { folder: GitFixtures.folder }]
+    ]);
+  });
+
+  it("logs that it can't watch its repository, or stop watching it, and still lists the commands", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, {
+      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.commandLog": commands.toJson(),
+      "git.watch": GitFixtures.failure(FailureCode.Unavailable, null, "No watcher."), "git.unwatch": GitFixtures.failure(FailureCode.Unavailable, null, "Gone.")
+    });
+    const { fixture, element } = mount(context);
+    await until(() => element.querySelectorAll(".command").length === 3 && context.callsOf("log").length === 1);
+    fixture.destroy();
+    await until(() => context.callsOf("log").length === 2);
+
+    expect(context.callsOf("log")).toEqual([
+      [`The command log of ${GitFixtures.folder} doesn't follow new commands, since the folder couldn't be watched: No watcher.`],
+      [`The command log couldn't stop watching ${GitFixtures.folder}: Gone.`]
+    ]);
+  });
+});

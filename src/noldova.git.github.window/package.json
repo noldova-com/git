@@ -1,7 +1,7 @@
 {
   "name": "@noldova/git.github.window",
   "version": "0.0.6",
-  "description": "The GitHub module's window part: GitHub's labels, icons and colours for each kind and state of an issue or pull request, and the Git view's row with a branch's pull request and checks.",
+  "description": "The GitHub module's window part: GitHub's labels, icons and colours for each kind and state of an issue or pull request, the Git view's row with a branch's pull request and checks, and the chips for issue and pull request links in a commit's message.",
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -34,7 +34,7 @@
     "@angular/core": "22.3.0",
     "@angular/forms": "22.3.0",
     "@angular/platform-browser": "22.3.0",
-    "@noldova/ui.components.angular": "0.0.28",
+    "@noldova/ui.components.angular": "0.0.29",
     "@noldova/desktop.protocol": "0.0.16",
     "@noldova/desktop.window": "0.0.16",
     "rxjs": "7.8.2",

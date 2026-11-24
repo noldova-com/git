@@ -43,6 +43,7 @@ import { Resources } from "../resources.ts";
 import { ChangedPathsParser } from "./changed-paths.parser.ts";
 import { ChangesDigest } from "./changes-digest.ts";
 import { DiffReader } from "./diff.reader.ts";
+import { FilterOptionsReader } from "./filter-options.reader.ts";
 import { FilePresence } from "./file-presence.ts";
 import { GitVersionReader } from "./git-version.reader.ts";
 import { KeyQueue } from "./key-queue.ts";
@@ -73,6 +74,7 @@ export class WorktreeService {
   private readonly table: WorktreeTable;
   private readonly statuses: StatusReader;
   private readonly diffs: DiffReader;
+  private readonly filters: FilterOptionsReader;
   private readonly digest: ChangesDigest = new ChangesDigest(Resources.changesDigestBytes);
   private readonly calls: KeyQueue = new KeyQueue();
 
@@ -83,6 +85,7 @@ export class WorktreeService {
     this.table = new WorktreeTable(context.database);
     this.statuses = new StatusReader(runner);
     this.diffs = new DiffReader(runner);
+    this.filters = new FilterOptionsReader(runner);
   }
 
   public async createWorktreeAsync(key: string, options: ICreateWorktreeOptions): Promise<WorktreeRecord> {
@@ -207,7 +210,8 @@ export class WorktreeService {
     const headArguments = WorktreeService.READ_COMMIT.withRevisions([Resources.headRevision]);
     const head = await this.readAsync(record.path, headArguments);
     this.requireSuccess(headArguments, head);
-    const status = await this.readAsync(record.path, WorktreeService.STATUS);
+    const filters = await this.filters.readAsync(record.path, context.signal);
+    const status = await this.readAsync(record.path, WorktreeService.STATUS.withSettings(filters));
     this.requireSuccess(WorktreeService.STATUS, status);
     if (status.isTruncated)
       throw new ChangesTooLargeException();

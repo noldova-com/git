@@ -20,7 +20,8 @@ export class WatchedWorktree {
   public poll: AbortController | null = null;
   public fingerprint: string | null = null;
   public isScheduled: boolean = false;
-  public isForced: boolean = false;
+  public writing: number = 0;
+  public generation: number = 0;
   public isPolledAlways: boolean = false;
   public running: Promise<void> = Promise.resolve();
   public started: Promise<WatchStart> = Promise.resolve(WatchStart.Stopped);

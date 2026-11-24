@@ -37,3 +37,12 @@ jobs:
       issues: write
     with:
       module: src/noldova.git.github
+
+  azure-devops:
+    name: Module range / Azure DevOps
+    uses: noldova-com/desktop/.github/workflows/module-range.yml@043393ccb64798aeee6223c72c4ada4fad6f1b47 # v0.0.12
+    permissions:
+      contents: read
+      issues: write
+    with:
+      module: src/noldova.git.azure-devops

@@ -6,8 +6,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { constants } from "node:fs";
-import { access } from "node:fs/promises";
+import { constants, type Stats } from "node:fs";
+import { access, lstat } from "node:fs/promises";
 
 import { Resources } from "../resources.ts";
 
@@ -35,6 +35,17 @@ export class FilePresence {
     } catch (error) {
       if (FilePresence.isGone(error))
         return false;
+      throw error;
+    }
+  }
+
+  /** What is at the path itself, a link included whether or not its target is there, or null when nothing is. */
+  public static async entryAsync(file: string): Promise<Stats | null> {
+    try {
+      return await lstat(file);
+    } catch (error) {
+      if (FilePresence.isGone(error))
+        return null;
       throw error;
     }
   }

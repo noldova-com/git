@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 import assert from "node:assert/strict";
-import { chmod, symlink, writeFile } from "node:fs/promises";
+import { chmod, readFile, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
@@ -14,7 +14,10 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vite
 import { PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
 import { FailureCode, GitCode, GitStatus } from "@noldova/git.protocol";
 
+import { AmendNoCommitException } from "../../src/exceptions/amend-no-commit.exception.ts";
+import { AmendPushedException } from "../../src/exceptions/amend-pushed.exception.ts";
 import { CommitConflictsException } from "../../src/exceptions/commit-conflicts.exception.ts";
+import { CommitDuringOperationException } from "../../src/exceptions/commit-during-operation.exception.ts";
 import { CommitHookFailedException } from "../../src/exceptions/commit-hook-failed.exception.ts";
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import type { GitFailureException } from "../../src/exceptions/git-failure.exception.ts";
@@ -95,6 +98,27 @@ describe("CommitWriter", () => {
     assert.throws(() => write.refuse(conflicted), failsWith(CommitConflictsException, FailureCode.Git, GitCode.Conflict));
   });
 
+  test("refuses to ask an agent's commit while a merge or a cherry-pick is in progress, and leaves the person's own commit that finishes it", async () => {
+    const write = new CommitWriter(runner, hooks, "Finish");
+    await repository.runGitAsync(["checkout", "--quiet", "-b", "other"]);
+    await repository.writeAsync("a.txt", "theirs\n");
+    await repository.runGitAsync(["commit", "--quiet", "-am", "Theirs"]);
+    await repository.runGitAsync(["checkout", "--quiet", "main"]);
+    await repository.writeAsync("a.txt", "ours\n");
+    await repository.runGitAsync(["commit", "--quiet", "-am", "Ours"]);
+    for (const { command, options } of [{ command: "merge", options: ["--quiet", "other"] }, { command: "cherry-pick", options: ["other"] }]) {
+      await assert.rejects(repository.runGitAsync([command, ...options]));
+      await repository.writeAsync("a.txt", "both\n");
+      await repository.runGitAsync(["add", "a.txt"]);
+      const [folders, status] = await readAsync();
+
+      assert.notEqual(status.operation, null);
+      write.refuse(status);
+      await assert.rejects(write.requestAsync(folders, status, call), failsWith(CommitDuringOperationException, FailureCode.Git, GitCode.Conflict));
+      await repository.runGitAsync([command, "--abort"]);
+    }
+  });
+
   test("asks an agent's commit at medium risk with the message, the staged files, the author and the hooks that will run", async () => {
     await repository.runGitAsync(["mv", "a.txt", "c.txt"]);
     await repository.writeAsync("b.txt", "new\n");
@@ -156,6 +180,51 @@ describe("CommitWriter", () => {
     assert.equal((await repository.runGitAsync(["log", "-1", "--format=%B"])).trimEnd(), "Change a\n\n# kept as written");
     assert.equal(await repository.runGitAsync(["status", "--porcelain=v1", "--untracked-files=all"]), "?? b.txt\n");
     assert.ok(supervisor.requests.some(t => t.arguments.join(" ").endsWith(" commit --quiet --cleanup=whitespace --message=Change a\n\n# kept as written")));
+  });
+
+  test("runs the person's hooks without the literal pathspec setting the module's own reads use, so a hook's globs match", async () => {
+    const seen = path.join(repository.root, "hook-saw");
+    const hook = path.join(repository.gitFolder, "hooks", "pre-commit");
+    await writeFile(hook, `#!/bin/sh\necho "\${GIT_LITERAL_PATHSPECS:-unset}" > "${seen.split(path.sep).join("/")}"\n`);
+    await chmod(hook, 0o755);
+    await repository.writeAsync("a.txt", "changed\n");
+    await repository.runGitAsync(["add", "a.txt"]);
+
+    await new CommitWriter(runner, hooks, "Change a").runAsync(...await readAsync());
+
+    assert.equal(await readFile(seen, "utf8"), "unset\n");
+  });
+
+  test("amends the last commit with the staged changes, or with none, under the new message, keeping one commit", async () => {
+    const before = (await repository.runGitAsync(["rev-list", "--count", "HEAD"])).trim();
+    await repository.writeAsync("a.txt", "amended\n");
+    await repository.runGitAsync(["add", "a.txt"]);
+
+    await new CommitWriter(runner, hooks, "Start, amended", true).runAsync(...await readAsync());
+    const [, clean] = await readAsync();
+    const reword = new CommitWriter(runner, hooks, "Start, reworded", true);
+    assert.doesNotThrow(() => reword.refuse(clean));
+    await reword.runAsync(...await readAsync());
+
+    assert.deepEqual([(await repository.runGitAsync(["rev-list", "--count", "HEAD"])).trim(), (await repository.runGitAsync(["log", "-1", "--format=%s"])).trim(),
+      await repository.runGitAsync(["show", "HEAD:a.txt"]), await repository.runGitAsync(["status", "--porcelain=v1"])], [before, "Start, reworded", "amended\n", ""]);
+  });
+
+  test("refuses to amend before the first commit or once the last commit is on the upstream, and allows it while it is ahead or the upstream is gone", async () => {
+    const [folders, status] = await readAsync();
+    const write = new CommitWriter(runner, hooks, "Amend", true);
+    const json = status.toJson();
+    const upstream = (ahead: number, gone: boolean): GitStatus => GitStatus.fromJson({ ...json, upstream: { name: "origin/main", ahead, behind: 0, gone, id: null } });
+
+    assert.throws(() => write.refuse(GitStatus.fromJson({ ...json, head: null })), failsWith(AmendNoCommitException, FailureCode.Refused, null));
+    assert.throws(() => write.refuse(upstream(0, false)), failsWith(AmendPushedException, FailureCode.Refused, null));
+    assert.doesNotThrow(() => write.refuse(upstream(1, false)));
+    assert.doesNotThrow(() => write.refuse(upstream(0, true)));
+    await repository.writeAsync("a.txt", "staged\n");
+    await repository.runGitAsync(["add", "a.txt"]);
+    const [, staged] = await readAsync();
+    assert.equal((await write.requestAsync(folders, staged, call))?.title, "Amend the last commit on main, adding 1 file");
+    assert.equal((await write.requestAsync(folders, staged, call))?.action, "git.amend");
   });
 
   test("fails as HookFailed when a hook refuses, and with git's output for any other failure", async () => {

@@ -20,11 +20,46 @@
   line-height: var(--nol-line-panel);
 }
 
-.body {
-  display: grid;
-  gap: var(--nol-space-2);
-  align-content: start;
-  padding: var(--nol-space-1) var(--nol-space-2) var(--nol-space-3);
+/* The spinner while a folder's first status is read sits at the body's insets, under its own class so the body still means a read status. */
+.body,
+.loading {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-sizing: border-box;
+  padding: 0.75rem;
+}
+
+.body > nol-git-commit-card {
+  margin-top: auto;
+}
+
+.title {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.title-text {
+  flex: 1 1 auto;
+  color: var(--nol-text-strong);
+  font-size: 0.9375rem;
+  font-weight: var(--nol-weight-emphasis);
+}
+
+.title-branch {
+  overflow: hidden;
+  color: var(--nol-text-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.title-undo {
+  display: flex;
+  flex: none;
 }
 
 .banner {
@@ -108,4 +143,27 @@
 .actions {
   display: flex;
   gap: var(--nol-space-2);
+}
+
+.notice {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  padding: var(--nol-space-2) var(--nol-view-padding-inline);
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: var(--nol-radius-medium);
+  background-color: var(--nol-raised);
+  color: var(--nol-text-muted);
+}
+
+.notice-text {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--nol-text-label);
+  overflow-wrap: anywhere;
+}
+
+.notice-icon {
+  flex: none;
+  color: var(--nol-status-failed);
 }

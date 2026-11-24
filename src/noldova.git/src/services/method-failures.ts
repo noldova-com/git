@@ -33,7 +33,7 @@ export class MethodFailures {
   }
 
   public static stripUserinfo(text: string): string {
-    return text.replaceAll(Resources.userinfoPattern, "");
+    return text.replaceAll(Resources.userinfoPattern, "").replaceAll(Resources.scpUserinfoPattern, "");
   }
 
   private static fail(failure: GitFailure): MethodFailureException {

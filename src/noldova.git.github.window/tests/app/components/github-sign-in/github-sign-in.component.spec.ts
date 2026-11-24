@@ -7,7 +7,7 @@
  */
 
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
-import { LinkPlace, SettingsRow, WindowPartTokens } from "@noldova/desktop.window";
+import { LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { DeviceCode, HostAccount, HostSignIn, SignInFailure } from "@noldova/git.hosting.protocol";
@@ -16,15 +16,12 @@ import { ClipboardWriterFixture } from "@noldova/ui.components.angular/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { GitHubSignInComponent } from "../../../../src/app/components/github-sign-in/github-sign-in.component.ts";
-import { GitHubWindowPart } from "../../../../src/app/services/github-window-part.ts";
-import { ContextCalls } from "../../../fixtures/context-calls.fixture.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
 const NOW: number = 1_800_000_000_000;
 const code: DeviceCode = new DeviceCode("WDJB-MJHT", "https://github.com/login/device", NOW + 872_000);
-const CONTROLS: string = "input, select, textarea, button, [tabindex]:not([tabindex=\"-1\"])";
 const account: HostAccount = new HostAccount("example-user", null, null, ["repo"]);
 const picture: string = "data:image/png;base64,iVBORw0KGgo=";
 
@@ -247,6 +244,31 @@ describe("GitHubSignInComponent", () => {
     expect([vi.getTimerCount(), page.texts("[role=alert] .nol-git-github-strong")]).toEqual([0, ["The code expired before it was entered."]]);
   });
 
+  it("moves the focus to the next state's first button when Try again, Sign in, Cancel or Sign out goes as it is used, never to the page", async () => {
+    const page = new Page();
+    page.requests.fail(GitHubNames.readSignInMethod, new WindowFailure("Not connected."));
+    await page.openAsync(null);
+    page.context.answer("openLinkAsync", async () => undefined);
+    const pressAsync = async (label: string, next: string): Promise<boolean> => {
+      page.button(label).focus();
+      await page.clickAsync(label);
+      return document.activeElement === page.button(next);
+    };
+
+    page.requests.answer(GitHubNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    const afterTryAgain = await pressAsync("Try again", "Sign in to GitHub");
+    page.requests.answer(GitHubNames.startSignInMethod, HostSignIn.waiting(code).toJson());
+    const afterSignIn = await pressAsync("Sign in to GitHub", "Copy code");
+    page.requests.answer(GitHubNames.cancelSignInMethod, HostSignIn.signedOut().toJson());
+    const afterCancel = await pressAsync("Cancel", "Sign in to GitHub");
+    page.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedIn(account).toJson());
+    await page.settleAsync();
+    page.requests.answer(GitHubNames.signOutMethod, HostSignIn.signedOut().toJson());
+    const afterSignOut = await pressAsync("Sign out", "Sign in to GitHub");
+
+    expect([afterTryAgain, afterSignIn, afterCancel, afterSignOut]).toEqual([true, true, true, true]);
+  });
+
   it("cancels a waiting sign-in", async () => {
     const page = await new Page().openAsync(HostSignIn.waiting(code));
     page.requests.answer(GitHubNames.cancelSignInMethod, HostSignIn.signedOut().toJson());
@@ -402,66 +424,5 @@ describe("GitHubSignInComponent", () => {
 
     expect(failed).toEqual(["GitHub's sign-in didn't answer."]);
     expect([page.element.querySelector("[role=alert]"), page.labels()]).toEqual([null, ["Sign in to GitHub"]]);
-  });
-
-  it.each([
-    ["signed out", HostSignIn.signedOut(), ["git-github.account", "git-github.signIn"]],
-    ["after a failed sign-in", HostSignIn.signedOut(SignInFailure.Denied), ["git-github.account", "git-github.signIn"]],
-    ["waiting", HostSignIn.waiting(code), ["git-github.account"]],
-    ["signed in", HostSignIn.signedIn(account), ["git-github.account", "git-github.signOut", "git-github.manageAccess"]]
-  ])("marks each row it shows %s with the id the window part gives the Settings search", async (_, signIn, ids) => {
-    const part: GitHubWindowPart = new GitHubWindowPart();
-    const partContext: FakeWindowPartContext = new FakeWindowPartContext();
-    const partCalls: ContextCalls = new ContextCalls(partContext);
-    new RequestAnswers(partContext).answer(GitHubNames.readSignInMethod, signIn.toJson());
-    await part.activateAsync(partContext);
-    await partCalls.untilAsync("setSettingsRows", 2);
-    await part.deactivateAsync();
-
-    const page = await new Page().openAsync(signIn);
-
-    expect([...page.element.querySelectorAll("[data-setting]")].map(t => t.getAttribute("data-setting"))).toEqual(ids);
-    expect(partContext.callsOf("setSettingsRows").at(-1)).toEqual(["git-github.account", ids.map(id => expect.objectContaining({ id }))]);
-  });
-
-  it.each([
-    ["signed out", HostSignIn.signedOut()],
-    ["waiting", HostSignIn.waiting(code)],
-    ["signed in", HostSignIn.signedIn(account)]
-  ])("gives each row Settings opens at, %s, its own button as its first control, and the Account row none, so opening Account and pressing Enter can't sign out", async (_, signIn) => {
-    const page = await new Page().openAsync(signIn);
-    const firsts = [...page.element.querySelectorAll("[data-setting]")].map(t => [t.getAttribute("data-setting"), t.querySelector(CONTROLS)?.textContent?.trim() ?? null]);
-    const named: Readonly<Record<string, string>> = { "git-github.signIn": "Sign in to GitHub", "git-github.signOut": "Sign out", "git-github.manageAccess": "Manage access on GitHub" };
-
-    expect(page.element.querySelectorAll("button[data-setting]")).toHaveLength(0);
-    for (const [id, first] of firsts)
-      if (id === "git-github.account")
-        expect(first).toBeNull();
-      else
-        expect(first?.endsWith(named[id ?? ""] ?? "-")).toBe(true);
-  });
-
-  it("gives Settings' reveal, which focuses a found row's first control, no control in the Account row, so opening it moves focus to no button", async () => {
-    const page = await new Page().openAsync(HostSignIn.signedIn(account));
-    const row = page.element.querySelector<HTMLElement>("[data-setting=\"git-github.account\"]");
-
-    expect(row).not.toBeNull();
-    expect(row?.querySelectorAll(CONTROLS)).toHaveLength(0);
-  });
-
-  it("gives the Settings search a row's words, and holds that row's element for the page to open at", async () => {
-    const part: GitHubWindowPart = new GitHubWindowPart();
-    const partContext: FakeWindowPartContext = new FakeWindowPartContext();
-    const partCalls: ContextCalls = new ContextCalls(partContext);
-    new RequestAnswers(partContext).answer(GitHubNames.readSignInMethod, HostSignIn.signedIn(account).toJson());
-    await part.activateAsync(partContext);
-    await partCalls.untilAsync("setSettingsRows", 2);
-    await part.deactivateAsync();
-
-    const page = await new Page().openAsync(HostSignIn.signedIn(account));
-
-    expect(partContext.callsOf("setSettingsRows").at(-1))
-      .toEqual(["git-github.account", expect.arrayContaining([new SettingsRow("git-github.manageAccess", "Manage access on GitHub")])]);
-    expect(page.element.querySelector("[data-setting=\"git-github.manageAccess\"]")?.textContent).toContain("Manage access on GitHub");
   });
 });

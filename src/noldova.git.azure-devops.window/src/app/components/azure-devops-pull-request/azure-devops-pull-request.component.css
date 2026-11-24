@@ -1,0 +1,277 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  display: block;
+  container-type: inline-size;
+  height: 100%;
+  min-width: 0;
+  overflow: auto;
+  color: var(--nol-text);
+  background-color: var(--nol-panel);
+}
+
+.notice {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  margin: var(--nol-space-3);
+  padding: var(--nol-space-2) var(--nol-view-padding-inline);
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: var(--nol-radius-medium);
+  background-color: var(--nol-raised);
+  color: var(--nol-text-muted);
+}
+
+.notice-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.notice-icon {
+  flex: none;
+  color: var(--nol-status-failed);
+}
+
+.notice-mark {
+  flex: none;
+}
+
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 100%;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--nol-space-2);
+  margin-top: auto;
+  padding: var(--nol-space-2) var(--nol-space-3);
+  border-top: var(--nol-border-width) solid var(--nol-border);
+  background-color: var(--nol-panel);
+}
+
+.vote-line {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.vote-note {
+  color: var(--nol-text-muted);
+  font-size: var(--nol-text-label);
+}
+
+.vote-split {
+  display: inline-flex;
+  flex: none;
+  gap: var(--nol-border-width);
+}
+
+.vote-split .approve {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.vote-split .vote-menu {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nol-space-2);
+  padding: var(--nol-space-3) var(--nol-space-3) 0;
+}
+
+.title-line,
+.meta {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.state {
+  display: inline-flex;
+  flex: none;
+  gap: var(--nol-space-1);
+  align-items: center;
+  font-size: var(--nol-text-label);
+}
+
+.state-icon {
+  font-size: var(--nol-text-title);
+}
+
+.number,
+.branch {
+  font-family: var(--nol-font-mono);
+}
+
+.number,
+.muted {
+  color: var(--nol-text-muted);
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--nol-text-strong);
+  font-size: var(--nol-text-title);
+  font-weight: var(--nol-weight-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.open {
+  flex: none;
+}
+
+.vote-failure,
+.pull-failure,
+.pull-note {
+  display: flex;
+  gap: var(--nol-space-1);
+  align-items: center;
+  margin: 0;
+  color: var(--nol-text-muted);
+  font-size: var(--nol-text-label);
+}
+
+.vote-confirm {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  font-size: var(--nol-text-label);
+}
+
+.vote-failure .material-symbols-rounded,
+.pull-failure .material-symbols-rounded {
+  color: var(--nol-status-failed);
+}
+
+.meta {
+  flex-wrap: wrap;
+  font-size: var(--nol-text-label);
+}
+
+.branch,
+.auto {
+  display: inline-flex;
+  gap: var(--nol-space-1);
+  align-items: center;
+  max-width: 100%;
+  padding: 0 var(--nol-space-1);
+  border-radius: var(--nol-radius-small);
+  box-shadow: inset 0 0 0 var(--nol-border-width) var(--nol-border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tabs {
+  display: flex;
+  gap: var(--nol-space-1);
+  border-bottom: var(--nol-border-width) solid var(--nol-border);
+}
+
+.tab {
+  display: inline-flex;
+  gap: var(--nol-space-1);
+  align-items: center;
+  min-height: var(--nol-tab-height);
+  padding: 0 var(--nol-space-2);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--nol-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tab.on {
+  border-bottom-color: var(--nol-accent);
+  color: var(--nol-text);
+  cursor: default;
+}
+
+.badge {
+  min-width: 1rem;
+  padding: 0 var(--nol-space-1);
+  border-radius: var(--nol-radius-medium);
+  background-color: var(--nol-badge);
+  color: var(--nol-badge-text);
+  font-size: var(--nol-text-small);
+  text-align: center;
+}
+
+.body[hidden],
+.pane[hidden] {
+  display: none;
+}
+
+.pane {
+  padding: var(--nol-space-3);
+}
+
+/* A tab whose answer the page still reads shows the tab's own notice, inside the pane's insets as the tab's is. */
+.pane > .notice {
+  margin: 0;
+}
+
+.body {
+  padding: var(--nol-space-3);
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nol-space-2);
+  min-width: 0;
+}
+
+.section-title {
+  margin: 0;
+  color: var(--nol-text-strong);
+  font-size: inherit;
+  font-weight: var(--nol-weight-strong);
+}
+
+.description p {
+  margin: 0;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (forced-colors: active) {
+  .tab.on {
+    border-bottom-color: Highlight;
+  }
+}

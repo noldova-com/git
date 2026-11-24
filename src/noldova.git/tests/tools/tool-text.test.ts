@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 
 import { describe, test } from "vitest";
 
-import { DiffFile, FileChange, FileState, GitBranches, GitCommit, GitDiff, GitLog, GitStatus, StatusEntry } from "@noldova/git.protocol";
+import { DiffFile, FileChange, FileState, GitBranches, GitBranchTip, GitBranchTrack, GitCommit, GitDiff, GitLog, GitStatus, StatusEntry } from "@noldova/git.protocol";
 
 import { ToolText } from "../../src/tools/tool-text.ts";
 
@@ -41,9 +41,9 @@ describe("ToolText", () => {
   test("cuts a status's entries, a diff's files and a log's commits from the end, and marks each cut", () => {
     const entries = Array.from({ length: 4_000 }, (_, index) =>
       new StatusEntry(`${"d".repeat(60)}/${index}.txt`, undefined, null, undefined, FileState.Modified, FileState.Unmodified, null, null, null, null));
-    const status = parsed(ToolText.ofStatus(new GitStatus("main", null, null, entries, false, "f1", null, null)));
+    const status = parsed(ToolText.ofStatus(new GitStatus("main", null, null, entries, false, "f1", null, null, 2, "2026-11-22T18:05:00Z")));
     assert.ok(lengthOf(status["entries"]) > 0 && lengthOf(status["entries"]) < 4_000);
-    assert.equal(status["truncated"], true);
+    assert.deepEqual([status["truncated"], status["uncheckedLfsFiles"], status["fetchedAt"]], [true, 2, "2026-11-22T18:05:00Z"]);
     assert.equal(parsed(ToolText.ofStatus(new GitStatus("main", null, null, entries.slice(0, 2), false, "f1", null, null)))["truncated"], false);
 
     const files = Array.from({ length: 3_000 }, (_, index) =>
@@ -62,13 +62,16 @@ describe("ToolText", () => {
   test("cuts the remotes' branches first, then the local ones, marking the cut, and answers null when even the current branch can't fit", () => {
     const names = (prefix: string): string[] => Array.from({ length: 20_000 }, (_, index) => `${prefix}/branch-${index}`);
 
-    const few = parsed(ToolText.ofBranches(new GitBranches("main", ["main"], ["origin"], ["origin/main"])));
-    assert.equal(few["truncated"], false);
-    const remote = parsed(ToolText.ofBranches(new GitBranches("main", ["main"], ["origin"], names("origin"))));
-    assert.deepEqual([lengthOf(remote["branches"]), remote["truncated"]], [1, true]);
+    const few = parsed(ToolText.ofBranches(new GitBranches("main", ["main"], ["origin"], ["origin/main"], [new GitBranchTrack("main", 1, 2)])));
+    assert.deepEqual([few["truncated"], few["tracks"]], [false, [{ branch: "main", ahead: 1, behind: 2 }]]);
+    const remote = parsed(ToolText.ofBranches(new GitBranches("main", ["main"], ["origin"], names("origin"), [], [new GitBranchTip("main", "c".repeat(40), "2026-11-23T10:00:00+01:00")])));
+    assert.deepEqual([lengthOf(remote["branches"]), remote["truncated"], remote["tips"]], [1, true, [{ branch: "main", id: "c".repeat(40), committedAt: "2026-11-23T10:00:00+01:00" }]]);
     assert.ok(lengthOf(remote["remoteBranches"]) > 0);
-    const local = parsed(ToolText.ofBranches(new GitBranches("main", names("local"), ["origin"], names("origin"))));
-    assert.deepEqual([lengthOf(local["remoteBranches"]), local["truncated"]], [0, true]);
+    const local = parsed(ToolText.ofBranches(new GitBranches("main", names("local"), ["origin"], names("origin"),
+      [new GitBranchTrack("local/branch-0", 1, 0), new GitBranchTrack("local/branch-19999", 0, 1)],
+      [new GitBranchTip("local/branch-0", "a".repeat(40), "2026-11-23T10:00:00+01:00"), new GitBranchTip("local/branch-19999", "b".repeat(40), "2026-11-23T10:00:00+01:00")])));
+    assert.deepEqual([lengthOf(local["remoteBranches"]), local["truncated"], local["tracks"], local["tips"]],
+      [0, true, [{ branch: "local/branch-0", ahead: 1, behind: 0 }], [{ branch: "local/branch-0", id: "a".repeat(40), committedAt: "2026-11-23T10:00:00+01:00" }]]);
     assert.ok(lengthOf(local["branches"]) > 0 && lengthOf(local["branches"]) < 20_000);
     assert.equal(ToolText.ofBranches(new GitBranches("c".repeat(limit), [], [], [])), null);
   });

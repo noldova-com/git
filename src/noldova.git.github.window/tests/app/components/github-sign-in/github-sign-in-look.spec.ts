@@ -186,35 +186,6 @@ describe("GitHubSignInComponent in the kit's look", () => {
     await page.screenshot({ element: find(root, ".column"), path: `${screenshots}/sign-in-${name}-${mode}.png` });
   });
 
-  it.each(cases)("marks each row Settings search opens at on a box inside the section, the Account row from its title's start to the section's content end, an action's row on its button alone, in %s mode, %s", async (mode, _name, signIn) => {
-    vi.useFakeTimers({ now: NOW, toFake: ["Date", "setInterval", "clearInterval"] });
-    const fixture = await openAsync(mode, signIn);
-    const root: HTMLElement = fixture.nativeElement;
-    const section = find(root, "section");
-    const sectionBox = section.getBoundingClientRect();
-    const sectionStyle = getComputedStyle(section);
-    const title = find(root, "h3").getBoundingClientRect();
-    const marks = [...root.querySelectorAll<HTMLElement>("[data-setting]")];
-
-    expect(marks.length).toBeGreaterThan(0);
-    for (const mark of marks) {
-      const box = mark.getBoundingClientRect();
-      const buttons = [...mark.querySelectorAll("button")];
-      expect([box.width > 0, box.height > 0, box.top >= sectionBox.top, box.bottom <= sectionBox.bottom]).toEqual([true, true, true, true]);
-      if (mark.getAttribute("data-setting") === "git-github.account") {
-        expect(buttons).toEqual([]);
-        AppearanceFixture.expectPixels(box.left, title.left);
-        AppearanceFixture.expectPixels(box.right, sectionBox.right - Number.parseFloat(sectionStyle.paddingRight));
-        AppearanceFixture.expectPixels(box.top, title.top);
-        continue;
-      }
-      expect(buttons).toHaveLength(1);
-      const button = buttons[0]?.getBoundingClientRect() ?? box;
-      for (const [edge, value] of [[box.left, button.left], [box.right, button.right], [box.top, button.top], [box.bottom, button.bottom]] as const)
-        AppearanceFixture.expectPixels(edge, value);
-    }
-  });
-
   it.each(AppearanceFixture.modes)("draws the code large and dashed, with the wait's row under it, in %s mode", async mode => {
     vi.useFakeTimers({ now: NOW, toFake: ["Date", "setInterval", "clearInterval"] });
     const fixture = await openAsync(mode, HostSignIn.waiting(code));

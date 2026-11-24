@@ -51,15 +51,12 @@ class Test {
       return await this.runStepsAsync([...Test.checks, [...rootTests, ...Test.noGates, ...rootFilters]], Test.root);
     if (filters.length === 0) {
       const timed: readonly string[] = [...rootTests, ...(options.includes(Resources.skipTestDetails) ? [] : [Resources.defaultReporter]), ...Resources.testTimesReporter];
-      const ran: number = await this.runStepsAsync([...Test.checks, timed, [Resources.testTimeCheckScript]], Test.root);
-      if (ran !== Resources.successExitCode)
-        return ran;
-      for (const folder of Test.windowFolders) {
-        const windowRan: number = await this.runWindowAsync(folder, null);
-        if (windowRan !== Resources.successExitCode)
-          return windowRan;
-      }
-      return await this.runStepsAsync([[Resources.installedPackageScript]], Test.root);
+      // Every window package runs even after a failure before it, so one run shows every failing package; the first failure is the exit code.
+      const ran: number[] = [await this.runStepsAsync([...Test.checks, timed, [Resources.testTimeCheckScript]], Test.root)];
+      for (const folder of Test.windowFolders)
+        ran.push(await this.runWindowAsync(folder, null));
+      ran.push(await this.runStepsAsync([[Resources.installedPackageScript]], Test.root));
+      return ran.find(t => t !== Resources.successExitCode) ?? Resources.successExitCode;
     }
     const rootSteps: (readonly string[])[] = rootFilters.length === 0 ? [] : [[...rootTests, ...Test.noGates, ...rootFilters]];
     const ran: number = await this.runStepsAsync([...Test.checks, ...rootSteps], Test.root);

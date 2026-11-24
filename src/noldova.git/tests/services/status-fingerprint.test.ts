@@ -36,16 +36,17 @@ describe("StatusFingerprint", () => {
   });
 
   test("tells a changed file from a missing one, and reads a missing index or file as missing", async () => {
-    const present = await StatusFingerprint.readAsync(folder, gitFolder, Buffer.alloc(0), statusOf("a.txt"));
-    const missing = await StatusFingerprint.readAsync(folder, gitFolder, Buffer.alloc(0), statusOf("gone.txt"));
+    const present = await StatusFingerprint.readAsync(folder, gitFolder, Buffer.alloc(0), statusOf("a.txt"), Buffer.alloc(0));
+    const missing = await StatusFingerprint.readAsync(folder, gitFolder, Buffer.alloc(0), statusOf("gone.txt"), Buffer.alloc(0));
 
     assert.match(present, /^[0-9a-f]{64}$/v);
     assert.notEqual(present, missing);
-    assert.equal(await StatusFingerprint.readAsync(folder, gitFolder, Buffer.alloc(0), statusOf("gone.txt")), missing);
+    assert.equal(await StatusFingerprint.readAsync(folder, gitFolder, Buffer.alloc(0), statusOf("gone.txt"), Buffer.alloc(0)), missing);
+    assert.notEqual(await StatusFingerprint.readAsync(folder, gitFolder, Buffer.alloc(0), statusOf("gone.txt"), Buffer.from("0")), missing);
   });
 
   test("moves with git's output, a cut status, the index and a changed file's size", async () => {
-    const readAsync = (output: string, truncated: boolean = false): Promise<string> => StatusFingerprint.readAsync(folder, gitFolder, Buffer.from(output), statusOf("a.txt", truncated));
+    const readAsync = (output: string, truncated: boolean = false): Promise<string> => StatusFingerprint.readAsync(folder, gitFolder, Buffer.from(output), statusOf("a.txt", truncated), Buffer.alloc(0));
     const seen = [await readAsync(""), await readAsync("1 .M"), await readAsync("", true)];
     await writeFile(path.join(gitFolder, "index"), "index");
     seen.push(await readAsync(""));
@@ -57,6 +58,6 @@ describe("StatusFingerprint", () => {
   });
 
   test("fails on a file it can't stat for a reason other than its absence, rather than reading it as missing", async () => {
-    await assert.rejects(StatusFingerprint.readAsync(folder, gitFolder, Buffer.alloc(0), statusOf(`bad${String.fromCharCode(0)}name`)), { code: "ERR_INVALID_ARG_VALUE" });
+    await assert.rejects(StatusFingerprint.readAsync(folder, gitFolder, Buffer.alloc(0), statusOf(`bad${String.fromCharCode(0)}name`), Buffer.alloc(0)), { code: "ERR_INVALID_ARG_VALUE" });
   });
 });

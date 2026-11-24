@@ -6,11 +6,31 @@ This source code is licensed under the license found in the
 LICENSE file in the root directory of this source tree.
 -->
 
+<div class="heading">
+  <span class="heading-text">{{ resources.messageLabel }}</span>
+  @if (showsAiFeatures()) {
+    <button type="button" class="tb suggest" disabled [title]="resources.notBuiltYet">
+      <span class="material-symbols-rounded" aria-hidden="true">{{ resources.suggestIcon }}</span>{{ resources.suggestLabel }}
+    </button>
+  }
+</div>
 <textarea nol-text-field class="field" rows="3" [attr.aria-label]="resources.messageLabel" [placeholder]="placeholder()" [ngModel]="state.message()"
   (ngModelChange)="state.message.set($event)"></textarea>
-<button nol-button type="button" class="commit" [disabled]="!canCommit()" (click)="commit()">
-  <span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.commitIcon }}</span>{{ label() }}
-</button>
+<div class="amend-row">
+  <label class="amend" [title]="amendTitle()">
+    <input #amendBox type="checkbox" [disabled]="!canAmend() && !state.amending()" [checked]="state.amending()" (change)="toggleAmend(amendBox.checked)" />
+    <span class="amend-text">{{ resources.amendLabel }}</span>
+  </label>
+  @if (signingNote(); as note) {
+    <span class="signing">{{ note }}</span>
+  }
+</div>
+<div class="actions">
+  @if (canPush()) {
+    <button nol-button type="button" class="commit-push" [variant]="secondary" [disabled]="!canCommit()" (click)="commitAndPush()">{{ resources.commitAndPushLabel }}</button>
+  }
+  <button nol-button type="button" class="commit" [disabled]="!canCommit()" (click)="commit()">{{ label() }}</button>
+</div>
 @if (hint(); as hint) {
   <span class="hint">{{ hint }}</span>
 }

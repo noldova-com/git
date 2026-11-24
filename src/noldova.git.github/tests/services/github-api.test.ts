@@ -17,9 +17,14 @@ import { FakeGitHub } from "../fixtures/fake-github.fixture.ts";
 
 const signal: AbortSignal = new AbortController().signal;
 const issue = { number: 1, title: "Found a bug" };
+const moved: string = "GitHub answered that this was moved to an address the module doesn't follow. If the repository was renamed or transferred, update the remote to its new address.";
 
 function codeOf(error: unknown): string | null {
   return error instanceof MethodFailureException ? error.failure.code : null;
+}
+
+function failureOf(error: unknown): readonly [string, string] | null {
+  return error instanceof MethodFailureException ? [error.failure.code, error.failure.message] : null;
 }
 
 function tagged(body: unknown, tag: string): Response {
@@ -266,6 +271,21 @@ describe("GitHubApi", () => {
     assert.equal(failed, unexpected);
   });
 
+  it("reads an answer of 8 MiB, and fails one past it as Unavailable, letting go of the rest of its body", async () => {
+    const limit: number = 8 * 1_024 * 1_024;
+    const answerOf = (size: number): Response => new Response(`{"text":"${"x".repeat(size - 11)}"}`);
+    const over: Response = answerOf(limit + 1);
+    const github = new FakeGitHub();
+    github.answer(answerOf(limit), over);
+    const api = new GitHubApi(github.fetch);
+
+    const read = await api.getAsync("/items/1", "gho_token", signal);
+    const failure: unknown = await api.getAsync("/items/2", "gho_token", signal).then(() => null, (error: unknown) => error);
+
+    assert.deepEqual([read?.readString("text").length, codeOf(failure), failure instanceof MethodFailureException ? failure.failure.message : null, over.bodyUsed],
+      [limit - 11, FailureCode.Unavailable, "GitHub's answer is over 8 MiB, more than the module reads.", true]);
+  });
+
   it("ends with the caller's reason when the caller stops it and the answer's read breaks off", async () => {
     const reading = new AbortController();
     const body = new ReadableStream<Uint8Array>({
@@ -294,5 +314,60 @@ describe("GitHubApi", () => {
     assert.deepEqual([created.toJson(), failures], [issue, [FailureCode.NotFound, FailureCode.Conflict]]);
     assert.deepEqual([github.requests[0]?.init.method, github.requests[0]?.body, github.requests[0]?.header("Content-Type"), github.requests[0]?.header("Authorization")],
       ["POST", body, "application/json", "Bearer gho_token"]);
+  });
+
+  it("follows GitHub's 301 for a renamed repository by hand when it stays on GitHub's API over HTTPS, with the token, and reads the answer", async () => {
+    const github = new FakeGitHub();
+    github.answer(FakeGitHub.json({}, 301, { Location: "https://api.github.com/repositories/1296269" }), FakeGitHub.json(issue),
+      FakeGitHub.json({}, 301, { Location: "/repositories/1296269/pulls?state=open" }), FakeGitHub.json([]));
+    const api = new GitHubApi(github.fetch);
+
+    const reads = [await api.getAsync("/repos/octocat/hello-world", "gho_token", signal), await api.getAsync("/repos/octocat/hello-world/pulls", "gho_token", signal)];
+
+    assert.deepEqual([reads.map(t => t?.toJson()), github.urls(), github.requests.map(t => [t.init.redirect, t.header("Authorization")])], [[issue, { items: [] }],
+      ["https://api.github.com/repos/octocat/hello-world", "https://api.github.com/repositories/1296269", "https://api.github.com/repos/octocat/hello-world/pulls",
+        "https://api.github.com/repositories/1296269/pulls?state=open"], [0, 1, 2, 3].map(() => ["manual", "Bearer gho_token"])]);
+  });
+
+  it("refuses a read's redirect to another host, to plain HTTP, with credentials or without a target, so the token stays on GitHub's API, and says the repository moved", async () => {
+    const targets = [{ Location: "https://api.fabrikam.com/repos/octocat/hello-world" }, { Location: "http://api.github.com/repositories/1296269" },
+      { Location: "https://monalisa@api.github.com/repositories/1296269" },
+      { Location: "https://:x@api.github.com/repositories/1296269" }, {}];
+    const github = new FakeGitHub();
+    github.answer(...targets.map(t => FakeGitHub.json({}, 301, t)));
+    const api = new GitHubApi(github.fetch);
+
+    const failures: (readonly [string, string] | null)[] = [];
+    for (const name of ["one", "two", "three", "four", "five"])
+      failures.push(await api.getAsync(`/repos/octocat/${name}`, "gho_token", signal).then(() => null, failureOf));
+
+    assert.deepEqual([failures, github.urls()], [targets.map(() => [FailureCode.Unavailable, moved]),
+      ["one", "two", "three", "four", "five"].map(t => `https://api.github.com/repos/octocat/${t}`)]);
+  });
+
+  it("follows only one redirect, refusing a second one on GitHub's API and saying the repository moved", async () => {
+    const github = new FakeGitHub();
+    github.answer(...[1, 2].map(t => FakeGitHub.json({}, 301, { Location: `https://api.github.com/repositories/${t}` })), FakeGitHub.json(issue));
+    const api = new GitHubApi(github.fetch);
+
+    const failure = await api.getAsync("/repos/octocat/hello-world", "gho_token", signal).then(() => null, failureOf);
+
+    assert.deepEqual([failure, github.urls()], [[FailureCode.Unavailable, moved], ["https://api.github.com/repos/octocat/hello-world",
+      "https://api.github.com/repositories/1"]]);
+  });
+
+  it("follows no post's redirect, even on GitHub's API, so the body goes nowhere else, and says the repository moved", async () => {
+    const github = new FakeGitHub();
+    github.answer(FakeGitHub.json({}, 307, { Location: "https://api.github.com/repositories/1296269/pulls" }),
+      FakeGitHub.json({}, 308, { Location: "https://api.fabrikam.com/repos/octocat/hello-world/pulls" }));
+    const api = new GitHubApi(github.fetch);
+
+    const failures: (readonly [string, string] | null)[] = [];
+    for (let i = 0; i < 2; i++)
+      failures.push(await api.postAsync("/repos/octocat/hello-world/pulls", "gho_token", { title: "Add a feature" }, signal).then(() => null, failureOf));
+
+    assert.deepEqual([failures, github.urls(), github.requests.map(t => t.init.redirect)], [[[FailureCode.Unavailable, moved],
+      [FailureCode.Unavailable, moved]], ["https://api.github.com/repos/octocat/hello-world/pulls", "https://api.github.com/repos/octocat/hello-world/pulls"],
+      ["manual", "manual"]]);
   });
 });

@@ -1,0 +1,100 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (shared(); as change) {
+  <section class="card change" [attr.aria-label]="resources.formatSharedBranchTitle(change.rows.length)">
+    <div class="card-title">
+      <span class="material-symbols-rounded" aria-hidden="true">{{ resources.sharedBranchIcon }}</span>
+      <span class="strong grow">{{ resources.formatSharedBranchTitle(change.rows.length) }}</span>
+    </div>
+    <p class="small card-text">{{ textOf(change) }}</p>
+    <div class="card-actions">
+      <button nol-button type="button" class="open-all" [variant]="secondary" [size]="compact" (click)="openAll(change)">{{ resources.formatOpenAll(change.rows.length) }}</button>
+      <button nol-button type="button" class="push-all" [variant]="secondary" [size]="compact" [disabled]="!canPush(change) || isWriting()" (click)="confirmPush(change)">{{
+        resources.pushAllLabel }}</button>
+    </div>
+  </section>
+}
+@if (hasNeeds()) {
+  <section class="section needs" [attr.aria-label]="resources.needsYouHeading">
+    <div class="caps">{{ resources.needsYouHeading }}</div>
+    @for (run of waiting(); track run.row.key) {
+      <div class="row waiting">
+        <span class="material-symbols-rounded warning" aria-hidden="true">{{ waitingIcon }}</span>
+        <span class="grow">{{ resources.formatAgentWaiting(run.repository, run.row.name) }}</span>
+        <button nol-toolbar-button type="button" [label]="resources.reviewLabel" [isShowingLabel]="true" (click)="openRun(run)"></button>
+      </div>
+    }
+    @for (review of reviews().rows; track review.row.url) {
+      @let words = around(resources.formatReviewRequest(review.row.label, review.row.title, review.repository), review.row.label);
+      <div class="row review" [title]="review.row.title" (click)="reviewOpened.emit(review)">
+        <span class="material-symbols-rounded" aria-hidden="true">{{ resources.reviewIcon }}</span>
+        <span class="grow"><span>{{ words[0] }}</span><nol-git-reference-text [text]="words[1]" [folder]="review.folder" [link]="review.row.url" /><span>{{ words[2] }}</span></span>
+        <button nol-toolbar-button type="button" [label]="resources.reviewLabel" [isShowingLabel]="true"></button>
+      </div>
+    }
+    @if (reviews().hasMore) {
+      <p class="small muted more">{{ resources.moreReviews }}</p>
+    }
+    @for (row of conflicted(); track row.folder) {
+      <div class="row conflicted">
+        <span class="material-symbols-rounded warning" aria-hidden="true">{{ resources.conflictIcon }}</span>
+        <span class="grow">{{ resources.formatRepositoryConflicts(row.name, row.conflicts()) }}</span>
+        <button nol-toolbar-button type="button" [label]="resources.openLabel" [isShowingLabel]="true" (click)="repositoryOpened.emit(row.folder)"></button>
+      </div>
+    }
+    @for (row of failing(); track row.folder) {
+      <div class="row failing">
+        <span class="material-symbols-rounded failed" aria-hidden="true">{{ resources.failureIcon }}</span>
+        <span class="grow">{{ resources.formatChecksFailing(row.name, row.branch(), row.failing()) }}</span>
+        <button nol-toolbar-button type="button" [label]="resources.openLabel" [isShowingLabel]="true" (click)="openFailing(row)"></button>
+      </div>
+    }
+    @for (stack of stacks(); track stack.row.folder + " " + stack.bottom.key) {
+      <div class="row stacked">
+        <span class="material-symbols-rounded" aria-hidden="true">{{ resources.stackIcon }}</span>
+        <span class="grow">{{ stackText(stack) }}</span>
+        <button nol-toolbar-button type="button" [label]="resources.openLabel" [isShowingLabel]="true" (click)="openStack(stack)"></button>
+      </div>
+    }
+    @if (behind().length > 0) {
+      <div class="row behind">
+        <span class="material-symbols-rounded" aria-hidden="true">{{ resources.behindIcon }}</span>
+        <span class="grow">{{ resources.formatBehindRepositories(behind().length) }}</span>
+        <button nol-toolbar-button type="button" [label]="resources.formatPullCount(behind().length)" [isShowingLabel]="true" [disabled]="isWriting()"
+          (click)="pullAsync()"></button>
+      </div>
+    }
+  </section>
+}
+@if (result().length > 0) {
+  <div class="small result" role="status">
+    @for (line of result(); track $index) {
+      <p>{{ line }}</p>
+    }
+  </div>
+}
+@if (working().length > 0) {
+  <section class="section working" [attr.aria-label]="resources.agentsAtWorkHeading">
+    <div class="caps">{{ resources.agentsAtWorkHeading }}</div>
+    @for (run of working(); track run.row.key) {
+      <button type="button" class="row run" [title]="run.row.worktree" (click)="openRun(run)">
+        <span class="material-symbols-rounded agent" aria-hidden="true">{{ resources.agentIcon }}</span>
+        <span class="grow">{{ resources.formatRun(run.repository, run.row.name) }}</span>
+        @if (run.hasOwnWorktree) {
+          <span class="small muted">{{ resources.ownWorktree }}</span>
+        }
+      </button>
+    }
+  </section>
+}
+@if (isQuiet()) {
+  <p class="small muted quiet">{{ resources.nothingNeedsYou }}</p>
+}
+<span class="fill"></span>
+<p class="small muted note">{{ fetchNote }}</p>

@@ -1,0 +1,108 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<div class="layout">
+  <main class="panel steps-panel" [attr.aria-label]="resources.rebaseScreenLabel">
+    <header class="head">
+      <div class="title-row">
+        <span class="title-icon material-symbols-rounded" aria-hidden="true">{{ resources.rebaseIcon }}</span>
+        <h1 class="title strong">{{ heading() }}</h1>
+        @if (showsAiFeatures()) {
+          <button nol-toolbar-button type="button" class="tidy-up" [icon]="resources.tidyUpIcon" [label]="resources.tidyUpLabel" [isShowingLabel]="true" disabled
+            [title]="resources.notBuiltYet"></button>
+        }
+      </div>
+      <p class="hint muted">{{ resources.rebaseHint }}</p>
+    </header>
+    @if (readFailure(); as failure) {
+      <p class="note failure" role="alert">{{ failure }}</p>
+    } @else if (target() === null) {
+      <p class="note muted" role="note">{{ resources.rebaseNoTarget }}</p>
+    } @else if (plan(); as plan) {
+      @if (rows().length === 0) {
+        <p class="note muted" role="note">{{ resources.emptyRebase }}</p>
+      } @else {
+        <div class="step columns muted" aria-hidden="true"><span></span><span>{{ resources.actionColumn }}</span><span>{{ resources.commitColumn }}</span><span>{{ resources.messageColumn }}</span><span>{{ resources.checkColumn }}</span></div>
+        <div #steps class="steps" role="list" (dragover)="follow($event, steps)" (drop)="drop($event)">
+          @for (item of items(); track item.row.commit.id; let index = $index) {
+            @let row = item.row;
+            @let check = item.check;
+            @if (dropAt() === index) {
+              <div class="drop-line" aria-hidden="true"></div>
+            }
+            <div #step class="step" role="listitem" tabindex="0" draggable="true" [attr.data-row]="index" [attr.aria-current]="index === selected() ? 'true' : null"
+              [class.selected]="index === selected()" [class.dropped]="row.action === 'Drop'" [class.folded]="row.folds" [class.lifted]="dragged() === index"
+              (focus)="select(index)" (click)="select(index)" (keydown)="keydown($event, index)"
+              (dragstart)="dragStart($event, index, step)" (dragover)="dragOver($event, index)" (dragend)="dragEnd()">
+              <span class="handle material-symbols-rounded" aria-hidden="true">{{ resources.dragIcon }}</span>
+              <nol-select class="action" [label]="resources.actionColumn" [options]="actions" [value]="row.action" (valueChange)="setAction(index, $event)" />
+              <span class="id mono muted">{{ shortOf(row.commit.id) }}</span>
+              @if (row.takesMessage && index === selected()) {
+                <input nol-text-field class="message-field" type="text" [attr.aria-label]="resources.rebaseMessageLabel" [ngModel]="subjectOf(row.message ?? row.commit.message)"
+                  (ngModelChange)="setSubject(index, $event)" />
+              } @else {
+                <span class="message" [title]="row.message ?? row.commit.message"><nol-git-reference-text [text]="subjectOf(row.message ?? row.commit.message)" [folder]="instance()"
+                  [chipTabIndex]="-1" /></span>
+              }
+              <span class="check"><span class="check-icon material-symbols-rounded" [class]="check.tone" aria-hidden="true">{{ check.icon }}</span><span class="check-text">{{ check.text }}</span></span>
+            </div>
+          }
+          @if (dropAt() === rows().length) {
+            <div class="drop-line" aria-hidden="true"></div>
+          }
+          @for (item of lifted(); track item.row.commit.id) {
+            <div class="step lift" aria-hidden="true" inert [class.dropped]="item.row.action === 'Drop'" [style.top.px]="liftTop()">
+              <span class="handle material-symbols-rounded">{{ resources.dragIcon }}</span>
+              <nol-select class="action" [label]="resources.actionColumn" [options]="actions" [value]="item.row.action" />
+              <span class="id mono muted">{{ shortOf(item.row.commit.id) }}</span>
+              <span class="message"><nol-git-reference-text [text]="subjectOf(item.row.message ?? item.row.commit.message)" [folder]="instance()" [chipTabIndex]="-1" /></span>
+              <span class="check"><span class="check-icon material-symbols-rounded" [class]="item.check.tone">{{ item.check.icon }}</span><span class="check-text">{{ item.check.text
+                }}</span></span>
+            </div>
+          }
+        </div>
+      }
+      <div class="spacer"></div>
+      <footer class="options">
+        <div class="option">
+          <nol-checkbox class="move-stacked" [checked]="moveStacked() && plan.stacked.length > 0" [disabled]="plan.stacked.length === 0" (checkedChange)="moveStacked.set($event)">{{ resources.moveStackedLabel }}</nol-checkbox>
+          @if (plan.stacked.length > 0) {
+            <span class="option-note muted">{{ resources.formatStackedFollow(plan.stacked) }}</span>
+          }
+        </div>
+        <div class="option">
+          <nol-checkbox class="fold-fixups" [checked]="foldFixups()" (checkedChange)="setFold(plan, $event)">{{ resources.foldFixupsLabel }}</nol-checkbox>
+        </div>
+        <div class="option" [title]="resources.undoBackTitle">
+          <nol-checkbox class="undo-back" [checked]="true" [disabled]="true">{{ resources.undoBackLabel }}</nol-checkbox>
+        </div>
+        <div class="option" [title]="resources.notBuiltYet">
+          <nol-checkbox class="run-tests" [checked]="false" [disabled]="true">{{ resources.runTestsLabel }}</nol-checkbox>
+          <span class="option-note muted">{{ resources.runTestsNote }}</span>
+        </div>
+        @if (!valid()) {
+          <p class="note failure" role="alert">{{ resources.foldFirstRefusal }}</p>
+        }
+        @if (state.failure(); as failure) {
+          <p class="note failure" role="alert">{{ failure }}</p>
+        }
+        <div class="start-row">
+          <span class="summary muted">{{ summary() }}</span>
+          <button nol-button type="button" class="cancel" [variant]="secondary" (click)="cancel()">{{ resources.cancelLabel }}</button>
+          @if (start(); as ready) {
+            <button nol-button type="button" class="start" (click)="startRebase(ready)">
+              <span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.startIcon }}</span>{{ resources.startRebaseLabel }}</button>
+          } @else {
+            <button nol-button type="button" class="start" disabled>
+              <span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.startIcon }}</span>{{ resources.startRebaseLabel }}</button>
+          }
+        </div>
+      </footer>
+    }
+  </main>
+</div>

@@ -1,0 +1,13 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<nol-dialog [title]="resources.switchMergeTitle" (dismissed)="answered.emit(false)">
+  <p class="text">{{ text() }}</p>
+  <button nol-button nolDialogAction type="button" class="switch-merge" (click)="answered.emit(true)">{{ resources.switchMergeLabel }}</button>
+  <button nol-button nolDialogAction type="button" class="cancel" [variant]="secondary" (click)="answered.emit(false)">{{ resources.cancelLabel }}</button>
+</nol-dialog>

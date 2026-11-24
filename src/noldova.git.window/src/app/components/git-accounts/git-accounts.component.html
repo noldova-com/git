@@ -1,0 +1,73 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<div class="page">
+  <section class="accounts" [attr.aria-label]="resources.accountsTitle">
+    <div class="head">
+      <h2 class="title">{{ resources.accountsTitle }}</h2>
+      <button type="button" nol-button class="add" [disabled]="accounts().length === 0" [nolMenuTriggerFor]="hosts">
+        <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.addAccountIcon }}</span>{{ resources.addAccount }}
+      </button>
+      <ng-template #hosts>
+        <nol-menu>
+          @for (provided of accounts(); track provided) {
+            <button nol-menu-item [label]="provided.account.host" (triggered)="open(provided, resources.formatSignInTitle(provided.account.host))"></button>
+          }
+        </nol-menu>
+      </ng-template>
+    </div>
+    <p class="intro">{{ resources.accountsIntro }}</p>
+    @for (provided of accounts(); track provided) {
+      <div class="host" [attr.data-setting]="rowOf(provided)">
+        @for (card of provided.account.cards(); track $index) {
+          <div class="card">
+            <span class="mark" [style.background-color]="provided.account.markColor" aria-hidden="true">{{ provided.account.mark }}</span>
+            <span class="text">
+              <span class="card-title">{{ card.title }}</span>
+              <span class="detail">{{ card.detail }}</span>
+            </span>
+            @if (card.asksToSignIn) {
+              <button type="button" nol-button [variant]="secondary" (click)="open(provided, resources.formatSignInTitle(provided.account.host))">{{ card.label }}</button>
+            } @else {
+              <span class="end">
+                <nol-chip [kind]="chipOf(card)">{{ card.label }}</nol-chip>
+                <button type="button" nol-icon-button [icon]="resources.manageAccountIcon" [label]="resources.formatManageAccount(provided.account.host)"
+                  [nolTooltip]="resources.formatManageAccount(provided.account.host)"
+                  (click)="open(provided, resources.formatAccountRowTitle(provided.account.host))"></button>
+              </span>
+            }
+          </div>
+        }
+      </div>
+    } @empty {
+      <p class="intro">{{ resources.noHosts }}</p>
+    }
+  </section>
+  <section class="features" [attr.aria-label]="resources.featuresTitle">
+    <h2 class="title">{{ resources.featuresTitle }}</h2>
+    <div class="matrix" role="table" [attr.aria-label]="resources.featuresTitle" [style.--git-host-columns]="accounts().length">
+      <div class="matrix-row caps" role="row">
+        <span role="columnheader"></span>
+        @for (provided of accounts(); track provided) {
+          <span role="columnheader">{{ provided.account.column }}</span>
+        }
+      </div>
+      @for (feature of resources.hostFeatures; track feature) {
+        <div class="matrix-row" role="row">
+          <span role="rowheader">{{ resources.hostFeatureTitles[feature] }}</span>
+          @for (provided of accounts(); track provided) {
+            <span role="cell" class="answer" [class.yes]="has(provided, feature)">
+              <span class="material-symbols-rounded" aria-hidden="true">{{ has(provided, feature) ? resources.featureYesIcon : resources.featureNoIcon }}</span>
+              <span class="answer-text">{{ has(provided, feature) ? resources.featureYes : resources.featureNo }}</span>
+            </span>
+          }
+        </div>
+      }
+    </div>
+  </section>
+</div>

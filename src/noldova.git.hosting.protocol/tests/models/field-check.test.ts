@@ -40,6 +40,12 @@ describe("FieldCheck", () => {
     assert.throws(() => FieldCheck.readNullableMember(reader, "state", [CheckState.Failed]), { name: "JsonException", path: "$.item.state" });
   });
 
+  it("requires a member of a list, answering it, and names the members it takes", () => {
+    assert.equal(FieldCheck.requireMember("Queued", [CheckState.Queued, CheckState.Failed], "state"), CheckState.Queued);
+    assert.throws(() => FieldCheck.requireMember("Skipped", [CheckState.Queued, CheckState.Failed], "state"), argument("state", "one of Queued, Failed"));
+    assert.throws(() => FieldCheck.requireMember("Skipped", [CheckState.Queued], "state", reader), field("$.item.state", "one of Queued"));
+  });
+
   it("requires a text that isn't blank, a whole number above zero and a count of zero or more", () => {
     assert.doesNotThrow(() => FieldCheck.requireText("a", "title"));
     for (const value of ["", " ", "\t"])

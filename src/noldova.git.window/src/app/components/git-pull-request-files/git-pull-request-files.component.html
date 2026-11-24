@@ -1,0 +1,53 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (failure(); as failure) {
+  <div class="notice" role="alert">
+    <span class="material-symbols-rounded notice-icon" aria-hidden="true">{{ resources.failureIcon }}</span>
+    <span class="notice-text">{{ failure }}</span>
+    <button type="button" nol-button [variant]="secondary" (click)="retry()">{{ resources.tryAgainLabel }}</button>
+  </div>
+} @else if (isReading()) {
+  <div class="notice" role="status">
+    <nol-spinner />
+    <span class="notice-text">{{ resources.formatPullRequestFilesReading(host().name) }}</span>
+  </div>
+} @else if (list(); as list) {
+  @let local = folder();
+  @if (local !== null && scope(); as scope) {
+    <section class="local" [attr.aria-label]="resources.pullRequestFilesLabel">
+      <nol-git-diff-files [folder]="local" [scope]="scope" />
+    </section>
+  } @else {
+    <section class="list" [attr.aria-label]="resources.pullRequestFilesLabel">
+      @if (list.files.length > 0) {
+        @if (folder(); as folder) {
+          @if (list.commonCommit !== null) {
+            <div class="hint">
+              <span class="hint-text">{{ fetchFailure() ?? resources.pullRequestFilesFetchHint }}</span>
+              <button type="button" nol-button class="fetch" [variant]="secondary" [disabled]="isFetching()" (click)="fetch(folder)">{{ resources.fetchOfferLabel }}</button>
+            </div>
+          }
+        } @else {
+          <p class="hint"><span class="hint-text">{{ resources.pullRequestFilesOpenHint }}</span></p>
+        }
+      }
+      @for (file of list.files; track $index) {
+        <div class="row" [title]="file.path">
+          <span class="letter">{{ letterOf(file) }}</span>
+          <span class="path">{{ file.path }}@if (file.previousPath; as previous) {<span class="from">{{ resources.formatPullRequestFileMovedFrom(previous) }}</span>}</span>
+        </div>
+      } @empty {
+        <p class="empty">{{ resources.pullRequestNoFiles }}</p>
+      }
+      @if (list.hasMore) {
+        <p class="cap">{{ resources.formatPullRequestFilesCapped(list.files.length) }}</p>
+      }
+    </section>
+  }
+}

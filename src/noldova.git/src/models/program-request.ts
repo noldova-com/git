@@ -21,7 +21,7 @@ export class ProgramRequest extends ProcessRequest {
       isGit ? Resources.gitProgram : Resources.ghProgram,
       isGit ? [...(run.access === Access.Read ? Resources.gitReadOptions : Resources.gitWriteOptions), ...run.arguments] : run.arguments,
       run.workingFolder,
-      Resources.programEnvironment,
+      run.access === Access.Read ? Resources.readEnvironment : Resources.programEnvironment,
       Resources.inheritedEnvironment,
       signal);
   }

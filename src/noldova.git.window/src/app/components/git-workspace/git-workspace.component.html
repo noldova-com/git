@@ -1,0 +1,177 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<div class="page">
+  <aside class="panel side" [attr.aria-label]="resources.workspacesHeading">
+    <div class="row heading">
+      <span class="caps grow">{{ resources.workspacesHeading }}</span>
+      <button nol-icon-button type="button" class="new" [icon]="resources.addIcon" [label]="resources.newWorkspaceTitle" (click)="newWorkspace()"></button>
+    </div>
+    @for (item of workspaces(); track item.id) {
+      <button type="button" class="row workspace" [class.selected]="item.id === instance()" [attr.aria-current]="item.id === instance() ? 'page' : null"
+        (click)="openWorkspace(item.id)">
+        <span class="material-symbols-rounded" aria-hidden="true">{{ resources.workspaceIcon }}</span>
+        <span class="grow">{{ item.name }}</span>
+        <span class="count">{{ item.folders.length }}</span>
+      </button>
+    }
+    @let isOpenRepositories = workspace() === null;
+    <button type="button" class="row open-repositories" [class.selected]="isOpenRepositories" [attr.aria-current]="isOpenRepositories ? 'page' : null"
+      (click)="openWorkspace(null)">
+      <span class="material-symbols-rounded" aria-hidden="true">{{ resources.dashboardIcon }}</span>
+      <span class="grow">{{ resources.dashboardTitle }}</span>
+      <span class="count">{{ recentCount() }}</span>
+    </button>
+    <div class="row heading section">
+      <span class="caps grow">{{ resources.workspaceViewsHeading }}</span>
+    </div>
+    @for (item of views(); track item[0]) {
+      @let isShown = view() === item[0];
+      <button type="button" class="row view" [class.selected]="isShown" [attr.aria-pressed]="isShown" (click)="chooseView(item[0])">
+        <span class="material-symbols-rounded" aria-hidden="true">{{ resources.workspaceViews[item[0]][0] }}</span>
+        <span class="grow">{{ resources.workspaceViews[item[0]][1] }}</span>
+        @if (item[1] > 0) {
+          <span class="badge">{{ item[1] }}</span>
+        }
+      </button>
+    }
+    @if (hosts().length > 0) {
+      <div class="row heading section">
+        <span class="caps grow">{{ resources.workspaceHostsHeading }}</span>
+      </div>
+      @for (item of hosts(); track item.key) {
+        @if (item.host; as host) {
+          <button type="button" class="row host" [title]="resources.formatHostSettings(item.name)" (click)="openHost(host)">
+            <span [class]="'dot ' + item.tone" aria-hidden="true"></span>
+            <span class="grow">{{ item.name }}</span>
+            <span class="small muted">{{ item.detail }}</span>
+          </button>
+        }
+        @else {
+          <div class="row host">
+            <span [class]="'dot ' + item.tone" aria-hidden="true"></span>
+            <span class="grow">{{ item.name }}</span>
+            <span class="small muted">{{ item.detail }}</span>
+          </div>
+        }
+      }
+    }
+  </aside>
+
+  <main class="panel" [attr.aria-label]="title()">
+    <div class="toolbar">
+      @if (renaming(); as name) {
+        @if (workspace(); as current) {
+          <input #nameField nol-text-field class="name-field" type="text" name="workspaceName" [attr.aria-label]="resources.workspaceNameLabel" [ngModel]="name"
+            (ngModelChange)="renaming.set($event)" (keydown.enter)="rename(current)" (keydown.escape)="renaming.set(null)" (blur)="rename(current)" />
+        }
+      }
+      @else {
+        <span class="name">{{ title() }}</span>
+      }
+      <span class="small muted count-text">{{ resources.formatRepositoryCount(folders().length, chosen().size) }}</span>
+      <span class="separator" aria-hidden="true"></span>
+      <button type="button" nol-toolbar-button class="fetch-all" [icon]="resources.fetchAllIcon" [label]="resources.fetchAllTitle" [isShowingLabel]="true"
+        [isUnavailable]="isFetching() || folders().length === 0" (click)="fetchAllAsync()"></button>
+      @if (chosen().size > 0) {
+        <button type="button" nol-toolbar-button class="pull-chosen" [icon]="resources.pullIcon" [label]="resources.formatPullChosen(chosenBehind().length)"
+          [isShowingLabel]="true" [isUnavailable]="isWriting() || chosenBehind().length === 0" (click)="pullChosenAsync()"></button>
+        <button type="button" nol-toolbar-button class="new-branch" [icon]="resources.newBranchIcon" [label]="resources.formatNewBranchIn(chosen().size)"
+          [isShowingLabel]="true" [isUnavailable]="isWriting()" (click)="newBranchInChosen()"></button>
+      }
+      <button type="button" nol-toolbar-button class="add" [icon]="resources.addIcon" [label]="resources.addRepositoryTitle" [isShowingLabel]="true"
+        (click)="addRepositoryAsync()"></button>
+      @if (chosen().size > 0) {
+        @if (workspace(); as current) {
+          <button type="button" nol-toolbar-button class="move-up" [icon]="resources.moveUpIcon" [label]="resources.moveUpTitle" (click)="moveChosen(current, -1)"></button>
+          <button type="button" nol-toolbar-button class="move-down" [icon]="resources.moveDownIcon" [label]="resources.moveDownTitle" (click)="moveChosen(current, 1)"></button>
+        }
+        <button type="button" nol-toolbar-button class="remove" [icon]="resources.removeIcon" [label]="resources.formatRemoveRepositories(chosen().size)" [isShowingLabel]="true"
+          (click)="removeChosen()"></button>
+      }
+      <span class="grow"></span>
+      @if (workspace(); as current) {
+        <button nol-icon-button type="button" class="rename" [icon]="resources.renameIcon" [label]="resources.renameWorkspaceTitle" (click)="renaming.set(current.name)"></button>
+        <button nol-icon-button type="button" class="remove-workspace" [icon]="resources.deleteIcon" [label]="resources.removeWorkspaceTitle" (click)="removeWorkspace(current)"></button>
+      }
+      <label class="filter">
+        <span class="material-symbols-rounded" aria-hidden="true">{{ resources.filterIcon }}</span>
+        <input #filterField type="search" [placeholder]="resources.filterRepositoriesLabel" [attr.aria-label]="resources.filterRepositoriesLabel" [value]="filter()"
+          (input)="filter.set(filterField.value)" />
+      </label>
+    </div>
+    @if (result().length > 0) {
+      <div class="small result" role="status">
+        @for (line of result(); track $index) {
+          <p>{{ line }}</p>
+        }
+      </div>
+    }
+    <div class="table" role="table" [attr.aria-label]="title()">
+      <div class="tr th" role="row">
+        <span role="columnheader"><span class="visually-hidden">{{ resources.selectRepositoryLabel }}</span></span>
+        <span role="columnheader">{{ resources.repositoryColumn }}</span>
+        <span role="columnheader">{{ resources.branchColumn }}</span>
+        <span role="columnheader" class="sync-head">{{ resources.syncColumn }}</span>
+        <span role="columnheader" class="changes-head">{{ resources.changesColumn }}</span>
+        <span role="columnheader" class="pull-request-head">{{ resources.pullRequestColumn }}</span>
+        <span role="columnheader">{{ resources.checksColumn }}</span>
+        <span role="columnheader">{{ resources.fetchedColumn }}</span>
+      </div>
+      @for (row of rows(); track row.folder) {
+        @let isChosen = chosen().has(row.folder);
+        <div nolGitVisible class="tr" role="row" [class.selected]="isChosen" [title]="row.folder" (visibleChange)="follow(row.folder, $event)">
+          <span role="cell">
+            <nol-checkbox class="select" [checked]="isChosen" (checkedChange)="select(row.folder, $event)"><span class="visually-hidden">{{ row.name }}</span></nol-checkbox>
+          </span>
+          <span role="cell" class="ic">
+            <span class="material-symbols-rounded" aria-hidden="true">{{ resources.folderIcon }}</span>
+            <button type="button" class="link name-cell" [title]="row.name" (click)="open(row.folder)">{{ row.name }}</button>
+          </span>
+          @if (row.failure(); as failure) {
+            <span role="cell" class="failure small" [title]="failure">{{ failure }}</span>
+          }
+          @else {
+            <span role="cell" class="ic branch">
+              @if (row.branch().length > 0) {
+                <span class="material-symbols-rounded" aria-hidden="true">{{ resources.statusBarBranchIcon }}</span>
+              }
+              <span class="ellipsis" [title]="row.branch()">{{ row.branch() }}</span>
+            </span>
+            <span role="cell" class="small sync">{{ row.sync() }}</span>
+          }
+          <span role="cell" class="small changes" [class.conflicts]="row.hasConflicts()">{{ row.changes() }}</span>
+          <span role="cell" class="small pull-request">
+            @if (row.pullRequest(); as pullRequest) {
+              @let words = around(row.pullRequestText(), pullRequest.label);
+              <span class="link" [title]="resources.formatPullRequestLinkTitle(row.pullRequestText(), pullRequest.title)" (click)="openPullRequest(row, pullRequest)"><span>{{ words[0] }}</span><nol-git-reference-text [text]="words[1]" [folder]="row.folder" [link]="pullRequest.url" /><span>{{ words[2] }}</span></span>
+            }
+            @else {
+              {{ row.pullRequestText() }}
+            }
+          </span>
+          <span role="cell" class="ic small checks">
+            @if (row.checksTone().length > 0) {
+              <span [class]="'dot ' + row.checksTone()" aria-hidden="true"></span>
+            }
+            {{ row.checks() }}
+          </span>
+          <span role="cell" class="small muted fetched">{{ row.fetched() }}</span>
+        </div>
+      }
+      @empty {
+        <div class="empty">
+          <p>{{ folders().length === 0 ? resources.noRepositories : resources.noRepositoryMatches }}</p>
+          @if (folders().length === 0) {
+            <button nol-button type="button" (click)="addRepositoryAsync()">{{ resources.addRepositoryTitle }}</button>
+          }
+        </div>
+      }
+    </div>
+  </main>
+</div>

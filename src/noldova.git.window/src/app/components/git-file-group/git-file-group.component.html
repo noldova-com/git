@@ -10,25 +10,28 @@ LICENSE file in the root directory of this source tree.
   <span class="title">{{ resources.groupTitles[group().kind] }}</span>
   <span class="count">{{ group().rows.length }}</span>
   <span class="spacer"></span>
+  <nol-git-file-layout-button class="layout" />
   @if (group().kind !== kinds.Conflicts) {
-    @let label = group().kind === kinds.Staged ? resources.unstageAllLabel : resources.stageAllLabel;
-    <button nol-icon-button type="button" class="move-all" [icon]="group().kind === kinds.Staged ? resources.unstageIcon : resources.stageIcon" [label]="label"
-      [nolTooltip]="label" [disabled]="state.busy()" (click)="moveAll()"></button>
+    <button type="button" class="move-all" [disabled]="state.busy()" (click)="moveAll()">
+      {{ group().kind === kinds.Staged ? resources.unstageAllLabel : resources.stageAllLabel }}
+    </button>
   }
 </h3>
 <ul class="files">
-  @for (row of shownRows(); track row.key) {
+  @for (item of items(); track item.key) {
+    @if (item.row; as row) {
     @let isOpen = open().has(row.key);
     @let moveLabel = row.group === kinds.Staged ? resources.formatUnstage(row.path) : resources.formatStage(row.path);
     <li>
       <div class="file" [class.open]="isOpen">
         @if (row.group === kinds.Conflicts) {
-          <div class="name" [nolTooltip]="row.path">
-            <ng-container [ngTemplateOutlet]="nameOf" [ngTemplateOutletContext]="{ $implicit: row }" />
-          </div>
+          <button type="button" class="name" [nolTooltip]="row.path" [style.padding-inline-start.rem]="insetOf(item.depth)" (click)="openConflict.emit(row.path)">
+            <ng-container [ngTemplateOutlet]="nameOf" [ngTemplateOutletContext]="{ $implicit: row, name: item.name }" />
+          </button>
         } @else {
-          <button type="button" class="name" [nolTooltip]="row.path" [attr.aria-expanded]="isOpen" (click)="toggle(row)">
-            <ng-container [ngTemplateOutlet]="nameOf" [ngTemplateOutletContext]="{ $implicit: row }" />
+          <button type="button" class="name" [nolTooltip]="row.path" [attr.aria-expanded]="isOpen" [style.padding-inline-start.rem]="insetOf(item.depth)"
+            (click)="toggle(row)">
+            <ng-container [ngTemplateOutlet]="nameOf" [ngTemplateOutletContext]="{ $implicit: row, name: item.name }" />
           </button>
         }
         @if (isOpen) {
@@ -41,17 +44,48 @@ LICENSE file in the root directory of this source tree.
           <button nol-icon-button type="button" class="expand" [icon]="isOpen ? resources.collapseIcon : resources.expandIcon" [label]="diffLabel" [nolTooltip]="diffLabel"
             [attr.aria-expanded]="isOpen" (click)="toggle(row)"></button>
         }
+        @if (row.group === kinds.Changes) {
+          @let discardLabel = resources.formatDiscard(row.path);
+          <button nol-icon-button type="button" class="discard" [icon]="resources.discardIcon" [label]="discardLabel" [nolTooltip]="discardLabel"
+            [disabled]="state.busy()" (click)="discardAsync(row)"></button>
+        }
         <button nol-icon-button type="button" class="move" [icon]="row.group === kinds.Staged ? resources.unstageIcon : resources.stageIcon" [label]="moveLabel"
           [nolTooltip]="moveLabel" [disabled]="state.busy()" (click)="move(row)"></button>
       </div>
       @if (isOpen) {
         <div class="diff" [class.wrapped]="wrapped().has(row.key)">
+          @let chosenLines = chosenOf(row);
+          @let codes = codesOf(row);
           @for (line of rowsOf(row); track $index) {
-            <div [class.added-line]="line.kind === lineKinds.Added" [class.removed-line]="line.kind === lineKinds.Removed" [class.meta-line]="line.kind === lineKinds.Meta">{{ line.text }}</div>
+            @if (line.line !== null) {
+              <button type="button" class="line" [class.added-line]="line.kind === lineKinds.Added" [class.removed-line]="line.kind === lineKinds.Removed"
+                [class.chosen]="chosenLines.has(line.line)" [attr.aria-pressed]="chosenLines.has(line.line)" (click)="choose(row, line.line)">@for (span of codes[$index] ?? []; track $index) {@if (span.className === "") {{{ span.text }}} @else {<span [class]="span.className">{{ span.text }}</span>}}</button>
+            } @else if (line.hunk.length > 0) {
+              @let hunkLines = linesOf(row, line);
+              @let hunkLabel = hunkLabelOf(row, line);
+              <div class="line meta-line hunk">
+                <span class="hunk-text">{{ line.text }}</span>
+                <button type="button" class="hunk-action" [disabled]="state.busy()" (click)="stageLines(row, hunkLines)">{{ hunkLabel }}</button>
+              </div>
+            } @else {
+              <div class="line" [class.added-line]="line.kind === lineKinds.Added" [class.removed-line]="line.kind === lineKinds.Removed"
+                [class.meta-line]="line.kind === lineKinds.Meta">@for (span of codes[$index] ?? []; track $index) {@if (span.className === "") {{{ span.text }}} @else {<span [class]="span.className">{{ span.text }}</span>}}</div>
+            }
           }
         </div>
       }
     </li>
+    } @else {
+    @let isClosed = closed().has(item.folder);
+    <li>
+      <button type="button" class="folder" [nolTooltip]="item.folder" [attr.aria-expanded]="!isClosed" [style.padding-inline-start.rem]="insetOf(item.depth)"
+        (click)="toggleFolder(item.folder)">
+        <span class="material-symbols-rounded" aria-hidden="true">{{ isClosed ? resources.sectionClosedIcon : resources.sectionOpenIcon }}</span>
+        <span class="material-symbols-rounded" aria-hidden="true">{{ resources.folderIcon }}</span>
+        <span class="path">{{ item.name }}</span>
+      </button>
+    </li>
+    }
   }
   @if (hiddenCount() > 0) {
     <li>
@@ -60,13 +94,13 @@ LICENSE file in the root directory of this source tree.
   }
 </ul>
 
-<ng-template #nameOf let-row>
-  <span class="state" [attr.data-tone]="row.tone">{{ row.letter }}</span>
+<ng-template #nameOf let-row let-name="name">
   <nol-file-badge [fileName]="row.fileName" />
-  <span class="path"><span class="directory">{{ row.directory }}</span>{{ row.fileName }}</span>
+  <span class="path">@if (name !== row.fileName) {<span class="directory">{{ row.directory }}</span>}{{ row.fileName }}</span>
   @if (row.kind; as kind) {
     <span class="kind">{{ kind }}</span>
   } @else if (row.counts; as counts) {
-    <span class="counts"><span class="added">{{ resources.addedPrefix }}{{ counts.added }}</span>@if (row.tone !== tones.Untracked) {<span class="removed">{{ resources.removedPrefix }}{{ counts.removed }}</span>}</span>
+    <span class="counts"><span class="added">{{ resources.addedPrefix }}{{ counts.added }}</span>@if (row.tone !== tones.Untracked) {<span class="removed">{{ resources.removedSign }}{{ counts.removed }}</span>}</span>
   }
+  <span class="state" [attr.data-tone]="row.tone">{{ row.letter }}</span>
 </ng-template>

@@ -83,6 +83,8 @@ describe("MethodFailures", () => {
     assert.equal(MethodFailures.stripUserinfo("fatal: https://person:token-value@github.com/a/b.git and ssh://git@host/c and https://host/d"),
       "fatal: https://github.com/a/b.git and ssh://host/c and https://host/d");
     assert.equal(MethodFailures.stripUserinfo("1git+ssh://agent@host/r, ://user@host and ./https://x@y"), "1git+ssh://host/r, ://user@host and ./https://y");
+    assert.equal(MethodFailures.stripUserinfo("name@host: Permission denied (publickey).\nfatal: 'git@github.com:org/r.git' and (me@[::1]:r) from <a@b.example> or a@b.example."),
+      "host: Permission denied (publickey).\nfatal: 'github.com:org/r.git' and ([::1]:r) from <a@b.example> or a@b.example.");
     assert.deepEqual(failureOf(new NotARepositoryException("https://token@host/repo")), {
       code: DesktopCode.NotFound,
       message: "https://host/repo isn't inside a git repository with a working tree.",

@@ -9,7 +9,8 @@
 import { JsonException } from "@noldova/context.json";
 import { Failure, FailureCode, ShellClients } from "@noldova/desktop.protocol";
 import { type EventChannel, type IRuntimePart, type IRuntimePartContext, MethodFailureException, type RequestContext } from "@noldova/desktop.runtime";
-import { BranchQuery, HostingProtocolException, HostReference, type HostSignIn, PullRequestDraft, SignInState } from "@noldova/git.hosting.protocol";
+import { AuthorQuery, BranchQuery, CommitQuery, HostAvatar, HostingProtocolException, HostReference, type HostSignIn, PullRequestDraft, RepositoryQuery,
+  SignInState } from "@noldova/git.hosting.protocol";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { GitNames, GitRepositories } from "@noldova/git.protocol";
 
@@ -55,6 +56,24 @@ export class RuntimePart implements IRuntimePart {
     });
     context.registerMethod(GitHubNames.readBranchPullRequestMethod, {
       handleAsync: async request => (await reads.readBranchPullRequestAsync(RuntimePart.read(request, BranchQuery.fromJson), request.signal)).toJson()
+    });
+    context.registerMethod(GitHubNames.readAuthorAvatarMethod, {
+      handleAsync: async request => new HostAvatar(await reads.readAuthorAvatarAsync(RuntimePart.read(request, AuthorQuery.fromJson), request.signal)).toJson()
+    });
+    context.registerMethod(GitHubNames.readPullRequestsMethod, {
+      handleAsync: async request => (await reads.readPullRequestsAsync(RuntimePart.read(request, RepositoryQuery.fromJson), request.signal)).toJson()
+    });
+    context.registerMethod(GitHubNames.readReviewRequestsMethod, {
+      handleAsync: async request => (await reads.readReviewRequestsAsync(RuntimePart.read(request, RepositoryQuery.fromJson), request.signal)).toJson()
+    });
+    context.registerMethod(GitHubNames.readCommitCommentsMethod, {
+      handleAsync: async request => (await reads.readCommitCommentsAsync(RuntimePart.read(request, CommitQuery.fromJson), request.signal)).toJson()
+    });
+    context.registerMethod(GitHubNames.readPullRequestMethod, {
+      handleAsync: async request => (await reads.readPullRequestAsync(RuntimePart.read(request, HostReference.fromJson), request.signal))?.toJson() ?? null
+    });
+    context.registerMethod(GitHubNames.readPullRequestThreadsMethod, {
+      handleAsync: async request => (await reads.readPullRequestThreadsAsync(RuntimePart.read(request, HostReference.fromJson), request.signal)).toJson()
     });
     context.registerMethod(GitHubNames.createPullRequestMethod, {
       handleAsync: async request => (await reads.createPullRequestAsync(RuntimePart.read(RuntimePart.fromWindow(request), PullRequestDraft.fromJson),

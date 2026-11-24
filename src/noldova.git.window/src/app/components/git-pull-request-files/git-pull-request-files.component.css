@@ -1,0 +1,100 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.notice {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  padding: var(--nol-space-2) var(--nol-view-padding-inline);
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: var(--nol-radius-medium);
+  background-color: var(--nol-raised);
+  color: var(--nol-text-muted);
+}
+
+.notice-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.notice-icon {
+  flex: none;
+  color: var(--nol-status-failed);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.local {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.hint {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  margin: 0 0 var(--nol-space-2);
+  padding: var(--nol-space-1) var(--nol-space-1);
+  color: var(--nol-text-muted);
+}
+
+.hint-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.row {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  min-width: 0;
+  min-height: var(--nol-button-height);
+  padding: 0 var(--nol-space-1);
+  white-space: nowrap;
+}
+
+.letter {
+  flex: none;
+  width: 1ch;
+  color: var(--nol-text-muted);
+  font-family: var(--nol-font-mono);
+}
+
+.path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.from {
+  color: var(--nol-text-muted);
+}
+
+.empty,
+.cap {
+  margin: 0;
+  padding: var(--nol-space-1);
+  color: var(--nol-text-muted);
+}
+
+.cap {
+  font-size: var(--nol-text-label);
+}

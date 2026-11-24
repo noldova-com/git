@@ -1,0 +1,23 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<nol-dialog [title]="title()" (dismissed)="answered.emit(null)">
+  <input nol-text-field class="name" type="text" name="branch" [attr.aria-label]="resources.branchNameLabel" [placeholder]="resources.branchNameLabel"
+    [attr.aria-invalid]="name().length > 0 && !isName()" [ngModel]="name()" (ngModelChange)="name.set($event)" (keydown.enter)="create()" />
+  @if (name().length > 0 && !isName()) {
+    <p class="small refused" role="alert">{{ resources.branchNameRefused }}</p>
+  }
+  <p class="text">{{ resources.newBranchText }}</p>
+  <ul class="targets">
+    @for (repository of repositories(); track $index) {
+      <li>{{ repository }}</li>
+    }
+  </ul>
+  <button nol-button nolDialogAction type="button" class="create" [disabled]="!isName()" (click)="create()">{{ resources.createLabel }}</button>
+  <button nol-button nolDialogAction type="button" class="cancel" [variant]="secondary" (click)="answered.emit(null)">{{ resources.cancelLabel }}</button>
+</nol-dialog>

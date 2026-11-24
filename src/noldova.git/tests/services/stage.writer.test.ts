@@ -148,6 +148,15 @@ describe("StageWriter", () => {
     assert.equal(await stagedAsync(), "D  b.txt\n");
   });
 
+  test("stages a path whose name looks like a glob as that one file, never the files the glob would match", async () => {
+    await repository.writeAsync("[ab].txt", "bracketed\n");
+    await repository.writeAsync("a.txt", "changed\n");
+
+    await new StageWriter(runner, hooks, filters, ["[ab].txt"]).runAsync(...await readAsync());
+
+    assert.equal(await stagedAsync(), "A  [ab].txt\n M a.txt\n");
+  });
+
   test("fails with git's output when git refuses to stage, such as an ignored file", async () => {
     await repository.writeAsync(".gitignore", "*.log\n");
     await repository.writeAsync("x.log", "ignored\n");

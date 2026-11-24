@@ -1,0 +1,52 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<div class="table" role="grid" [attr.aria-label]="label()">
+  <div class="wrow caps" role="row">
+    <span role="columnheader"></span>
+    <span role="columnheader">{{ resources.idColumn }}</span>
+    <span role="columnheader">{{ resources.titleColumn }}</span>
+    <span role="columnheader">{{ resources.stateColumn }}</span>
+    <span role="columnheader">{{ resources.iterationColumn }}</span>
+    <span role="columnheader">{{ resources.linksColumn }}</span>
+  </div>
+  @for (shownRow of shown(); track shownRow.row.detail.item.id) {
+    @let row = shownRow.row;
+    <div class="wrow item" role="row" tabindex="0" [class.sel]="row.detail === selected()" [attr.aria-selected]="row.detail === selected()"
+      [attr.aria-level]="row.depth + 1" [attr.aria-expanded]="shownRow.hasChildren ? !shownRow.isCollapsed : null"
+      (click)="chosen.emit(row.detail)" (keydown.enter)="chosen.emit(row.detail)" (keydown.space)="chosen.emit(row.detail)">
+      <span role="gridcell"><span class="material-symbols-rounded wi" aria-hidden="true" [style.color]="colorOf(row.detail.item)">{{ iconOf(row.detail.item) }}</span></span>
+      <span role="gridcell" class="id">{{ row.detail.item.id }}</span>
+      <span role="gridcell" class="cell-title" [style.padding-left.rem]="row.depth">
+        @if (shownRow.hasChildren) {
+          <button type="button" class="toggle" [attr.aria-expanded]="!shownRow.isCollapsed"
+            [attr.aria-label]="resources.formatExpand(shownRow.isCollapsed, row.detail.item.title)" (click)="toggle($event, shownRow)"
+            (keydown.enter)="$event.stopPropagation()" (keydown.space)="$event.stopPropagation()">
+            <span class="material-symbols-rounded" aria-hidden="true">{{ shownRow.isCollapsed ? resources.collapsedIcon : resources.expandIcon }}</span>
+          </button>
+        } @else {
+          <span class="toggle" aria-hidden="true"></span>
+        }
+        <span class="title-text">{{ row.detail.item.title }}</span>
+      </span>
+      <span role="gridcell" class="state"><span class="dot" [style.background-color]="resources.categoryColors[row.detail.item.category]"></span>{{ row.detail.item.state }}</span>
+      <span role="gridcell" class="muted">{{ row.detail.item.iteration === null ? resources.noValue : resources.formatIterationName(row.detail.item.iteration) }}</span>
+      <span role="gridcell" class="links">
+        @let pullRequest = row.detail.pullRequests[0];
+        @if (pullRequest !== undefined) {
+          <button type="button" class="chip" [attr.aria-label]="resources.formatOpenPullRequest(linkOf(row.detail))" (click)="openPullRequest($event, pullRequest)"
+            (keydown.enter)="$event.stopPropagation()" (keydown.space)="$event.stopPropagation()">{{ linkOf(row.detail) }}</button>
+        } @else {
+          <span class="muted small">{{ linkOf(row.detail) }}</span>
+        }
+      </span>
+    </div>
+  } @empty {
+    <p class="muted empty">{{ empty() }}</p>
+  }
+</div>

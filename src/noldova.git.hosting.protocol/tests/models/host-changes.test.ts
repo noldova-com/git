@@ -26,6 +26,21 @@ describe("HostChanges", () => {
     assert.deepEqual([empty.additions, empty.deletions, empty.changedFiles, empty.headCommit], [0, 0, 0, longCommit]);
   });
 
+  it("takes no counts at all from a host that doesn't count them, and returns itself as JSON that reads back the same", () => {
+    const uncounted: HostChanges = new HostChanges(null, null, null, "feature/readme", "main", commit);
+
+    assert.deepEqual(uncounted.toJson(), { additions: null, deletions: null, changedFiles: null, headBranch: "feature/readme", baseBranch: "main", headCommit: commit });
+    assert.deepEqual(HostChanges.fromJson(uncounted.toJson()), uncounted);
+  });
+
+  it("refuses some counts without the others, naming the first missing one", () => {
+    assert.throws(() => new HostChanges(null, 0, 0, "feature/readme", "main", commit),
+      { name: "HostingArgumentException", parameterName: "additions", message: "The argument additions is invalid: expected all three counts, or none when the host doesn't count them." });
+    assert.throws(() => new HostChanges(0, null, null, "feature/readme", "main", commit), { name: "HostingArgumentException", parameterName: "deletions" });
+    assert.throws(() => new HostChanges(0, 0, null, "feature/readme", "main", commit), { name: "HostingArgumentException", parameterName: "changedFiles" });
+    assert.throws(() => HostChanges.fromJson({ ...changes.toJson(), deletions: null }, "$.changes"), { name: "HostingFieldException", field: "$.changes.deletions" });
+  });
+
   it("refuses counts below zero or not whole, naming the parameter", () => {
     assert.throws(() => new HostChanges(-1, 0, 0, "feature/readme", "main", commit), HostingArgumentException);
     assert.throws(() => new HostChanges(-1, 0, 0, "feature/readme", "main", commit),

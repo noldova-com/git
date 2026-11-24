@@ -1,0 +1,43 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (failure(); as failure) {
+  <div class="notice" role="alert">
+    <span class="material-symbols-rounded notice-icon" aria-hidden="true">{{ resources.failureIcon }}</span>
+    <span class="notice-text">{{ failure }}</span>
+    <button type="button" nol-button [variant]="secondary" (click)="retry()">{{ resources.tryAgain }}</button>
+  </div>
+} @else if (isReading()) {
+  <div class="notice" role="status">
+    <nol-spinner />
+    <span class="notice-text">{{ resources.updatesReading }}</span>
+  </div>
+} @else if (list(); as list) {
+  <ng-template #parts let-update>
+    <span class="number">{{ resources.formatUpdateTitle(update.number) }}</span>
+    <span class="author">{{ update.author?.login ?? resources.unknownAuthor }}</span>
+    <span class="byline">{{ ageOf(update) }}</span>
+    <span class="sha">{{ shortOf(update) }}</span>
+  </ng-template>
+  <section class="list" [attr.aria-label]="resources.updatesTab">
+    @for (update of list.updates; track update.number) {
+      @if (folder(); as folder) {
+        <button type="button" class="row" [attr.aria-label]="resources.formatShowUpdate(update.number)" (click)="open(folder, update)">
+          <ng-container *ngTemplateOutlet="parts; context: { $implicit: update }" />
+        </button>
+      } @else {
+        <div class="row"><ng-container *ngTemplateOutlet="parts; context: { $implicit: update }" /></div>
+      }
+    } @empty {
+      <p class="empty">{{ resources.noUpdates }}</p>
+    }
+    @if (list.hasMore) {
+      <p class="cap">{{ resources.updatesCapped }}</p>
+    }
+  </section>
+}

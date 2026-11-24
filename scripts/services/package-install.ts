@@ -49,17 +49,42 @@ export class PackageInstall {
         for (const name of Object.keys(pins).filter(t => t.startsWith(Resources.noldovaPrefix)))
           names.add(name);
     }
+    const archives = await this.readLockedArchivesAsync();
     const kept: string[] = [];
     for (const name of [...names].sort()) {
       const file = path.join(this.root, Resources.nodeModulesFolder, ...name.split(Resources.pathSeparator), Resources.manifestFile);
       if (!existsSync(file))
         continue;
+      const archive = archives.get(name);
+      if (archive !== undefined) {
+        kept.push(archive);
+        continue;
+      }
       const version: unknown = (await this.readObjectAsync(file, file))[Resources.versionField];
       if (typeof version !== "string")
         throw new InstalledVersionMissingException(file);
       kept.push(Resources.formatPackageSpec(name, version));
     }
     return kept;
+  }
+
+  // A pinned package the lock resolves to a local archive isn't on the registry, so the install names that archive instead.
+  private async readLockedArchivesAsync(): Promise<ReadonlyMap<string, string>> {
+    const archives = new Map<string, string>();
+    const file = path.join(this.root, Resources.lockFile);
+    if (!existsSync(file))
+      return archives;
+    const packages: unknown = (await this.readObjectAsync(file, Resources.lockFile))[Resources.lockPackagesField];
+    if (!JsonValue.isObject(packages))
+      return archives;
+    for (const [key, entry] of Object.entries(packages)) {
+      if (!key.startsWith(Resources.lockModulesPrefix) || !JsonValue.isObject(entry))
+        continue;
+      const resolved: unknown = entry[Resources.lockResolvedField];
+      if (typeof resolved === "string" && resolved.startsWith(Resources.fileProtocol))
+        archives.set(key.slice(Resources.lockModulesPrefix.length), path.resolve(this.root, resolved.slice(Resources.fileProtocol.length)));
+    }
+    return archives;
   }
 
   private async readObjectAsync(file: string, name: string): Promise<JsonObject> {

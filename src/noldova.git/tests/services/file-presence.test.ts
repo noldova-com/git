@@ -8,7 +8,7 @@
 
 import assert from "node:assert/strict";
 import { constants } from "node:fs";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -22,6 +22,7 @@ describe("FilePresence", () => {
   beforeAll(async () => {
     folder = await mkdtemp(path.join(tmpdir(), "file-presence-"));
     await writeFile(path.join(folder, "a.txt"), "a\n");
+    await symlink(path.join(folder, "gone"), path.join(folder, "link"), "junction");
   });
 
   afterAll(async () => {
@@ -41,6 +42,13 @@ describe("FilePresence", () => {
 
   test("rethrows any other failure", async () => {
     await assert.rejects(FilePresence.existsAsync(`${folder}\0`), { code: "ERR_INVALID_ARG_VALUE" });
+    await assert.rejects(FilePresence.entryAsync(`${folder}\0`), { code: "ERR_INVALID_ARG_VALUE" });
+  });
+
+  test("reads the entry at a path itself, a link whose target is gone included, and none where nothing is", async () => {
+    const entries = await Promise.all(["a.txt", "link", "missing", path.join("a.txt", "b")].map(t => FilePresence.entryAsync(path.join(folder, t))));
+
+    assert.deepEqual(entries.map(t => t === null ? null : [t.isFile(), t.isSymbolicLink()]), [[true, false], [false, true], null, null]);
   });
 
   test("tells only a missing path's error apart", () => {

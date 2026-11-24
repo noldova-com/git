@@ -17,7 +17,7 @@ import {
   ToolCall,
   ToolRisk
 } from "@noldova/desktop.runtime";
-import { FailureCode, GitCode, type GitStatus, UntrustedSource } from "@noldova/git.protocol";
+import { FailureCode, GitCode, GitRefMove, type GitStatus, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import type { GitFailureException } from "../../src/exceptions/git-failure.exception.ts";
@@ -30,9 +30,12 @@ import { RequestWithdrawnException } from "../../src/exceptions/request-withdraw
 import { StatusMovedException } from "../../src/exceptions/status-moved.exception.ts";
 import { WriteOutcomeUnknownException } from "../../src/exceptions/write-outcome-unknown.exception.ts";
 import type { IGitWrite } from "../../src/interfaces/i-git-write.ts";
+import type { RefSnapshot } from "../../src/models/ref-snapshot.ts";
 import type { RepositoryFolders } from "../../src/models/repository-folders.ts";
 import { GitVersionReader } from "../../src/services/git-version.reader.ts";
+import { Journal } from "../../src/services/journal.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
+import { RefSnapshotReader } from "../../src/services/ref-snapshot.reader.ts";
 import { RepositoryReader } from "../../src/services/repository.reader.ts";
 import { StatusReader } from "../../src/services/status.reader.ts";
 import { WriteRunner } from "../../src/services/write.runner.ts";
@@ -41,6 +44,8 @@ import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
 class RecordingWrite implements IGitWrite {
+  public readonly method: string = "git.test";
+  public undo: UndoMode = UndoMode.Refs;
   public refusal: Error | null = null;
   public failure: unknown = null;
   public readonly requests: (IPermissionRequest | null)[];
@@ -70,6 +75,19 @@ class RecordingWrite implements IGitWrite {
   }
 }
 
+// Reads the refs before a write as they are, and then fails as `failure` says, as a repository that can't be read after the write.
+class FailingAfterReader extends RefSnapshotReader {
+  private reads: number = 0;
+  public failure: Error = new Error("unread");
+
+  public override async readAsync(folders: RepositoryFolders, withIndex: boolean, signal?: AbortSignal): Promise<RefSnapshot> {
+    this.reads += 1;
+    if (this.reads > 1)
+      throw this.failure;
+    return super.readAsync(folders, withIndex, signal);
+  }
+}
+
 describe("WriteRunner", () => {
   const request = (subject: string): IPermissionRequest => ({
     action: "git.switchBranch",
@@ -85,8 +103,11 @@ describe("WriteRunner", () => {
   let supervisor: DesktopFixture;
   let statuses: StatusReader;
   let folders: RepositoryFolders;
+  let writing: string[];
   let written: string[];
   let writes: WriteRunner;
+  let runner: ProgramRunner;
+  let journal: Journal;
   let shown: IPermissionRequest[];
 
   beforeAll(async () => {
@@ -102,11 +123,13 @@ describe("WriteRunner", () => {
     cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
     cleanUps.add(() => supervisor.disposeAsync());
-    const runner = new ProgramRunner(supervisor.context);
+    runner = new ProgramRunner(supervisor.context);
     statuses = new StatusReader(runner);
     folders = await new RepositoryReader(runner, new GitVersionReader(runner)).readAsync(repository.folder);
+    writing = [];
     written = [];
-    writes = new WriteRunner(statuses, t => written.push(t));
+    journal = new Journal();
+    writes = new WriteRunner(statuses, new RefSnapshotReader(runner), journal, t => writing.push(t), t => written.push(t));
     shown = [];
   });
 
@@ -127,7 +150,7 @@ describe("WriteRunner", () => {
     await assert.rejects(running, (error: unknown) => error instanceof type && error.code === code && error.gitCode === gitCode);
   };
 
-  test("runs a person's write on the status it is based on without asking, then tells the repository was written", async () => {
+  test("runs a person's write on the status it is based on without asking, telling the repository is being written and then was written", async () => {
     const write = new RecordingWrite(request("asked"));
     const basedOn = await basedOnAsync();
 
@@ -135,7 +158,7 @@ describe("WriteRunner", () => {
 
     assert.deepEqual(write.ran.map(t => t.fingerprint), [basedOn]);
     assert.equal(write.asked.length, 0);
-    assert.deepEqual(written, [folders.top]);
+    assert.deepEqual([writing, written], [[folders.top], [folders.top]]);
   });
 
   test("refuses a status that moved since the write was based on it, before anything asks or runs", async () => {
@@ -146,7 +169,7 @@ describe("WriteRunner", () => {
     await rejectsAsync(StatusMovedException, writes.runAsync(folders, basedOn, write, callOf(PermissionDecision.AllowedOnce)), FailureCode.Stale);
     await rejectsAsync(StatusMovedException, writes.runAsync(folders, basedOn, write, null), FailureCode.Stale);
 
-    assert.deepEqual([write.asked.length, write.ran.length, shown.length, written.length], [0, 0, 0, 0]);
+    assert.deepEqual([write.asked.length, write.ran.length, shown.length, writing.length, written.length], [0, 0, 0, 0, 0]);
   });
 
   test("lets the write refuse the status before anything asks or runs", async () => {
@@ -259,5 +282,43 @@ describe("WriteRunner", () => {
     await rejectsAsync(GitFailedException, writes.runAsync(folders, basedOn, failing, null), FailureCode.Unavailable);
 
     assert.deepEqual(written, [folders.top, folders.top, folders.top]);
+    assert.deepEqual(journal.read(folders.commonGitFolder).entries, []);
+  });
+
+  test("records each write it ran with the refs it moved, and an index write with the index's trees before and after", async () => {
+    const before = (await repository.runGitAsync(["rev-parse", "HEAD"])).trim();
+    const commit = new RecordingWrite();
+    commit.onRun = async () => {
+      await repository.writeAsync("c.txt", "c\n");
+      await repository.runGitAsync(["add", "c.txt"]);
+      await repository.runGitAsync(["commit", "--quiet", "-m", "Add c"]);
+    };
+    await writes.runAsync(folders, await basedOnAsync(), commit, null);
+    const after = (await repository.runGitAsync(["rev-parse", "HEAD"])).trim();
+    const stage = new RecordingWrite();
+    stage.undo = UndoMode.Index;
+    stage.onRun = async () => {
+      await repository.writeAsync("d.txt", "d\n");
+      await repository.runGitAsync(["add", "d.txt"]);
+    };
+    const treeBefore = (await repository.runGitAsync(["write-tree"])).trim();
+    await writes.runAsync(folders, await basedOnAsync(), stage, null);
+
+    const [committed, staged] = journal.read(folders.commonGitFolder).entries;
+    assert.deepEqual([committed?.method, committed?.branch, committed?.branchAfter, committed?.moves, committed?.undo, committed?.indexBefore],
+      ["git.test", "main", "main", [new GitRefMove("refs/heads/main", before, after)], UndoMode.Refs, null]);
+    assert.deepEqual([staged?.moves, staged?.undo, staged?.indexBefore, staged?.indexAfter],
+      [[], UndoMode.Index, treeBefore, (await repository.runGitAsync(["write-tree"])).trim()]);
+  });
+
+  test("leaves a write out of the journal when its refs can't be read after it, and passes on any other failure of that read", async () => {
+    const unreadable = new FailingAfterReader(runner);
+    unreadable.failure = new GitFailedException("for-each-ref", { text: "failed\n", source: UntrustedSource.Repository });
+    await new WriteRunner(statuses, unreadable, journal, () => undefined, () => undefined).runAsync(folders, await basedOnAsync(), new RecordingWrite(), null);
+    assert.deepEqual(journal.read(folders.commonGitFolder).entries, []);
+
+    const broken = new FailingAfterReader(runner);
+    await assert.rejects(new WriteRunner(statuses, broken, journal, () => undefined, () => undefined).runAsync(folders, await basedOnAsync(), new RecordingWrite(), null),
+      { message: "unread" });
   });
 });

@@ -1,0 +1,16 @@
+{
+  "settings": [
+    {
+      "name": "git.gravatar",
+      "title": "Show Gravatar pictures",
+      "description": "Whether a commit author with no picture on the repository's host shows their Gravatar picture. Gravatar receives a hash of each shown author's email.",
+      "type": { "kind": "Boolean" },
+      "default": true,
+      "locality": "Shared",
+      "scopes": [],
+      "page": "Git",
+      "group": "Pictures"
+    }
+  ],
+  "pages": [{ "name": "git.accounts", "title": "Accounts and hosts" }]
+}

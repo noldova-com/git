@@ -26,7 +26,8 @@ export class DiffFile {
     Resources.binaryField,
     Resources.submoduleField,
     Resources.hunksField,
-    Resources.truncatedField
+    Resources.truncatedField,
+    Resources.similarityField
   ];
   private static readonly MOVED: readonly FileChange[] = [FileChange.Renamed, FileChange.Copied];
 
@@ -41,6 +42,8 @@ export class DiffFile {
   public readonly submodule: SubmoduleChange | null;
   public readonly hunks: readonly DiffHunk[];
   public readonly truncated: boolean;
+  /** How alike a renamed or copied file is to the file it came from, in percent, as Git scores it; `null` for any other change. */
+  public readonly similarity: number | null;
 
   public constructor(
     path: string,
@@ -54,6 +57,7 @@ export class DiffFile {
     submodule: SubmoduleChange | null,
     hunks: readonly DiffHunk[],
     truncated: boolean,
+    similarity: number | null = null,
     reader?: JsonReader) {
     FieldCheck.requireText(path, Resources.pathField, reader);
     FieldCheck.requirePathBytes(pathBytes, Resources.pathBytesField, reader);
@@ -69,6 +73,8 @@ export class DiffFile {
       FieldCheck.requireNull(newMode, Resources.newModeField, reader);
     if (binary && hunks.length > 0)
       FieldCheck.fail(Resources.hunksField, Resources.binaryHunksExpected, reader);
+    if (similarity !== null && (!DiffFile.MOVED.includes(change) || !Number.isSafeInteger(similarity) || similarity < 0 || similarity > 100))
+      FieldCheck.fail(Resources.similarityField, Resources.similarityExpected, reader);
 
     this.path = path;
     this.pathBytes = pathBytes;
@@ -81,6 +87,7 @@ export class DiffFile {
     this.submodule = submodule;
     this.hunks = hunks;
     this.truncated = truncated;
+    this.similarity = similarity;
   }
 
   public static fromJson(value: unknown, path?: string): DiffFile {
@@ -98,6 +105,7 @@ export class DiffFile {
       FieldCheck.readNullableModel(reader, Resources.submoduleField, SubmoduleChange.fromJson),
       FieldCheck.readModels(reader, Resources.hunksField, DiffHunk.fromJson),
       reader.readBoolean(Resources.truncatedField),
+      reader.hasField(Resources.similarityField) ? reader.readInteger(Resources.similarityField) : null,
       reader);
   }
 
@@ -113,7 +121,8 @@ export class DiffFile {
       [Resources.binaryField]: this.binary,
       [Resources.submoduleField]: this.submodule?.toJson() ?? null,
       [Resources.hunksField]: this.hunks.map(t => t.toJson()),
-      [Resources.truncatedField]: this.truncated
+      [Resources.truncatedField]: this.truncated,
+      ...this.similarity === null ? {} : { [Resources.similarityField]: this.similarity }
     };
   }
 }

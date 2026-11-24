@@ -22,7 +22,7 @@ describe("PushBehindException", () => {
     assert.equal(error.name, "PushBehindException");
     assert.equal(error.message, "The upstream has commits the branch doesn't, as of the last fetch. Pull first, then push.");
     assert.equal(error.code, FailureCode.Git);
-    assert.equal(error.gitCode, GitCode.PushRejected);
+    assert.equal(error.gitCode, GitCode.PushBehind);
     assert.equal(error.output, null);
     assert.equal(error.cause, undefined);
     assert.ok(error instanceof GitFailureException);

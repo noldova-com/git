@@ -1,0 +1,13 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<nol-dialog [title]="resources.discardTitle" (dismissed)="answered.emit(false)">
+  <p class="text">{{ untracked() ? resources.formatDiscardUntracked(path(), undoable()) : resources.formatDiscardTracked(path(), undoable()) }}</p>
+  <button nol-button nolDialogAction type="button" class="discard" (click)="answered.emit(true)">{{ resources.discardLabel }}</button>
+  <button nol-button nolDialogAction type="button" class="cancel" [variant]="secondary" (click)="answered.emit(false)">{{ resources.cancelLabel }}</button>
+</nol-dialog>

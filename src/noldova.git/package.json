@@ -20,6 +20,7 @@
   },
   "files": [
     "module.json",
+    "settings.json",
     "src/**/*.js",
     "src/**/*.d.ts"
   ],
@@ -28,6 +29,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
+    "@noldova/checkpoints.protocol": "0.0.3",
     "@noldova/git.protocol": "0.0.6",
     "@noldova/git.window": "0.0.6"
   },

@@ -8,7 +8,7 @@
 import { isDeepStrictEqual } from "node:util";
 
 import { type IPermissionRequest, PermissionDecision, type PermissionOutcome } from "@noldova/desktop.runtime";
-import { FailureCode, type GitStatus } from "@noldova/git.protocol";
+import { FailureCode, type GitStatus, UndoMode } from "@noldova/git.protocol";
 
 import { GitFailureException } from "../exceptions/git-failure.exception.ts";
 import { RequestDeniedException } from "../exceptions/request-denied.exception.ts";
@@ -19,17 +19,26 @@ import { StatusMovedException } from "../exceptions/status-moved.exception.ts";
 import { WriteOutcomeUnknownException } from "../exceptions/write-outcome-unknown.exception.ts";
 import type { IGitWrite } from "../interfaces/i-git-write.ts";
 import type { IWriteCall } from "../interfaces/i-write-call.ts";
+import type { RefSnapshot } from "../models/ref-snapshot.ts";
 import type { RepositoryFolders } from "../models/repository-folders.ts";
+import type { Journal } from "./journal.ts";
+import type { RefSnapshotReader } from "./ref-snapshot.reader.ts";
 import type { StatusReader } from "./status.reader.ts";
 import { WriteQueue } from "./write-queue.ts";
 
 export class WriteRunner {
   private readonly statuses: StatusReader;
+  private readonly onWriting: (top: string) => void;
   private readonly onWritten: (top: string) => void;
+  private readonly snapshots: RefSnapshotReader;
+  private readonly journal: Journal;
   private readonly queue: WriteQueue = new WriteQueue();
 
-  public constructor(statuses: StatusReader, onWritten: (top: string) => void) {
+  public constructor(statuses: StatusReader, snapshots: RefSnapshotReader, journal: Journal, onWriting: (top: string) => void, onWritten: (top: string) => void) {
     this.statuses = statuses;
+    this.snapshots = snapshots;
+    this.journal = journal;
+    this.onWriting = onWriting;
     this.onWritten = onWritten;
   }
 
@@ -39,9 +48,12 @@ export class WriteRunner {
       const status = await this.readAsync(folders, basedOn, write, signal);
       if (asked !== null && !isDeepStrictEqual(await write.requestAsync(folders, status, asked.call, signal), asked.request))
         throw new RequestMovedException();
+      const before = await this.snapshots.readAsync(folders, write.undo === UndoMode.Index, signal);
       call?.markSending();
+      this.onWriting(folders.top);
       try {
         await write.runAsync(folders, status, signal);
+        await this.recordAsync(folders, write, before, signal);
       } catch (error) {
         if (signal?.aborted === true || (error instanceof GitFailureException && error.code === FailureCode.TimedOut))
           throw new WriteOutcomeUnknownException(error);
@@ -50,6 +62,19 @@ export class WriteRunner {
         this.onWritten(folders.top);
       }
     });
+  }
+
+  /** Records the write in the journal; a write that succeeded but whose refs can't be read again is left out, so it can't be undone. */
+  private async recordAsync(folders: RepositoryFolders, write: IGitWrite, before: RefSnapshot, signal?: AbortSignal): Promise<void> {
+    let after: RefSnapshot;
+    try {
+      after = await this.snapshots.readAsync(folders, write.undo === UndoMode.Index, signal);
+    } catch (error) {
+      if (!(error instanceof GitFailureException))
+        throw error;
+      return;
+    }
+    this.journal.record(folders.commonGitFolder, write.method, write.undo, before, after, write.checkpoint ?? null);
   }
 
   private async askAsync(

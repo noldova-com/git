@@ -1,0 +1,152 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (status(); as status) {
+  @if (status.operation; as operation) {
+    <div class="operation" role="status">
+      <span class="operation-icon warning material-symbols-rounded" aria-hidden="true">{{ resources.mergeIcon }}</span>
+      <span class="operation-text"><span class="strong">{{ operationText(operation, status.branch) }}</span><span class="muted"> · {{ progress() }}</span></span>
+      <span class="operation-actions">
+        <button nol-button type="button" class="abort" [variant]="secondary" [disabled]="state.busy()" (click)="abort()"><span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.abortOperationIcon }}</span>{{ resources.abortLabels[operation.kind] }}</button>
+        <button nol-button type="button" class="continue" [disabled]="state.busy() || conflicted().length > 0" (click)="continue()"><span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.continueOperationIcon }}</span>{{ resources.continueLabels[operation.kind] }}</button>
+      </span>
+    </div>
+    @if (state.failure(); as failure) {
+      <p class="failure" role="alert">{{ failure }}</p>
+    }
+    <div class="body">
+      <nav class="files" [attr.aria-label]="resources.conflictFilesLabel">
+        <h2 class="group">{{ resources.groupTitles.Conflicts }} {{ conflicted().length }}</h2>
+        @for (path of conflicted(); track path) {
+          <button type="button" class="file conflicted" [class.selected]="path === current()" [attr.aria-current]="path === current() ? 'true' : null" [title]="path"
+            (click)="pick(path)">
+            <span class="file-icon warning material-symbols-rounded" aria-hidden="true">{{ resources.conflictIcon }}</span><span class="name">{{ nameOf(path) }}</span><span
+              class="folder">{{ folderOf(path) }}</span>
+            @if (path === current() && fileProgress().length > 0) {
+              <span class="note progress">{{ fileProgress() }}</span>
+            }
+          </button>
+        }
+        @if (resolved().length > 0) {
+          <h2 class="group">{{ resources.resolvedTitle }} {{ resolved().length }}</h2>
+          @for (item of resolved(); track item[0]) {
+            <div class="file resolved" [title]="item[0]">
+              <span class="file-icon ok material-symbols-rounded" aria-hidden="true">{{ resources.resolvedIcon }}</span><span class="name">{{ nameOf(item[0]) }}</span><span
+                class="folder">{{ folderOf(item[0]) }}</span><span class="note">{{ item[1] }}</span>
+            </div>
+          }
+        }
+        @let clean = cleanOf(status);
+        @if (clean.length > 0) {
+          <h2 class="group">{{ resources.mergedCleanlyTitle }} {{ clean.length }}</h2>
+          @let hidden = hiddenOf(clean);
+          @for (path of clean.slice(0, clean.length - hidden); track path) {
+            <div class="file clean" [title]="path">
+              <span class="file-icon material-symbols-rounded" aria-hidden="true">{{ resources.cleanFileIcon }}</span><span class="name">{{ nameOf(path) }}</span><span
+                class="folder">{{ folderOf(path) }}</span>
+            </div>
+          }
+          @if (hidden > 0) {
+            <button type="button" class="file more" (click)="showsAllClean.set(true)">
+              <span class="file-icon material-symbols-rounded" aria-hidden="true">{{ resources.moreIcon }}</span><span class="name">{{ resources.formatMoreCleanFiles(hidden) }}</span>
+            </button>
+          }
+        }
+      </nav>
+      <main class="sides" [attr.aria-label]="current() ?? resources.conflictsTitle">
+        @if (conflict(); as conflict) {
+          @if (conflict.reused) {
+            <p class="note-line" role="note">{{ resources.reusedNote }}</p>
+          }
+          @if (conflict.binary) {
+            <p class="note-line" role="note">{{ resources.binaryNote }}</p>
+          }
+          @if (merges()) {
+            <noldova-merge-editor #editor class="merge" [base]="conflict.base" [ours]="conflict.ours" [theirs]="conflict.theirs" [merged]="conflict.merged"
+              [oursLabel]="conflict.oursLabel" [theirsLabel]="conflict.theirsLabel" [readOnly]="state.busy()" [toolbar]="false" [panels]="true" [showBase]="showsBase()" [tokenizer]="tokenizer()"
+              (conflictsChange)="conflictStates.set($event); conflictCount.set($event.length); unresolved.set(editor.result() === null ? null : editor.unresolvedCount())"
+              (markersFailed)="unresolved.set(null)">
+              <div nolMergeOursHead class="pane-head ours">
+                <span class="bar" aria-hidden="true"></span><span class="strong">{{ resources.oursLabel }}</span><span class="muted label side-label"><span class="side-name">{{ conflict.oursLabel }}</span>@if (resources.formatSideCommit(conflict.oursLabel, conflict.oursCommit); as commit) {<span class="side-commit">{{ commit }}</span>}</span>
+                <button nol-toolbar-button type="button" class="take-ours" [label]="resources.takeOursLabel" [disabled]="state.busy()" (click)="resolve(conflict, resolutions.Ours)"></button>
+              </div>
+              <div nolMergeTheirsHead class="pane-head theirs">
+                <span class="bar" aria-hidden="true"></span><span class="strong">{{ resources.theirsLabel }}</span><span class="muted label side-label"><span class="side-name">{{ conflict.theirsLabel }}</span>@if (resources.formatSideCommit(conflict.theirsLabel, conflict.theirsCommit); as commit) {<span class="side-commit">{{ commit }}</span>}</span>
+                <button nol-toolbar-button type="button" class="take-theirs" [label]="resources.takeTheirsLabel" [disabled]="state.busy()" (click)="resolve(conflict, resolutions.Theirs)"></button>
+              </div>
+              <div nolMergeBaseHead class="pane-head base-pane">
+                <span class="pane-icon material-symbols-rounded" aria-hidden="true">{{ resources.baseIcon }}</span><span class="strong">{{ resources.baseTitle }}</span><span
+                  class="muted label">{{ resources.baseNote }}</span>
+              </div>
+              <div nolMergeResultHead class="pane-head result">
+                <span class="pane-icon material-symbols-rounded" aria-hidden="true">{{ resources.resultIcon }}</span><span class="strong">{{ resources.resultLabel }}</span><span
+                  class="muted label">{{ resultNote() }}</span>
+                <button nol-toolbar-button type="button" class="show-base" [label]="resources.showBaseLabel" [pressed]="showsBase()" (click)="showsBase.set(!showsBase())"></button>
+                <button nol-toolbar-button type="button" class="previous" [icon]="resources.previousConflictIcon" [label]="resources.previousConflictLabel" [isShowingLabel]="true"
+                  (click)="editor.previousConflict()"></button>
+                <button nol-toolbar-button type="button" class="next" [icon]="resources.nextConflictIcon" [label]="resources.nextConflictLabel" [isShowingLabel]="true"
+                  (click)="editor.nextConflict()"></button>
+                <button nol-button type="button" class="mark-resolved" [disabled]="state.busy() || unresolved() !== 0"
+                  (click)="resolve(conflict, resolutions.Text, editor.result())">{{ resources.markResolvedLabel }}</button>
+              </div>
+            </noldova-merge-editor>
+            @if (markersUnreadable()) {
+              <div class="merge-actions">
+                <button nol-button type="button" class="take-ours" [variant]="secondary" [disabled]="state.busy()" (click)="resolve(conflict, resolutions.Ours)">{{ resources.takeOursLabel }}</button>
+                <button nol-button type="button" class="take-theirs" [variant]="secondary" [disabled]="state.busy()" (click)="resolve(conflict, resolutions.Theirs)">{{ resources.takeTheirsLabel }}</button>
+                <button nol-button type="button" class="mark-resolved" [disabled]="true">{{ resources.markResolvedLabel }}</button>
+              </div>
+            }
+          } @else {
+            <div class="panes">
+              <section class="pane ours" [attr.aria-label]="resources.oursLabel">
+                <div class="pane-head">
+                  <span class="bar" aria-hidden="true"></span><span class="strong">{{ resources.oursLabel }}</span><span class="muted label side-label"><span class="side-name">{{ conflict.oursLabel }}</span>@if (resources.formatSideCommit(conflict.oursLabel, conflict.oursCommit); as commit) {<span class="side-commit">{{ commit }}</span>}</span>
+                  @if (hasOurs()) {
+                    <button nol-toolbar-button type="button" class="take-ours" [label]="resources.takeOursLabel" [disabled]="state.busy()" (click)="resolve(conflict, resolutions.Ours)"></button>
+                  }
+                </div>
+                @if (!hasOurs()) {
+                  <p class="pane-note">{{ resources.deletedOnThisSide }}</p>
+                } @else if (conflict.ours !== null) {
+                  <noldova-code-text class="code" [text]="conflict.ours" [tokenizer]="tokenizer()" />
+                }
+              </section>
+              <section class="pane theirs" [attr.aria-label]="resources.theirsLabel">
+                <div class="pane-head">
+                  <span class="bar" aria-hidden="true"></span><span class="strong">{{ resources.theirsLabel }}</span><span class="muted label side-label"><span class="side-name">{{ conflict.theirsLabel }}</span>@if (resources.formatSideCommit(conflict.theirsLabel, conflict.theirsCommit); as commit) {<span class="side-commit">{{ commit }}</span>}</span>
+                  @if (hasTheirs()) {
+                    <button nol-toolbar-button type="button" class="take-theirs" [label]="resources.takeTheirsLabel" [disabled]="state.busy()" (click)="resolve(conflict, resolutions.Theirs)"></button>
+                  }
+                </div>
+                @if (!hasTheirs()) {
+                  <p class="pane-note">{{ resources.deletedOnThisSide }}</p>
+                } @else if (conflict.theirs !== null) {
+                  <noldova-code-text class="code" [text]="conflict.theirs" [tokenizer]="tokenizer()" />
+                }
+              </section>
+            </div>
+            @if (!hasOurs() || !hasTheirs()) {
+              <div class="whole-file">
+                <button nol-button type="button" class="delete" [variant]="secondary" [disabled]="state.busy()" (click)="resolve(conflict, resolutions.Delete)">{{ resources.deleteFileLabel }}</button>
+              </div>
+            }
+          }
+        } @else if (readFailure(); as failure) {
+          <p class="failure" role="alert">{{ failure }}</p>
+        } @else if (conflicted().length === 0) {
+          <p class="quiet">{{ resources.formatConflictText(0) }}</p>
+        }
+      </main>
+    </div>
+  } @else {
+    <p class="quiet">{{ resources.noOperation }}</p>
+  }
+} @else if (state.folder() !== instance()) {
+  <p class="quiet">{{ resources.otherFolderNote }}</p>
+}

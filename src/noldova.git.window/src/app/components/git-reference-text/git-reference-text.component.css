@@ -1,0 +1,13 @@
+.reference {
+  color: var(--nol-link);
+  text-decoration: none;
+}
+
+.reference:hover {
+  text-decoration: underline;
+}
+
+/* A reference for its row reads as the row's text: the row decides how it looks. */
+.reference.linked {
+  color: inherit;
+}

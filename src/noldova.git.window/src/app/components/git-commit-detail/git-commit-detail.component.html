@@ -1,0 +1,136 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<section class="detail" [attr.aria-label]="label()">
+  <div class="id-row">
+    <span class="mono muted grow">{{ id() }}</span>
+    <button nol-icon-button type="button" [icon]="resources.copyIcon" [label]="resources.copyIdLabel" [nolTooltip]="resources.copyIdLabel" (click)="copyId()"></button>
+    <button nol-icon-button type="button" class="more" [icon]="resources.moreIcon" [label]="resources.moreActionsLabel" [nolTooltip]="resources.moreActionsLabel"
+      [nolMenuTriggerFor]="moreActions"></button>
+  </div>
+  <ng-template #moreActions>
+    <nol-menu>
+      <button nol-menu-item data-action="copy-id" [label]="resources.copyIdLabel" [icon]="resources.copyIcon" (triggered)="copyId()"></button>
+      <button nol-menu-item data-action="branch-here" [label]="resources.createBranchHereLabel" [icon]="resources.branchMenuIcon" [disabled]="state.busy()"
+        (triggered)="startBranch(false)"></button>
+      <button nol-menu-item data-action="tag-here" [label]="resources.createTagHereLabel" [icon]="resources.tagIcon" [disabled]="state.busy()"
+        (triggered)="startBranch(true)"></button>
+    </nol-menu>
+  </ng-template>
+  <div class="subject"><nol-git-reference-text [text]="commit().commit.subject" [folder]="folder()" /></div>
+  @if (more(); as more) {
+    @if (more.body.length > 0) {
+      <div class="message"><nol-markdown-view [text]="more.body" [references]="references()" (linkOpen)="openLink($event)" />@if (more.truncated) {<span class="muted">{{ resources.messageCut }}</span>}</div>
+    }
+  }
+  <div class="people">
+    <div class="author">
+      @let picture = image();
+      @if (picture !== null) {
+        <img class="av" [src]="picture" alt="" />
+      } @else {
+        <span class="av" [class]="'av av-' + avatar()">{{ initials() }}</span>
+      }
+      <div class="grow">
+        <div class="strong">{{ commit().commit.author }}</div>
+        <div class="small muted when">{{ authored() }}@if (committed(); as committed) {{{ resources.peopleSeparator }}<span class="committed">{{ committed }}</span>}</div>
+      </div>
+    </div>
+    @if (signature(); as signature) {
+      <div class="signature small" [attr.data-state]="signature.state" [attr.title]="signature.key"><span class="ms signature-icon">{{ resources.signatureIcons[signature.state]
+        }}</span><span class="signature-text">{{ signatureLineOf(signature) }}</span></div>
+    }
+    <div class="parents small">
+      <span class="muted">{{ resources.parentLabel }}</span>
+      @for (parent of commit().commit.parents; track parent) {
+        @let short = parent.slice(0, resources.shortIdLength);
+        <button type="button" class="mono link" [title]="resources.formatShowParent(short)" (click)="showParent(parent)">{{ short }}</button>
+      } @empty {
+        <span>{{ resources.noParent }}</span>
+      }
+      @if (chips().length > 0) {
+        <span class="muted">{{ resources.inLabel }}</span>
+        @for (chip of chips(); track chip.name + chip.icon) {
+          <span class="chip" [class.current]="chip.isCurrent" [title]="chip.title"><span class="ellipsis">{{ chip.name }}</span></span>
+        }
+      }
+    </div>
+  </div>
+  <div class="actions">
+    @if (mergeable()) {
+      <button nol-button type="button" class="merge" [variant]="secondary" [disabled]="state.busy()" [title]="resources.mergeTitle" (click)="mergeAsync()">
+        <span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.mergeIcon }}</span>{{ resources.mergeLabel }}</button>
+    }
+    <button nol-button type="button" class="cherry-pick" [variant]="secondary" [disabled]="state.busy()" [title]="resources.cherryPickTitle" (click)="pickAsync(false)">
+      <span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.cherryPickIcon }}</span>{{ resources.cherryPickLabel }}</button>
+    <button nol-button type="button" class="revert" [variant]="secondary" [disabled]="state.busy()" [title]="resources.revertTitle" (click)="pickAsync(true)">
+      <span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.revertIcon }}</span>{{ resources.revertLabel }}</button>
+    <button nol-button type="button" class="rebase-here" [variant]="secondary" [disabled]="state.busy()" [title]="resources.rebaseHereTitle" (click)="startRebase()">
+      <span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.rebaseIcon }}</span>{{ resources.rebaseHereLabel }}</button>
+    <button nol-button type="button" class="branch-here" [variant]="secondary" [disabled]="state.busy()" [title]="resources.branchHereTitle" (click)="startBranch(false)">
+      <svg nolButtonIcon class="octicon" viewBox="0 0 16 16" aria-hidden="true"><path [attr.d]="resources.branchIconPath" /></svg>{{ resources.branchHereLabel }}</button>
+    <button nol-button type="button" class="tag-here" [variant]="secondary" [disabled]="state.busy()" [title]="resources.tagHereTitle" (click)="startBranch(true)">
+      <span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.tagIcon }}</span>{{ resources.tagHereLabel }}</button>
+    @if (showsAiFeatures()) {
+      <button nol-button type="button" class="explain" [variant]="secondary" disabled [title]="resources.notBuiltYet">
+        <span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.explainIcon }}</span>{{ resources.explainLabel }}</button>
+    }
+  </div>
+  @if (predicted().length > 0) {
+    <div class="predictions" role="status">
+      @for (line of predicted(); track line.text) {
+        <p class="prediction">{{ line.text }}</p>
+        @if (line.paths.length > 0) {
+          <div class="prediction-files">
+            @for (path of line.paths; track path) {
+              @let name = path.slice(path.lastIndexOf(resources.slash) + 1);
+              @if (files().holds(path)) {
+                <button type="button" class="prediction-file" [title]="path" (click)="files().reveal(path)"><nol-file-badge [fileName]="name" /><span
+                  class="prediction-file-name">{{ name }}</span></button>
+              } @else {
+                <span class="prediction-file" [title]="path"><nol-file-badge [fileName]="name" /><span class="prediction-file-name">{{ name }}</span></span>
+              }
+            }
+            @if (line.more > 0) {
+              <span class="prediction-more">{{ resources.formatMorePaths(line.more) }}</span>
+            }
+          </div>
+        }
+      }
+    </div>
+  }
+  @if (branchName() !== null) {
+    <form class="branch-form" (submit)="$event.preventDefault(); createBranchAsync(branchName() ?? '')">
+      @let nameLabel = tagging() ? resources.tagNameLabel : resources.branchNameLabel;
+      <input nol-text-field class="branch-name" type="text" autofocus [attr.aria-label]="nameLabel" [placeholder]="nameLabel"
+        [ngModel]="branchName()" (ngModelChange)="branchName.set($event)" name="branch" (keydown.escape)="cancelBranch()" />
+      <button nol-button type="submit" class="create" [disabled]="state.busy() || (branchName() ?? '').trim().length === 0">{{ resources.createLabel }}</button>
+      <button nol-button type="button" class="cancel" [variant]="secondary" (click)="cancelBranch()">{{ resources.cancelLabel }}</button>
+    </form>
+  }
+  @if (state.failure(); as refusal) {
+    <p class="note error" role="alert">{{ refusal }}</p>
+  }
+  <nol-git-diff-files [folder]="folder()" [scope]="scope()" />
+  @if (pullRequest(); as card) {
+    @let words = around(card.title, card.row.label);
+    @let found = comments();
+    <div class="pull-request" [attr.data-state]="card.state" [title]="card.row.title" (click)="openPullRequest(card)">
+      <span class="pull-request-head"><span class="ms pull-request-icon">{{ resources.commitPullRequestIcon }}</span><span class="pull-request-title"><span>{{ words[0]
+        }}</span><nol-git-reference-text [text]="words[1]" [folder]="folder()" [link]="card.row.url" /><span>{{ words[2] }}</span></span><span
+        class="small pull-request-state">{{ card.stateLabel }}</span></span>
+      @if (card.note.length > 0 || found !== null) {
+        <span class="small muted pull-request-note">{{ card.note }}@if (found !== null) {@if (card.note.length > 0) {<span>{{ resources.peopleSeparator }}</span>}<button type="button"
+          class="pull-request-comments" (click)="$event.stopPropagation(); openComments(found[1])">{{ found[0] }}</button>}</span>
+      }
+    </div>
+  } @else if (comments(); as found) {
+    <button type="button" class="small link comments" (click)="openComments(found[1])"><span class="ms">{{ resources.commitCommentsIcon }}</span><span>{{ found[0]
+      }}</span></button>
+  }
+</section>

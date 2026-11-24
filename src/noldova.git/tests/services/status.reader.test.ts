@@ -7,16 +7,18 @@
  */
 
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, rm, utimes, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, test, vi } from "vitest";
 
 import { ConflictKind, FailureCode, FileState, type GitStatus, OperationKind, RemoteTransport, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import { RepositoryFolders } from "../../src/models/repository-folders.ts";
+import { Resources } from "../../src/resources.ts";
 import { GitVersionReader } from "../../src/services/git-version.reader.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
 import { RepositoryReader } from "../../src/services/repository.reader.ts";
@@ -24,6 +26,9 @@ import { StatusReader } from "../../src/services/status.reader.ts";
 import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
+import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
+
+vi.mock(import("node:fs/promises"), { spy: true });
 
 describe("StatusReader", () => {
   let template: RepositoryFixture;
@@ -63,7 +68,9 @@ describe("StatusReader", () => {
     const status = await readAsync();
 
     assert.deepEqual(status.toJson(), {
-      branch: "main", head: await headAsync(), upstream: null, entries: [], truncated: false, fingerprint: status.fingerprint, operation: null, remote: null
+      branch: "main", head: await headAsync(), upstream: null, entries: [], truncated: false, fingerprint: status.fingerprint, operation: null, remote: null,
+      uncheckedLfsFiles: 0,
+      fetchedAt: null
     });
     assert.match(status.fingerprint, /^[0-9a-f]{64}$/v);
   });
@@ -103,7 +110,8 @@ describe("StatusReader", () => {
 
     const status = await readAsync(empty);
 
-    assert.deepEqual(status.toJson(), { branch: "main", head: null, upstream: null, entries: [], truncated: false, fingerprint: status.fingerprint, operation: null, remote: null });
+    assert.deepEqual(status.toJson(), { branch: "main", head: null, upstream: null, entries: [], truncated: false, fingerprint: status.fingerprint, operation: null, remote: null,
+      uncheckedLfsFiles: 0, fetchedAt: null });
     assert.equal((await readAsync()).branch, null);
   });
 
@@ -116,12 +124,54 @@ describe("StatusReader", () => {
 
     const status = await readAsync(clone);
 
-    assert.deepEqual(status.upstream?.toJson(), { name: "origin/main", ahead: 1, behind: 0, gone: false });
+    assert.deepEqual(status.upstream?.toJson(), { name: "origin/main", ahead: 1, behind: 0, gone: false, id: (await repository.runGitAsync(["-C", remote, "rev-parse", "main"])).trim() });
     assert.deepEqual(status.remote?.toJson(), { name: "origin", host: null, path: null, transport: RemoteTransport.File });
 
     await repository.runGitAsync(["-C", remote, "branch", "-m", "main", "renamed"]);
     await repository.runGitAsync(["-C", clone, "fetch", "--quiet", "--prune"]);
-    assert.deepEqual((await readAsync(clone)).upstream?.toJson(), { name: "origin/main", ahead: 0, behind: 0, gone: true });
+    assert.deepEqual((await readAsync(clone)).upstream?.toJson(), { name: "origin/main", ahead: 0, behind: 0, gone: true, id: null });
+  });
+
+  test("reads when the worktree last fetched from its FETCH_HEAD, to the second, and no time before its first fetch", async () => {
+    const remote = path.join(repository.root, "remote.git");
+    const clone = path.join(repository.root, "clone");
+    await repository.runGitAsync(["clone", "--quiet", "--bare", repository.folder, remote]);
+    await repository.runGitAsync(["clone", "--quiet", remote, clone]);
+    const before = (await readAsync(clone)).fetchedAt;
+    await repository.runGitAsync(["-C", clone, "fetch", "--quiet"]);
+    await utimes(path.join(clone, ".git", "FETCH_HEAD"), new Date("2026-11-22T18:05:00.750Z"), new Date("2026-11-22T18:05:00.750Z"));
+
+    assert.deepEqual([before, (await readAsync(clone)).fetchedAt], [null, "2026-11-22T18:05:00Z"]);
+  });
+
+  test("fails when FETCH_HEAD is there but can't be read", async () => {
+    const denied = Object.assign(new Error("denied"), { code: "EACCES" });
+    vi.mocked(lstat).mockImplementation(async (file, options) => {
+      if (String(file).endsWith("FETCH_HEAD"))
+        throw denied;
+      return await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises").then(t => t.lstat(file, options));
+    });
+    try {
+      await assert.rejects(readAsync(), denied);
+    } finally {
+      vi.mocked(lstat).mockRestore();
+    }
+  });
+
+  test("reads no upstream commit when git can't resolve the tracking ref, and fails with git's errors marked untrusted when it can't read it", async () => {
+    const remote = path.join(repository.root, "remote.git");
+    const clone = path.join(repository.root, "clone");
+    await repository.runGitAsync(["clone", "--quiet", "--bare", repository.folder, remote]);
+    await repository.runGitAsync(["clone", "--quiet", remote, clone]);
+    const scripted = new ScriptedRunnerFixture(supervisor.context);
+    const scriptedReader = new StatusReader(scripted);
+    const folders = await repositories.readAsync(clone);
+    scripted.failing = "@{upstream}";
+
+    assert.equal((await scriptedReader.readAsync(folders)).upstream?.id, null);
+    scripted.failingCode = 128;
+    await assert.rejects(scriptedReader.readAsync(folders), (error: unknown) =>
+      error instanceof GitFailedException && error.command === "rev-parse" && error.output?.source === UntrustedSource.Repository);
   });
 
   test("reads a merge conflict", async () => {
@@ -161,6 +211,9 @@ describe("StatusReader", () => {
 
     assert.equal(entry?.path, "library");
     assert.deepEqual(entry?.submodule?.toJson(), { commitChanged: true, trackedChanges: true, untrackedChanges: true });
+    const before = (await readAsync()).fingerprint;
+    await repository.runGitAsync(["-C", inside, "commit", "--quiet", "--allow-empty", "-m", "Moved again"]);
+    assert.notEqual((await readAsync()).fingerprint, before, "a submodule moved to another commit changes the fingerprint");
   });
 
   test("keeps a path that isn't UTF-8 as its bytes", async context => {
@@ -227,6 +280,119 @@ describe("StatusReader", () => {
 
     await repository.runGitAsync(["add", "a.txt"]);
     assert.notEqual((await readAsync()).fingerprint, edited);
+  });
+
+  const lfsPointer = (content: string): string =>
+    `version https://git-lfs.github.com/spec/v1\noid sha256:${createHash("sha256").update(content).digest("hex")}\nsize ${Buffer.byteLength(content)}\n`;
+  const trackLfsAsync = async (files: Readonly<Record<string, string>>): Promise<void> => {
+    await repository.writeAsync(".gitattributes", "*.bin filter=lfs diff=lfs merge=lfs -text\n");
+    for (const [file, content] of Object.entries(files))
+      await repository.writeAsync(file, lfsPointer(content));
+    await repository.runGitAsync(["add", ".gitattributes", ...Object.keys(files)]);
+    await repository.runGitAsync(["commit", "--quiet", "-m", "Track LFS"]);
+  };
+
+  test("counts an LFS file whose content matches its pointer unchanged, and keeps a changed one, a pointer checked out without smudge and other files as git reads them", async () => {
+    await trackLfsAsync({ "kept.bin": "kept\n", "grown.bin": "old\n", "same-size.bin": "abcd\n", "pointer.bin": "never smudged\n" });
+    await repository.writeAsync("kept.bin", "kept\n");
+    await repository.writeAsync("grown.bin", "a new content\n");
+    await repository.writeAsync("same-size.bin", "wxyz\n");
+    await repository.writeAsync("a.txt", await repository.runGitAsync(["show", "HEAD:a.txt"]));
+    await repository.writeAsync("changed.txt", "changed\n");
+    await repository.runGitAsync(["add", "changed.txt"]);
+    await repository.runGitAsync(["commit", "--quiet", "-m", "Text"]);
+    await repository.writeAsync("changed.txt", "changed again\n");
+
+    const status = await readAsync();
+
+    assert.deepEqual(states(status.entries), [
+      ["changed.txt", FileState.Unmodified, FileState.Modified],
+      ["grown.bin", FileState.Unmodified, FileState.Modified],
+      ["same-size.bin", FileState.Unmodified, FileState.Modified]
+    ]);
+  });
+
+  test("reads an LFS file's pointer once across reads, and reads the file as changed once its content moves", async () => {
+    await trackLfsAsync({ "kept.bin": "kept\n" });
+    await repository.writeAsync("kept.bin", "kept\n");
+    const pointers = (): number => supervisor.requests.filter(t => t.arguments.includes("--batch")).length;
+
+    const first = states((await readAsync()).entries);
+    const afterFirst = pointers();
+    const second = states((await readAsync()).entries);
+    await repository.writeAsync("kept.bin", "kept, then changed\n");
+    const changed = states((await readAsync()).entries);
+
+    assert.deepEqual([first, afterFirst, second, pointers(), changed], [[], 1, [], 1, [["kept.bin", FileState.Unmodified, FileState.Modified]]]);
+  });
+
+  const withResourceAsync = async <T>(name: "lfsHashBytes" | "lfsCacheEntries", value: number, action: () => Promise<T>): Promise<T> => {
+    const before = Resources[name];
+    Object.defineProperty(Resources, name, { value, configurable: true, writable: true });
+    try {
+      return await action();
+    } finally {
+      Object.defineProperty(Resources, name, { value: before, configurable: true, writable: true });
+    }
+  };
+
+  test("counts an LFS file the hash budget can't reach as unchecked, leaving it as git reads it, and checks it on a later read", async () => {
+    await trackLfsAsync({ "a.bin": "aaaa\n", "b.bin": "bbbb\n" });
+    await repository.writeAsync("a.bin", "aaaa\n");
+    await repository.writeAsync("b.bin", "bbbb\n");
+
+    const [first, second] = await withResourceAsync("lfsHashBytes", 6, async () => [await readAsync(), await readAsync()]);
+
+    assert.deepEqual([states(first.entries), first.uncheckedLfsFiles], [[["b.bin", FileState.Unmodified, FileState.Modified]], 1]);
+    assert.deepEqual([states(second.entries), second.uncheckedLfsFiles], [[], 0]);
+  });
+
+  test("counts an LFS file whose pointer the check couldn't keep as unchecked, rather than as changed", async () => {
+    await trackLfsAsync({ "a.bin": "aaaa\n", "b.bin": "bbbb\n" });
+    await repository.writeAsync("a.bin", "aaaa\n");
+    await repository.writeAsync("b.bin", "bbbb\n");
+
+    const status = await withResourceAsync("lfsCacheEntries", 1, readAsync);
+
+    assert.deepEqual([states(status.entries), status.uncheckedLfsFiles], [[["a.bin", FileState.Unmodified, FileState.Modified]], 1]);
+  });
+
+  test("checks any number of LFS files with one check-attr and two cat-file runs, past the old limit of a thousand", async () => {
+    const files = Object.fromEntries(Array.from({ length: 1_500 }, (_, index) => [`many-${index}.bin`, `${index}\n`]));
+    const attributes = "*.bin filter=lfs diff=lfs merge=lfs -text\n";
+    const inline = (file: string, content: string): string => `M 100644 inline ${file}\ndata ${String(Buffer.byteLength(content))}\n${content}\n`;
+    await repository.runGitAsync(["fast-import", "--quiet"], [
+      `commit ${(await repository.runGitAsync(["symbolic-ref", "HEAD"])).trim()}`,
+      "committer Noldova Test <test@example.invalid> 1767225600 +0000",
+      "data 9",
+      "Track LFS",
+      `from ${await headAsync()}`,
+      inline(".gitattributes", attributes) + Object.entries(files).map(([file, content]) => inline(file, lfsPointer(content))).join("")
+    ].join("\n"));
+    await repository.runGitAsync(["read-tree", "HEAD"]);
+    await repository.writeAsync(".gitattributes", attributes);
+    for (const [file, content] of Object.entries(files))
+      await repository.writeAsync(file, content);
+    const before = supervisor.requests.length;
+
+    const status = await readAsync();
+    const runs = supervisor.requests.slice(before).map(t => t.arguments.find(u => u === "check-attr" || u === "cat-file")).filter(t => t !== undefined);
+
+    assert.deepEqual([status.entries.length, status.uncheckedLfsFiles, runs], [0, 0, ["check-attr", "cat-file", "cat-file"]]);
+  });
+
+  test("leaves a big blob that LFS attributes name as git reads it, without counting it unchecked", async () => {
+    await repository.writeAsync("big.bin", "x".repeat(2_000));
+    await repository.runGitAsync(["add", "big.bin"]);
+    await repository.runGitAsync(["commit", "--quiet", "-m", "Big"]);
+    await repository.writeAsync(".gitattributes", "*.bin filter=lfs diff=lfs merge=lfs -text\n");
+    await repository.runGitAsync(["add", ".gitattributes"]);
+    await repository.runGitAsync(["commit", "--quiet", "-m", "Track"]);
+    await repository.writeAsync("big.bin", "y".repeat(2_000));
+
+    const status = await readAsync();
+
+    assert.deepEqual([states(status.entries), status.uncheckedLfsFiles], [[["big.bin", FileState.Unmodified, FileState.Modified]], 0]);
   });
 
   test("never runs an fsmonitor command that the repository's own configuration names", async () => {

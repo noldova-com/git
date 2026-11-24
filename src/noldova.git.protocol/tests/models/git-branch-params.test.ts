@@ -29,6 +29,12 @@ describe("GitBranchParams", () => {
     assert.throws(() => GitBranchParams.fromJson({ folder: "/repo", name: "-f", basedOn: "f" }, "$.params"), { name: "ProtocolFieldException", field: "$.params.name" });
   });
 
+  it("answers whether it takes a name without throwing, by the same rules", () => {
+    const names: readonly string[] = ["feature/view", "b".repeat(255), "", "b".repeat(256), "-f", "@", "HEAD", "a..b", "a@{1", "a.", "a/.b", "a//b", "x.lock", "a b", "a~1"];
+
+    assert.deepEqual(names.map(t => GitBranchParams.isBranchName(t)), [true, true, false, false, false, false, false, false, false, false, false, false, false, false, false]);
+  });
+
   it("refuses a relative folder, an empty or missing fingerprint and an unknown field, naming its path", () => {
     assert.throws(() => new GitBranchParams("repo", "main", "f"), { name: "ProtocolFieldException", field: "folder" });
     assert.throws(() => new GitBranchParams("/repo", "main", ""), { name: "ProtocolFieldException", field: "basedOn" });

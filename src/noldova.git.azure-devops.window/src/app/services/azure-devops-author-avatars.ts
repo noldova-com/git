@@ -1,0 +1,114 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import { signal, type WritableSignal } from "@angular/core";
+
+import type { IWindowPartContext } from "@noldova/desktop.window";
+import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
+import { AuthorQuery, HostAvatar, PersonQuery } from "@noldova/git.hosting.protocol";
+import type { IGitAvatars } from "@noldova/git.window";
+
+import { Resources } from "../../resources.ts";
+import { AzureDevOpsReferenceSource } from "./azure-devops-reference-source.ts";
+
+/**
+ * Commit authors' and the pages' people's Azure DevOps pictures, read once per organization and email through the runtime part, shared by the Git view and
+ * every page of a window part, and read again after the sign-in changes.
+ */
+export class AzureDevOpsAuthorAvatars implements IGitAvatars {
+  private static readonly shared: WeakMap<IWindowPartContext, AzureDevOpsAuthorAvatars> = new WeakMap();
+
+  private readonly context: IWindowPartContext;
+  private readonly references: () => AzureDevOpsReferenceSource;
+  private readonly kept: Map<string, WritableSignal<string | null | undefined>> = new Map();
+  private readonly signIns: WritableSignal<number> = signal(0);
+  private readonly stopListening: () => void;
+  private readonly waiting: (() => Promise<void>)[] = [];
+  private running: number = 0;
+
+  public constructor(context: IWindowPartContext, references: () => AzureDevOpsReferenceSource) {
+    this.context = context;
+    this.references = references;
+    this.stopListening = context.onEvent(AzureDevOpsNames.signInChangedEvent, () => {
+      this.kept.clear();
+      this.waiting.length = 0;
+      this.signIns.update(t => t + 1);
+    });
+  }
+
+  /** The context's pictures, made the first time the Git view or a page asks for them. */
+  public static register(context: IWindowPartContext): AzureDevOpsAuthorAvatars {
+    const known: AzureDevOpsAuthorAvatars | undefined = AzureDevOpsAuthorAvatars.shared.get(context);
+    if (known !== undefined)
+      return known;
+    const avatars: AzureDevOpsAuthorAvatars = new AzureDevOpsAuthorAvatars(context, () => AzureDevOpsReferenceSource.register(context));
+    AzureDevOpsAuthorAvatars.shared.set(context, avatars);
+    return avatars;
+  }
+
+  public static release(context: IWindowPartContext): void {
+    AzureDevOpsAuthorAvatars.shared.get(context)?.stop();
+    AzureDevOpsAuthorAvatars.shared.delete(context);
+  }
+
+  public avatarOf(folder: string, email: string, commitId: string): string | null | undefined {
+    this.signIns();
+    const organization: string | null = this.references().homeOf(folder)();
+    if (organization === null)
+      return null;
+    const key: string = Resources.formatAvatarKey(organization.toLowerCase(), email.trim().toLowerCase());
+    let avatar: WritableSignal<string | null | undefined> | undefined = this.kept.get(key);
+    if (avatar === undefined) {
+      const reading: WritableSignal<string | null | undefined> = signal(undefined);
+      avatar = reading;
+      this.kept.set(key, reading);
+      this.context.requestAsync(AzureDevOpsNames.readAuthorAvatarMethod, new AuthorQuery(Resources.azureHost, organization, email, commitId).toJson())
+        .then(t => reading.set(HostAvatar.fromJson(t).avatar), () => reading.set(null));
+    }
+    return avatar();
+  }
+
+  /** A person's picture in an organization by their sign-in name, read once with an author's of the same email, a few at a time; none for a group. */
+  public personAvatarOf(organization: string, login: string): string | null | undefined {
+    if (Resources.isGroupLogin(login))
+      return null;
+    this.signIns();
+    const key: string = Resources.formatAvatarKey(organization.toLowerCase(), login.trim().toLowerCase());
+    let avatar: WritableSignal<string | null | undefined> | undefined = this.kept.get(key);
+    if (avatar === undefined) {
+      const reading: WritableSignal<string | null | undefined> = signal(undefined);
+      avatar = reading;
+      this.kept.set(key, reading);
+      this.queue(() => this.context.requestAsync(AzureDevOpsNames.readPersonAvatarMethod, new PersonQuery(Resources.azureHost, organization, login).toJson())
+        .then(t => reading.set(HostAvatar.fromJson(t).avatar), () => reading.set(null)));
+    }
+    return avatar();
+  }
+
+  public stop(): void {
+    this.stopListening();
+    this.kept.clear();
+    this.waiting.length = 0;
+  }
+
+  private queue(read: () => Promise<void>): void {
+    if (this.running < Resources.referenceReadLimit)
+      void this.runAsync(read);
+    else
+      this.waiting.push(read);
+  }
+
+  private async runAsync(read: () => Promise<void>): Promise<void> {
+    this.running++;
+    await read();
+    this.running--;
+    const next: (() => Promise<void>) | undefined = this.waiting.shift();
+    if (next !== undefined)
+      void this.runAsync(next);
+  }
+}

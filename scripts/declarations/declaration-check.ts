@@ -58,7 +58,7 @@ class DeclarationCheck {
 
   private checkDeclaration(declaration: JsonObject, module: RepositoryModule): void {
     const fields: readonly string[] = Object.keys(declaration);
-    if (fields.length !== Resources.moduleFields.length || Resources.moduleFields.some(t => !fields.includes(t)))
+    if (Resources.moduleFields.some(t => !fields.includes(t)) || fields.some(t => !Resources.moduleFields.includes(t) && !Resources.optionalModuleFields.includes(t)))
       this.problems.push(Resources.declarationFieldsInvalid);
     const id: unknown = declaration[Resources.idField];
     if (typeof id !== "string" || !Resources.moduleIdPattern.test(id) || id === Resources.reservedModuleId) {
@@ -81,6 +81,8 @@ class DeclarationCheck {
         this.problems.push(Resources.formatDeclarationPartMissing(part, folder));
     }
     this.checkDependencies(declaration[Resources.dependenciesField], id);
+    for (const field of Resources.optionalModuleFields.filter(t => Object.hasOwn(declaration, t)))
+      this.checkDependencies(declaration[field], id);
     this.checkContributions(declaration[Resources.contributesField], id);
   }
 
@@ -200,7 +202,7 @@ class DeclarationCheck {
       return;
     }
     for (const [name, needed] of Object.entries(peers)) {
-      const range: VersionRange | null = typeof needed === "string" && name.startsWith(Resources.contextPrefix) ? VersionRange.parse(needed) : null;
+      const range: VersionRange | null = typeof needed === "string" && (name.startsWith(Resources.contextPrefix) || name === Resources.editorName) ? VersionRange.parse(needed) : null;
       if (range === null || !range.isWritten())
         this.problems.push(Resources.formatWindowPeerInvalid(name));
       else

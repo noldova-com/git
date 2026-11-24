@@ -14,7 +14,7 @@ import { GitFailureException } from "./git-failure.exception.ts";
 
 export class PushBehindException extends GitFailureException {
   public override readonly code: FailureCode = FailureCode.Git;
-  public override readonly gitCode: GitCode | null = GitCode.PushRejected;
+  public override readonly gitCode: GitCode | null = GitCode.PushBehind;
   public override readonly output: IUntrustedText | null = null;
 
   public constructor() {

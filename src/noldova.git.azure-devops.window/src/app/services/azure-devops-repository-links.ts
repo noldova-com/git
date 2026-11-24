@@ -1,0 +1,34 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import type { IWindowPartContext } from "@noldova/desktop.window";
+import type { GitRemote } from "@noldova/git.protocol";
+import { GitRepositoryLink, type IGitRepositoryLinks } from "@noldova/git.window";
+
+import { WorkItemsPlace } from "../models/work-items-place.ts";
+import { Resources } from "../../resources.ts";
+
+/** Gives the repository panel a My work items row for a repository on Azure DevOps, which opens that document for its remote's project. */
+export class AzureDevOpsRepositoryLinks implements IGitRepositoryLinks {
+  private readonly context: IWindowPartContext;
+
+  public constructor(context: IWindowPartContext) {
+    this.context = context;
+  }
+
+  public linksFor(remote: GitRemote): readonly GitRepositoryLink[] {
+    const place: WorkItemsPlace | null = WorkItemsPlace.ofRemote(remote);
+    if (place === null)
+      return [];
+    const instance: string = Resources.formatWorkItemsInstance(place.organization, place.project, null);
+    return [
+      new GitRepositoryLink(Resources.workItemsDocument, Resources.myWorkItemsTitle, Resources.workItemsIcon,
+        () => this.context.openDocument(Resources.workItemsDocument, instance, Resources.myWorkItemsTitle))
+    ];
+  }
+}

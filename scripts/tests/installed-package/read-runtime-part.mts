@@ -7,6 +7,7 @@
  */
 
 import type { IRuntimePart } from "@noldova/desktop.runtime";
+import { RuntimePart as AzureDevOpsRuntimePart } from "@noldova/git.azure-devops/runtime";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { RuntimePart as GitHubRuntimePart } from "@noldova/git.github/runtime";
 import { HostReference } from "@noldova/git.hosting.protocol";
@@ -17,7 +18,7 @@ import { InstalledPackageCheckFailedException } from "../../exceptions/installed
 import { InstalledPackageResources } from "./installed-package-resources.ts";
 
 export class RuntimePartReading {
-  public static readonly parts: readonly IRuntimePart[] = [new GitRuntimePart(), new GitHubRuntimePart()];
+  public static readonly parts: readonly IRuntimePart[] = [new GitRuntimePart(), new GitHubRuntimePart(), new AzureDevOpsRuntimePart()];
 
   public static run(): void {
     const reference: HostReference = HostReference.fromJson({ host: GitHubNames.moduleId, owner: InstalledPackageResources.sampleOwner,

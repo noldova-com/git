@@ -126,6 +126,14 @@ describe("The Git agent tools", () => {
     assert.deepEqual(answerer.requests, []);
   });
 
+  it("tells the agent push asks at high risk, or at medium with an Always allow for a branch the session made", () => {
+    const push = session.listTools().find(t => t.name === "git_push");
+
+    assert.match(push?.description ?? "", /at high risk, or at medium risk with an Always allow for this session when the branch is one this session made/v);
+    assert.doesNotMatch(push?.description ?? "", /always asks/v);
+    assert.match(push?.description ?? "", /to the branch of its own name on its remote, .* it refuses a branch whose upstream has another name\./v);
+  });
+
   it("stages and unstages without asking while no hook would run, and asks at low risk when one would", async () => {
     await repository.writeAsync("c.txt", "new\n");
 

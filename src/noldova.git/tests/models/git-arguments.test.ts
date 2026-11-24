@@ -35,4 +35,10 @@ describe("GitArguments", () => {
 
     assert.deepEqual(status.values, ["-c", "filter.evil.clean=", "status", "--end-of-options", "HEAD", "--", "a.txt"]);
   });
+
+  test("literal paths carry pathspec magic, and the options and revisions stay as they were", () => {
+    const add = new GitArguments(["add"], ["HEAD"], ["[ab].txt", ":/x"]).withLiteralPaths();
+
+    assert.deepEqual(add.values, ["add", "--end-of-options", "HEAD", "--", ":(literal)[ab].txt", ":(literal):/x"]);
+  });
 });

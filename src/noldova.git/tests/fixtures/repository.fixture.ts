@@ -106,6 +106,12 @@ export class RepositoryFixture {
     })).stdout;
   }
 
+  /** Whether the git these tests run is at least this version, for a test of a feature an older git lacks, such as Apple's git on a Mac. */
+  public async hasGitAsync([major, minor]: readonly [number, number]): Promise<boolean> {
+    const [found, foundMajor, foundMinor] = /^git version (\d+)\.(\d+)/v.exec(await this.runGitAsync(["version"])) ?? [];
+    return found !== undefined && (Number(foundMajor) > major || (Number(foundMajor) === major && Number(foundMinor) >= minor));
+  }
+
   public supervisorEnvironment(searchPath: string = process.env["PATH"] ?? ""): Record<string, string> {
     return {
       ...this.windowsEnvironment(),

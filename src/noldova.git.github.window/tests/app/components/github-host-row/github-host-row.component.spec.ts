@@ -163,6 +163,12 @@ class Page {
   }
 }
 
+async function focusedAfterAsync(page: Page, label: string): Promise<string> {
+  [...page.element.querySelectorAll("button")].find(t => (t.textContent ?? "").includes(label))?.focus();
+  await page.clickAsync(label);
+  return document.activeElement === null ? "" : wordsOf(document.activeElement);
+}
+
 describe("GitHubHostRowComponent", () => {
   it("reads the branch's pull request for the remote's repository, the branch and HEAD, once signed in", async () => {
     const page = new Page();
@@ -372,6 +378,34 @@ describe("GitHubHostRowComponent", () => {
     expect(failed).toEqual(["error GitHub didn't answer. Try again to read this branch's pull request. Try again"]);
     expect(page.logs).toEqual([`The GitHub module's ${GitHubNames.readBranchPullRequestMethod} request failed: WindowFailure: GitHub didn't answer.`]);
     expect([page.element.querySelector("[role=alert]"), page.texts(".title")]).toEqual([null, ["#7 Sample pull request title"]]);
+  });
+
+  it("moves the focus to the pull request's title when Try again goes as it is used, never to the page", async () => {
+    const page = new Page();
+    page.requests.fail(GitHubNames.readBranchPullRequestMethod, new WindowFailure("GitHub didn't answer."));
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
+    await page.openAsync(signedIn);
+
+    const focused = await focusedAfterAsync(page, "Try again");
+
+    expect(focused).toBe("#7 Sample pull request title");
+  });
+
+  it("moves the focus to a surviving button when Sign in, Open the page again or Cancel goes as it is used, never to the page", async () => {
+    const page = new Page();
+    page.requests.answer(GitHubNames.startSignInMethod, HostSignIn.waiting(code).toJson());
+    page.requests.answer(GitHubNames.cancelSignInMethod, HostSignIn.signedOut().toJson());
+    await page.openAsync(HostSignIn.signedOut());
+    page.context.answer("openLinkAsync", async () => {
+      throw new WindowFailure("No browser.");
+    });
+
+    const afterSignIn = await focusedAfterAsync(page, "Sign in to GitHub");
+    page.context.answer("openLinkAsync", async () => undefined);
+    const afterOpenAgain = await focusedAfterAsync(page, "Open the page again");
+    const afterCancel = await focusedAfterAsync(page, "Cancel");
+
+    expect([afterSignIn, afterOpenAgain, afterCancel]).toEqual(["Copy code", "Cancel", "Sign in to GitHub"]);
   });
 
   it("says when the sign-in can't be read, and reads it again on Try again", async () => {

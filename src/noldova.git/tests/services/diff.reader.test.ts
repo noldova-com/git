@@ -8,7 +8,7 @@
 
 import assert from "node:assert/strict";
 import { existsSync, rmSync } from "node:fs";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, utimes, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
@@ -101,14 +101,28 @@ describe("DiffReader", () => {
     assert.deepEqual(file?.hunks[0]?.lines.map(t => [t.kind, t.text]), [[LineKind.Context, "a\r"], [LineKind.Removed, "b\r"], [LineKind.Added, "b"]]);
   });
 
-  test("reads staged changes, with a rename and its old path", async () => {
+  test("leaves out a file whose content is unchanged though its timestamps differ, beside a changed one, even when the repository turns off the index's refresh", async () => {
+    await commitAsync({ "a.txt": "same\n", "b.txt": "one\n" }, "Two files");
+    await repository.runGitAsync(["config", "diff.autoRefreshIndex", "false"]);
+    const later: Date = new Date(Date.now() + 60_000);
+    await utimes(path.join(repository.folder, "a.txt"), later, later);
+    await repository.writeAsync("b.txt", "two\n");
+
+    const diff = await reader.readAsync(repository.folder, WORKTREE, []);
+
+    assert.deepEqual(changes(diff), [["b.txt", FileChange.Modified]]);
+    assert.deepEqual(diff.files[0]?.hunks[0]?.lines.map(t => [t.kind, t.text]), [[LineKind.Removed, "one"], [LineKind.Added, "two"]]);
+  });
+
+  test("reads staged changes, with a rename, its old path and its similarity", async () => {
     await repository.runGitAsync(["mv", "a.txt", "moved.txt"]);
     await repository.writeAsync("new.txt", "n\n");
     await repository.runGitAsync(["add", "new.txt"]);
 
     const diff = await reader.readAsync(repository.folder, STAGED, []);
 
-    assert.deepEqual(diff.files.map(t => [t.oldPath, t.path, t.change, t.hunks.length]), [["a.txt", "moved.txt", FileChange.Renamed, 0], ["new.txt", "new.txt", FileChange.Added, 1]]);
+    assert.deepEqual(diff.files.map(t => [t.oldPath, t.path, t.change, t.hunks.length, t.similarity]),
+      [["a.txt", "moved.txt", FileChange.Renamed, 0, 100], ["new.txt", "new.txt", FileChange.Added, 1, null]]);
   });
 
   test("reads a range, and never takes a revision for an option", async () => {

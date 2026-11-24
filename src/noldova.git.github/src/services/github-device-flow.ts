@@ -10,6 +10,7 @@ import { JsonException, type JsonObject, JsonReader } from "@noldova/context.jso
 import { DeviceCode, HostAccount, HostingProtocolException } from "@noldova/git.hosting.protocol";
 import { GitHubNames } from "@noldova/git.github.protocol";
 
+import { SignInAnswerTooLargeException } from "../exceptions/sign-in-answer-too-large.exception.ts";
 import { SignInAnswerUnreadableException } from "../exceptions/sign-in-answer-unreadable.exception.ts";
 import { SignInDeniedException } from "../exceptions/sign-in-denied.exception.ts";
 import { SignInErrorException } from "../exceptions/sign-in-error.exception.ts";
@@ -22,6 +23,7 @@ import { DeviceGrant } from "../models/device-grant.ts";
 import { DevicePoll } from "../models/device-poll.ts";
 import { Resources } from "../resources.ts";
 import type { Fetcher } from "../types/fetcher.ts";
+import { AnswerText } from "./answer-text.ts";
 import type { GitHubAvatars } from "./github-avatars.ts";
 
 export class GitHubDeviceFlow {
@@ -101,7 +103,7 @@ export class GitHubDeviceFlow {
   private async fetchAsync(url: string, init: RequestInit, signal: AbortSignal): Promise<Response> {
     let response: Response;
     try {
-      response = await this.fetcher(url, { ...init, signal: AbortSignal.any([signal, AbortSignal.timeout(Resources.requestTimeout)]) });
+      response = await this.fetcher(url, { ...init, redirect: Resources.manualRedirect, signal: AbortSignal.any([signal, AbortSignal.timeout(Resources.requestTimeout)]) });
     }
     catch (error) {
       throw GitHubDeviceFlow.unreachable(url, error, signal);
@@ -115,14 +117,16 @@ export class GitHubDeviceFlow {
       await GitHubDeviceFlow.dropBodyAsync(response);
       throw new SignInRequestRefusedException(url, response.status);
     }
-    let text: string;
+    let text: string | null;
     try {
-      text = await response.text();
+      text = await AnswerText.readAsync(response, Resources.maximumSignInAnswerBytes);
     }
     catch (error) {
       throw GitHubDeviceFlow.unreachable(url, error, signal);
     }
     signal.throwIfAborted();
+    if (text === null)
+      throw new SignInAnswerTooLargeException(url);
     return GitHubDeviceFlow.read(() => JsonReader.parse(text));
   }
 

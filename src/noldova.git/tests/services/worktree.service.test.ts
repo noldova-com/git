@@ -7,7 +7,7 @@
  */
 
 import assert from "node:assert/strict";
-import { access, appendFile, readdir, realpath, rename, rm, truncate, writeFile } from "node:fs/promises";
+import { access, appendFile, readdir, realpath, rename, rm, truncate, utimes, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
@@ -405,6 +405,24 @@ describe("WorktreeService", () => {
       assert.equal(request?.snapshot, null);
       assert.equal((await entryOf(record.path))?.at(-1), `locked ${LOCK_REASON}`);
       assert.notEqual(await service.findWorktreeAsync(KEY), null);
+    });
+
+    test("never runs a filter that the repository's own configuration names while it reads the worktree's changes", async () => {
+      const toPosix = (value: string): string => value.split(path.sep).join("/");
+      const marker = path.join(repository.root, "filter-ran");
+      const record = await createAsync();
+      await writeFile(path.join(record.path, ".gitattributes"), "*.txt filter=evil\n");
+      await repository.runGitAsync(["config", "filter.evil.clean", `echo ran >> "${toPosix(marker)}"; cat`]);
+      await repository.runGitAsync(["config", "filter.evil.required", "true"]);
+      const later = new Date(Date.now() + 60_000);
+      await utimes(path.join(record.path, "a.txt"), later, later);
+      gate.answerNext(new RequestDeniedException());
+
+      await assert.rejects(service.removeWorktreeAsync(KEY, { gate, context }), failure("RequestDeniedException", FailureCode.Denied));
+
+      assert.equal(await existsAsync(marker), false);
+      await repository.runGitAsync(["-C", record.path, "status", "--porcelain"]);
+      assert.equal(await existsAsync(marker), true, "git itself runs the configured filter, so the read above turned it off");
     });
 
     test("removes a worktree with changes once allowed, keeping its branch, for an app call with no agent session", async () => {

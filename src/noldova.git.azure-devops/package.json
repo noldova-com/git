@@ -1,0 +1,42 @@
+{
+  "name": "@noldova/git.azure-devops",
+  "version": "0.0.6",
+  "description": "The Azure DevOps module for apps on Noldova Desktop: the sign-in to Azure DevOps with a personal access token, and its pull requests with their reviewers' votes, policies and builds.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/noldova-com/git.git",
+    "directory": "src/noldova.git.azure-devops"
+  },
+  "homepage": "https://github.com/noldova-com/git#readme",
+  "bugs": {
+    "url": "https://github.com/noldova-com/git/issues"
+  },
+  "exports": {
+    "./runtime": "./src/api/index.ts",
+    "./window": "./src/api/window.ts",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "module.json",
+    "settings.json",
+    "src/**/*.js",
+    "src/**/*.d.ts"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "dependencies": {
+    "@noldova/git.azure-devops.protocol": "0.0.6",
+    "@noldova/git.azure-devops.window": "0.0.6",
+    "@noldova/git.hosting.protocol": "0.0.6"
+  },
+  "peerDependencies": {
+    "@noldova/desktop.protocol": ">=0.0.16 <0.1.0",
+    "@noldova/desktop.runtime": ">=0.0.16 <0.1.0",
+    "@noldova/context.exceptions": ">=0.0.12 <0.1.0",
+    "@noldova/context.json": ">=0.0.12 <0.1.0"
+  }
+}

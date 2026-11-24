@@ -31,6 +31,7 @@ export class ChangeMonitor {
   private readonly running: Set<Promise<void>> = new Set();
   private readonly cookies: Set<string> = new Set();
   private sequence: number = 0;
+  private isDisposed: boolean = false;
 
   public constructor(runner: ProgramRunner, log: IModuleLog, onChanged: (key: string, sequence: number) => void) {
     this.statuses = new StatusReader(runner);
@@ -38,14 +39,21 @@ export class ChangeMonitor {
     this.onChanged = onChanged;
   }
 
-  public watch(key: string, worktree: string, folders: RepositoryFolders): void {
+  /**
+   * Watches the worktree's git folder and the folder its refs change in: the branches under `refs/heads`, or for a repository that keeps its refs in a
+   * reftable, `reftable/tables.list`, which git rewrites as each ref change ends; the cookie that proves the start goes only where git keeps loose files.
+   */
+  public watch(key: string, worktree: string, folders: RepositoryFolders, isReftable: boolean = false): void {
+    if (this.isDisposed)
+      return;
     this.unwatch(key);
     const watched = new WatchedWorktree(key, worktree, folders);
     this.worktrees.set(key, watched);
-    const branches = path.join(folders.commonGitFolder, ...Resources.branchRefsFolder);
     const cookies = [
       this.addWatcher(watched, folders.gitFolder, t => Resources.watchedGitFiles.includes(t), ""),
-      this.addWatcher(watched, branches, t => !t.endsWith(Resources.lockExtension), Resources.lockExtension)
+      isReftable
+        ? this.addWatcher(watched, path.join(folders.commonGitFolder, Resources.reftableFolder), t => t === Resources.reftableListFile, undefined)
+        : this.addWatcher(watched, path.join(folders.commonGitFolder, ...Resources.branchRefsFolder), t => !t.endsWith(Resources.lockExtension), Resources.lockExtension)
     ];
     this.addWatcher(watched, folders.commonGitFolder, t => t === Resources.packedRefsFile, undefined);
     watched.started = this.startAsync(watched, cookies.filter(t => t !== undefined));
@@ -80,17 +88,48 @@ export class ChangeMonitor {
     if (!isVisible)
       return;
     watched.poll = new AbortController();
-    this.schedule(watched, false);
+    this.schedule(watched);
     this.track(this.pollAsync(watched, AbortSignal.any([watched.poll.signal, watched.stop.signal])));
   }
 
-  public notifyWritten(key: string): void {
+  /** Holds back refreshes while the module's own write runs, since its files change midway; the write's end announces it. */
+  public notifyWriting(key: string): void {
     const watched = this.worktrees.get(key);
-    if (watched !== undefined)
-      this.schedule(watched, true);
+    if (watched === undefined)
+      return;
+    watched.writing += 1;
+    watched.generation += 1;
   }
 
+  /** Announces the module's own write at once, without reading the status first; the next status read gives the fingerprint later refreshes compare against. */
+  public notifyWritten(key: string): void {
+    const watched = this.worktrees.get(key);
+    if (watched === undefined)
+      return;
+    watched.writing = Math.max(0, watched.writing - 1);
+    watched.generation += 1;
+    watched.fingerprint = null;
+    this.onChanged(watched.key, ++this.sequence);
+  }
+
+  /** The count a status read takes before it starts, so `observe` can tell whether a write began or ended while it ran. */
+  public generationOf(key: string): number {
+    return this.worktrees.get(key)?.generation ?? 0;
+  }
+
+  /**
+   * Takes the fingerprint of the first status read after a write that ran with no write starting or ending, so a refresh that finds the same one stays quiet.
+   * Only the first: windows that read it keep it, so a later read that finds the repository moved on, as it can while a checkout settles, mustn't hide that from them.
+   */
+  public observe(key: string, generation: number, fingerprint: string): void {
+    const watched = this.worktrees.get(key);
+    if (watched !== undefined && watched.writing === 0 && watched.generation === generation && watched.fingerprint === null)
+      watched.fingerprint = fingerprint;
+  }
+
+  /** Stops every watch and refuses later ones, since a watch begun before the part deactivated can ask after it. */
   public async disposeAsync(): Promise<void> {
+    this.isDisposed = true;
     for (const key of [...this.worktrees.keys()])
       this.unwatch(key);
     await Promise.all(this.running);
@@ -103,7 +142,7 @@ export class ChangeMonitor {
         if (cookie !== undefined && name === cookie.name)
           cookie.markSeen();
         else if (name === null || accepts(name))
-          this.schedule(watched, false);
+          this.schedule(watched);
       });
       watcher.on("error", (error: Error) => {
         this.log.write(Resources.formatWatchFailed(folder, String(error)));
@@ -204,9 +243,8 @@ export class ChangeMonitor {
     this.track(this.pollAsync(watched, watched.stop.signal));
   }
 
-  private schedule(watched: WatchedWorktree, isForced: boolean): void {
-    watched.isForced = watched.isForced || isForced;
-    if (watched.isScheduled)
+  private schedule(watched: WatchedWorktree): void {
+    if (watched.writing > 0 || watched.isScheduled)
       return;
     watched.isScheduled = true;
     watched.running = watched.running.then(() => this.debounceAsync(watched));
@@ -223,10 +261,8 @@ export class ChangeMonitor {
     await ChangeMonitor.waitAsync(Resources.changeDebounceMilliseconds, watched.stop.signal);
     if (watched.stop.signal.aborted)
       return;
-    const isForced = watched.isForced;
     watched.isScheduled = false;
-    watched.isForced = false;
-    await this.refreshAsync(watched, isForced);
+    await this.refreshAsync(watched);
   }
 
   private async pollAsync(watched: WatchedWorktree, signal: AbortSignal): Promise<void> {
@@ -234,7 +270,7 @@ export class ChangeMonitor {
       await ChangeMonitor.waitAsync(Resources.changePollMilliseconds, signal);
       if (signal.aborted)
         return;
-      this.schedule(watched, false);
+      this.schedule(watched);
     }
   }
 
@@ -252,10 +288,13 @@ export class ChangeMonitor {
     });
   }
 
-  private async refreshAsync(watched: WatchedWorktree, isForced: boolean): Promise<void> {
+  private async refreshAsync(watched: WatchedWorktree): Promise<void> {
+    if (watched.writing > 0)
+      return;
+    const generation = watched.generation;
     try {
       const { fingerprint } = await this.statuses.readAsync(watched.folders, watched.stop.signal);
-      if (watched.stop.signal.aborted || (!isForced && fingerprint === watched.fingerprint))
+      if (watched.stop.signal.aborted || watched.generation !== generation || fingerprint === watched.fingerprint)
         return;
       watched.fingerprint = fingerprint;
       this.onChanged(watched.key, ++this.sequence);

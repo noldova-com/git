@@ -8,13 +8,17 @@
 
 import type { JsonReader } from "@noldova/context.json";
 import { FailureCode } from "@noldova/desktop.protocol";
-import { BranchPullRequest, type BranchQuery, CheckState, HostChanges, HostCheck, HostItem, HostPerson, HostReference, type PullRequestDraft,
-  ReferenceKind, ReferenceState, ReviewDecision } from "@noldova/git.hosting.protocol";
+import { type AuthorQuery, BranchPullRequest, type BranchQuery, CheckState, type CommitQuery, HostBuild, HostChanges, HostCheck, HostComment, HostCommitComments, HostItem,
+  HostPerson, HostPullRequest, HostPullRequestList, HostPullRequestRow, HostPullRequestThreads, HostReference, HostReviewer, HostReviewRequest, HostReviewRequestList, HostThread,
+  type PullRequestDraft, ReferenceKind, ReferenceState, type RepositoryQuery, ReviewDecision, ThreadStatus } from "@noldova/git.hosting.protocol";
 import { GitHubNames } from "@noldova/git.github.protocol";
 
 import type { IGitHubToken } from "../interfaces/i-github-token.ts";
 import { GitHubRepository } from "../models/github-repository.ts";
+import { NewestItems } from "../models/newest-items.ts";
+import { ReviewSearch } from "../models/review-search.ts";
 import { Resources } from "../resources.ts";
+import type { ReviewSearchAnswer } from "../types/review-search-answer.ts";
 import { GitHubApi } from "./github-api.ts";
 import type { GitHubAvatars } from "./github-avatars.ts";
 
@@ -22,6 +26,8 @@ export class GitHubReads {
   private readonly api: GitHubApi;
   private readonly signIn: IGitHubToken;
   private readonly avatars: GitHubAvatars;
+  /** The account's last review request search, with its token and when it started, shared by every repository's read while it is held. */
+  private reviewSearch: ReviewSearch | null = null;
 
   public constructor(api: GitHubApi, signIn: IGitHubToken, avatars: GitHubAvatars) {
     this.api = api;
@@ -59,6 +65,146 @@ export class GitHubReads {
       return new BranchPullRequest(pullRequest, checks, await this.readReviewDecisionAsync(repository, number, token, signal));
     });
     return this.signIn.token === token ? answer : none;
+  }
+
+  /**
+   * The repository's open pull requests, the most recently updated first, each with its approvals and the checks on its head commit; signed out,
+   * the signed-out list, and for a repository off github.com, none.
+   */
+  public async readPullRequestsAsync(query: RepositoryQuery, signal: AbortSignal): Promise<HostPullRequestList> {
+    const none: HostPullRequestList = new HostPullRequestList([], false);
+    const token: string | null = this.signIn.token;
+    const repository: GitHubRepository | null = GitHubRepository.parse(query.path);
+    if (token === null)
+      return HostPullRequestList.signedOut();
+    if (query.host !== Resources.host || repository === null)
+      return none;
+    const list: HostPullRequestList = await this.askAsync(token, async () => {
+      const pulls: JsonReader | null = await this.api.getAsync(repository.pathOf(Resources.openPullsPath), token, signal);
+      const read: readonly JsonReader[] = pulls === null ? [] : GitHubApi.read(() => pulls.readObjectArray(Resources.itemsField));
+      const rows: HostPullRequestRow[] = await Promise.all(read.slice(0, HostPullRequestList.maximumRows).map(t => this.readRowAsync(repository, t, token, signal)));
+      return new HostPullRequestList(rows, read.length > HostPullRequestList.maximumRows);
+    });
+    return this.signIn.token === token ? list : HostPullRequestList.signedOut();
+  }
+
+  /**
+   * The open pull requests on the repository that ask the signed-in person for a review, their own or a team's, the newest first. They come from
+   * one search of the account's review requests, held for a minute whether it answered or failed, so a workspace's repositories, and a window
+   * taking the focus again, never search more often than that; a cut search marks every repository's list as having more. Signed out, the
+   * signed-out list, and for a repository off github.com, none.
+   */
+  public async readReviewRequestsAsync(query: RepositoryQuery, signal: AbortSignal): Promise<HostReviewRequestList> {
+    const token: string | null = this.signIn.token;
+    const repository: GitHubRepository | null = GitHubRepository.parse(query.path);
+    if (token === null)
+      return HostReviewRequestList.signedOut();
+    if (query.host !== Resources.host || repository === null)
+      return new HostReviewRequestList([], false);
+    const [rows, isCut] = await this.searchReviewRequestsAsync(token);
+    signal.throwIfAborted();
+    if (this.signIn.token !== token)
+      return HostReviewRequestList.signedOut();
+    const key: string = GitHubReads.repositoryKeyOf(repository.owner, repository.name);
+    return new HostReviewRequestList(rows.filter(t => GitHubReads.repositoryKeyOf(t.reference.owner, t.reference.repository) === key)
+      .toSorted((a, b) => b.createdAt - a.createdAt), isCut);
+  }
+
+  /**
+   * The review comments on a commit: its own comments, and in the pull request that brought it in, the review comments made on it, one page of
+   * 100 of each, capped when a page was full. The page to open is the first comment's own, kept only when it is an https page on github.com;
+   * signed out, for a repository off github.com, with no comments, or with a page elsewhere, none.
+   */
+  public async readCommitCommentsAsync(query: CommitQuery, signal: AbortSignal): Promise<HostCommitComments> {
+    const none: HostCommitComments = HostCommitComments.none();
+    const token: string | null = this.signIn.token;
+    const repository: GitHubRepository | null = GitHubRepository.parse(query.path);
+    if (query.host !== Resources.host || token === null || repository === null)
+      return none;
+    const answer: HostCommitComments = await this.askAsync(token, async () => {
+      const [own, pulls] = await Promise.all([this.api.getAsync(repository.pathOf(Resources.formatCommitCommentsPath(query.commit)), token, signal),
+        this.api.getAsync(repository.pathOf(Resources.formatCommitPullsPath(query.commit)), token, signal)]);
+      const commitComments: readonly JsonReader[] = own === null ? [] : GitHubApi.read(() => own.readObjectArray(Resources.itemsField));
+      const pull: JsonReader | undefined = pulls === null ? undefined : GitHubApi.read(() => pulls.readObjectArray(Resources.itemsField))[0];
+      const reviews: JsonReader | null = pull === undefined ? null
+        : await this.api.getAsync(repository.pathOf(Resources.formatPullCommentsPath(GitHubApi.read(() => pull.readInteger(Resources.numberField)))), token, signal);
+      const reviewComments: readonly JsonReader[] = reviews === null ? [] : GitHubApi.read(() => reviews.readObjectArray(Resources.itemsField));
+      return GitHubApi.read(() => GitHubReads.commitCommentsOf(query.commit, commitComments, reviewComments));
+    });
+    return this.signIn.token === token ? answer : none;
+  }
+
+  /**
+   * A commit author's GitHub picture as a data address, or null: a GitHub no-reply email names the account itself, and signed in, the commit's
+   * author on GitHub names it otherwise.
+   */
+  public async readAuthorAvatarAsync(query: AuthorQuery, signal: AbortSignal): Promise<string | null> {
+    if (query.host !== Resources.host)
+      return null;
+    const email: string = query.email.trim().toLowerCase();
+    if (Resources.noReplyPattern.test(email))
+      return this.avatars.readAsync(email.replace(Resources.noReplyPattern, (_email, id: string | undefined, login: string) => Resources.formatAccountAvatar(id ?? null, login)),
+        signal);
+    const token: string | null = this.signIn.token;
+    const repository: GitHubRepository | null = GitHubRepository.parse(query.path);
+    if (token === null || repository === null)
+      return null;
+    const address: string | null = await this.askAsync(token, async () => {
+      const commit: JsonReader | null = await this.api.getAsync(repository.pathOf(Resources.formatCommitPath(query.commit)), token, signal);
+      return commit === null ? null : GitHubApi.read(() => commit.readNullableObject(Resources.authorField)?.readNullableString(Resources.avatarUrlField) ?? null);
+    });
+    const avatar: string | null = await this.avatars.readAsync(address, signal);
+    return this.signIn.token === token ? avatar : null;
+  }
+
+  /**
+   * A pull request for its page: the pull request with its author's picture, its description, its commit count, its reviewers by their latest review
+   * and the ones it still asks, the check runs on its head as builds, its auto-merge and whether it conflicts with its base, which GitHub answers only
+   * once it has worked it out. Signed out, for another host, or for one GitHub can't show, none.
+   */
+  public async readPullRequestAsync(reference: HostReference, signal: AbortSignal): Promise<HostPullRequest | null> {
+    const token: string | null = this.signIn.token;
+    const repository: GitHubRepository | null = GitHubRepository.parse(Resources.formatRepositoryName(reference.owner, reference.repository));
+    if (reference.host !== GitHubNames.moduleId || token === null || repository === null)
+      return null;
+    const pullRequest: HostPullRequest | null = await this.askAsync(token, async () => {
+      const pull: JsonReader | null = await this.api.getAsync(repository.pathOf(Resources.formatPullPath(reference.number)), token, signal);
+      if (pull === null)
+        return null;
+      const commit: string = GitHubApi.read(() => pull.readObject(Resources.headField).readString(Resources.shaField));
+      const [avatar, reviews, runs] = await Promise.all([this.avatars.readAsync(GitHubApi.read(() => GitHubReads.avatarUrlOf(pull)), signal),
+        this.readReviewsAsync(repository, reference.number, token, signal), this.readCheckRunsAsync(repository, commit, token, signal)]);
+      signal.throwIfAborted();
+      return GitHubApi.read(() => GitHubReads.pullRequestPageOf(reference, pull, avatar, reviews, runs));
+    });
+    return this.signIn.token === token ? pullRequest : null;
+  }
+
+  /**
+   * A pull request's comments as threads, oldest first: each conversation comment a thread of its own with no path, and each review comment with its
+   * replies a thread on its file and line, the newest 100 of each kind, with whether there are older ones. GitHub lists comments oldest first, so it
+   * starts at the page the pull request's counts put the newest 100 on and reads on while pages come back full, which finds the comments that came
+   * after a count it read earlier. GitHub's REST API keeps no thread state, so every thread has none. Signed out, for another host, or for a pull
+   * request GitHub can't show, none.
+   */
+  public async readPullRequestThreadsAsync(reference: HostReference, signal: AbortSignal): Promise<HostPullRequestThreads> {
+    const none: HostPullRequestThreads = new HostPullRequestThreads([], false);
+    const token: string | null = this.signIn.token;
+    const repository: GitHubRepository | null = GitHubRepository.parse(Resources.formatRepositoryName(reference.owner, reference.repository));
+    if (reference.host !== GitHubNames.moduleId || token === null || repository === null)
+      return none;
+    const threads: HostPullRequestThreads = await this.askAsync(token, async () => {
+      const pull: JsonReader | null = await this.api.getAsync(repository.pathOf(Resources.formatPullPath(reference.number)), token, signal);
+      if (pull === null)
+        return none;
+      const conversationCount: number = GitHubApi.read(() => pull.readInteger(Resources.commentsField));
+      const reviewCount: number = GitHubApi.read(() => pull.readInteger(Resources.reviewCommentsField));
+      const [conversation, reviews] = await Promise.all([
+        this.readNewestAsync(page => repository.pathOf(Resources.formatIssueCommentsPath(reference.number, page)), conversationCount, token, signal),
+        this.readNewestAsync(page => repository.pathOf(Resources.formatPullCommentsPagePath(reference.number, page)), reviewCount, token, signal)]);
+      return GitHubApi.read(() => new HostPullRequestThreads(GitHubReads.threadsOf(conversation.items, reviews.items), conversation.hasMore || reviews.hasMore));
+    });
+    return this.signIn.token === token ? threads : none;
   }
 
   public async createPullRequestAsync(draft: PullRequestDraft, signal: AbortSignal): Promise<HostItem> {
@@ -100,20 +246,76 @@ export class GitHubReads {
   }
 
   private async readChecksAsync(repository: GitHubRepository, commit: string, token: string, signal: AbortSignal): Promise<HostCheck[]> {
-    const checks: HostCheck[] = [];
+    const runs: readonly JsonReader[] = await this.readCheckRunsAsync(repository, commit, token, signal);
+    return GitHubApi.read(() => runs.map(GitHubReads.checkOf));
+  }
+
+  private async readCheckRunsAsync(repository: GitHubRepository, commit: string, token: string, signal: AbortSignal): Promise<readonly JsonReader[]> {
+    const runs: JsonReader[] = [];
     for (let page: number = 1; ; page++) {
-      const runs: JsonReader | null = await this.api.getAsync(repository.pathOf(Resources.formatCheckRunsPath(commit, page)), token, signal);
-      if (runs === null)
-        return checks;
-      const total: number = GitHubApi.read(() => runs.readInteger(Resources.totalCountField));
-      const read: readonly HostCheck[] = GitHubApi.read(() => runs.readObjectArray(Resources.checkRunsField).map(GitHubReads.checkOf));
-      checks.push(...read);
-      if (read.length === 0 || checks.length >= total)
-        return checks;
+      const answer: JsonReader | null = await this.api.getAsync(repository.pathOf(Resources.formatCheckRunsPath(commit, page)), token, signal);
+      if (answer === null)
+        return runs;
+      const total: number = GitHubApi.read(() => answer.readInteger(Resources.totalCountField));
+      const read: readonly JsonReader[] = GitHubApi.read(() => answer.readObjectArray(Resources.checkRunsField));
+      runs.push(...read);
+      if (read.length === 0 || runs.length >= total)
+        return runs;
     }
   }
 
+  /** Every review on the pull request, oldest first, as GitHub lists them. */
+  private readReviewsAsync(repository: GitHubRepository, number: number, token: string, signal: AbortSignal): Promise<readonly JsonReader[]> {
+    return this.readPagesAsync(page => repository.pathOf(Resources.formatReviewsPath(number, page)), Resources.reviewsPageSize, token, signal);
+  }
+
+  /**
+   * The newest 100 comments of a list GitHub answers oldest first, 100 to a page, from the page a count of them puts the newest on, and on while pages
+   * come back full, so comments added since the count are read too; it has more when it started past the first page or read past 100.
+   */
+  private async readNewestAsync(pathOf: (page: number) => string, count: number, token: string, signal: AbortSignal): Promise<NewestItems> {
+    const kept: number = Resources.newestCommentsCount;
+    const first: number = count <= kept ? 1 : Math.floor((count - kept) / Resources.commentsPageSize) + 1;
+    const items: JsonReader[] = [];
+    for (let page: number = first; ; page++) {
+      const answer: JsonReader | null = await this.api.getAsync(pathOf(page), token, signal);
+      const read: readonly JsonReader[] = answer === null ? [] : GitHubApi.read(() => answer.readObjectArray(Resources.itemsField));
+      items.push(...read);
+      if (read.length < Resources.commentsPageSize)
+        return new NewestItems(items.slice(-kept), first > 1 || items.length > kept);
+    }
+  }
+
+  /** Every item of a list GitHub answers in pages, page after page until one comes back short; a list GitHub can't show has none. */
+  private async readPagesAsync(pathOf: (page: number) => string, pageSize: number, token: string, signal: AbortSignal): Promise<readonly JsonReader[]> {
+    const items: JsonReader[] = [];
+    for (let page: number = 1; ; page++) {
+      const answer: JsonReader | null = await this.api.getAsync(pathOf(page), token, signal);
+      const read: readonly JsonReader[] = answer === null ? [] : GitHubApi.read(() => answer.readObjectArray(Resources.itemsField));
+      items.push(...read);
+      if (read.length < pageSize)
+        return items;
+    }
+  }
+
+  private async readRowAsync(repository: GitHubRepository, pull: JsonReader, token: string, signal: AbortSignal): Promise<HostPullRequestRow> {
+    const number: number = GitHubApi.read(() => pull.readInteger(Resources.numberField));
+    const head: JsonReader = GitHubApi.read(() => pull.readObject(Resources.headField));
+    const commit: string = GitHubApi.read(() => head.readString(Resources.shaField));
+    const [checks, verdicts] = await Promise.all([this.readChecksAsync(repository, commit, token, signal), this.readVerdictsAsync(repository, number, token, signal)]);
+    return GitHubApi.read(() => HostPullRequestRow.of(new HostReference(GitHubNames.moduleId, repository.owner, repository.name, number),
+      pull.readString(Resources.titleField), pull.readString(Resources.htmlUrlField), pull.readBoolean(Resources.draftField),
+      verdicts.filter(t => t === Resources.approvedReview).length, checks, head.readString(Resources.refField),
+      pull.readObject(Resources.baseField).readString(Resources.refField)));
+  }
+
   private async readReviewDecisionAsync(repository: GitHubRepository, number: number, token: string, signal: AbortSignal): Promise<ReviewDecision> {
+    const verdicts: readonly string[] = await this.readVerdictsAsync(repository, number, token, signal);
+    return verdicts.includes(Resources.changesRequestedReview) ? ReviewDecision.ChangesRequested
+      : verdicts.includes(Resources.approvedReview) ? ReviewDecision.Approved : ReviewDecision.Waiting;
+  }
+
+  private async readVerdictsAsync(repository: GitHubRepository, number: number, token: string, signal: AbortSignal): Promise<readonly string[]> {
     const latest: Map<string, string> = new Map<string, string>();
     for (let page: number = 1; ; page++) {
       const reviews: JsonReader | null = await this.api.getAsync(repository.pathOf(Resources.formatReviewsPath(number, page)), token, signal);
@@ -125,9 +327,20 @@ export class GitHubReads {
       if (read.length < Resources.reviewsPageSize)
         break;
     }
-    const verdicts: readonly string[] = [...latest.values()];
-    return verdicts.includes(Resources.changesRequestedReview) ? ReviewDecision.ChangesRequested
-      : verdicts.includes(Resources.approvedReview) ? ReviewDecision.Approved : ReviewDecision.Waiting;
+    return [...latest.values()];
+  }
+
+  private searchReviewRequestsAsync(token: string): Promise<ReviewSearchAnswer> {
+    const now: number = Date.now();
+    const held: ReviewSearch | null = this.reviewSearch;
+    if (held !== null && held.token === token && now - held.startedAt < Resources.reviewRequestsHeldFor)
+      return held.answer;
+    const answer: Promise<ReviewSearchAnswer> = this.askAsync<ReviewSearchAnswer>(token, async () => {
+      const found: JsonReader | null = await this.api.getAsync(Resources.reviewRequestsPath, token, new AbortController().signal);
+      return found === null ? [[], false] : GitHubApi.read(() => GitHubReads.reviewSearchOf(found));
+    });
+    this.reviewSearch = new ReviewSearch(token, now, answer);
+    return answer;
   }
 
   private async askAsync<T>(token: string, ask: () => Promise<T>): Promise<T> {
@@ -139,6 +352,38 @@ export class GitHubReads {
         await this.signIn.refusedAsync(token);
       throw error;
     }
+  }
+
+  private static reviewSearchOf(found: JsonReader): ReviewSearchAnswer {
+    const items: readonly JsonReader[] = found.readObjectArray(Resources.itemsField);
+    const rows: HostReviewRequest[] = [];
+    for (const item of items) {
+      const address: string = item.readString(Resources.repositoryUrlField);
+      const repository: GitHubRepository | null = address.startsWith(Resources.repositoryApiPrefix)
+        ? GitHubRepository.parse(address.slice(Resources.repositoryApiPrefix.length)) : null;
+      if (repository !== null)
+        rows.push(new HostReviewRequest(new HostReference(GitHubNames.moduleId, repository.owner, repository.name, item.readInteger(Resources.numberField)),
+          item.readString(Resources.titleField), item.readString(Resources.htmlUrlField), item.hasField(Resources.draftField) && item.readBoolean(Resources.draftField),
+          Date.parse(item.readString(Resources.createdAtField))));
+    }
+    return [rows, found.readInteger(Resources.totalCountField) > items.length || found.readBoolean(Resources.incompleteResultsField)];
+  }
+
+  private static commitCommentsOf(commit: string, commitComments: readonly JsonReader[], reviewComments: readonly JsonReader[]): HostCommitComments {
+    const onCommit: readonly JsonReader[] = reviewComments.filter(t => [Resources.commitIdField, Resources.originalCommitIdField]
+      .some(field => t.hasField(field) && t.readNullableString(field) === commit));
+    const first: JsonReader | undefined = commitComments[0] ?? onCommit[0];
+    const url: URL | null = first === undefined ? null : URL.parse(first.readString(Resources.htmlUrlField));
+    if (url === null || url.protocol !== Resources.httpsProtocol || url.hostname !== Resources.host || url.username.length > 0 || url.password.length > 0)
+      return HostCommitComments.none();
+    const count: number = commitComments.length + onCommit.length;
+    return new HostCommitComments(Math.min(count, HostCommitComments.maximumCount), count > HostCommitComments.maximumCount
+      || commitComments.length >= Resources.commentsPageSize || reviewComments.length >= Resources.commentsPageSize, url.href);
+  }
+
+  /** A repository's owner and name as GitHub matches them, ignoring case. */
+  private static repositoryKeyOf(owner: string, name: string): string {
+    return `${owner}/${name}`.toLowerCase();
   }
 
   private static avatarUrlOf(item: JsonReader): string | null {
@@ -178,6 +423,113 @@ export class GitHubReads {
     const author: HostPerson | null = user === null ? null : new HostPerson(user.readNonBlankString(Resources.loginField), avatar, GitHubReads.profileOf(user));
     return new HostItem(reference, kind, state, item.readString(Resources.titleField), item.readString(Resources.htmlUrlField), author,
       Date.parse(item.readString(Resources.createdAtField)), closedAt, item.readInteger(Resources.commentsField), changes);
+  }
+
+  private static pullRequestPageOf(reference: HostReference, pull: JsonReader, avatar: string | null, reviews: readonly JsonReader[],
+    runs: readonly JsonReader[]): HostPullRequest {
+    const autoMerge: JsonReader | null = pull.readNullableObject(Resources.autoMergeField);
+    const mergeableState: string = pull.readString(Resources.mergeableStateField);
+    return new HostPullRequest(GitHubReads.pullRequestOf(reference, pull, avatar), GitHubReads.reviewersOf(pull, reviews), [], runs.map(GitHubReads.buildOf),
+      autoMerge !== null, pull.readNullableString(Resources.bodyField) ?? "", pull.readInteger(Resources.commitsField), [],
+      autoMerge === null ? null : autoMerge.readString(Resources.mergeMethodField),
+      mergeableState === Resources.unknownMergeableState ? null : mergeableState === Resources.dirtyMergeableState);
+  }
+
+  /**
+   * The people who reviewed the pull request, each by their latest approval or request for changes, or as having commented when they gave neither or
+   * it was dismissed, then the people and teams it still asks for a review; asking someone again shows them as asked. The author, whose replies in a
+   * review's threads GitHub keeps as reviews of their own, and a review not yet submitted are left out, as GitHub's own list leaves them.
+   */
+  private static reviewersOf(pull: JsonReader, reviews: readonly JsonReader[]): HostReviewer[] {
+    const author: string | null = pull.readNullableObject(Resources.userField)?.readNonBlankString(Resources.loginField) ?? null;
+    const people: Map<string, HostPerson> = new Map<string, HostPerson>();
+    const verdicts: Map<string, string> = new Map<string, string>();
+    for (const review of reviews) {
+      const user: JsonReader | null = review.readNullableObject(Resources.userField);
+      const state: string = review.readString(Resources.stateField);
+      if (user === null || state === Resources.pendingReview)
+        continue;
+      const person: HostPerson = GitHubReads.personOf(user);
+      if (person.login === author)
+        continue;
+      people.set(person.login, person);
+      if (state !== Resources.commentedReview)
+        verdicts.set(person.login, state);
+    }
+    const asked: readonly HostPerson[] = pull.readObjectArray(Resources.requestedReviewersField).map(GitHubReads.personOf);
+    const askedLogins: ReadonlySet<string> = new Set(asked.map(t => t.login));
+    const reviewed: readonly HostReviewer[] = [...people.values()].filter(t => !askedLogins.has(t.login)).map(t => {
+      const state: string | undefined = verdicts.get(t.login);
+      return state === Resources.approvedReview ? new HostReviewer(t, 1, Resources.approvedLabel, false)
+        : state === Resources.changesRequestedReview ? new HostReviewer(t, -1, Resources.changesRequestedLabel, false)
+          : new HostReviewer(t, 0, Resources.commentedLabel, false);
+    });
+    const teams: readonly HostPerson[] = pull.readObjectArray(Resources.requestedTeamsField).map(GitHubReads.teamOf);
+    return [...reviewed, ...[...asked, ...teams].map(t => new HostReviewer(t, 0, Resources.reviewRequestedLabel, false))];
+  }
+
+  /** A check run as a build, dated when it started and, once it has finished, when it finished. */
+  private static buildOf(run: JsonReader): HostBuild {
+    const check: HostCheck = GitHubReads.checkOf(run);
+    const startedAt: string | null = run.readNullableString(Resources.startedAtField);
+    const completedAt: string | null = run.readNullableString(Resources.completedAtField);
+    const isFinished: boolean = check.state !== CheckState.Queued && check.state !== CheckState.Running;
+    return new HostBuild(check.name, check.state, check.url, startedAt === null ? null : Date.parse(startedAt),
+      completedAt === null || !isFinished ? null : Date.parse(completedAt));
+  }
+
+  /**
+   * Conversation comments each as a thread of its own, and review comments grouped under the comment they reply to, oldest first; a comment with no
+   * text, such as a review comment GitHub keeps for a suggestion's lines alone, is left out. GitHub numbers conversation comments and review comments
+   * apart, so a thread's id is its first comment's id doubled, plus one for a review comment's thread, which keeps the two kinds apart; its comments
+   * keep GitHub's own ids.
+   */
+  private static threadsOf(conversation: readonly JsonReader[], reviews: readonly JsonReader[]): HostThread[] {
+    const onFiles: Map<number, HostThread> = new Map<number, HostThread>();
+    for (const comment of reviews.filter(GitHubReads.hasText)) {
+      const replyTo: number | null = comment.hasField(Resources.inReplyToIdField) ? comment.readNullableInteger(Resources.inReplyToIdField) : null;
+      const root: number = replyTo ?? comment.readInteger(Resources.idField);
+      const held: HostThread | undefined = onFiles.get(root);
+      onFiles.set(root, held === undefined
+        ? new HostThread(GitHubReads.fileThreadIdOf(root), ThreadStatus.None, comment.readNonBlankString(Resources.pathField),
+          comment.readNullableInteger(Resources.lineField) ?? comment.readNullableInteger(Resources.originalLineField), [GitHubReads.commentOf(comment, null)])
+        : new HostThread(held.id, held.state, held.path, held.line,
+          [...held.comments, GitHubReads.commentOf(comment, held.comments.some(t => t.id === replyTo) ? replyTo : null)]));
+    }
+    const threads: readonly HostThread[] = [...conversation.filter(GitHubReads.hasText).map(t => new HostThread(
+      GitHubReads.conversationThreadIdOf(t.readInteger(Resources.idField)), ThreadStatus.None, null, null, [GitHubReads.commentOf(t, null)])), ...onFiles.values()];
+    return threads.toSorted((a, b) => GitHubReads.startOf(a) - GitHubReads.startOf(b));
+  }
+
+  private static conversationThreadIdOf(commentId: number): number {
+    return commentId * 2;
+  }
+
+  private static fileThreadIdOf(rootId: number): number {
+    return rootId * 2 + 1;
+  }
+
+  private static hasText(comment: JsonReader): boolean {
+    return (comment.readNullableString(Resources.bodyField) ?? "").trim().length > 0;
+  }
+
+  private static startOf(thread: HostThread): number {
+    return Math.min(...thread.comments.map(t => t.publishedAt));
+  }
+
+  /** A comment, by the account GitHub shows as ghost once its author's account is gone. */
+  private static commentOf(comment: JsonReader, parent: number | null): HostComment {
+    const user: JsonReader | null = comment.readNullableObject(Resources.userField);
+    return new HostComment(comment.readInteger(Resources.idField), parent, user === null ? new HostPerson(Resources.ghostLogin, null, null) : GitHubReads.personOf(user),
+      Date.parse(comment.readString(Resources.createdAtField)), comment.readString(Resources.bodyField));
+  }
+
+  private static teamOf(team: JsonReader): HostPerson {
+    return new HostPerson(team.readNonBlankString(Resources.nameField), null, GitHubReads.profileOf(team));
+  }
+
+  private static personOf(user: JsonReader): HostPerson {
+    return new HostPerson(user.readNonBlankString(Resources.loginField), null, GitHubReads.profileOf(user));
   }
 
   private static checkOf(run: JsonReader): HostCheck {

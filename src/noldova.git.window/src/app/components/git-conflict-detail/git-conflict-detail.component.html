@@ -1,0 +1,35 @@
+@if (detail(); as shown) {
+  <section class="detail" [attr.aria-label]="resources.conflictDetailLabel">
+    @if (shown.active; as active) {
+      <div class="detail-head">
+        <h2 class="detail-title">{{ resources.formatConflictTitle(active.index + 1, active.count) }}</h2>
+        <span class="detail-lines">{{ resources.formatConflictLines(active.firstLine + 1, active.lastLine + 1) }}</span>
+      </div>
+      <div class="base">
+        <h3 class="checklist-title">{{ resources.baseTitle }}</h3>
+        @if (active.base === null) {
+          <p class="base-note">{{ resources.noBaseNote }}</p>
+        } @else {
+          <noldova-code-text class="base-text" [text]="active.base" [tokenizer]="shown.tokenizer" />
+        }
+      </div>
+    }
+    <div class="checklist">
+      <h2 class="checklist-title">{{ resources.beforeCommitTitle }}</h2>
+      @if (shown.leftoverMarkers; as leftover) {
+        @if (leftover.length === 0) {
+          <p class="check markers"><span class="file-icon ok material-symbols-rounded" aria-hidden="true">{{ resources.resolvedIcon }}</span><span class="check-text">{{ resources.noMarkersLeft }}</span></p>
+        } @else {
+          <p class="check markers"><span class="file-icon warning material-symbols-rounded" aria-hidden="true">{{ resources.conflictIcon }}</span><span class="check-text">{{
+            resources.formatMarkersLeft(leftover) }}</span></p>
+        }
+      } @else if (shown.markerFailure; as failure) {
+        <p class="check markers"><span class="file-icon failure material-symbols-rounded" aria-hidden="true">{{ resources.failureIcon }}</span><span class="check-text">{{
+          resources.formatMarkerCheckFailed(failure) }}</span></p>
+      }
+    </div>
+    <p class="detail-note">{{ resources.rerereNote }}</p>
+  </section>
+} @else {
+  <p class="muted empty-view">{{ resources.conflictDetailEmpty }}</p>
+}

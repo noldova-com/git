@@ -13,21 +13,41 @@ LICENSE file in the root directory of this source tree.
     <p class="text">{{ empty.text }}</p>
     @if (offersGit()) {
       <span class="actions">
-        <button nol-button type="button" (click)="getGit()"><span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.openLinkIcon }}</span>{{ resources.getGitLabel }}</button>
+        <button nol-button type="button" (click)="getGitAsync()"><span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.openLinkIcon }}</span>{{ resources.getGitLabel }}</button>
         <button nol-button type="button" [variant]="secondary" (click)="checkAgain()">{{ resources.checkAgainLabel }}</button>
       </span>
+      @if (linkFailed()) {
+        <div class="notice link-failed" role="alert">
+          <span class="notice-icon material-symbols-rounded" aria-hidden="true">{{ resources.failureIcon }}</span>
+          <span class="notice-text">{{ resources.linkNotOpened }}</span>
+        </div>
+      }
     }
   </div>
 } @else if (state.status(); as status) {
   <div class="body">
-    <nol-git-branch-card [status]="status" />
+    @if (showsBranch()) {
+      <nol-git-branch-card [status]="status" />
+    } @else {
+    <div class="title">
+      <span class="title-text">{{ resources.changesLabel }}</span>
+      @if (switching() ?? status.branch; as branch) {
+        <span class="title-branch" [title]="branch">{{ resources.formatOnBranch(branch) }}</span>
+      }
+      <nol-git-undo-menu class="title-undo" />
+    </div>
+    }
     @if (status.remote; as remote) {
       <nol-git-host-row [remote]="remote" [status]="status" [folder]="state.folder() ?? ''" />
     }
-    @if (operationOf(status.operation); as operation) {
+    @if (status.operation; as operation) {
       <div class="banner" role="status">
         <span class="banner-icon warning material-symbols-rounded" aria-hidden="true">{{ resources.mergeIcon }}</span>
-        <span class="banner-text"><span class="strong">{{ operation }}</span><span class="muted">{{ resources.formatConflictText(state.conflicts()) }}</span></span>
+        <span class="banner-text"><span class="strong">{{ operationOf(operation, status.branch) }}</span><span class="muted">{{ resources.formatConflictText(state.conflicts()) }}</span></span>
+        @if (firstConflict(); as path) {
+          <button nol-button type="button" class="banner-action resolve-conflicts" (click)="openConflict(state.folder() ?? '', path)">{{ resources.resolveConflictsLabel }}</button>
+        }
+        <button nol-button type="button" class="banner-action abort-operation" [variant]="secondary" (click)="abortOperation()">{{ resources.abortLabels[operation.kind] }}</button>
       </div>
     }
     @if (state.watchFailure(); as watchFailure) {
@@ -41,17 +61,36 @@ LICENSE file in the root directory of this source tree.
       <div class="banner" role="alert">
         <span class="banner-icon failed material-symbols-rounded" aria-hidden="true">{{ resources.failureIcon }}</span>
         <span class="banner-text">{{ failure }}</span>
+        @if (state.forcePushOffer(); as offer) {
+          <button nol-button type="button" class="banner-action force-push" [variant]="secondary" [disabled]="state.busy()" (click)="forcePush(offer)">{{ resources.forcePushOfferLabel }}</button>
+        }
+        @if (state.fetchOffered()) {
+          <button nol-button type="button" class="banner-action fetch" [variant]="secondary" [disabled]="state.busy()" (click)="fetch()">{{ resources.fetchOfferLabel }}</button>
+        }
         <button nol-button type="button" class="banner-action" [variant]="secondary" (click)="dismissFailure()">{{ resources.dismissLabel }}</button>
       </div>
     }
+    @if (state.discarded(); as discarded) {
+      <div class="banner discarded" role="status">
+        <span class="banner-icon material-symbols-rounded" aria-hidden="true">{{ resources.discardedIcon }}</span>
+        <span class="banner-text">{{ resources.formatDiscarded(discarded.paths) }}</span>
+        <button nol-button type="button" class="banner-action undo" [variant]="secondary" [disabled]="state.busy()" (click)="undoDiscard()">{{ resources.undoLabel }}</button>
+        <button nol-button type="button" class="banner-action dismiss" [variant]="secondary" (click)="state.discarded.set(null)">{{ resources.dismissLabel }}</button>
+      </div>
+    }
     @for (group of state.groups(); track group.kind) {
-      <nol-git-file-group [group]="group" />
+      <nol-git-file-group [group]="group" (openConflict)="openConflict(state.folder() ?? '', $event)" />
     } @empty {
       <p class="quiet">{{ resources.noChanges }}</p>
     }
     @if (status.truncated) {
       <p class="quiet">{{ resources.listCut }}</p>
     }
+    @if (status.uncheckedLfsFiles > 0) {
+      <p class="quiet lfs-unchecked">{{ resources.formatUncheckedLfs(status.uncheckedLfsFiles) }}</p>
+    }
     <nol-git-commit-card [status]="status" />
   </div>
+} @else if (state.phase() === phases.Loading) {
+  <div class="loading"><nol-spinner [label]="resources.readingRepository" [isDelayed]="true" /></div>
 }

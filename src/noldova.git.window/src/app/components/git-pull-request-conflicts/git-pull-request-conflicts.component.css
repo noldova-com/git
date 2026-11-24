@@ -1,0 +1,88 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.notice {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  padding: var(--nol-space-2) var(--nol-view-padding-inline);
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: var(--nol-radius-medium);
+  background-color: var(--nol-raised);
+  color: var(--nol-text-muted);
+}
+
+.notice-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.notice-icon {
+  flex: none;
+  color: var(--nol-status-failed);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  min-width: 0;
+  min-height: var(--nol-button-height);
+  padding: 0 var(--nol-space-1);
+  border: 0;
+  border-radius: var(--nol-radius-medium);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  white-space: nowrap;
+}
+
+button.row {
+  cursor: pointer;
+}
+
+button.row:hover {
+  background-color: var(--nol-hover);
+}
+
+.icon {
+  flex: none;
+  color: var(--nol-status-failed);
+  font-size: var(--nol-icon);
+}
+
+.path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.empty,
+.cap {
+  margin: 0;
+  padding: var(--nol-space-1);
+  color: var(--nol-text-muted);
+}
+
+.cap {
+  font-size: var(--nol-text-label);
+}

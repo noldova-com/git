@@ -5,7 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
-import { lstat, readFile } from "node:fs/promises";
+import { lstat, open } from "node:fs/promises";
 import path from "node:path";
 
 import { FileState, LineCounts, StatusEntry, UntrustedSource } from "@noldova/git.protocol";
@@ -97,11 +97,12 @@ export class LineCountsReader {
 
   private static async countFileAsync(file: string, budget: { remainingBytes: number }): Promise<LineCounts | null> {
     try {
-      const stats = await lstat(file);
-      if (!stats.isFile() || stats.size > Resources.lineCountFileBytes || stats.size > budget.remainingBytes)
+      if (!(await lstat(file)).isFile())
         return null;
-      budget.remainingBytes -= stats.size;
-      const content = await readFile(file);
+      const content: Buffer | null = await LineCountsReader.readCappedAsync(file, Math.min(Resources.lineCountFileBytes, budget.remainingBytes));
+      if (content === null)
+        return null;
+      budget.remainingBytes -= content.length;
       if (content.includes(Resources.nulByte))
         return null;
       let lines = 0;
@@ -113,6 +114,21 @@ export class LineCountsReader {
       if (FilePresence.isUnreadable(error))
         return null;
       throw error;
+    }
+  }
+
+  /** The file's bytes, opened once and read only up to the size its open handle had, or null when that size passes the limit, so a file that grows after the check never reads past the budget. */
+  private static async readCappedAsync(file: string, limit: number): Promise<Buffer | null> {
+    const handle = await open(file, "r");
+    try {
+      const { size } = await handle.stat();
+      if (size > limit)
+        return null;
+      const buffer = Buffer.alloc(size);
+      const { bytesRead } = await handle.read(buffer, 0, size, 0);
+      return buffer.subarray(0, bytesRead);
+    } finally {
+      await handle.close();
     }
   }
 

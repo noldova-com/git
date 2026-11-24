@@ -12,7 +12,8 @@ import type { JsonValue } from "@noldova/context.json";
 import { FailureCode, SecretFailureReason, ShellClients } from "@noldova/desktop.protocol";
 import { MethodFailureException, RequestContext, ToolFailure, ToolFailureCode } from "@noldova/desktop.runtime";
 import { GitHubAccessGrant, GitHubAccessRefusal } from "@noldova/git.github.protocol";
-import { BranchPullRequest, BranchQuery, DeviceCode, HostAccount, HostItem, HostReference, HostSignIn, PullRequestDraft } from "@noldova/git.hosting.protocol";
+import { AuthorQuery, BranchPullRequest, BranchQuery, CommitQuery, DeviceCode, HostAccount, HostComment, HostCommitComments, HostItem, HostPerson, HostPullRequestList,
+  HostPullRequestThreads, HostReference, HostReviewRequestList, HostSignIn, HostThread, PullRequestDraft, RepositoryQuery, ThreadStatus } from "@noldova/git.hosting.protocol";
 import { afterEach, describe, it, vi } from "vitest";
 
 import { RuntimePart } from "../src/api/index.ts";
@@ -101,7 +102,8 @@ describe("RuntimePart", () => {
 
     const waiting = HostSignIn.waiting(new DeviceCode("WDJB-MJHT", "https://github.com/login/device", 1_800_000_900_000)).toJson();
     assert.deepEqual([...context.methods.keys()], ["git-github.readSignIn", "git-github.startSignIn", "git-github.cancelSignIn", "git-github.signOut",
-      "git-github.readReference", "git-github.readBranchPullRequest", "git-github.createPullRequest"]);
+      "git-github.readReference", "git-github.readBranchPullRequest", "git-github.readAuthorAvatar", "git-github.readPullRequests", "git-github.readReviewRequests",
+      "git-github.readCommitComments", "git-github.readPullRequest", "git-github.readPullRequestThreads", "git-github.createPullRequest"]);
     assert.deepEqual(answers, [HostSignIn.signedOut().toJson(), waiting, HostSignIn.signedOut().toJson(), HostSignIn.signedOut().toJson()]);
     assert.deepEqual([context.events.get("git-github.signInChanged"), github.urls()], [[waiting, HostSignIn.signedOut().toJson()], ["https://github.com/login/device/code"]]);
   });
@@ -162,15 +164,29 @@ describe("RuntimePart", () => {
 
     await part.activateAsync(context.fake);
     const answers = [await callAsync(context, "git-github.readReference", new HostReference("git-github", "octocat", "hello-world", 1).toJson()),
-      await callAsync(context, "git-github.readBranchPullRequest", new BranchQuery("github.com", "octocat/hello-world", "fix-bug", null).toJson())];
+      await callAsync(context, "git-github.readBranchPullRequest", new BranchQuery("github.com", "octocat/hello-world", "fix-bug", null).toJson()),
+      await callAsync(context, "git-github.readAuthorAvatar", new AuthorQuery("github.com", "octocat/hello-world", "ana@example.com", "6dcb09b5b57875f334f61aebed695e2e4193db5e").toJson()),
+      await callAsync(context, "git-github.readPullRequests", new RepositoryQuery("github.com", "octocat/hello-world").toJson()),
+      await callAsync(context, "git-github.readReviewRequests", new RepositoryQuery("github.com", "octocat/hello-world").toJson()),
+      await callAsync(context, "git-github.readCommitComments", new CommitQuery("github.com", "octocat/hello-world", "6dcb09b5b57875f334f61aebed695e2e4193db5e").toJson()),
+      await callAsync(context, "git-github.readPullRequest", new HostReference("git-github", "octocat", "hello-world", 1).toJson()),
+      await callAsync(context, "git-github.readPullRequestThreads", new HostReference("git-github", "octocat", "hello-world", 1).toJson())];
     const refusals = [await callAsync(context, "git-github.readReference", null).then(() => null, failureOf),
       await callAsync(context, "git-github.readBranchPullRequest", { host: "github.com" }).then(() => null, failureOf),
+      await callAsync(context, "git-github.readAuthorAvatar", { host: "github.com" }).then(() => null, failureOf),
+      await callAsync(context, "git-github.readPullRequests", { host: "github.com" }).then(() => null, failureOf),
+      await callAsync(context, "git-github.readReviewRequests", { host: "github.com" }).then(() => null, failureOf),
+      await callAsync(context, "git-github.readCommitComments", { host: "github.com" }).then(() => null, failureOf),
+      await callAsync(context, "git-github.readPullRequest", null).then(() => null, failureOf),
+      await callAsync(context, "git-github.readPullRequestThreads", { number: 1 }).then(() => null, failureOf),
       await callAsync(context, "git-github.readReference", { ...new HostReference("git-github", "octocat", "hello-world", 1).toJson(), title: "x" })
         .then(() => null, failureOf)];
     await part.deactivateAsync();
 
-    assert.deepEqual([answers, github.requests.length], [[null, new BranchPullRequest(null, []).toJson()], 0]);
-    assert.deepEqual(refusals.map(t => t?.[0]), [FailureCode.InvalidParams, FailureCode.InvalidParams, FailureCode.InvalidParams]);
+    assert.deepEqual([answers, github.requests.length], [[null, new BranchPullRequest(null, []).toJson(), { avatar: null },
+      HostPullRequestList.signedOut().toJson(), HostReviewRequestList.signedOut().toJson(), HostCommitComments.none().toJson(), null, new HostPullRequestThreads([], false).toJson()], 0]);
+    assert.deepEqual(refusals.map(t => t?.[0]), [FailureCode.InvalidParams, FailureCode.InvalidParams, FailureCode.InvalidParams, FailureCode.InvalidParams,
+      FailureCode.InvalidParams, FailureCode.InvalidParams, FailureCode.InvalidParams, FailureCode.InvalidParams, FailureCode.InvalidParams]);
   });
 
   it("rethrows an error other than a malformed payload while it reads a request, rather than refusing it as InvalidParams", async () => {
@@ -239,6 +255,26 @@ describe("RuntimePart", () => {
     assert.deepEqual([item.author?.avatar, item.closedAt], [`data:image/png;base64,${Buffer.from(png).toString("base64")}`, Date.parse("2026-11-02T09:30:00Z")]);
     assert.deepEqual([github.urls().at(-1), github.requests.at(-1)?.header("Authorization")], ["https://avatars.githubusercontent.com/u/583231?s=64", null]);
     assert.ok(!JSON.stringify(answer).includes("avatars.githubusercontent.com"));
+  });
+
+  it("answers a pull request's comment threads as JSON that reads back the same", async () => {
+    MockClock.use(1_800_000_000_000);
+    const github = new FakeGitHub();
+    const comment = { id: 7, user: { login: "octocat", avatar_url: avatarUrl, html_url: "https://github.com/octocat" }, created_at: "2026-11-01T10:00:00Z", body: "Looks good." };
+    github.answer(FakeGitHub.json({ login: "octocat", name: "The Octocat", avatar_url: null }, 200, { "X-OAuth-Scopes": "repo" }),
+      FakeGitHub.json({ comments: 1, review_comments: 0 }), FakeGitHub.json([comment]), FakeGitHub.json([]));
+    vi.stubGlobal("fetch", github.fetch);
+    const part = new RuntimePart();
+    const context = new RuntimeContext();
+    context.secrets.values.set("git-github.signIn", JSON.stringify({ token: "gho_token", account: account.toJson() }));
+
+    await part.activateAsync(context.fake);
+    await vi.advanceTimersByTimeAsync(0);
+    const answer = await callAsync(context, "git-github.readPullRequestThreads", new HostReference("git-github", "octocat", "hello-world", 2).toJson());
+    await part.deactivateAsync();
+
+    assert.deepEqual(answer, new HostPullRequestThreads([new HostThread(14, ThreadStatus.None, null, null, [new HostComment(7, null,
+      new HostPerson("octocat", null, "https://github.com/octocat"), Date.parse("2026-11-01T10:00:00Z"), "Looks good.")])], false).toJson());
   });
 
   it("opens a pull request only for the app's main process acting for a window, so only a person's click reaches GitHub", async () => {

@@ -33,6 +33,18 @@ describe("WatchTable", () => {
     assert.equal(add(table, 1, 3, "/repo/src", "/repo"), true);
   });
 
+  test("forgets every window's watches of a dropped repository, so its next watch is its first and a later unwatch takes back nothing", () => {
+    const table = new WatchTable();
+    add(table, 1, 2, "/repo", "/repo");
+    add(table, 1, 3, "/repo/src", "/repo");
+    add(table, 1, 2, "/other", "/other");
+
+    table.drop("/repo");
+
+    assert.deepEqual([folders(table, "/repo"), table.remove(1, 3, "/repo/src"), folders(table, "/other")], [[], null, [[1, 2, "/other", 1]]]);
+    assert.equal(add(table, 1, 2, "/repo", "/repo"), true);
+  });
+
   test("changes nothing when a folder no window watches is taken back", () => {
     const table = new WatchTable();
     add(table, 1, 2, "/repo", "/repo");

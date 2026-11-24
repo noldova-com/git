@@ -1,0 +1,91 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import assert from "node:assert/strict";
+import { describe, it } from "vitest";
+
+import { UndoMode } from "../../src/enums/undo-mode.ts";
+import { GitJournalEntry } from "../../src/models/git-journal-entry.ts";
+import { GitRefMove } from "../../src/models/git-ref-move.ts";
+
+describe("GitJournalEntry", () => {
+  const a = "0123456789abcdef0123456789abcdef01234567";
+  const b = "89abcdef0123456789abcdef0123456789abcdef";
+  const at = "2026-11-22T20:15:00Z";
+  const valid = { id: "1", method: "git.commit", at, branch: "main", branchAfter: "main", moves: [{ name: "refs/heads/main", before: a, after: b }], undo: "Refs", indexBefore: null, indexAfter: null, checkpoint: null, paths: [] };
+
+  it("keeps a commit's entry and an index write's trees, and reads each back the same", () => {
+    const commit = new GitJournalEntry("1", "git.commit", at, "main", "main", [new GitRefMove("refs/heads/main", a, b)], UndoMode.Refs, null, null);
+    const stage = new GitJournalEntry("2", "git.stage", "2026-11-22T12:15:00-08:00", null, null, [], UndoMode.Index, a, b);
+    const discard = new GitJournalEntry("3", "git.discard", at, "main", "main", [], UndoMode.Checkpoint, null, null, "c-1", ["a.txt", "src/b.ts"]);
+
+    assert.deepEqual(commit.toJson(), valid);
+    assert.deepEqual(GitJournalEntry.fromJson(commit.toJson()), commit);
+    assert.deepEqual(GitJournalEntry.fromJson(stage.toJson()), stage);
+    assert.deepEqual([discard.checkpoint, discard.paths, GitJournalEntry.fromJson(discard.toJson())], ["c-1", ["a.txt", "src/b.ts"], discard]);
+  });
+
+  it("refuses an empty or broken id or method, a time without its offset or that isn't a date, a branch git refuses, an unknown mode and an unknown field", () => {
+    const refusals: [Record<string, unknown>, string][] = [
+      [{ id: "" }, "$.id"],
+      [{ id: "1\n" }, "$.id"],
+      [{ method: "" }, "$.method"],
+      [{ method: "git.\u0001" }, "$.method"],
+      [{ at: "2026-11-22T20:15:00" }, "$.at"],
+      [{ at: "2026-13-45T20:15:00Z" }, "$.at"],
+      [{ branch: "a..b" }, "$.branch"],
+      [{ branchAfter: "-a" }, "$.branchAfter"]
+    ];
+    for (const [change, field] of refusals)
+      assert.throws(() => GitJournalEntry.fromJson({ ...valid, ...change }), { name: "ProtocolFieldException", field });
+    assert.throws(() => GitJournalEntry.fromJson({ ...valid, undo: "Hard" }), { name: "JsonException", path: "$.undo" });
+    assert.throws(() => GitJournalEntry.fromJson({ ...valid, more: 1 }), { name: "ProtocolFieldException" });
+    assert.throws(() => new GitJournalEntry("1", "git.commit", at, null, null, [], "Hard" as UndoMode, null, null), { name: "ProtocolFieldException", field: "undo" });
+  });
+
+  it("holds trees exactly when the index undoes it, both or neither, each a full id", () => {
+    const refusals: [Record<string, unknown>, string][] = [
+      [{ indexBefore: "abc", indexAfter: b, undo: "Index" }, "$.indexBefore"],
+      [{ indexBefore: a, indexAfter: "abc", undo: "Index" }, "$.indexAfter"],
+      [{ indexBefore: null, indexAfter: null, undo: "Index" }, "$.indexAfter"],
+      [{ indexBefore: a, indexAfter: b, undo: "Refs" }, "$.indexAfter"],
+      [{ indexBefore: a, indexAfter: null, undo: "Refs" }, "$.indexAfter"],
+      [{ indexBefore: null, indexAfter: b, undo: "Index" }, "$.indexAfter"]
+    ];
+    for (const [change, field] of refusals)
+      assert.throws(() => GitJournalEntry.fromJson({ ...valid, ...change }), { name: "ProtocolFieldException", field });
+  });
+
+  it("holds a checkpoint and the paths it puts back exactly when a checkpoint undoes it, each path relative and the checkpoint one line", () => {
+    const refusals: [Record<string, unknown>, string][] = [
+      [{ undo: "Checkpoint" }, "$.checkpoint"],
+      [{ undo: "Checkpoint", checkpoint: "c-1" }, "$.checkpoint"],
+      [{ undo: "Checkpoint", paths: ["a.txt"] }, "$.checkpoint"],
+      [{ checkpoint: "c-1", paths: ["a.txt"] }, "$.checkpoint"],
+      [{ paths: ["a.txt"] }, "$.checkpoint"],
+      [{ undo: "Checkpoint", checkpoint: "", paths: ["a.txt"] }, "$.checkpoint"],
+      [{ undo: "Checkpoint", checkpoint: "c\n1", paths: ["a.txt"] }, "$.checkpoint"],
+      [{ undo: "Checkpoint", checkpoint: "c-1", paths: ["../a.txt"] }, "$.paths.0"]
+    ];
+    for (const [change, field] of refusals)
+      assert.throws(() => GitJournalEntry.fromJson({ ...valid, ...change }), { name: "ProtocolFieldException", field });
+  });
+
+  it("holds a stash's commit and no paths exactly when popping the stash undoes it, the commit a full id", () => {
+    const stash = { ...valid, undo: "Stash", checkpoint: "a".repeat(40) };
+    const refusals: [Record<string, unknown>, string][] = [
+      [{ undo: "Stash" }, "$.checkpoint"],
+      [{ undo: "Stash", checkpoint: "a".repeat(40), paths: ["a.txt"] }, "$.checkpoint"],
+      [{ undo: "Stash", checkpoint: "c-1" }, "$.checkpoint"]
+    ];
+
+    assert.deepEqual(GitJournalEntry.fromJson(stash).toJson(), stash);
+    for (const [change, field] of refusals)
+      assert.throws(() => GitJournalEntry.fromJson({ ...valid, ...change }), { name: "ProtocolFieldException", field });
+  });
+});

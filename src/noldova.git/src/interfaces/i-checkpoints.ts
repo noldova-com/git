@@ -1,0 +1,18 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import type { CaptureRequest, CaptureResult, PreviewRequest, PreviewResult, RestoreRequest, RestoreResult } from "@noldova/checkpoints.protocol";
+
+/** The part of the checkpoints module's service a discard uses: it takes a checkpoint before, and an undo puts paths back from it. */
+export interface ICheckpoints {
+  captureAsync(request: CaptureRequest, signal?: AbortSignal): Promise<CaptureResult>;
+
+  previewRestoreAsync(request: PreviewRequest, signal?: AbortSignal): Promise<PreviewResult>;
+
+  restoreAsync(request: RestoreRequest, signal?: AbortSignal): Promise<RestoreResult>;
+}

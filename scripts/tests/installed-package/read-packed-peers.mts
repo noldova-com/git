@@ -18,14 +18,15 @@ class PackedPeersCheck {
     if (root === undefined)
       throw new InstalledPackageCheckFailedException(InstalledPackageResources.rootMissing);
     const gitWindow: FixtureManifest = await PackedPeersCheck.readInstalledAsync(InstalledPackageResources.gitWindowName);
-    const gitHubWindow: FixtureManifest = await PackedPeersCheck.readInstalledAsync(InstalledPackageResources.gitHubWindowName);
-    PackedPeersCheck.checkWindowPeer(gitWindow, gitHubWindow);
     PackedPeersCheck.checkNoContextDependency(InstalledPackageResources.gitWindowName, gitWindow);
-    PackedPeersCheck.checkNoContextDependency(InstalledPackageResources.gitHubWindowName, gitHubWindow);
-    const projects: readonly (readonly [FixtureManifest, string])[] = [
-      [gitWindow, InstalledPackageResources.gitWindowFolder],
-      [gitHubWindow, InstalledPackageResources.gitHubWindowFolder]
-    ];
+    const projects: [FixtureManifest, string][] = [[gitWindow, InstalledPackageResources.gitWindowFolder]];
+    for (const [name, folder, takesGitWindow] of InstalledPackageResources.hostWindows) {
+      const hostWindow: FixtureManifest = await PackedPeersCheck.readInstalledAsync(name);
+      if (takesGitWindow)
+        PackedPeersCheck.checkWindowPeer(name, gitWindow, hostWindow);
+      PackedPeersCheck.checkNoContextDependency(name, hostWindow);
+      projects.push([hostWindow, folder]);
+    }
     for (const [packed, folder] of projects)
       PackedPeersCheck.checkAngularPeers(packed, await FixtureManifest.readAsync(path.join(root, folder, InstalledPackageResources.manifestFile)), folder);
     PackedPeersCheck.checkSamples();
@@ -41,11 +42,11 @@ class PackedPeersCheck {
     return await FixtureManifest.readAsync(path.join(InstalledPackageResources.nodeModulesFolder, name, InstalledPackageResources.manifestFile));
   }
 
-  private static checkWindowPeer(gitWindow: FixtureManifest, gitHubWindow: FixtureManifest): void {
-    const peer: string | undefined = gitHubWindow.peerDependencies[InstalledPackageResources.gitWindowName];
-    const isDependency: boolean = gitHubWindow.dependencies[InstalledPackageResources.gitWindowName] !== undefined;
+  private static checkWindowPeer(name: string, gitWindow: FixtureManifest, hostWindow: FixtureManifest): void {
+    const peer: string | undefined = hostWindow.peerDependencies[InstalledPackageResources.gitWindowName];
+    const isDependency: boolean = hostWindow.dependencies[InstalledPackageResources.gitWindowName] !== undefined;
     if (peer !== VersionRange.sibling(gitWindow.version).toString() || isDependency)
-      throw new InstalledPackageCheckFailedException(InstalledPackageResources.formatWindowPeerDiffers(gitWindow.version, peer, isDependency));
+      throw new InstalledPackageCheckFailedException(InstalledPackageResources.formatWindowPeerDiffers(name, gitWindow.version, peer, isDependency));
   }
 
   private static checkNoContextDependency(name: string, packed: FixtureManifest): void {

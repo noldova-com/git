@@ -34,6 +34,11 @@ export class WatchTable {
     return isNew;
   }
 
+  /** Forgets every window's watches of the repository, as a failed start leaves nothing watched. */
+  public drop(top: string): void {
+    this.repositories.delete(top);
+  }
+
   public abandon(watch: PendingWatch): void {
     this.pending.delete(watch);
   }

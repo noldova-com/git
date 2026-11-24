@@ -15,18 +15,25 @@ export class HostChanges {
   private static readonly FIELDS: readonly string[] = [Resources.additionsField, Resources.deletionsField, Resources.changedFilesField,
     Resources.headBranchField, Resources.baseBranchField, Resources.headCommitField];
 
-  public readonly additions: number;
-  public readonly deletions: number;
-  public readonly changedFiles: number;
+  public readonly additions: number | null;
+  public readonly deletions: number | null;
+  public readonly changedFiles: number | null;
   public readonly headBranch: string;
   public readonly baseBranch: string;
   public readonly headCommit: string;
 
-  public constructor(additions: number, deletions: number, changedFiles: number, headBranch: string, baseBranch: string, headCommit: string,
-    reader?: JsonReader) {
-    FieldCheck.requireCount(additions, Resources.additionsField, reader);
-    FieldCheck.requireCount(deletions, Resources.deletionsField, reader);
-    FieldCheck.requireCount(changedFiles, Resources.changedFilesField, reader);
+  public constructor(additions: number | null, deletions: number | null, changedFiles: number | null, headBranch: string, baseBranch: string,
+    headCommit: string, reader?: JsonReader) {
+    const counts: readonly (readonly [number | null, string])[] = [[additions, Resources.additionsField], [deletions, Resources.deletionsField],
+      [changedFiles, Resources.changedFilesField]];
+    for (const [count, field] of counts) {
+      if (count === null) {
+        if (additions !== null || deletions !== null || changedFiles !== null)
+          FieldCheck.fail(field, Resources.countsExpected, reader);
+      }
+      else
+        FieldCheck.requireCount(count, field, reader);
+    }
     FieldCheck.requireText(headBranch, Resources.headBranchField, reader);
     FieldCheck.requireText(baseBranch, Resources.baseBranchField, reader);
     FieldCheck.requireCommit(headCommit, Resources.headCommitField, reader);
@@ -43,9 +50,9 @@ export class HostChanges {
     const reader = JsonReader.fromValue(value, path);
     FieldCheck.refuseUnknownFields(reader, HostChanges.FIELDS);
     return new HostChanges(
-      reader.readInteger(Resources.additionsField),
-      reader.readInteger(Resources.deletionsField),
-      reader.readInteger(Resources.changedFilesField),
+      reader.readNullableInteger(Resources.additionsField),
+      reader.readNullableInteger(Resources.deletionsField),
+      reader.readNullableInteger(Resources.changedFilesField),
       reader.readString(Resources.headBranchField),
       reader.readString(Resources.baseBranchField),
       reader.readString(Resources.headCommitField),

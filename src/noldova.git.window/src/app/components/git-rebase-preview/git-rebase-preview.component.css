@@ -1,0 +1,170 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  display: block;
+  box-sizing: border-box;
+  height: 100%;
+  min-width: 0;
+  overflow: auto;
+  background-color: var(--nol-panel);
+  color: var(--nol-text);
+  font-family: var(--nol-font-sans);
+  font-size: var(--nol-text-panel);
+  line-height: var(--nol-line-panel);
+}
+
+/* The pushed note sits at the view's foot, under whatever the preview shows. */
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-sizing: border-box;
+  min-height: 100%;
+  padding: 0.75rem;
+}
+
+.empty-view {
+  margin: 0.75rem;
+}
+
+.now,
+.after {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.caps,
+.node,
+.pushed,
+.stop-text {
+  font-size: 0.75rem;
+}
+
+.caps {
+  margin: 0 0 0.25rem;
+  color: var(--nol-text-muted);
+  font-weight: normal;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.now {
+  gap: 0.25rem;
+}
+
+.now .caps {
+  margin: 0;
+}
+
+.node {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-width: 0;
+  height: 1.625rem;
+  white-space: nowrap;
+}
+
+/* A note beside a chip gives way before the branch's name does. */
+.node > .muted {
+  flex: 0 100 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.node.indented {
+  padding-left: 1.125rem;
+}
+
+.result {
+  overflow: hidden;
+  color: var(--nol-text);
+  text-overflow: ellipsis;
+}
+
+.dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.branch-dot {
+  background-color: var(--nol-author-1);
+}
+
+.onto-dot {
+  background-color: var(--nol-author-3);
+}
+
+.stacked-dot {
+  background-color: var(--nol-author-2);
+}
+
+.chip {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  min-width: 0;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  overflow: hidden;
+  border-radius: 0.25rem;
+  box-shadow: inset 0 0 0 1px var(--nol-border);
+  color: var(--nol-text-strong);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.stop-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.75rem;
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: 0.375rem;
+  background-color: var(--nol-raised);
+}
+
+.stop-title {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+.check-icon {
+  flex: none;
+  font-size: var(--nol-icon);
+}
+
+.stop-text,
+.pushed {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.warning {
+  color: var(--nol-warning);
+}
+
+.strong {
+  color: var(--nol-text-strong);
+  font-weight: var(--nol-weight-emphasis);
+}
+
+.muted {
+  color: var(--nol-text-muted);
+}

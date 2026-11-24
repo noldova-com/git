@@ -151,7 +151,7 @@ export class PackagePacker {
     const manifest = await this.readManifestAsync(file, version);
     const ownPeers = module.dependencies.flatMap(t => [t.protocolName, t.windowName]);
     const declaredPeers = PackagePacker.readPins(manifest, Resources.peersField, file);
-    const [dependencies, pinned] = await PackageImports.resolveAsync(path.join(output, Resources.sourceFolder),
+    const { dependencies, peers: pinned } = await PackageImports.resolveAsync(path.join(output, Resources.sourceFolder),
       new Map([...PackagePacker.readPins(manifest, Resources.dependenciesField, file), ...declaredPeers]), version, file, ownPeers);
     const noldovaDesktop = await this.readNoldovaDesktopAsync(module);
     const peers = new Map([...pinned].map(([name, pin]): [string, string] => [name, declaredPeers.get(name)

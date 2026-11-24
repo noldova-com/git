@@ -1,0 +1,149 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (choice(); as shown) {
+  @let detail = shown.detail;
+  <aside class="detail" [attr.aria-label]="resources.formatWorkItemPanel(detail.item.id)">
+    <div class="kind">
+      <span class="material-symbols-rounded wi" aria-hidden="true" [style.color]="colorOf(detail.item)">{{ iconOf(detail.item) }}</span>
+      <span class="small" [style.color]="colorOf(detail.item)">{{ detail.item.type.name }}</span>
+      <span class="id small">{{ detail.item.id }}</span>
+      <span class="grow"></span>
+      <button nol-icon-button type="button" class="open" [icon]="resources.openIcon" [label]="resources.openOnAzureDevOps"
+        (click)="openAsync(detail.item.url)"></button>
+    </div>
+    <h2 class="detail-title">{{ detail.item.title }}</h2>
+    <dl class="fields">
+      <dt class="muted">{{ resources.stateLabel }}</dt>
+      <dd><span class="chip"><span class="dot" [style.background-color]="resources.categoryColors[detail.item.category]"></span>{{ detail.item.state }}</span></dd>
+      <dt class="muted">{{ resources.assignedLabel }}</dt>
+      <dd class="person">
+        @if (detail.item.assignee; as assignee) {
+          <nol-git-azure-devops-person-avatar [organization]="detail.item.organization" [login]="assignee.login" [name]="assignee.login" [image]="assignee.avatar" [size]="small" />{{ assignee.login }}
+        } @else {
+          <span class="muted">{{ resources.unassigned }}</span>
+        }
+      </dd>
+      <dt class="muted">{{ resources.iterationLabel }}</dt>
+      <dd>{{ detail.item.iteration ?? resources.noValue }}</dd>
+      <dt class="muted">{{ resources.areaLabel }}</dt>
+      <dd>{{ detail.item.area ?? resources.noValue }}</dd>
+      <dt class="muted">{{ resources.pointsLabel }}</dt>
+      <dd>{{ detail.points ?? resources.noValue }}</dd>
+      <dt class="muted">{{ resources.parentLabel }}</dt>
+      <dd class="parent">
+        @if (parentOf(detail); as parent) {
+          <span class="material-symbols-rounded wi" aria-hidden="true" [style.color]="colorOf(parent)">{{ iconOf(parent) }}</span>
+          {{ resources.formatWorkItemLine(parent.id, parent.title) }}
+        } @else {
+          {{ detail.item.parent ?? resources.noValue }}
+        }
+      </dd>
+    </dl>
+    @if (detail.acceptance; as acceptance) {
+      <section class="acceptance">
+        <h3 class="section-title">{{ resources.acceptanceTitle }}</h3>
+        <p class="acceptance-text">{{ acceptance }}</p>
+      </section>
+    }
+    @if (children().length > 0) {
+      <section class="section">
+        <div class="section-head">
+          <h3 class="section-title grow">{{ resources.tasksTitle }}</h3>
+          @if (hoursLeft(); as hours) {
+            <span class="small muted">{{ hours }}</span>
+          }
+        </div>
+        @for (child of children(); track child.item.id) {
+          <div class="line">
+            <span class="material-symbols-rounded wi" aria-hidden="true" [style.color]="colorOf(child.item)">{{ iconOf(child.item) }}</span>
+            <span class="grow">{{ resources.formatWorkItemLine(child.item.id, child.item.title) }}</span>
+            @if (child.remaining !== null) {
+              <span class="small muted">{{ resources.formatHours(child.remaining) }}</span>
+            }
+          </div>
+        }
+      </section>
+    }
+    <section class="section">
+      <h3 class="section-title">{{ resources.developmentTitle }}</h3>
+      @for (branch of detail.branches; track branch) {
+        <div class="line">
+          <span class="material-symbols-rounded" aria-hidden="true">{{ resources.branchIcon }}</span>
+          <span class="grow branch">{{ branch }}</span>
+        </div>
+      }
+      @for (pullRequest of detail.pullRequests; track pullRequest.number) {
+        <div class="line">
+          <span class="material-symbols-rounded" aria-hidden="true">{{ resources.pullRequestIcon }}</span>
+          <span class="grow">{{ resources.formatPullRequestReference(pullRequest.number) }}@if (policiesOf(pullRequest); as policies) { · {{ policies }}}</span>
+          @if (isBlocked(pullRequest)) {
+            <span class="material-symbols-rounded warning" aria-hidden="true">{{ resources.policyWarningIcon }}</span>
+          }
+        </div>
+      }
+      @if (detail.commits > 0) {
+        <div class="line">
+          <span class="material-symbols-rounded" aria-hidden="true">{{ resources.commitIcon }}</span>
+          <span class="grow">{{ resources.formatBranchCommits(detail.commits) }}</span>
+        </div>
+      }
+      @if (detail.branches.length === 0 && detail.pullRequests.length === 0 && detail.commits === 0) {
+        <p class="muted small empty-line">{{ resources.noDevelopment }}</p>
+      }
+    </section>
+    @if (folder(); as folder) {
+      @if (linked().isRead) {
+        <section class="history" [attr.aria-label]="resources.linkedHistoryTitle">
+          <h2 class="strong history-title">{{ resources.linkedHistoryTitle }}</h2>
+          <p class="muted small history-note">{{ resources.formatLinkedHistoryNote(detail.item.id) }}</p>
+          @for (commit of linkedOf(detail.item); track commit.id) {
+            <button type="button" class="commit" [attr.aria-label]="resources.formatShowCommit(commit.subject)" (click)="showCommit(folder, commit)">
+              <span class="subject">
+                @for (part of partsOf(commit); track $index) {
+                  @if (part.id === null) {
+                    {{ part.text }}
+                  } @else {
+                    <span class="chip ref">
+                      @if (chipItemOf(shown, part.id); as item) {
+                        <span class="material-symbols-rounded wi chip-icon" aria-hidden="true" [style.color]="colorOf(item)">{{ iconOf(item) }}</span>
+                      } @else {
+                        <span class="material-symbols-rounded wi chip-icon muted" aria-hidden="true">{{ resources.workItemFallbackIcon }}</span>
+                      }
+                      {{ part.text }}
+                    </span>
+                  }
+                }
+              </span>
+              <span class="muted small byline"><span class="sha">{{ shortOf(commit) }}</span> · {{ commit.author }} · {{ ageOf(commit) }}</span>
+            </button>
+          } @empty {
+            <p class="muted small history-empty">{{ resources.formatNoLinkedCommits(detail.item.id) }}</p>
+          }
+          @if (linked().isTruncated) {
+            <p class="muted small history-cap">{{ resources.linkedHistoryCap }}</p>
+          }
+        </section>
+      }
+    }
+    <div class="grow"></div>
+    <div class="actions">
+      @if (folder(); as folder) {
+        <button nol-button type="button" class="create" (click)="createBranch(detail.item, folder)">
+          <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.branchIcon }}</span>{{ resources.newBranch }}
+        </button>
+      } @else {
+        <button nol-button type="button" class="create" disabled>
+          <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.branchIcon }}</span>{{ resources.newBranch }}
+        </button>
+      }
+    </div>
+  </aside>
+} @else {
+  <p class="muted empty-view">{{ resources.noWorkItemChosen }}</p>
+}

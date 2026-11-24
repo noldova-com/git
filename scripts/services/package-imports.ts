@@ -11,6 +11,7 @@ import path from "node:path";
 
 import { AngularCoreUnpinnedException } from "../exceptions/angular-core-unpinned.exception.ts";
 import { ImportUnpinnedException } from "../exceptions/import-unpinned.exception.ts";
+import { PackagePins } from "../models/package-pins.ts";
 import { RepositoryModule } from "../models/repository-module.ts";
 import { Resources } from "../resources.ts";
 
@@ -18,7 +19,7 @@ export class PackageImports {
   private static readonly ownScope: string = RepositoryModule.main.packageName;
 
   public static async resolveAsync(folder: string, pins: ReadonlyMap<string, string>, version: string, file: string,
-    ownPeers: readonly string[] = []): Promise<[ReadonlyMap<string, string>, ReadonlyMap<string, string>]> {
+    ownPeers: readonly string[] = []): Promise<PackagePins> {
     const dependencies = new Map<string, string>();
     const peers = new Map<string, string>();
     for (const name of await PackageImports.listAsync(folder)) {
@@ -31,7 +32,7 @@ export class PackageImports {
     if (angular === undefined)
       throw new AngularCoreUnpinnedException(file);
     peers.set(Resources.angularCore, angular);
-    return [dependencies, peers];
+    return new PackagePins(dependencies, peers);
   }
 
   private static async listAsync(folder: string): Promise<readonly string[]> {

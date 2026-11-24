@@ -97,7 +97,7 @@ export class DiffBudget {
   }
 
   private static withHunks(file: DiffFile, hunks: readonly DiffHunk[], truncated: boolean): DiffFile {
-    return new DiffFile(file.path, file.pathBytes, file.oldPath, file.oldPathBytes, file.change, file.oldMode, file.newMode, file.binary, file.submodule, hunks, truncated);
+    return new DiffFile(file.path, file.pathBytes, file.oldPath, file.oldPathBytes, file.change, file.oldMode, file.newMode, file.binary, file.submodule, hunks, truncated, file.similarity);
   }
 
   private static withLines(hunk: DiffHunk, lines: readonly DiffLine[]): DiffHunk {
