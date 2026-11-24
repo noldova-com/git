@@ -118,7 +118,7 @@ function workItem(fields: Readonly<Record<string, unknown>> = {}): Record<string
 
 function workItemType(name: string = "User Story"): Record<string, unknown> {
   return {
-    name, color: "009CCC", icon: { id: "icon_book", url: "https://tfsprodcus3.visualstudio.com/_apis/wit/workItemIcons/icon_book" },
+    name, color: "009CCC", icon: { id: "icon_book", url: "https://fabrikam.visualstudio.com/_apis/wit/workItemIcons/icon_book" },
     states: [{ name: "New", color: "b2b2b2", category: "Proposed" }, { name: "Active", color: "007acc", category: "InProgress" },
       { name: "Closed", color: "339933", category: "Completed" }]
   };
@@ -1270,8 +1270,8 @@ describe("AzureReads, work items", () => {
     const azure = new FakeAzure();
     const linked: readonly Record<string, unknown>[] = [relation("System.LinkTypes.Hierarchy-Forward", childUrl(43)),
       relation("System.LinkTypes.Hierarchy-Forward", childUrl(43)), relation("System.LinkTypes.Hierarchy-Reverse", childUrl(40)),
-      relation("ArtifactLink", `vstfs:///Git/PullRequestId/${projectId}%2F${repositoryId.toUpperCase()}%2F482`),
-      relation("ArtifactLink", `vstfs:///Git/Ref/${projectId}%2F${repositoryId}%2FGBusers%2Fana%2F42-sign-in`),
+      relation("ArtifactLink", `vstfs:///Git/PullRequestId/${projectId}%2F${repositoryId.toUpperCase()}%2F752`),
+      relation("ArtifactLink", `vstfs:///Git/Ref/${projectId}%2F${repositoryId}%2FGBusers%2Fkim%2F42-sign-in`),
       relation("ArtifactLink", `vstfs:///Git/Ref/${projectId}%2F${repositoryId}%2FGTv1.0`), relation("ArtifactLink", commitLink),
       relation("ArtifactLink", commitLink), relation("ArtifactLink", "vstfs:///Build/Build/7"), relation("Hyperlink", "https://example.com/42")];
     azure.answer(types(), listed(43, 42), found(

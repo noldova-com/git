@@ -32,7 +32,7 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
     expect(page.requests.payloads.slice(1)).toEqual([childrenQuery([7530, 7531, 7532]).toJson(), pr482.toJson()]);
     expect(page.texts(".kind")).toEqual(["menu_book User Story 7521 open_in_new"]);
     expect(page.texts(".detail-title")).toEqual(["Export notes as Markdown files"]);
-    expect(page.texts(".fields")).toEqual(["State Active Assigned A kim@fabrikam.com Iteration Sample Project\\Sprint 17 Area Sample Project\\Notes app"
+    expect(page.texts(".fields")).toEqual(["State Active Assigned K kim@fabrikam.com Iteration Sample Project\\Sprint 17 Area Sample Project\\Notes app"
       + " Points 5 Parent emoji_events 7490 Markdown export"]);
     expect(page.texts(".acceptance")).toEqual(["Acceptance criteria Readers see a due date 48 h and 2 h before it is due."]);
     expect(page.texts(".section")).toEqual([
