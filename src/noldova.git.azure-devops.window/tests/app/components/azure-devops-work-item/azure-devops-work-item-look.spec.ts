@@ -68,7 +68,7 @@ const mine: readonly HostWorkItemDetail[] = [
     0, [])
 ];
 const pullRequest: HostPullRequest = new HostPullRequest(new HostItem(pr482, ReferenceKind.PullRequest, ReferenceState.Open, "Export notes",
-  "https://dev.azure.com/fabrikam/Sample%20Project/_git/portal-web/pullrequest/482", null, 1_800_000_000_000, null, 0, 
+  "https://dev.azure.com/fabrikam/Sample%20Project/_git/garden-web/pullrequest/482", null, 1_800_000_000_000, null, 0, 
   new HostChanges(null, null, null, "users/ana/4821-export-notes-markdown", "main", "0123456789abcdef0123456789abcdef01234567")), [],
 [new HostPolicy("Build", PolicyState.Approved, true, null), new HostPolicy("Comments", PolicyState.Rejected, true, null)], [], false, "", null, []);
 
@@ -90,9 +90,9 @@ async function openAsync(mode: ThemeMode, withHistory: boolean = false, withPict
   if (withPicture)
     requests.answer(AzureDevOpsNames.readPersonAvatarMethod, new HostAvatar(picture).toJson());
   if (withHistory) {
-    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/portal-web")));
+    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/garden-web")));
     requests.answer(GitNames.statusMethod, new GitStatus("main", "a".repeat(40), null, [], false, "f1", null,
-      new GitRemote("origin", "dev.azure.com", "fabrikam/Sample%20Project/_git/portal-web", RemoteTransport.Https)).toJson());
+      new GitRemote("origin", "dev.azure.com", "fabrikam/Sample%20Project/_git/garden-web", RemoteTransport.Https)).toJson());
     requests.answer(GitNames.graphMethod, history.toJson());
     requests.answer(GitNames.messageReferencesMethod, new GitMessageReferences([], false).toJson());
   }

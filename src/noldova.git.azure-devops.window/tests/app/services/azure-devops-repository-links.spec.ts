@@ -15,7 +15,7 @@ import { AzureDevOpsRepositoryLinks } from "../../../src/app/services/azure-devo
 describe("AzureDevOpsRepositoryLinks", () => {
   it("links an Azure DevOps repository to its project's work items, opening the My work items document for the project", () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    const links = new AzureDevOpsRepositoryLinks(context).linksFor(new GitRemote("origin", "dev.azure.com", "fabrikam/Sample%20Project/_git/portal-web",
+    const links = new AzureDevOpsRepositoryLinks(context).linksFor(new GitRemote("origin", "dev.azure.com", "fabrikam/Sample%20Project/_git/garden-web",
       RemoteTransport.Https));
 
     for (const link of links)

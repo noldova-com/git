@@ -18,8 +18,8 @@ import { AzureDevOpsLinkedCommits } from "../../../src/app/services/azure-devops
 import { RequestAnswers } from "../../fixtures/request-answers.fixture.ts";
 import { WindowFailure } from "../../fixtures/window-failure.fixture.ts";
 
-const FOLDER: string = "/work/portal-web";
-const azure: GitRemote = new GitRemote("origin", "dev.azure.com", "fabrikam/Sample%20Project/_git/portal-web", RemoteTransport.Https);
+const FOLDER: string = "/work/garden-web";
+const azure: GitRemote = new GitRemote("origin", "dev.azure.com", "fabrikam/Sample%20Project/_git/garden-web", RemoteTransport.Https);
 
 function statusAt(head: string | null, remote: GitRemote | null = azure): GitStatus {
   return new GitStatus("main", head, null, [], false, "f1", null, remote);

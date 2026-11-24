@@ -99,7 +99,7 @@ export const tasks: readonly HostWorkItemDetail[] = [
   detailOf(itemOf(4832, task, "Tag filter ignores letter case", "New", WorkItemCategory.Proposed, 4821), unlinked, new Planned(null, 4, null))
 ];
 export const pullRequest: HostPullRequest = new HostPullRequest(new HostItem(pr482, ReferenceKind.PullRequest, ReferenceState.Open, "Export notes",
-  "https://dev.azure.com/fabrikam/Sample%20Project/_git/portal-web/pullrequest/482", null, Date.UTC(2026, 10, 20), null, 0, 
+  "https://dev.azure.com/fabrikam/Sample%20Project/_git/garden-web/pullrequest/482", null, Date.UTC(2026, 10, 20), null, 0, 
   new HostChanges(null, null, null, "users/ana/4821-export-notes-markdown", "main", "0123456789abcdef0123456789abcdef01234567")), [], [
   new HostPolicy("Minimum number of reviewers", PolicyState.Approved, true, null),
   new HostPolicy("Build", PolicyState.Approved, true, null),
@@ -109,7 +109,7 @@ export const pullRequest: HostPullRequest = new HostPullRequest(new HostItem(pr4
 ], [], false, "", null, []);
 
 export const azureStatus: GitStatus = new GitStatus("main", "a".repeat(40), null, [], false, "f1", null,
-  new GitRemote("origin", "dev.azure.com", "fabrikam/Sample%20Project/_git/portal-web", RemoteTransport.Https));
+  new GitRemote("origin", "dev.azure.com", "fabrikam/Sample%20Project/_git/garden-web", RemoteTransport.Https));
 export const githubStatus: GitStatus = new GitStatus("main", null, null, [], false, "f1", null, new GitRemote("origin", "github.com", "fabrikam/site", RemoteTransport.Https));
 
 function commitOf(id: string, subject: string, minutesAgo: number): GitGraphCommit {

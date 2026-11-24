@@ -336,7 +336,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
   it("shows a build policy's build number beside its name, running after Required or Optional for a policy that runs, and each build's number", async () => {
     const page = new Page();
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, new HostPullRequest(item, [], [
-      new HostPolicy("Build: portal-web PR validation", PolicyState.Approved, true, null, "20261121.4"),
+      new HostPolicy("Build: garden-web PR validation", PolicyState.Approved, true, null, "20261121.4"),
       new HostPolicy("Build: dependency scan", PolicyState.Running, false, null, "20261121.5"),
       new HostPolicy("Build: smoke", PolicyState.Running, true, null)
     ], [
@@ -345,7 +345,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     ], false, "", 1, []).toJson());
     await page.openAsync();
 
-    expect(page.texts(".policy")).toEqual(["check_circle Build: portal-web PR validation 20261121.4 Required", "progress_activity Build: dependency scan 20261121.5 Optional · running",
+    expect(page.texts(".policy")).toEqual(["check_circle Build: garden-web PR validation 20261121.4 Required", "progress_activity Build: dependency scan 20261121.5 Optional · running",
       "progress_activity Build: smoke Required · running"]);
     expect(page.texts("div.row")).toEqual(["check_circle PR validation · 6 min 12 s #20261121.4", "schedule dependency scan"]);
   });

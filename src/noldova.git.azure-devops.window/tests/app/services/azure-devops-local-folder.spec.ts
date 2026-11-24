@@ -35,7 +35,7 @@ describe("AzureDevOpsLocalFolder", () => {
   it("finds none with no repository open, or one that isn't the pull request's: another organization, project or name, or no remote", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const requests: RequestAnswers = new RequestAnswers(context);
-    const remotes: readonly (string | null)[] = ["contoso/Web%20Site/_git/site", "fabrikam/Mobile/_git/site", "fabrikam/Web%20Site/_git/portal", null];
+    const remotes: readonly (string | null)[] = ["contoso/Web%20Site/_git/site", "fabrikam/Mobile/_git/site", "fabrikam/Web%20Site/_git/garden", null];
     requests.answer(GitNames.statusMethod, ...remotes.map(t => statusOf(t).toJson()));
 
     const found: (string | null)[] = [await AzureDevOpsLocalFolder.readAsync(context, URL)];

@@ -33,21 +33,21 @@ describe("WorkItemsPlace", () => {
   });
 
   it("reads the organization and project of a remote on each Azure DevOps host", () => {
-    const remotes: readonly GitRemote[] = [remote("dev.azure.com", "fabrikam/Sample%20Project/_git/portal-web"),
-      remote("ssh.dev.azure.com", "v3/fabrikam/Sample%20Project/portal-web"), remote("vs-ssh.visualstudio.com", "v3/fabrikam/Sample%20Project/portal-web"),
-      remote("fabrikam.visualstudio.com", "Sample%20Project/_git/portal-web"), remote("fabrikam.visualstudio.com", "DefaultCollection/Sample%20Project/_git/portal-web")];
+    const remotes: readonly GitRemote[] = [remote("dev.azure.com", "fabrikam/Sample%20Project/_git/garden-web"),
+      remote("ssh.dev.azure.com", "v3/fabrikam/Sample%20Project/garden-web"), remote("vs-ssh.visualstudio.com", "v3/fabrikam/Sample%20Project/garden-web"),
+      remote("fabrikam.visualstudio.com", "Sample%20Project/_git/garden-web"), remote("fabrikam.visualstudio.com", "DefaultCollection/Sample%20Project/_git/garden-web")];
 
     expect(remotes.map(t => WorkItemsPlace.ofRemote(t))).toEqual(remotes.map(() => new WorkItemsPlace("fabrikam", "Sample Project", null)));
   });
 
   it("reads the organization and project of a page's address, and no place from an address that names no project", () => {
-    expect(["https://dev.azure.com/fabrikam/Sample%20Project/_git/portal-web/pullrequest/7", "https://dev.azure.com/fabrikam/_workitems/edit/3"]
+    expect(["https://dev.azure.com/fabrikam/Sample%20Project/_git/garden-web/pullrequest/7", "https://dev.azure.com/fabrikam/_workitems/edit/3"]
       .map(t => WorkItemsPlace.ofPage(t))).toEqual([new WorkItemsPlace("fabrikam", "Sample Project", null), null]);
   });
 
   it("reads no place without a remote, from another host's remote, or from a remote whose project isn't readable", () => {
-    const remotes: readonly (GitRemote | null)[] = [null, remote("github.com", "fabrikam/portal-web"), remote(null, null),
-      remote("dev.azure.com", "fabrikam/%E0%A4%A/_git/portal-web")];
+    const remotes: readonly (GitRemote | null)[] = [null, remote("github.com", "fabrikam/garden-web"), remote(null, null),
+      remote("dev.azure.com", "fabrikam/%E0%A4%A/_git/garden-web")];
 
     expect(remotes.map(t => WorkItemsPlace.ofRemote(t))).toEqual(remotes.map(() => null));
   });

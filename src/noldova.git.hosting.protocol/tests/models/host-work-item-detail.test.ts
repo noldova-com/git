@@ -17,7 +17,7 @@ const story: HostWorkItemType = new HostWorkItemType("User Story", "009CCC", "ic
 const item: HostWorkItem = new HostWorkItem("git-azure-devops", "fabrikam", "Sample Project", 4821, story, "Export notes as Markdown files", "Active",
   WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/Sample%20Project/_workitems/edit/4821", null, "Sample Project\\Sprint 47",
   "Sample Project\\Notes app", 4790);
-const pullRequest: HostReference = new HostReference("git-azure-devops", "fabrikam", "portal-web", 482);
+const pullRequest: HostReference = new HostReference("git-azure-devops", "fabrikam", "garden-web", 482);
 const detail: HostWorkItemDetail = new HostWorkItemDetail(item, 5, 6, 8, 1000.5, "Readers see a due date 48 h and 2 h before it is due.",
   [4830, 4831, 4832], [pullRequest], 5, ["users/ana/4821-export-notes-markdown"], true);
 

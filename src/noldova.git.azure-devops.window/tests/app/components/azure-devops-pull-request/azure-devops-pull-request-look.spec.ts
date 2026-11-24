@@ -352,7 +352,7 @@ describe("AzureDevOpsPullRequestComponent in the kit's look", () => {
   it.each(AppearanceFixture.modes)("sets a build number in the muted monospace beside its policy's or build's name, on its line, and running after the requirement at the card's"
     + " inset, in %s mode", async mode => {
     const fixture = await openAsync(mode, 40, new HostPullRequest(item, [], [
-      new HostPolicy("Build: portal-web PR validation", PolicyState.Approved, true, null, "20261121.4"),
+      new HostPolicy("Build: garden-web PR validation", PolicyState.Approved, true, null, "20261121.4"),
       new HostPolicy("Build: dependency scan", PolicyState.Running, false, null)
     ], [new HostBuild("PR validation", CheckState.Succeeded, "https://dev.azure.com/fabrikam/web/_build/results?buildId=7", 1_800_000_000_000, 1_800_000_372_000,
       "20261121.4")], false, "", 1, []));

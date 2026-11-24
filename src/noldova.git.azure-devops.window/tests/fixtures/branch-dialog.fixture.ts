@@ -22,7 +22,7 @@ import { RequestAnswers } from "./request-answers.fixture.ts";
 
 export class BranchDialogData {
   public static readonly request: BranchRequest = new BranchRequest("/repository", "fabrikam", 4832, "Tag filter ignores case in note titles");
-  public static readonly azure: GitRemote = new GitRemote("origin", "dev.azure.com", "fabrikam/Sample Project/_git/portal-web", RemoteTransport.Https);
+  public static readonly azure: GitRemote = new GitRemote("origin", "dev.azure.com", "fabrikam/Sample Project/_git/garden-web", RemoteTransport.Https);
   public static readonly head: string = "1a2b3c4d".repeat(5);
   public static readonly parentBranch: string = "users/ana/4821-export-notes-markdown";
   public static readonly task: HostWorkItemType = new HostWorkItemType("Task", "A4880A", "icon_clipboard");

@@ -26,7 +26,7 @@ describe("HostPolicy", () => {
   });
 
   it("carries the number of the build a build policy ran when the host gives one, none by default, and reads JSON without it as none", () => {
-    const build: HostPolicy = new HostPolicy("Build: portal-web PR validation", PolicyState.Approved, true, null, "20261121.4");
+    const build: HostPolicy = new HostPolicy("Build: garden-web PR validation", PolicyState.Approved, true, null, "20261121.4");
     const { buildNumber: _found, ...older } = reviewers.toJson();
 
     assert.deepEqual([build.buildNumber, build.toJson()["buildNumber"], HostPolicy.fromJson(build.toJson()), reviewers.buildNumber, HostPolicy.fromJson(older).buildNumber],

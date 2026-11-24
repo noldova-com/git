@@ -67,7 +67,7 @@ describe("AzureDevOpsWorkItemComponent", () => {
   });
 
   it("finds the project from the open repository's Azure DevOps remote when the instance names none", async () => {
-    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/portal-web")));
+    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/garden-web")));
     const page = new Page();
     page.requests.answer(GitNames.statusMethod, azureStatus.toJson(), azureStatus.toJson());
     page.requests.answer(GitNames.graphMethod, new GitGraph([], false).toJson());
@@ -77,8 +77,8 @@ describe("AzureDevOpsWorkItemComponent", () => {
 
     expect([...page.requests.methods].map(String).sort()).toEqual([GitNames.graphMethod, GitNames.messageReferencesMethod, AzureDevOpsNames.readWorkItemsMethod,
       GitNames.statusMethod, GitNames.statusMethod].sort());
-    expect(page.requests.payloads.filter((_, i) => ![GitNames.graphMethod, GitNames.messageReferencesMethod].includes(String(page.requests.methods[i])))).toEqual([new GitFolderParams("/work/portal-web").toJson(),
-      new GitFolderParams("/work/portal-web").toJson(), mineQuery().toJson()]);
+    expect(page.requests.payloads.filter((_, i) => ![GitNames.graphMethod, GitNames.messageReferencesMethod].includes(String(page.requests.methods[i])))).toEqual([new GitFolderParams("/work/garden-web").toJson(),
+      new GitFolderParams("/work/garden-web").toJson(), mineQuery().toJson()]);
     expect(page.texts(".item")).toHaveLength(6);
   });
 
@@ -174,7 +174,7 @@ describe("AzureDevOpsWorkItemComponent", () => {
   });
 
   it("logs a repository read the window fails under the status method", async () => {
-    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/portal-web")));
+    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/garden-web")));
     const page = new Page();
     page.requests.fail(GitNames.statusMethod, new WindowFailure("No repository."));
     page.requests.fail(GitNames.statusMethod, new WindowFailure("No repository."));
@@ -195,7 +195,7 @@ describe("AzureDevOpsWorkItemComponent", () => {
   });
 
   it("reads again for another instance, and drops a list, a repository or a failure for the one it left", async () => {
-    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/portal-web")));
+    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/garden-web")));
     const page = new Page();
     const releaseStatus = page.requests.hold(GitNames.statusMethod);
     page.requests.answer(GitNames.statusMethod, githubStatus.toJson());

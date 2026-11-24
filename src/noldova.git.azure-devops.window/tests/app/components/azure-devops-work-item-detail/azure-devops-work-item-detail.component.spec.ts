@@ -153,7 +153,7 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
   });
 
   it("says no commit read names the shown work item when the repository's history names none", async () => {
-    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/portal-web")));
+    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/garden-web")));
     const page = new Page().answerMine();
     page.requests.answer(GitNames.statusMethod, azureStatus.toJson());
     page.requests.answer(GitNames.graphMethod, new GitGraph([], false).toJson());
@@ -170,7 +170,7 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
   });
 
   it("opens the branch dialog for the shown work item in the open repository", async () => {
-    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/portal-web")));
+    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/garden-web")));
     const page = new Page().answerMine();
     page.requests.answer(GitNames.statusMethod, githubStatus.toJson());
     page.requests.hold(GitNames.statusMethod);
@@ -186,7 +186,7 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
 
   it("lists the open repository's commits among its last 1,000 that name the shown work item in the subject or AB#N in the message, newest first, saying the read stops there",
     async () => {
-      onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/portal-web")));
+      onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/garden-web")));
       const page = new Page().answerMine();
       page.requests.answer(GitNames.statusMethod, azureStatus.toJson());
       page.requests.answer(GitNames.graphMethod, history.toJson());
@@ -211,13 +211,13 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
           "It covers the repository's last 1,000 commits."],
         ["Linked in your history", "Tidy x#4702 and ab#4702 ccccccc · Mona Lisa · 3 d", "It covers the repository's last 1,000 commits."]
       ]);
-      expect(page.requests.payloads[page.requests.methods.indexOf(GitNames.graphMethod)]).toEqual(new GitGraphParams("/work/portal-web", 1000, 0).toJson());
+      expect(page.requests.payloads[page.requests.methods.indexOf(GitNames.graphMethod)]).toEqual(new GitGraphParams("/work/garden-web", 1000, 0).toJson());
       expect(page.requests.methods.filter(t => t === GitNames.graphMethod)).toHaveLength(1);
     });
 
   it("draws each work item a subject names as a chip, its type's icon in its colour, reading one the page hasn't, and dates a commit past 30 days",
     async () => {
-      onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/portal-web")));
+      onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/garden-web")));
       const page = new Page().answerMine();
       page.requests.answer(GitNames.statusMethod, azureStatus.toJson());
       page.requests.answer(GitNames.graphMethod, new GitGraph([new GitGraphCommit(new GitCommit("d".repeat(40), [], "Mona Lisa", "2025-01-05T12:00:00Z",
@@ -240,7 +240,7 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
     });
 
   it("shows a commit in the Git module's history at a click, and logs a history the window can't open", async () => {
-    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/portal-web")));
+    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/garden-web")));
     const page = new Page().answerMine();
     page.requests.answer(GitNames.statusMethod, azureStatus.toJson());
     page.requests.answer(GitNames.graphMethod, history.toJson());
@@ -259,12 +259,12 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
     await Wait.until(() => expect(page.logs).toHaveLength(1));
 
     expect([page.context.callsOf("runCommandAsync"), page.logs, page.find(".history .commit").getAttribute("aria-label")]).toEqual([
-      [["git.openHistory", { folder: "/work/portal-web" }], ["git.openHistory", { folder: "/work/portal-web" }]],
+      [["git.openHistory", { folder: "/work/garden-web" }], ["git.openHistory", { folder: "/work/garden-web" }]],
       ["The Azure DevOps module's git.openHistory request failed: WindowFailure: No Git module."], "Show Read local times AB#4831 and AB#4702 in the history"]);
   });
 
   it("rethrows a failure to open the history that isn't the window's", async () => {
-    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/portal-web")));
+    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/garden-web")));
     const page = new Page().answerMine();
     page.requests.answer(GitNames.statusMethod, azureStatus.toJson());
     page.requests.answer(GitNames.graphMethod, history.toJson());
@@ -296,7 +296,7 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
   });
 
   it("drops a history read for a repository that is no longer open when it comes", async () => {
-    const folder = signal<string | null>("/work/portal-web");
+    const folder = signal<string | null>("/work/garden-web");
     onTestFinished(GitFolder.provide(new FakeWindowPartContext(), folder));
     const page = new Page().answerMine().answerMine();
     page.requests.answer(GitNames.statusMethod, azureStatus.toJson(), githubStatus.toJson());
@@ -315,7 +315,7 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
   });
 
   it("shows no history and logs it when the history read fails", async () => {
-    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/portal-web")));
+    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/garden-web")));
     const page = new Page().answerMine();
     page.requests.answer(GitNames.statusMethod, azureStatus.toJson());
     page.requests.fail(GitNames.graphMethod, new WindowFailure("Not a repository."));
