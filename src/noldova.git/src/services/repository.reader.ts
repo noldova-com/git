@@ -48,9 +48,9 @@ export class RepositoryReader {
     const errors = result.errors.toString(Resources.utf8Encoding);
     if (result.exit.code !== 0 && Resources.unsafeRepositoryPattern.test(errors))
       throw new UnsafeRepositoryException(folder, { text: errors, source: UntrustedSource.Repository });
-    if (result.exit.code !== 0 || !RepositoryReader.isComplete(lines))
+    if (result.exit.code !== 0 || lines.length !== Resources.repositoryLineCount)
       throw new NotARepositoryException(folder);
-    const [top, gitFolder, commonGitFolder] = lines;
+    const [top = "", gitFolder = "", commonGitFolder = ""] = lines;
     return new RepositoryFolders(path.resolve(top), path.resolve(gitFolder), path.resolve(commonGitFolder));
   }
 
@@ -72,9 +72,5 @@ export class RepositoryReader {
         throw new FolderUnreadableException(folder, error);
       throw error;
     }
-  }
-
-  private static isComplete(lines: readonly string[]): lines is readonly [string, string, string, string] {
-    return lines.length === Resources.repositoryLineCount;
   }
 }

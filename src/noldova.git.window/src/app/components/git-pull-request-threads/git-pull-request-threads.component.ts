@@ -128,7 +128,10 @@ export class GitPullRequestThreadsComponent {
   }
 
   protected noteDrafts(): void {
-    this.drafts.update(t => new Map([...t, ...this.draftFields().map((u): [number, string] => [Number(u.nativeElement.dataset[Resources.threadData]), u.nativeElement.value])]));
+    const drafts: Map<number, string> = new Map(this.drafts());
+    for (const field of this.draftFields())
+      drafts.set(Number(field.nativeElement.dataset[Resources.threadData]), field.nativeElement.value);
+    this.drafts.set(drafts);
   }
 
   /** Whether the thread shows its reply field: the person opened it, or it holds a draft. */

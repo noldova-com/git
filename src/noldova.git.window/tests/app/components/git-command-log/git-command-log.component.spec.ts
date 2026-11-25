@@ -18,21 +18,34 @@ import { GitRuntimeClient } from "../../../../src/app/services/git-runtime-clien
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 
+/** A mounted command log, with the errors it reported and the folder the views show. */
+class MountedLog {
+  public readonly fixture: ComponentFixture<GitCommandLogComponent>;
+  public readonly element: HTMLElement;
+  public readonly handled: WritableSignal<string[]>;
+  public readonly shown: WritableSignal<string | null>;
+
+  public constructor(fixture: ComponentFixture<GitCommandLogComponent>, element: HTMLElement, handled: WritableSignal<string[]>, shown: WritableSignal<string | null>) {
+    this.fixture = fixture;
+    this.element = element;
+    this.handled = handled;
+    this.shown = shown;
+  }
+}
+
 describe("GitCommandLogComponent", () => {
   const at: string = "2026-11-22T18:05:00Z";
   const push: GitCommand = new GitCommand("2", at, `git push --porcelain -- origin 8c41e0a:refs/heads/${"feature/".repeat(40)}graph`, 1, 1_250);
   const commands: GitCommandLog = new GitCommandLog([new GitCommand("1", at, "git add -- a.txt", 0, 40), push, new GitCommand("3", at, "git fetch --quiet", null, 30_000)]);
 
-  const mount = (context: FakeWindowPartContext): {
-    readonly fixture: ComponentFixture<GitCommandLogComponent>; readonly element: HTMLElement; readonly handled: WritableSignal<string[]>; readonly shown: WritableSignal<string | null>
-  } => {
+  const mount = (context: FakeWindowPartContext): MountedLog => {
     const shown: WritableSignal<string | null> = GitFixtures.setUp(context);
     const handled: WritableSignal<string[]> = signal<string[]>([]);
     vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.update(t => [...t, String(error)]));
     const fixture: ComponentFixture<GitCommandLogComponent> = TestBed.createComponent(GitCommandLogComponent);
     fixture.componentRef.setInput("instance", GitFixtures.folder);
     fixture.autoDetectChanges();
-    return { fixture, element: fixture.nativeElement, handled, shown };
+    return new MountedLog(fixture, fixture.nativeElement, handled, shown);
   };
   const until = (done: () => boolean): Promise<boolean> => vi.waitUntil(done, { timeout: 5000 });
   const rows = (element: HTMLElement): string[][] =>

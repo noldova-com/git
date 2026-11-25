@@ -62,7 +62,7 @@ const reviewerUrl: string = `https://dev.azure.com/fabrikam/_apis/git/repositori
 const connection = (): Response => FakeAzure.json({ authenticatedUser: { id: personId, providerDisplayName: "Mona Lisa" } });
 const voted = (vote: number): Response => FakeAzure.json({ id: personId, displayName: "Mona Lisa", uniqueName: "monalisa@fabrikam.com", vote, isRequired: true });
 
-function failureOf(error: unknown): readonly [string, string] | null {
+function failureOf(error: unknown): readonly string[] | null {
   return error instanceof MethodFailureException ? [error.failure.code, error.failure.message] : null;
 }
 

@@ -450,17 +450,17 @@ describe("GitViewComponent", () => {
     });
     const rows = (): readonly HTMLElement[] => [...document.querySelectorAll<HTMLElement>("button[nol-menu-item]")];
     const time: string = new Date(at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-    const openAsync = async (count: number): Promise<readonly (readonly [string, boolean])[]> => {
+    const openAsync = async (count: number): Promise<readonly (readonly unknown[])[]> => {
       await view.clickAsync(".title-undo .recent");
       await view.untilAsync(() => rows().length === count);
       const parts = (row: HTMLElement): string => [...row.querySelectorAll("*")].filter(t => t.children.length === 0).map(t => (t.textContent ?? "").trim()).filter(t => t !== "").join("|");
       return rows().map(t => [parts(t), t.getAttribute("aria-disabled") === "true"] as const);
     };
 
-    const empty: readonly (readonly [string, boolean])[] = await openAsync(1);
+    const empty: readonly (readonly unknown[])[] = await openAsync(1);
     await userEvent.keyboard("{Escape}");
     await view.untilAsync(() => rows().length === 0);
-    const listed: readonly (readonly [string, boolean])[] = await openAsync(3);
+    const listed: readonly (readonly unknown[])[] = await openAsync(3);
     await userEvent.keyboard("{Escape}");
     await view.untilAsync(() => rows().length === 0);
     await view.chooseAsync(".title-undo .recent", "Stage on main");

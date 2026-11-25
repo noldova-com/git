@@ -19,7 +19,7 @@ import { GitCommitComments } from "../../../../src/app/models/git-commit-comment
 import { GitCommitView } from "../../../../src/app/models/git-commit-view.ts";
 import { GitPullRequests } from "../../../../src/app/services/git-pull-requests.ts";
 import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
-import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
+import { FixtureLine, GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitViewFixture } from "../../../fixtures/git-view.fixture.ts";
 
 describe("GitCommitDetailComponent's review comments", () => {
@@ -28,7 +28,7 @@ describe("GitCommitDetailComponent's review comments", () => {
   const remote: GitRemote = new GitRemote("origin", "github.com", "example-owner/example-repository", RemoteTransport.Https);
   const commit: GitGraphCommit = new GitGraphCommit(new GitCommit(id, ["d".repeat(40)], "Sample Author", "2026-11-20T14:02:00Z", "Follow renames"), "author@example.com", []);
   const answersOf = (shown: GitRemote | null): Readonly<Record<string, JsonValue>> => ({
-    ...GitFixtures.watching, "git.status": GitFixtures.status([], null, { remote: shown }).toJson(), "git.diff": GitFixtures.diff("src/a.ts", [LineKind.Added, "one"]).toJson(),
+    ...GitFixtures.watching, "git.status": GitFixtures.status([], null, { remote: shown }).toJson(), "git.diff": GitFixtures.diff("src/a.ts", new FixtureLine(LineKind.Added, "one")).toJson(),
     "git.commitDetail": new GitCommitDetail(id, "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson()
   });
   const provide = (host: Partial<IGitPullRequests>): void => {
@@ -71,14 +71,14 @@ describe("GitCommitDetailComponent's review comments", () => {
       ["forum", "4+ review comments on this commit"]]);
   });
 
-  const quiet: readonly (readonly [string, GitRemote | null, Partial<IGitPullRequests>])[] = [
+  const quiet = [
     ["the status names no remote", null, { commentsFor: () => signal(new GitCommitComments(2, false, url)) }],
     ["no host claims the remote", new GitRemote("nas", "nas.home", "notes", RemoteTransport.Ssh), {}],
     ["the host reads no commit's comments", remote, {}],
     ["the host has no answer yet", remote, { commentsFor: () => signal(null) }],
     ["the host counts none", remote, { commentsFor: () => signal(new GitCommitComments(0, false, null)) }],
     ["the host gives no page to open", remote, { commentsFor: () => signal(new GitCommitComments(2, false, null)) }]
-  ];
+  ] as const;
 
   it.each(quiet)("shows no comments row when %s", async (_, shown, host) => {
     provide(host);

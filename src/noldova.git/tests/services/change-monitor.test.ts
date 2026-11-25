@@ -18,6 +18,7 @@ import { FakeModuleLog } from "@noldova/desktop.runtime/testing";
 
 import { TreeWatch } from "../../src/enums/tree-watch.ts";
 import { WatchStart } from "../../src/enums/watch-start.ts";
+import { GitVersion } from "../../src/models/git-version.ts";
 import { RepositoryFolders } from "../../src/models/repository-folders.ts";
 import { Resources } from "../../src/resources.ts";
 import { ChangeMonitor } from "../../src/services/change-monitor.ts";
@@ -32,6 +33,33 @@ import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 vi.mock(import("node:fs"), { spy: true });
 vi.mock(import("node:fs/promises"), { spy: true });
 
+/** A change the monitor announced, by the worktree's key and the change's sequence. */
+interface IChange {
+  readonly key: string;
+  readonly sequence: number;
+}
+
+/** A timer the test holds in place of a real one, fired when the test says. */
+interface IHeldWait {
+  readonly milliseconds: number;
+  readonly fire: () => void;
+  readonly timer: NodeJS.Timeout;
+  isCleared: boolean;
+  isTaken: boolean;
+}
+
+/** A wait for the next held timer of a length. */
+interface IWaitListener {
+  readonly milliseconds: number;
+  readonly resolve: (wait: IHeldWait) => void;
+}
+
+/** A wait until what the count counts has happened. */
+interface IHearing {
+  readonly count: () => number;
+  readonly resolve: () => void;
+}
+
 describe("ChangeMonitor", () => {
   const KEY = "conversation:QA-KEY-7f3c";
   const OTHER = "conversation:QA-KEY-9d2e";
@@ -44,11 +72,11 @@ describe("ChangeMonitor", () => {
   let supervisor: DesktopFixture;
   let monitor: ChangeMonitor;
   let monitorOf: (treeWatch: TreeWatch) => ChangeMonitor;
-  let changes: [string, number][];
+  let changes: IChange[];
   let lines: string[];
-  let waits: { milliseconds: number; fire: () => void; timer: NodeJS.Timeout; isCleared: boolean; isTaken: boolean }[];
-  let asked: { milliseconds: number; resolve: (wait: (typeof waits)[number]) => void }[];
-  let heard: { count: () => number; resolve: () => void }[];
+  let waits: IHeldWait[];
+  let asked: IWaitListener[];
+  let heard: IHearing[];
 
   beforeAll(async () => {
     template = await RepositoryFixture.createAsync();
@@ -77,7 +105,7 @@ describe("ChangeMonitor", () => {
       const [handler, delay] = values;
       if (delay !== DEBOUNCE && delay !== POLL && delay !== TOUCH)
         return original(...values);
-      const wait = { milliseconds: delay, fire: (): void => handler(), timer: original(() => undefined, 2_147_483_647), isCleared: false, isTaken: false };
+      const wait: IHeldWait = { milliseconds: delay, fire: (): void => handler(), timer: original(() => undefined, 2_147_483_647), isCleared: false, isTaken: false };
       waits.push(wait);
       const listener = asked.find(t => t.milliseconds === delay);
       if (listener !== undefined) {
@@ -104,7 +132,7 @@ describe("ChangeMonitor", () => {
       hear();
     });
     monitorOf = treeWatch => new ChangeMonitor(new ProgramRunner(supervisor.context), log, (key, sequence) => {
-      changes.push([key, sequence]);
+      changes.push({ key, sequence });
       hear();
     }, treeWatch);
     monitor = monitorOf(TreeWatch.None);
@@ -119,13 +147,13 @@ describe("ChangeMonitor", () => {
   const branchesFolder = (): string => path.join(repository.gitFolder, "refs", "heads");
   const isCookie = (name: string): boolean => name.startsWith("noldova-watch-");
   const cookiesAsync = async (): Promise<string[][]> => [(await readdir(repository.gitFolder)).filter(isCookie), (await readdir(branchesFolder())).filter(isCookie)];
-  const nextWaitAsync = async (milliseconds: number): Promise<(typeof waits)[number]> => {
+  const nextWaitAsync = async (milliseconds: number): Promise<IHeldWait> => {
     const waiting = waits.find(t => t.milliseconds === milliseconds && !t.isTaken && !t.isCleared);
     if (waiting !== undefined) {
       waiting.isTaken = true;
       return waiting;
     }
-    const { promise, resolve } = Promise.withResolvers<(typeof waits)[number]>();
+    const { promise, resolve } = Promise.withResolvers<IHeldWait>();
     asked.push({ milliseconds, resolve });
     return await promise;
   };
@@ -143,7 +171,7 @@ describe("ChangeMonitor", () => {
         waiting.fire();
         continue;
       }
-      const { promise, resolve } = Promise.withResolvers<(typeof waits)[number]>();
+      const { promise, resolve } = Promise.withResolvers<IHeldWait>();
       const listener = { milliseconds: TOUCH, resolve };
       asked.push(listener);
       const touch = await Promise.race([settled, promise]);
@@ -189,11 +217,11 @@ describe("ChangeMonitor", () => {
     await fireNextAsync(DEBOUNCE);
     await untilChangesAsync(2);
 
-    assert.deepEqual(changes, [[KEY, 1], [KEY, 2]]);
+    assert.deepEqual(changes, [{ key: KEY, sequence: 1 }, { key: KEY, sequence: 2 }]);
   });
 
   test("watches a repository that keeps its refs in a reftable through its table list, hearing its branch move, with its cookie in the git folder only", async context => {
-    context.skip(!(await repository.hasGitAsync([2, 45])), "git keeps refs in a reftable from 2.45; an older git can't make or read one.");
+    context.skip(!(await repository.hasGitAsync(new GitVersion(2, 45))), "git keeps refs in a reftable from 2.45; an older git can't make or read one.");
     const top = path.join(repository.root, "reftable");
     await repository.runGitAsync(["init", "--quiet", "--ref-format=reftable", top]);
     await repository.runGitAsync(["-C", top, "commit", "--quiet", "--allow-empty", "-m", "First"]);
@@ -210,7 +238,7 @@ describe("ChangeMonitor", () => {
     await fireNextAsync(DEBOUNCE);
     await untilChangesAsync(2);
 
-    assert.deepEqual([started, changes, lines], [WatchStart.Seen, [[KEY, 1], [KEY, 2]], []]);
+    assert.deepEqual([started, changes, lines], [WatchStart.Seen, [{ key: KEY, sequence: 1 }, { key: KEY, sequence: 2 }], []]);
     assert.deepEqual([(await readdir(gitFolder)).filter(isCookie), (await readdir(path.join(gitFolder, "reftable"))).filter(isCookie)], [[], []]);
   });
 
@@ -242,7 +270,7 @@ describe("ChangeMonitor", () => {
     await fireNextAsync(DEBOUNCE);
     await untilChangesAsync(1);
 
-    assert.deepEqual([before, changes], [0, [[KEY, 1]]]);
+    assert.deepEqual([before, changes], [0, [{ key: KEY, sequence: 1 }]]);
   });
 
   test("refreshes when the file system names no file for a change", async () => {
@@ -256,7 +284,7 @@ describe("ChangeMonitor", () => {
     await fireNextAsync(DEBOUNCE);
     await untilChangesAsync(1);
 
-    assert.deepEqual(changes, [[KEY, 1]]);
+    assert.deepEqual(changes, [{ key: KEY, sequence: 1 }]);
   });
 
   test("announces the module's own write at once without reading the status, and holds back the refreshes its changes start while it runs", async () => {
@@ -271,7 +299,7 @@ describe("ChangeMonitor", () => {
     const during = [changes.length, reads(), waits.slice(earlier).map(t => t.milliseconds)];
     monitor.notifyWritten(KEY);
 
-    assert.deepEqual([during, changes, reads()], [[0, 0, [POLL]], [[KEY, 1]], 0]);
+    assert.deepEqual([during, changes, reads()], [[0, 0, [POLL]], [{ key: KEY, sequence: 1 }], 0]);
   });
 
   test("skips a refresh a write began during its wait, drops a status read a write began during, and ignores writes to a key it doesn't watch", async () => {
@@ -303,7 +331,7 @@ describe("ChangeMonitor", () => {
     await hooked.promise;
     await monitor.disposeAsync();
 
-    assert.deepEqual([monitor.generationOf(OTHER), skipped, reads.mock.calls.length > 0, changes], [0, 0, true, [[KEY, 1]]]);
+    assert.deepEqual([monitor.generationOf(OTHER), skipped, reads.mock.calls.length > 0, changes], [0, 0, true, [{ key: KEY, sequence: 1 }]]);
   });
 
   test("stays quiet when a refresh after a write finds the status a read took once the write ended, but not one a read took while it ran", async () => {
@@ -327,7 +355,7 @@ describe("ChangeMonitor", () => {
     await fireNextAsync(DEBOUNCE);
     await monitor.disposeAsync();
 
-    assert.deepEqual(changes, [[KEY, 1], [KEY, 2], [KEY, 3]]);
+    assert.deepEqual(changes, [{ key: KEY, sequence: 1 }, { key: KEY, sequence: 2 }, { key: KEY, sequence: 3 }]);
   });
 
   test("polls while the pane is visible, finding a further edit to a changed file, and stops when it is hidden, once however often", async () => {
@@ -352,7 +380,7 @@ describe("ChangeMonitor", () => {
     monitor.setVisible(KEY, false);
     await monitor.disposeAsync();
 
-    assert.deepEqual(changes, [[KEY, 1], [KEY, 2], [KEY, 3]]);
+    assert.deepEqual(changes, [{ key: KEY, sequence: 1 }, { key: KEY, sequence: 2 }, { key: KEY, sequence: 3 }]);
     assert.deepEqual([poll.isCleared, waits.slice(earlier).filter(t => t.milliseconds === POLL).length], [true, 3]);
     const statuses = supervisor.requests.filter(t => t.arguments.includes("status"));
     assert.equal(statuses.length, 3);
@@ -392,7 +420,7 @@ describe("ChangeMonitor", () => {
     await fireNextAsync(DEBOUNCE);
     await untilChangesAsync(3);
 
-    assert.deepEqual(changes, [[KEY, 1], [KEY, 2], [KEY, 3]]);
+    assert.deepEqual(changes, [{ key: KEY, sequence: 1 }, { key: KEY, sequence: 2 }, { key: KEY, sequence: 3 }]);
   });
 
   test("waits on disposal for a refresh that ends after its worktree is unwatched, neither announcing nor logging it", async () => {
@@ -421,7 +449,7 @@ describe("ChangeMonitor", () => {
 
     await monitor.disposeAsync();
 
-    assert.deepEqual(changes, [[KEY, 1]]);
+    assert.deepEqual(changes, [{ key: KEY, sequence: 1 }]);
   });
 
   test("logs a watcher's error with its folder, never the key, and closes it", async () => {
@@ -474,7 +502,7 @@ describe("ChangeMonitor", () => {
     await fireNextAsync(DEBOUNCE);
     await untilChangesAsync(1);
 
-    assert.deepEqual([start, heard.sort(), left, changes, lines], [WatchStart.Seen, ["branches", "git folder"], [[], []], [[KEY, 1]], []]);
+    assert.deepEqual([start, heard.sort(), left, changes, lines], [WatchStart.Seen, ["branches", "git folder"], [[], []], [{ key: KEY, sequence: 1 }], []]);
   });
 
   test("counts a watch whose cookie it never hears as started at the poll's first tick and logs the folder, leaving the live cookie out of git's status and another watch's cleanup", async () => {
@@ -525,7 +553,7 @@ describe("ChangeMonitor", () => {
 
   test("keeps writing a cookie it can't write again until the poll's first tick, and fails on any other error writing it", async () => {
     const touched: unknown[] = [];
-    const watchUnheardAsync = async (): Promise<(typeof waits)[number]> => {
+    const watchUnheardAsync = async (): Promise<IHeldWait> => {
       const earlier = vi.mocked(watch).mock.results.length;
       const writes = vi.mocked(writeFile).mock.calls.length;
       monitor.watch(KEY, repository.folder, folders());
@@ -538,7 +566,7 @@ describe("ChangeMonitor", () => {
       branches.emit("change", "rename", path.basename(branchCookie));
       return touch;
     };
-    const failTouchAsync = async (touch: (typeof waits)[number], error: Error): Promise<void> => {
+    const failTouchAsync = async (touch: IHeldWait, error: Error): Promise<void> => {
       const { promise, resolve } = Promise.withResolvers<void>();
       // The module's functions are spies over Node's own, so only the touch's write is replaced, once.
       vi.mocked(writeFile).mockImplementationOnce(async file => {
@@ -617,9 +645,10 @@ describe("ChangeMonitor", () => {
     const QUIET = 300;
     const LONGEST = 2_000;
     interface ICheck { readonly names: readonly string[]; readonly isShown: boolean }
+    interface IChecks { readonly untilAsync: (matches: (check: ICheck) => boolean) => Promise<ICheck> }
 
     /** Records each check of what git ignores, answering from the real one unless told to fail, and waits for one that matches. */
-    const checksOf = (refusing: (names: readonly string[]) => boolean = () => false): { readonly untilAsync: (matches: (check: ICheck) => boolean) => Promise<ICheck> } => {
+    const checksOf = (refusing: (names: readonly string[]) => boolean = () => false): IChecks => {
       const seen: ICheck[] = [];
       let listeners: (() => boolean)[] = [];
       const original = IgnoredPaths.prototype.hasShownAsync;
@@ -680,7 +709,7 @@ describe("ChangeMonitor", () => {
       await fireNextAsync(DEBOUNCE);
       await untilChangesAsync(2);
 
-      assert.deepEqual([built.isShown, debounces, edited.isShown, changes], [false, 1, true, [[KEY, 1], [KEY, 2]]]);
+      assert.deepEqual([built.isShown, debounces, edited.isShown, changes], [false, 1, true, [{ key: KEY, sequence: 1 }, { key: KEY, sequence: 2 }]]);
       assert.deepEqual([waits.slice(started).filter(t => t.milliseconds === POLL).length, vi.mocked(timers.setTimeout).mock.calls.some(t => t[1] === 60_000), lines], [0, true, []]);
     });
 
@@ -746,7 +775,7 @@ describe("ChangeMonitor", () => {
       monitor.unwatch(KEY);
 
       assert.deepEqual([hidden, waiting > 0, longest !== undefined && vi.mocked(timers.clearTimeout).mock.calls.some(t => t[0] === longest), changes],
-        [0, true, true, [[KEY, 1]]]);
+        [0, true, true, [{ key: KEY, sequence: 1 }]]);
     });
 
     test("checks a shown worktree every few seconds when its files can't be watched, or once their watch fails, logging the folder", async () => {

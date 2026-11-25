@@ -26,6 +26,7 @@ import { GitRuntimeClient } from "../../services/git-runtime-client.ts";
 import { GitViewOptions } from "../../services/git-view-options.ts";
 import { GitViewStateService } from "../../services/git-view-state.service.ts";
 import { GitReferenceTextComponent } from "../git-reference-text/git-reference-text.component.ts";
+import type { GitRebaseRowPlan } from "../../models/git-rebase-row-plan.ts";
 
 /** A row's check as the screen shows it: its icon, the icon's tone and the text. */
 interface IRowCheck {
@@ -109,7 +110,7 @@ export class GitRebaseComponent {
   protected readonly foldFixups: WritableSignal<boolean> = signal(true);
   /** Each row's check, while it matches the rows; `null` while a check runs, and empty when git couldn't check. */
   protected readonly stepChecks: WritableSignal<readonly GitRebaseStepCheck[] | null> = signal<readonly GitRebaseStepCheck[] | null>(null);
-  protected readonly planned: Signal<ReturnType<typeof GitRebaseRow.planOf>> = computed(() => GitRebaseRow.planOf(this.rows()));
+  protected readonly planned: Signal<GitRebaseRowPlan> = computed(() => GitRebaseRow.planOf(this.rows()));
   protected readonly valid: Signal<boolean> = computed(() => GitRebaseRow.isValid(this.rows()));
   /** Each row with its check. */
   protected readonly items: Signal<readonly IRowItem[]> = computed(() =>

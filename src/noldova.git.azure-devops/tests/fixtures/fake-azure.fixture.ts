@@ -32,9 +32,15 @@ export class FakeRequest {
   }
 }
 
+/** A wait until a count is reached. */
+interface ICountWaiter {
+  readonly count: number;
+  readonly resolve: () => void;
+}
+
 export class FakeAzure {
   private readonly answers: (() => Promise<Response>)[] = [];
-  private readonly waiters: { readonly count: number; readonly resolve: () => void }[] = [];
+  private readonly waiters: ICountWaiter[] = [];
 
   public readonly requests: FakeRequest[] = [];
   public readonly fetch = (url: string, init: RequestInit): Promise<Response> => {

@@ -23,6 +23,32 @@ import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 
+/** A mounted repository panel, with the folder the views show and the errors it reported. */
+class MountedRepository {
+  public readonly fixture: ComponentFixture<GitRepositoryComponent>;
+  public readonly element: HTMLElement;
+  public readonly folder: WritableSignal<string | null>;
+  public readonly handled: WritableSignal<string[]>;
+
+  public constructor(fixture: ComponentFixture<GitRepositoryComponent>, element: HTMLElement, folder: WritableSignal<string | null>, handled: WritableSignal<string[]>) {
+    this.fixture = fixture;
+    this.element = element;
+    this.folder = folder;
+    this.handled = handled;
+  }
+}
+
+/** The repository panel and the history beside it. */
+class PanelAndHistory {
+  public readonly element: HTMLElement;
+  public readonly history: HTMLElement;
+
+  public constructor(element: HTMLElement, history: HTMLElement) {
+    this.element = element;
+    this.history = history;
+  }
+}
+
 describe("GitRepositoryComponent reads and writes", () => {
   const answers: Readonly<Record<string, JsonValue>> = {
     ...GitFixtures.watching,
@@ -47,15 +73,13 @@ describe("GitRepositoryComponent reads and writes", () => {
     });
   };
 
-  const mount = (context: FakeWindowPartContext): {
-    readonly fixture: ComponentFixture<GitRepositoryComponent>; readonly element: HTMLElement; readonly folder: WritableSignal<string | null>; readonly handled: WritableSignal<string[]>;
-  } => {
+  const mount = (context: FakeWindowPartContext): MountedRepository => {
     const folder: WritableSignal<string | null> = GitFixtures.setUp(context);
     const handled: WritableSignal<string[]> = signal<string[]>([]);
     vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.update(t => [...t, String(error)]));
     const fixture: ComponentFixture<GitRepositoryComponent> = TestBed.createComponent(GitRepositoryComponent);
     fixture.autoDetectChanges();
-    return { fixture, element: fixture.nativeElement, folder, handled };
+    return new MountedRepository(fixture, fixture.nativeElement, folder, handled);
   };
 
   const find = (element: HTMLElement, selector: string): HTMLElement => {
@@ -108,7 +132,7 @@ describe("GitRepositoryComponent reads and writes", () => {
       new GitGraphCommit(new GitCommit(feature, [], "Sample Author", "2026-11-05T17:30:00Z", "First"), "author@example.com", [new GitRef(RefKind.Branch, "feature")])
     ], false);
 
-    const mountWithHistory = (context: FakeWindowPartContext): { readonly element: HTMLElement; readonly history: HTMLElement } => {
+    const mountWithHistory = (context: FakeWindowPartContext): PanelAndHistory => {
       onTestFinished(() => {
         GitViewing.branch.set(null);
         GitViewing.showChanges(GitFixtures.folder);
@@ -120,7 +144,7 @@ describe("GitRepositoryComponent reads and writes", () => {
       fixture.autoDetectChanges();
       document.body.prepend(element);
       onTestFinished(() => element.remove());
-      return { element, history: fixture.nativeElement };
+      return new PanelAndHistory(element, fixture.nativeElement);
     };
     const historyRow = (element: HTMLElement): HTMLElement => find(element, "button.row.history");
     const until = (done: () => boolean): Promise<boolean> => vi.waitUntil(done, { timeout: 5000 });

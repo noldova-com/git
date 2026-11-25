@@ -11,6 +11,7 @@ import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import { describe, expect, it } from "vitest";
 
 import { GitVisibleDirective } from "../../../../src/app/components/git-workspace/git-visible.directive.ts";
+import { CountWaiter } from "../../../fixtures/count-waiter.fixture.ts";
 
 @Component({
   imports: [GitVisibleDirective],
@@ -22,22 +23,22 @@ import { GitVisibleDirective } from "../../../../src/app/components/git-workspac
 })
 class HostComponent {
   public readonly seen: boolean[] = [];
-  private waiters: readonly (readonly [number, () => void])[] = [];
+  private waiters: readonly CountWaiter[] = [];
 
   /** Resolves once the directive has reported as many times as asked. */
   public reportsAsync(count: number): Promise<void> {
     if (this.seen.length >= count)
       return Promise.resolve();
     return new Promise(resolve => {
-      this.waiters = [...this.waiters, [count, resolve]];
+      this.waiters = [...this.waiters, new CountWaiter(count, resolve)];
     });
   }
 
   protected report(visible: boolean): void {
     this.seen.push(visible);
-    for (const waiter of this.waiters.filter(t => t[0] <= this.seen.length))
-      waiter[1]();
-    this.waiters = this.waiters.filter(t => t[0] > this.seen.length);
+    for (const waiter of this.waiters.filter(t => t.count <= this.seen.length))
+      waiter.resolve();
+    this.waiters = this.waiters.filter(t => t.count > this.seen.length);
   }
 }
 

@@ -12,10 +12,10 @@ import { describe, expect, it, onTestFinished } from "vitest";
 
 import { GitCodeSpan } from "../../../src/app/models/git-code-span.ts";
 import { GitDiffRow } from "../../../src/app/models/git-diff-row.ts";
-import { GitFixtures } from "../../fixtures/git-fixtures.fixture.ts";
+import { FixtureLine, GitFixtures } from "../../fixtures/git-fixtures.fixture.ts";
 
 describe("GitCodeSpan", () => {
-  const rows = (...lines: readonly [LineKind, string][]): readonly GitDiffRow[] => GitDiffRow.rowsOf(GitFixtures.diff("a.ts", ...lines).files[0] ?? null);
+  const rows = (...lines: readonly FixtureLine[]): readonly GitDiffRow[] => GitDiffRow.rowsOf(GitFixtures.diff("a.ts", ...lines).files[0] ?? null);
   const typescriptAsync = async (): Promise<ShikiLineTokenizer | null> => {
     const tokenizer: ShikiLineTokenizer | null = await ShikiLineTokenizer.createAsync("typescript");
     onTestFinished(() => tokenizer?.[Symbol.dispose]());
@@ -29,17 +29,17 @@ describe("GitCodeSpan", () => {
   it("cuts each row by the editor's tokenizer behind its plain sign, carrying the new side's state through context and added rows and the old side's through context and removed rows", async () => {
     const tokenizer: ShikiLineTokenizer | null = await typescriptAsync();
     const spans: readonly (readonly GitCodeSpan[])[] = GitCodeSpan.rowsOf(rows(
-      [LineKind.Context, "const a = 1;"], [LineKind.Removed, "/* old"], [LineKind.Removed, "end */ let x;"], [LineKind.Added, "const b = 2;"]), tokenizer);
+      new FixtureLine(LineKind.Context, "const a = 1;"), new FixtureLine(LineKind.Removed, "/* old"), new FixtureLine(LineKind.Removed, "end */ let x;"), new FixtureLine(LineKind.Added, "const b = 2;")), tokenizer);
 
     expect(summary(spans)).toEqual(["|", "|const", "/* old|", "end */|let", "|const"]);
     expect(spans.map(t => t[0])).toEqual(["@@ -1,1 +1,2 @@", " ", "-", "-", "+"].map(t => new GitCodeSpan(t)));
     expect(spans.map(t => t.map(u => u.text).join(""))).toEqual(rows(
-      [LineKind.Context, "const a = 1;"], [LineKind.Removed, "/* old"], [LineKind.Removed, "end */ let x;"], [LineKind.Added, "const b = 2;"]).map(t => t.text));
+      new FixtureLine(LineKind.Context, "const a = 1;"), new FixtureLine(LineKind.Removed, "/* old"), new FixtureLine(LineKind.Removed, "end */ let x;"), new FixtureLine(LineKind.Added, "const b = 2;")).map(t => t.text));
   });
 
   it("starts both sides again after a note, and leaves every row one plain run without a tokenizer", async () => {
     const tokenizer: ShikiLineTokenizer | null = await typescriptAsync();
-    const diff: readonly GitDiffRow[] = rows([LineKind.Context, "/* open"], [LineKind.NoNewlineAtEnd, ""], [LineKind.Added, "const b = 2;"], [LineKind.Added, ""]);
+    const diff: readonly GitDiffRow[] = rows(new FixtureLine(LineKind.Context, "/* open"), new FixtureLine(LineKind.NoNewlineAtEnd, ""), new FixtureLine(LineKind.Added, "const b = 2;"), new FixtureLine(LineKind.Added, ""));
 
     expect(summary(GitCodeSpan.rowsOf(diff, tokenizer))).toEqual(["|", "/* open|", "|", "|const", "|"]);
     expect(GitCodeSpan.rowsOf(diff, tokenizer).at(-1)).toEqual([new GitCodeSpan("+")]);

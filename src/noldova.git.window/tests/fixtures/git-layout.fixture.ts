@@ -28,12 +28,12 @@ export class GitLayout {
       else if (style.textOverflow !== "ellipsis")
         problems.push(`clips: ${GitLayout.nameOf(element)}`);
     }
-    const seen: readonly [HTMLElement, readonly DOMRect[]][] = texts.map(t => [t, GitLayout.visibleRectsOf(t, root)]);
+    const seen: ReadonlyMap<HTMLElement, readonly DOMRect[]> = new Map(texts.map(t => [t, GitLayout.visibleRectsOf(t, root)]));
     for (const [text, rects] of seen)
       if (rects.some(t => t.left < area.left - GitLayout.SLACK || t.right > area.right + GitLayout.SLACK))
         problems.push(`leaves the screen: ${GitLayout.nameOf(text)}`);
-    seen.forEach(([text, rects], i) => {
-      for (const [other, others] of seen.slice(i + 1))
+    [...seen].forEach(([text, rects], i) => {
+      for (const [other, others] of [...seen].slice(i + 1))
         if (!text.contains(other) && !other.contains(text) && GitLayout.overlaps(rects, others))
           problems.push(`overlaps: ${GitLayout.nameOf(text)} and ${GitLayout.nameOf(other)}`);
     });

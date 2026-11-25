@@ -12,6 +12,7 @@ import type { IWindowPartContext } from "@noldova/desktop.window";
 
 import { GitFolderProvidedException } from "../exceptions/git-folder-provided.exception.ts";
 import type { IGitFolderProvider } from "../interfaces/i-git-folder-provider.ts";
+import { GitFolderPage } from "../models/git-folder-page.ts";
 import { GitFolderRead } from "../models/git-folder-read.ts";
 import { Resources } from "../../resources.ts";
 
@@ -21,12 +22,12 @@ export class GitFolder {
 
   private static readonly provider: WritableSignal<IGitFolderProvider | null> = signal(null);
   private static readonly shown: WritableSignal<string | null> = signal<string | null>(null);
-  private static readonly pages: WritableSignal<readonly (readonly [Signal<string>, Signal<boolean>])[]> = signal<readonly (readonly [Signal<string>, Signal<boolean>])[]>([]);
-  private static readonly active: Signal<readonly [Signal<string>, Signal<boolean>] | undefined> = computed(() => GitFolder.pages().find(([, active]) => active()));
+  private static readonly pages: WritableSignal<readonly GitFolderPage[]> = signal<readonly GitFolderPage[]>([]);
+  private static readonly active: Signal<GitFolderPage | undefined> = computed(() => GitFolder.pages().find(t => t.active()));
   /** The followed document that was active last, kept while a document that follows none is in front. */
-  private static readonly lastActive: Signal<readonly [Signal<string>, Signal<boolean>] | undefined> = linkedSignal({
+  private static readonly lastActive: Signal<GitFolderPage | undefined> = linkedSignal<GitFolderPage | undefined, GitFolderPage | undefined>({
     source: GitFolder.active,
-    computation: (page: readonly [Signal<string>, Signal<boolean>] | undefined, previous?: { value: readonly [Signal<string>, Signal<boolean>] | undefined }) => page ?? previous?.value
+    computation: (page, previous) => page ?? previous?.value
   });
   private static readonly provided: Signal<GitFolderRead> = computed(() => GitFolder.read());
 
@@ -59,17 +60,17 @@ export class GitFolder {
    * long as it is followed. The views read the page's signals themselves, so they follow the tab in front even while a page gets no change detection.
    */
   public static follow(folder: Signal<string>, active: Signal<boolean>): () => void {
-    const page: readonly [Signal<string>, Signal<boolean>] = [folder, active];
+    const page: GitFolderPage = new GitFolderPage(folder, active);
     GitFolder.pages.set([...GitFolder.pages(), page]);
     return () => GitFolder.pages.set(GitFolder.pages().filter(t => t !== page));
   }
 
   private static read(): GitFolderRead {
     const provider: IGitFolderProvider | null = GitFolder.provider();
-    const page: readonly [Signal<string>, Signal<boolean>] | undefined = GitFolder.active();
-    const last: readonly [Signal<string>, Signal<boolean>] | undefined = GitFolder.lastActive();
-    const kept: string | null = !Object.isUndefined(last) && GitFolder.pages().includes(last) ? last[0]() : null;
-    const shown: string | null = page?.[0]() ?? GitFolder.shown() ?? kept;
+    const page: GitFolderPage | undefined = GitFolder.active();
+    const last: GitFolderPage | undefined = GitFolder.lastActive();
+    const kept: string | null = !Object.isUndefined(last) && GitFolder.pages().includes(last) ? last.folder() : null;
+    const shown: string | null = page?.folder() ?? GitFolder.shown() ?? kept;
     if (Object.isNull(provider))
       return new GitFolderRead(null, null);
     let folder: string | null;

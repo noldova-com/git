@@ -48,6 +48,7 @@ import { GitWorkspaceSides } from "../../services/git-workspace-sides.ts";
 import { GitBulkBranchDialogComponent } from "../git-bulk-branch-dialog/git-bulk-branch-dialog.component.ts";
 import { GitReferenceTextComponent } from "../git-reference-text/git-reference-text.component.ts";
 import { GitVisibleDirective } from "./git-visible.directive.ts";
+import { GitWorkspaceViewCount } from "../../models/git-workspace-view-count.ts";
 
 /**
  * A workspace's page: its repositories in rows, each with its branch, how far it is from its upstream, its changes and its branch's pull
@@ -100,8 +101,8 @@ export class GitWorkspaceComponent {
     return this.allRows().filter(t => (filter.length === 0 || t.folder.toLowerCase().includes(filter)) && (Object.isNull(view) || t.views().has(view)));
   });
   /** Each view with how many of the repositories read so far it shows. */
-  protected readonly views: Signal<readonly (readonly [GitWorkspaceView, number])[]> = computed(() =>
-    Object.values(GitWorkspaceView).map(view => [view, this.allRows().filter(t => t.views().has(view)).length] as const));
+  protected readonly views: Signal<readonly GitWorkspaceViewCount[]> = computed(() =>
+    Object.values(GitWorkspaceView).map(view => new GitWorkspaceViewCount(view, this.allRows().filter(t => t.views().has(view)).length)));
   protected readonly hosts: Signal<readonly GitWorkspaceHost[]> = computed(() => GitWorkspaceHost.listOf(this.allRows(), t => GitPullRequests.of(t)));
   /** What the Workspaces view shows of the page while it is in front. */
   protected readonly side: Signal<GitWorkspaceSide> = computed(() => new GitWorkspaceSide(this.workspace()?.id ?? null, this.view, this.views, this.hosts,

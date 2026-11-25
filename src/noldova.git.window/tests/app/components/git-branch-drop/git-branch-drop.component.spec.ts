@@ -14,13 +14,26 @@ import { describe, expect, it } from "vitest";
 import { GitBranchDropComponent } from "../../../../src/app/components/git-branch-drop/git-branch-drop.component.ts";
 import { GitBranchDrop } from "../../../../src/app/models/git-branch-drop.ts";
 
+/** A rendered drop panel, with the events it sent, in order. */
+class RenderedDrop {
+  public readonly fixture: ComponentFixture<GitBranchDropComponent>;
+  public readonly element: HTMLElement;
+  public readonly events: string[];
+
+  public constructor(fixture: ComponentFixture<GitBranchDropComponent>, element: HTMLElement, events: string[]) {
+    this.fixture = fixture;
+    this.element = element;
+    this.events = events;
+  }
+}
+
 describe("GitBranchDropComponent", () => {
   const a: string = "a".repeat(40);
   const b: string = "b".repeat(40);
   const intoMain: GitBranchDrop = new GitBranchDrop("feature", b, "main", a, "main", true);
 
   const render = (drop: GitBranchDrop, prediction: GitPrediction | null, checking: boolean = false, busy: boolean = false, request: string | null = null):
-  { readonly fixture: ComponentFixture<GitBranchDropComponent>; readonly element: HTMLElement; readonly events: string[] } => {
+  RenderedDrop => {
     const fixture: ComponentFixture<GitBranchDropComponent> = TestBed.createComponent(GitBranchDropComponent);
     const events: string[] = [];
     fixture.componentRef.setInput("drop", drop);
@@ -36,7 +49,7 @@ describe("GitBranchDropComponent", () => {
     fixture.componentInstance.closed.subscribe(() => events.push("closed"));
     fixture.componentInstance.requested.subscribe(t => events.push("requested " + t));
     fixture.autoDetectChanges();
-    return { fixture, element: fixture.nativeElement, events };
+    return new RenderedDrop(fixture, fixture.nativeElement, events);
   };
   /** The element's text, its children's texts apart by a space. */
   const text = (element: HTMLElement, selector: string): string => {

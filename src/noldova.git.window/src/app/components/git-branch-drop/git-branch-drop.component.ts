@@ -80,7 +80,7 @@ export class GitBranchDropComponent {
   protected readonly detail: Signal<string> = computed(() => {
     const drop = this.drop();
     if (!Object.isNull(drop.predicted))
-      return Resources.formatDropChecked(drop);
+      return Resources.formatDropChecked(drop.canMerge, drop.source, drop.target);
     return drop.canMerge || drop.canRebase ? Resources.dropSameCommit : Resources.formatDropUnpredicted(drop.source, drop.target);
   });
 

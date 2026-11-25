@@ -12,6 +12,7 @@ import {
   GitFolderParams, GitGraph, GitGraphParams, GitMessageReferenceKind, GitMessageReferences, GitMessageReferencesParams, GitNames, GitStatus
 } from "@noldova/git.protocol";
 
+import { KeptHistory } from "../models/kept-history.ts";
 import { LinkedHistory } from "../models/linked-history.ts";
 import { Resources } from "../../resources.ts";
 import { AzureDevOpsReferenceLinks } from "./azure-devops-reference-links.ts";
@@ -23,7 +24,7 @@ import { AzureDevOpsReferenceLinks } from "./azure-devops-reference-links.ts";
  */
 export class AzureDevOpsLinkedCommits {
   private readonly context: IWindowPartContext;
-  private kept: { readonly key: string; readonly history: LinkedHistory } | null = null;
+  private kept: KeptHistory | null = null;
 
   public constructor(context: IWindowPartContext) {
     this.context = context;
@@ -47,7 +48,7 @@ export class AzureDevOpsLinkedCommits {
       const messages: GitMessageReferences = GitMessageReferences.fromJson(await this.context.requestAsync(method,
         new GitMessageReferencesParams(folder, GitMessageReferenceKind.AzureBoards, Resources.linkedHistoryLimit).toJson()));
       const history: LinkedHistory = LinkedHistory.of(graph.commits, messages.commits, home, graph.truncated);
-      this.kept = { key, history };
+      this.kept = new KeptHistory(key, history);
       return history;
     }
     catch (error) {

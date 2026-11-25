@@ -17,14 +17,14 @@ import { page } from "vitest/browser";
 import { GitCommitView } from "../../../../src/app/models/git-commit-view.ts";
 import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
 import { GitContrast } from "../../../fixtures/git-contrast.fixture.ts";
-import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
+import { FixtureLine, GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitViewFixture } from "../../../fixtures/git-view.fixture.ts";
 
 describe("GitCommitDetailComponent's diff colors", () => {
   const screenshots: string = "../../../../../../_build/window/screenshots";
   const email: string = "user-1@host-1.example";
 
-  const showAsync = async (path: string, lines: readonly [LineKind, string][]): Promise<GitViewFixture> => {
+  const showAsync = async (path: string, lines: readonly FixtureLine[]): Promise<GitViewFixture> => {
     onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
     GitViewing.show(new GitCommitView(GitFixtures.folder, new GitGraphCommit(
       new GitCommit("c".repeat(40), ["d".repeat(40)], "Sample Author", "2026-11-20T14:02:00Z", "Follow renames"), email, [])));
@@ -48,7 +48,7 @@ describe("GitCommitDetailComponent's diff colors", () => {
   it("colors an open file's diff as the editor does, its signs plain and its lines on their backgrounds, and reads no file in a closed folder", async () => {
     const read = vi.spyOn(ShikiLineTokenizer.prototype, "tokenizeLine");
     onTestFinished(() => read.mockRestore());
-    const view: GitViewFixture = await showAsync("src/services/reader.ts", [[LineKind.Context, "const a = 1;"], [LineKind.Removed, "/* old"], [LineKind.Added, "let b = 2;"]]);
+    const view: GitViewFixture = await showAsync("src/services/reader.ts", [new FixtureLine(LineKind.Context, "const a = 1;"), new FixtureLine(LineKind.Removed, "/* old"), new FixtureLine(LineKind.Added, "let b = 2;")]);
     const lines = (): readonly HTMLElement[] => view.all(".diff > div:not(.meta-line)");
     const colored = (line: Element): string => [...line.querySelectorAll("span")].filter(t => t.className === "token-keyword" || t.className === "token-comment")
       .map(t => `${t.className}:${t.textContent}`).join(" ");

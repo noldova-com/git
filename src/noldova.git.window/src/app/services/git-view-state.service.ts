@@ -25,6 +25,7 @@ import { GitCommitPrefixes } from "./git-commit-prefixes.ts";
 import { GitFolder } from "./git-folder.ts";
 import { GitPendingSwitch } from "./git-pending-switch.ts";
 import { GitRuntimeClient } from "./git-runtime-client.ts";
+import { GitSigningRead } from "../models/git-signing-read.ts";
 
 @Injectable()
 export class GitViewStateService {
@@ -40,7 +41,7 @@ export class GitViewStateService {
   /** Counts the signing reads, so that only the newest one's answer shows. */
   private signingReads: number = 0;
   /** The last signing read's answer and the folder it is for. */
-  private readonly signing: WritableSignal<{ readonly folder: string; readonly signing: GitCommitSigning } | null> = signal(null);
+  private readonly signing: WritableSignal<GitSigningRead | null> = signal<GitSigningRead | null>(null);
 
   public readonly folder: Signal<string | null> = GitFolder.folder;
   public readonly folderFailure: Signal<string | null> = GitFolder.failure;
@@ -168,7 +169,7 @@ export class GitViewStateService {
     try {
       const signing: GitCommitSigning = await this.client.commitSigningAsync(folder);
       if (read === this.signingReads)
-        this.signing.set({ folder, signing });
+        this.signing.set(new GitSigningRead(folder, signing));
     }
     catch (error) {
       if (!GitRuntimeClient.isFailure(error))

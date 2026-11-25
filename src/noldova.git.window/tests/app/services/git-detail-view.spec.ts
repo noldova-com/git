@@ -28,7 +28,7 @@ describe("GitDetailView", () => {
     const second: WritableSignal<number | null> = signal(null);
     const firstActive: WritableSignal<boolean> = signal(true);
     const secondActive: WritableSignal<boolean> = signal(false);
-    const seen: (readonly [number | null, number | null | undefined])[] = [[detail.shown(), detail.front()]];
+    const seen: (readonly unknown[])[] = [[detail.shown(), detail.front()]];
     const look = (): void => {
       seen.push([detail.shown(), detail.front()]);
     };

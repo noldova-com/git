@@ -21,7 +21,7 @@ import { FakeAzure } from "../fixtures/fake-azure.fixture.ts";
 const signal: AbortSignal = new AbortController().signal;
 const url: string = "https://dev.azure.com/fabrikam/_apis/git/repositories/3411ebc1-d5aa-464f-9615-0b527bc66719/pullrequests/12?api-version=7.1";
 
-function failureOf(error: unknown): readonly [string, string] | null {
+function failureOf(error: unknown): readonly string[] | null {
   return error instanceof MethodFailureException ? [error.failure.code, error.failure.message] : null;
 }
 

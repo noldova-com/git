@@ -25,6 +25,17 @@ import { GitPullRequests } from "../../../src/app/services/git-pull-requests.ts"
 import { GitWorkspacePullRequests } from "../../../src/app/services/git-workspace-pull-requests.ts";
 import { GitFixtures } from "../../fixtures/git-fixtures.fixture.ts";
 
+/** The service under test, with what it reported. */
+class ReportedPullRequests {
+  public readonly pullRequests: GitWorkspacePullRequests;
+  public readonly reported: unknown[];
+
+  public constructor(pullRequests: GitWorkspacePullRequests, reported: unknown[]) {
+    this.pullRequests = pullRequests;
+    this.reported = reported;
+  }
+}
+
 describe("GitWorkspacePullRequests", () => {
   const folder: string = "/work/site";
   const remoteOf = (path: string = "example-owner/site", name: string = "origin"): GitRemote => new GitRemote(name, "github.com", path, RemoteTransport.Https);
@@ -39,14 +50,14 @@ describe("GitWorkspacePullRequests", () => {
       : `${shown.state} ${shown.pullRequest?.label ?? "-"} ${shown.pullRequestState ?? "-"} ${shown.isWaitingForReview} ${shown.passed}/${shown.failing}/${shown.pending}`;
 
   /** Provides a GitHub host whose members answer from the given parts, and a handler that collects what the service reports. */
-  const setUp = (host: Partial<IGitPullRequests> = {}): { readonly pullRequests: GitWorkspacePullRequests; readonly reported: unknown[] } => {
+  const setUp = (host: Partial<IGitPullRequests> = {}): ReportedPullRequests => {
     const errors: ErrorHandler = new ErrorHandler();
     const reported: unknown[] = [];
     vi.spyOn(errors, "handleError").mockImplementation(error => reported.push(error));
     onTestFinished(GitPullRequests.provide(new FakeWindowPartContext(), {
       claims: t => t.host === "github.com", hostName: "GitHub", signInPage: "github.account", listFor: () => signal(null), refresh: () => undefined, ...host
     }));
-    return { pullRequests: new GitWorkspacePullRequests(errors), reported };
+    return new ReportedPullRequests(new GitWorkspacePullRequests(errors), reported);
   };
 
   /** The host the test provided, which claims the GitHub remotes. */
@@ -301,11 +312,10 @@ describe("GitWorkspacePullRequests", () => {
     const { pullRequests } = setUp(host);
     const docs: GitPullRequestRow = new GitPullRequestRow("docs#9", "#9", "Fix a link", "https://github.com/example-owner/docs/pull/9", true, 0, 0, 0, 0, "");
     const site: WritableSignal<GitRepositorySummary | null> = signal(null);
-    const rowsOf = (...rows: readonly (readonly [string, WritableSignal<GitRepositorySummary | null>])[]): readonly GitWorkspaceRow[] =>
-      rows.map(([shown, summary]) => new GitWorkspaceRow(shown, summary, signal(undefined), signal(false)));
-    const repositories: WritableSignal<readonly GitWorkspaceRow[]> = signal(rowsOf(["/work/docs", signal(summaryOf(remoteOf("example-owner/docs")))], ["/work/site", site],
-      ["/work/site-copy", signal(summaryOf(remoteOf("example-owner/site", "upstream")))], ["/work/notes", signal(summaryOf(null))],
-      ["/work/lab", signal(summaryOf(new GitRemote("origin", "gitlab.com", "example-owner/lab", RemoteTransport.Https)))]));
+    const rowOf = (shown: string, summary: WritableSignal<GitRepositorySummary | null>): GitWorkspaceRow => new GitWorkspaceRow(shown, summary, signal(undefined), signal(false));
+    const repositories: WritableSignal<readonly GitWorkspaceRow[]> = signal([rowOf("/work/docs", signal(summaryOf(remoteOf("example-owner/docs")))), rowOf("/work/site", site),
+      rowOf("/work/site-copy", signal(summaryOf(remoteOf("example-owner/site", "upstream")))), rowOf("/work/notes", signal(summaryOf(null))),
+      rowOf("/work/lab", signal(summaryOf(new GitRemote("origin", "gitlab.com", "example-owner/lab", RemoteTransport.Https))))]);
     const reviews: Signal<GitWorkspaceReviews> = pullRequests.reviewsOf(repositories);
     const textOf = (shown: GitWorkspaceReviews): string => `${shown.rows.map(t => `${t.repository} ${t.folder} ${t.row.label}`).join(", ")}${shown.hasMore ? " +" : ""}`;
 

@@ -9,6 +9,7 @@
 import { type GitRebaseCommit, RebaseAction, RebaseStep } from "@noldova/git.protocol";
 
 import { Resources } from "../../resources.ts";
+import { GitRebaseRowPlan } from "./git-rebase-row-plan.ts";
 
 /** One row of the rebase screen: a commit of the branch, what the rebase does with it, and the message a reword or squash gives it. */
 export class GitRebaseRow {
@@ -78,7 +79,7 @@ export class GitRebaseRow {
    * The steps for git and the message each kept commit ends with, oldest first. A reword takes the message written, else its own; a squash takes the message
    * written, else its group's so far with its own after it, as git's default; a fixup keeps its group's.
    */
-  public static planOf(rows: readonly GitRebaseRow[]): { readonly steps: RebaseStep[]; readonly results: string[] } {
+  public static planOf(rows: readonly GitRebaseRow[]): GitRebaseRowPlan {
     const steps: RebaseStep[] = [];
     const results: string[] = [];
     let current = "";
@@ -98,6 +99,6 @@ export class GitRebaseRow {
       }
       steps.push(new RebaseStep(row.commit.id, row.action, message));
     }
-    return { steps, results };
+    return new GitRebaseRowPlan(steps, results);
   }
 }

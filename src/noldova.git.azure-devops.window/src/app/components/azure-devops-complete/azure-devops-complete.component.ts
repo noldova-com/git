@@ -19,10 +19,11 @@ import { ButtonComponent, ButtonVariant, CheckboxComponent, RadioComponent, Radi
 
 import { Resources } from "../../../resources.ts";
 import { CompleteAction } from "../../enums/complete-action.ts";
+import type { MergeTypeChoice } from "../../models/merge-type-choice.ts";
+import { PendingCancel } from "../../models/pending-cancel.ts";
+import { PendingMerge } from "../../models/pending-merge.ts";
+import { PullAfter } from "../../models/pull-after.ts";
 import { PullRequestClone } from "../../models/pull-request-clone.ts";
-import type { MergeTypeChoice } from "../../types/merge-type-choice.ts";
-import type { PendingWrite } from "../../types/pending-write.ts";
-import type { PullAfter } from "../../types/pull-after.ts";
 
 /**
  * The pull request page's Complete panel: the merge types its policies allow, the merge commit's message and what to do after, with one confirm for
@@ -51,7 +52,7 @@ export class AzureDevOpsCompleteComponent {
   protected readonly deleteSourceBranch: WritableSignal<boolean> = signal<boolean>(true);
   protected readonly clone: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly pullAfter: WritableSignal<boolean> = signal<boolean>(false);
-  protected readonly pending: WritableSignal<PendingWrite | null> = signal<PendingWrite | null>(null);
+  protected readonly pending: WritableSignal<PendingMerge | PendingCancel | null> = signal<PendingMerge | PendingCancel | null>(null);
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly mergeType: Signal<MergeTypeChoice | null> = computed(() => {
     const allowed: readonly MergeTypeChoice[] = Resources.mergeTypeChoices.filter(t => (this.allowed() ?? []).includes(t.type));
@@ -114,12 +115,12 @@ export class AzureDevOpsCompleteComponent {
 
   /** Asks once, in the panel, before setting the pull request to complete by itself with the panel's choices. */
   protected askAutoComplete(mergeType: MergeTypeChoice): void {
-    this.ask({ action: CompleteAction.SetAutoComplete, mergeType });
+    this.ask(new PendingMerge(CompleteAction.SetAutoComplete, mergeType));
   }
 
   /** Asks once, in the panel, before stopping the pull request from completing by itself. */
   protected askCancelAutoComplete(): void {
-    this.ask({ action: CompleteAction.CancelAutoComplete });
+    this.ask(new PendingCancel(CompleteAction.CancelAutoComplete));
   }
 
   protected noteOf(type: string, allowed: readonly string[]): string | null {
@@ -138,7 +139,7 @@ export class AzureDevOpsCompleteComponent {
       this.edited.set(field.nativeElement.value);
   }
 
-  protected confirmTextOf(pending: PendingWrite): string {
+  protected confirmTextOf(pending: PendingMerge | PendingCancel): string {
     const { number } = this.pullRequest().item.reference;
     const deleted: string | null = this.deleteSourceBranch() ? this.changes().headBranch : null;
     switch (pending.action) {
@@ -175,25 +176,25 @@ export class AzureDevOpsCompleteComponent {
   }
 
   protected askComplete(mergeType: MergeTypeChoice): void {
-    this.ask({ action: CompleteAction.Complete, mergeType });
+    this.ask(new PendingMerge(CompleteAction.Complete, mergeType));
   }
 
   protected askAbandon(): void {
-    this.ask({ action: CompleteAction.Abandon });
+    this.ask(new PendingCancel(CompleteAction.Abandon));
   }
 
   protected cancel(): void {
     this.pending.set(null);
   }
 
-  protected confirm(pending: PendingWrite): void {
+  protected confirm(pending: PendingMerge | PendingCancel): void {
     this.pending.set(null);
     const reference: JsonValue = this.pullRequest().item.reference.toJson();
     const sourceCommit: string = this.changes().headCommit;
     switch (pending.action) {
       case CompleteAction.Complete: {
         const clone: string | null = this.clone();
-        const pull: PullAfter | null = !Object.isNull(clone) && this.pullAfter() ? { folder: clone, branch: this.changes().baseBranch } : null;
+        const pull: PullAfter | null = !Object.isNull(clone) && this.pullAfter() ? new PullAfter(clone, this.changes().baseBranch) : null;
         void this.writeAsync(AzureDevOpsNames.completePullRequestMethod, this.completionOf(reference, sourceCommit, pending.mergeType.type), pull);
         return;
       }
@@ -208,7 +209,7 @@ export class AzureDevOpsCompleteComponent {
     }
   }
 
-  private ask(pending: PendingWrite): void {
+  private ask(pending: PendingMerge | PendingCancel): void {
     this.failure.set(null);
     this.pending.set(pending);
   }

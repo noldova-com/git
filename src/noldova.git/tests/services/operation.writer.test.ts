@@ -13,14 +13,13 @@ import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
 import { PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
-import { ConflictResolution, GitNames, type GitStatus, OperationKind, UntrustedSource } from "@noldova/git.protocol";
+import { ConflictResolution, GitNames, OperationKind, UntrustedSource } from "@noldova/git.protocol";
 
 import { CommitConflictsException } from "../../src/exceptions/commit-conflicts.exception.ts";
 import { ContinueMarkersLeftException } from "../../src/exceptions/continue-markers-left.exception.ts";
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import { NoOperationException } from "../../src/exceptions/no-operation.exception.ts";
 import { PickStoppedException } from "../../src/exceptions/pick-stopped.exception.ts";
-import type { RepositoryFolders } from "../../src/models/repository-folders.ts";
 import { FilterOptionsReader } from "../../src/services/filter-options.reader.ts";
 import { GitVersionReader } from "../../src/services/git-version.reader.ts";
 import { HooksReader } from "../../src/services/hooks.reader.ts";
@@ -32,6 +31,7 @@ import { ResolveConflictWriter } from "../../src/services/resolve-conflict.write
 import { StatusReader } from "../../src/services/status.reader.ts";
 import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
+import { RepositoryState } from "../fixtures/repository-state.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
 
@@ -78,14 +78,14 @@ describe("OperationWriter", () => {
     await cleanUps.runAsync();
   });
 
-  const readAsync = async (): Promise<[RepositoryFolders, GitStatus]> => {
+  const readAsync = async (): Promise<RepositoryState> => {
     const folders = await repositories.readAsync(repository.folder);
-    return [folders, await statuses.readAsync(folders)];
+    return new RepositoryState(folders, await statuses.readAsync(folders));
   };
   const continuing = (programs: ProgramRunner = runner): OperationWriter => new OperationWriter(programs, hooks, GitNames.continueOperationMethod);
   const aborting = (programs: ProgramRunner = runner): OperationWriter => new OperationWriter(programs, hooks, GitNames.abortOperationMethod);
   const writeAsync = async (write: OperationWriter): Promise<void> => {
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     write.refuse(status);
     await write.runAsync(folders, status);
   };
@@ -115,7 +115,7 @@ describe("OperationWriter", () => {
 
     await writeAsync(continuing());
 
-    const [, stopped] = await readAsync();
+    const { status: stopped } = await readAsync();
     assert.deepEqual([stopped.operation?.kind, stopped.entries.find(t => t.path === "a.txt")?.conflict !== null], [OperationKind.Rebase, true]);
     await resolveAsync("one\nrebased 2\nthree\n");
     await writeAsync(continuing());
@@ -125,7 +125,7 @@ describe("OperationWriter", () => {
 
   test("aborts a merge, putting the branch and the worktree back", async () => {
     await conflictAsync(["merge", "--quiet", "side"]);
-    const [, status] = await readAsync();
+    const { status } = await readAsync();
     assert.doesNotThrow(() => aborting().refuse(status));
 
     await writeAsync(aborting());
@@ -134,14 +134,14 @@ describe("OperationWriter", () => {
   });
 
   test("refuses with no operation in progress, and refuses to continue while a file is unmerged", async () => {
-    const [folders, clean] = await readAsync();
+    const { folders, status: clean } = await readAsync();
     for (const write of [continuing(), aborting()]) {
       assert.throws(() => write.refuse(clean), (error: unknown) => error instanceof NoOperationException);
       await assert.rejects(write.runAsync(folders, clean), (error: unknown) => error instanceof NoOperationException);
       await assert.rejects(write.requestAsync(folders, clean, call), (error: unknown) => error instanceof NoOperationException);
     }
     await conflictAsync(["merge", "--quiet", "side"]);
-    const [, conflicted] = await readAsync();
+    const { status: conflicted } = await readAsync();
 
     assert.throws(() => continuing().refuse(conflicted), (error: unknown) => error instanceof CommitConflictsException);
   });
@@ -158,12 +158,12 @@ describe("OperationWriter", () => {
   test("records a resolution on continue, so the same conflict picked again comes back resolved", async () => {
     const side = (await repository.runGitAsync(["rev-parse", "side~1"])).trim();
     const pick = async (): Promise<void> => {
-      await assert.rejects(new PickWriter(runner, hooks, GitNames.cherryPickMethod, side).runAsync(...await readAsync()),
+      await assert.rejects((await readAsync()).runAsync(new PickWriter(runner, hooks, GitNames.cherryPickMethod, side)),
         (error: unknown) => error instanceof PickStoppedException);
     };
     await pick();
     const resolve = new ResolveConflictWriter(runner, hooks, new FilterOptionsReader(runner), "a.txt", ConflictResolution.Text, "one\nboth\nthree\n");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     resolve.refuse(status);
     await resolve.runAsync(folders, status);
     await writeAsync(continuing());
@@ -171,7 +171,7 @@ describe("OperationWriter", () => {
 
     await pick();
 
-    assert.deepEqual([await worktreeAsync(), (await readAsync())[1].entries.find(t => t.path === "a.txt")?.conflict !== null], ["one\nboth\nthree\n", true]);
+    assert.deepEqual([await worktreeAsync(), (await readAsync()).status.entries.find(t => t.path === "a.txt")?.conflict !== null], ["one\nboth\nthree\n", true]);
   });
 
   test("fails with git's output as untrusted text when a continue, an abort or the marker check fails otherwise", async () => {
@@ -189,7 +189,7 @@ describe("OperationWriter", () => {
 
   test("asks an agent's continue or abort at high risk, once only, with the hooks a continue runs or what an abort drops", async () => {
     await conflictAsync(["cherry-pick", "side"]);
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
 
     assert.deepEqual(await continuing().requestAsync(folders, status, call), {
       action: "git.continueOperation",

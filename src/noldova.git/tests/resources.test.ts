@@ -13,6 +13,8 @@ import { describe, test } from "vitest";
 import { ConflictKind, FileChange, FileState, LineKind, OperationKind, SigningFormat, UndoMode } from "@noldova/git.protocol";
 
 import { TreeWatch } from "../src/enums/tree-watch.ts";
+import { GitVersion } from "../src/models/git-version.ts";
+import { OperationHead } from "../src/models/operation-head.ts";
 import { Resources } from "../src/resources.ts";
 
 describe("Resources", () => {
@@ -236,7 +238,7 @@ describe("Resources", () => {
     assert.deepEqual(Resources.headCommitCheckArguments, ["rev-parse", "--verify", "--quiet", "HEAD"]);
     assert.equal(Resources.noCommitExitCode, 1);
     assert.equal(Resources.revParseCommand, "rev-parse");
-    assert.deepEqual(Resources.aheadBehindVersion, [2, 41]);
+    assert.deepEqual(Resources.aheadBehindVersion, new GitVersion(2, 41));
     assert.deepEqual([Resources.remoteTrackPattern.exec("refs/remotes/origin/a/b\t3 12")?.slice(1), Resources.remoteTrackPattern.exec("refs/remotes/origin/t")?.slice(1),
       Resources.remoteTrackPattern.exec("refs/remotes/origin/a\t3")], [["origin/a/b", "3", "12"], ["origin/t", undefined, undefined], null]);
     assert.equal(Resources.forEachRefCommand, "for-each-ref");
@@ -417,7 +419,8 @@ describe("Resources", () => {
     assert.deepEqual(Resources.rebaseFolders, ["rebase-merge", "rebase-apply"]);
     assert.equal(Resources.headNameFile, "head-name");
     assert.equal(Resources.mergeMessageFile, "MERGE_MSG");
-    assert.deepEqual(Resources.operationHeads, [["MERGE_HEAD", OperationKind.Merge], ["CHERRY_PICK_HEAD", OperationKind.CherryPick], ["REVERT_HEAD", OperationKind.Revert]]);
+    assert.deepEqual(Resources.operationHeads, [new OperationHead("MERGE_HEAD", OperationKind.Merge), new OperationHead("CHERRY_PICK_HEAD", OperationKind.CherryPick),
+      new OperationHead("REVERT_HEAD", OperationKind.Revert)]);
     assert.deepEqual(Resources.logArguments, ["log", "-z", "--no-color", "--no-show-signature", "--no-notes", "--encoding=UTF-8", "--format=%H%x00%P%x00%an%x00%aI%x00%at%x00%s"]);
     assert.equal(Resources.logCommand, "log");
     assert.equal(Resources.logFieldCount, 6);
@@ -434,7 +437,7 @@ describe("Resources", () => {
     assert.deepEqual(Resources.versionArguments, ["version"]);
     assert.deepEqual(Resources.versionPattern, /^git version (\d+)\.(\d+)/v);
     assert.deepEqual(Resources.reportedVersionPattern, /^git version (\d{1,4}\.\d{1,4}(?:\.[0-9A-Za-z]{1,16}){0,4})(?:\s|$)/v);
-    assert.deepEqual(Resources.oldestGitVersion, [2, 39]);
+    assert.deepEqual(Resources.oldestGitVersion, new GitVersion(2, 39));
     assert.equal(Resources.indexFile, "index");
     assert.equal(Resources.missingFingerprint, "\0missing");
     assert.equal(Resources.statusHeader, "#");

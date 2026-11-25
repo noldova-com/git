@@ -14,7 +14,7 @@ import path from "node:path";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test, vi } from "vitest";
 
-import { ConflictKind, FailureCode, FileState, type GitStatus, OperationKind, RemoteTransport, UntrustedSource } from "@noldova/git.protocol";
+import { ConflictKind, FailureCode, FileState, type GitStatus, OperationKind, RemoteTransport, type StatusEntry, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import { RepositoryFolders } from "../../src/models/repository-folders.ts";
@@ -62,7 +62,7 @@ describe("StatusReader", () => {
 
   const headAsync = async (folder: string = repository.folder): Promise<string> => (await repository.runGitAsync(["-C", folder, "rev-parse", "HEAD"])).trim();
   const readAsync = async (folder: string = repository.folder): Promise<GitStatus> => await reader.readAsync(await repositories.readAsync(folder));
-  const states = (entries: readonly { path: string; index: FileState; worktree: FileState }[]): string[][] => entries.map(t => [t.path, t.index, t.worktree]);
+  const states = (entries: readonly StatusEntry[]): string[][] => entries.map(t => [t.path, t.index, t.worktree]);
 
   test("reads a clean worktree on its branch", async () => {
     const status = await readAsync();

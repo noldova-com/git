@@ -13,6 +13,7 @@ import type { GitFileLayout } from "../enums/git-file-layout.ts";
 import { GitCommitFileRow } from "../models/git-commit-file-row.ts";
 import { GitPathLayout } from "./git-path-layout.ts";
 import { Resources } from "../../resources.ts";
+import { GitLineCounts } from "../models/git-line-counts.ts";
 
 /** Lays a commit's changed files out as rows, in one of the three layouts. */
 export class GitCommitFiles {
@@ -24,21 +25,21 @@ export class GitCommitFiles {
   }
 
   /** The lines all the files add and remove. */
-  public static totalsOf(files: readonly DiffFile[]): readonly [number, number] {
-    return files.map(t => GitCommitFiles.countsOf(t)).reduce(([added, removed], [a, r]) => [added + a, removed + r], [0, 0]);
+  public static totalsOf(files: readonly DiffFile[]): GitLineCounts {
+    return files.map(t => GitCommitFiles.countsOf(t)).reduce((total, counts) => total.plus(counts), GitLineCounts.NONE);
   }
 
   private static fileOf(file: DiffFile, name: string, depth: number): GitCommitFileRow {
     const moved: boolean = file.change === FileChange.Renamed || file.change === FileChange.Copied;
-    const [added, removed] = GitCommitFiles.countsOf(file);
+    const { added, removed } = GitCommitFiles.countsOf(file);
     const hasLines: boolean = !file.binary && Object.isNull(file.submodule);
     const letter: string = Resources.changeLetters[file.change];
     return new GitCommitFileRow(file.path, name, moved ? file.oldPath : "", false, depth, Object.isNull(file.similarity) ? letter : Resources.formatSimilarity(letter, file.similarity),
       hasLines ? added : null, hasLines ? removed : null);
   }
 
-  private static countsOf(file: DiffFile): readonly [number, number] {
+  private static countsOf(file: DiffFile): GitLineCounts {
     const lines = file.hunks.flatMap(t => t.lines);
-    return [lines.filter(t => t.kind === LineKind.Added).length, lines.filter(t => t.kind === LineKind.Removed).length];
+    return new GitLineCounts(lines.filter(t => t.kind === LineKind.Added).length, lines.filter(t => t.kind === LineKind.Removed).length);
   }
 }

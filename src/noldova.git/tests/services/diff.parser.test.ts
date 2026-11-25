@@ -14,6 +14,14 @@ import { FailureCode, FileChange, GitCode, LineKind } from "@noldova/git.protoco
 
 import { DiffParser } from "../../src/services/diff.parser.ts";
 
+/** The failure a test expects when git prints what the module can't read. */
+interface IUnreadableFailure {
+  readonly name: string;
+  readonly code: FailureCode;
+  readonly gitCode: GitCode;
+  readonly message: string;
+}
+
 describe("DiffParser", () => {
   const OLD = "a".repeat(40);
   const NEW = "b".repeat(40);
@@ -27,7 +35,7 @@ describe("DiffParser", () => {
     const parsed = DiffParser.parse(value, isCut);
     return { files: parsed.files.map(t => t.toJson()), omittedFiles: parsed.omittedFiles, isCut: parsed.isCut };
   };
-  const unreadable = (part: string): { name: string; code: FailureCode; gitCode: GitCode; message: string } =>
+  const unreadable = (part: string): IUnreadableFailure =>
     ({ name: "UnreadableOutputException", code: FailureCode.Git, gitCode: GitCode.UnreadableOutput, message: `git diff printed ${part} that the module can't read.` });
 
   test("reads modified, added, deleted and renamed files, with a rename's similarity score, splitting the patch only at each file's exact header", () => {

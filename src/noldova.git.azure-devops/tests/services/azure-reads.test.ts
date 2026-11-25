@@ -1694,7 +1694,7 @@ describe("AzureReads, people", () => {
       revoked.answer("token", null);
     });
 
-    const messageOf = (error: unknown): readonly [string, string] | null => error instanceof MethodFailureException ? [error.failure.code, error.failure.message] : null;
+    const messageOf = (error: unknown): readonly string[] | null => error instanceof MethodFailureException ? [error.failure.code, error.failure.message] : null;
     const cannotRead = messageOf(await new AzureReads(new AzureApi(azure.fetch), scoped, new FakeModuleLog()).searchPeopleAsync(peopleQuery, signal).then(() => null, (t: unknown) => t));
     const signedOut = messageOf(await new AzureReads(new AzureApi(azure.fetch), revoked, new FakeModuleLog()).searchPeopleAsync(peopleQuery, signal).then(() => null, (t: unknown) => t));
 

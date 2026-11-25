@@ -24,6 +24,12 @@ import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 vi.mock(import("node:fs"), { spy: true });
 vi.mock(import("node:fs/promises"), { spy: true });
 
+/** The questions about which folders git ignores, and the answers they got. */
+interface IAskedFolders {
+  readonly folders: string[][];
+  readonly answers: Promise<unknown>[];
+}
+
 describe("FolderTreeWatch", () => {
   interface IOpened { readonly folder: string; readonly watcher: FSWatcher; isClosed: boolean }
 
@@ -150,7 +156,7 @@ describe("FolderTreeWatch", () => {
     }
   };
   /** Records each question about which folders git ignores, waking a wait once its answer comes. */
-  const askedOf = (): { readonly folders: string[][]; readonly answers: Promise<unknown>[] } => {
+  const askedOf = (): IAskedFolders => {
     const folders: string[][] = [];
     const answers: Promise<unknown>[] = [];
     const original = IgnoredPaths.prototype.ignoredFoldersAsync;

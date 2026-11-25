@@ -11,8 +11,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
 import { GitCommitDetailParams } from "../../src/models/git-commit-detail-params.ts";
+import type { IFieldFailure } from "../fixtures/field-failure.fixture.ts";
 
-const expected = (field: string, expectation: string): { name: string; field: string; message: string } =>
+const expected = (field: string, expectation: string): IFieldFailure =>
   ({ name: "ProtocolFieldException", field, message: `The field ${field} is invalid: expected ${expectation}.` });
 
 describe("GitCommitDetailParams", () => {

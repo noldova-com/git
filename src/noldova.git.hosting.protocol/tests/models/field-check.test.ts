@@ -15,11 +15,25 @@ import { describe, it } from "vitest";
 import { CheckState } from "../../src/enums/check-state.ts";
 import { FieldCheck } from "../../src/models/field-check.ts";
 
+/** The failure a test expects when an argument is invalid. */
+interface IArgumentFailure {
+  readonly name: string;
+  readonly parameterName: string;
+  readonly message: string;
+}
+
+/** The failure a test expects when a field is invalid. */
+interface IFieldFailure {
+  readonly name: string;
+  readonly field: string;
+  readonly message: string;
+}
+
 describe("FieldCheck", () => {
   const reader = JsonReader.fromValue({ kept: "a", missing: null, state: "Queued", child: { a: 1 } }, "$.item");
-  const argument = (parameterName: string, expectation: string): { name: string; parameterName: string; message: string } =>
+  const argument = (parameterName: string, expectation: string): IArgumentFailure =>
     ({ name: "HostingArgumentException", parameterName, message: `The argument ${parameterName} is invalid: expected ${expectation}.` });
-  const field = (path: string, expectation: string): { name: string; field: string; message: string } =>
+  const field = (path: string, expectation: string): IFieldFailure =>
     ({ name: "HostingFieldException", field: path, message: `The field ${path} is invalid: expected ${expectation}.` });
 
   it("names a parameter without a reader, and a field by its path with one", () => {

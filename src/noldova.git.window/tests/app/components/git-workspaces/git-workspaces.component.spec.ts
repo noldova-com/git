@@ -20,6 +20,7 @@ import { GitRecentRepositories } from "../../../../src/app/services/git-recent-r
 import { GitWorkspaces } from "../../../../src/app/services/git-workspaces.ts";
 import { GitWorkspaceSides } from "../../../../src/app/services/git-workspace-sides.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
+import { GitWorkspaceViewCount } from "../../../../src/app/models/git-workspace-view-count.ts";
 
 describe("GitWorkspacesComponent", () => {
   const fresh = (): GitWorkspace => {
@@ -84,7 +85,7 @@ describe("GitWorkspacesComponent", () => {
     const fixture: ComponentFixture<GitWorkspacesComponent> = render(context);
     const view: WritableSignal<GitWorkspaceView | null> = signal(null);
     const chosen: (GitWorkspaceView | null)[] = [];
-    const side: GitWorkspaceSide = new GitWorkspaceSide(workspace.id, view, computed(() => Object.values(GitWorkspaceView).map(t => [t, 0] as const)),
+    const side: GitWorkspaceSide = new GitWorkspaceSide(workspace.id, view, computed(() => Object.values(GitWorkspaceView).map(t => new GitWorkspaceViewCount(t, 0))),
       signal([]), t => {
         chosen.push(t);
         view.set(t);

@@ -193,7 +193,8 @@ describe("GitPullRequestsComponent", () => {
       await mounted.fixture.whenStable();
       const rows: Element[] = [...mounted.element.querySelectorAll(".pull-request")];
       const items: HTMLButtonElement[] = await menuOf(rows[0]);
-      const before: [string | undefined, string, boolean][] = items.map(t => [t.dataset["action"], (t.textContent ?? "").trim(), isOff(t)]);
+      const before: readonly (readonly unknown[])[] = items.map(t => [t.dataset["action"], isOff(t)]);
+      const beforeTexts: readonly string[] = items.map(t => (t.textContent ?? "").trim());
       await close();
       mounted.fixture.componentRef.setInput("canSwitch", true);
       mounted.fixture.componentRef.setInput("current", "change-2");
@@ -211,8 +212,8 @@ describe("GitPullRequestsComponent", () => {
       await choose(rows[0], "switch");
 
       expect([onLink, linkClick.defaultPrevented]).toEqual([["switch", "open", "copy"], true]);
-      expect(before.map(t => [t[0], t[2]])).toEqual([["switch", true], ["open", false], ["copy", false]]);
-      expect(before.map(t => t[1].endsWith("Switch to branch") || t[1].endsWith("Open in browser") || t[1].endsWith("Copy link"))).toEqual([true, true, true]);
+      expect(before).toEqual([["switch", true], ["open", false], ["copy", false]]);
+      expect(beforeTexts.map(t => t.endsWith("Switch to branch") || t.endsWith("Open in browser") || t.endsWith("Copy link"))).toEqual([true, true, true]);
       expect([ownIsOff, switched]).toEqual([true, ["change-1"]]);
     });
 

@@ -134,7 +134,7 @@ describe("GitHubPrCreateTool", () => {
   });
 
   it("opens nothing when the person doesn't allow it, failing with the decision", async () => {
-    const outcomes: (readonly [ToolFailureCode, string | null] | number | null)[] = [];
+    const outcomes: (ReturnType<typeof failureOf> | number)[] = [];
     for (const decision of [PermissionDecision.Denied, PermissionDecision.DeniedAlways, PermissionDecision.Expired]) {
       const rig = new PrToolsRig();
       rig.answerer.answerNext(decision);

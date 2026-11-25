@@ -32,7 +32,7 @@ describe("GitCommitCardComponent", () => {
       "git.status": GitFixtures.status([GitFixtures.entry("a.ts", FileState.Modified, FileState.Unmodified), GitFixtures.entry("b.ts", FileState.Added, FileState.Unmodified)]).toJson()
     });
 
-    const before: readonly [string, string, boolean] = [view.find<HTMLTextAreaElement>(".field").placeholder, view.texts(".commit .nol-button-label")[0] ?? "", commit(view).disabled];
+    const before: readonly unknown[] = [view.find<HTMLTextAreaElement>(".field").placeholder, view.texts(".commit .nol-button-label")[0] ?? "", commit(view).disabled];
     await typeAsync(view, "   ");
     const blank: boolean = commit(view).disabled;
     await typeAsync(view, "  Fix the view  ");
@@ -150,7 +150,7 @@ describe("GitCommitCardComponent", () => {
     let status = conflicted;
     const view: GitViewFixture = await GitViewFixture.renderAsync({ ...GitFixtures.watching, "git.commit": null, "git.status": () => status.toJson() });
 
-    const held: readonly [string, string, boolean, readonly string[]] = [
+    const held: readonly unknown[] = [
       view.find<HTMLTextAreaElement>(".field").placeholder, view.texts(".commit .nol-button-label")[0] ?? "", commit(view).disabled, view.texts(".hint")
     ];
     status = GitFixtures.status([GitFixtures.entry("a.ts", FileState.Modified, FileState.Unmodified)], null, { operation, fingerprint: "f2" });

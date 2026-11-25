@@ -8,6 +8,7 @@
 
 import "@noldova/context.core";
 import type { JsonObject, JsonReader } from "@noldova/context.json";
+import { GitMovingFolder } from "./git-moving-folder.ts";
 
 /** A named, ordered list of repository folders that the workspace page shows together. */
 export class GitWorkspace {
@@ -45,7 +46,7 @@ export class GitWorkspace {
    */
   public withFoldersMoved(folders: ReadonlySet<string>, by: -1 | 1): GitWorkspace {
     const order: string[] = [...this.folders];
-    const moving: { folder: string; index: number }[] = this.folders.flatMap((folder, index) => folders.has(folder) ? [{ folder, index }] : []);
+    const moving: GitMovingFolder[] = this.folders.flatMap((folder, index) => folders.has(folder) ? [new GitMovingFolder(folder, index)] : []);
     for (const { folder, index } of by < 0 ? moving : moving.reverse()) {
       const neighbor: string | undefined = order[index + by];
       if (!Object.isUndefined(neighbor) && !folders.has(neighbor)) {

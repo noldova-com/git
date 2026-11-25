@@ -19,7 +19,7 @@ import { userEvent } from "vitest/browser";
 import { GitFileGroupComponent } from "../../../../src/app/components/git-file-group/git-file-group.component.ts";
 import { GitFileLayout } from "../../../../src/app/enums/git-file-layout.ts";
 import { GitDiffRow } from "../../../../src/app/models/git-diff-row.ts";
-import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
+import { FixtureLine, GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 import { GitViewFixture } from "../../../fixtures/git-view.fixture.ts";
 
@@ -197,7 +197,7 @@ describe("GitFileGroupComponent", () => {
     });
     const names = (): readonly string[] => view.all(".file .path").map(t => t.textContent ?? "");
 
-    const before: readonly [readonly string[], readonly string[]] = [names(), view.texts(".more")];
+    const before: readonly (readonly string[])[] = [names(), view.texts(".more")];
     await view.clickAsync(".more");
 
     expect(before).toEqual([["a.ts", "b.ts"], ["and two more"]]);
@@ -240,7 +240,7 @@ describe("GitFileGroupComponent", () => {
     const view: GitViewFixture = await GitViewFixture.renderAsync({
       ...GitFixtures.watching,
       "git.status": GitFixtures.status(entries).toJson(),
-      "git.diff": GitFixtures.diff("docs/c.md", [LineKind.Context, "a"], [LineKind.Removed, "b"], [LineKind.Added, "c"]).toJson()
+      "git.diff": GitFixtures.diff("docs/c.md", new FixtureLine(LineKind.Context, "a"), new FixtureLine(LineKind.Removed, "b"), new FixtureLine(LineKind.Added, "c")).toJson()
     });
     const row: HTMLElement = view.find("nol-git-file-group:nth-of-type(3) li:has(.file)");
 
@@ -250,7 +250,7 @@ describe("GitFileGroupComponent", () => {
     const lines: readonly (string | null)[] = [...row.querySelectorAll(".diff > *")].map(t => `${t.localName}|${kindOf(t)}|${t.textContent}`);
     row.querySelector<HTMLElement>(".wrap")?.click();
     await view.fixture.whenStable();
-    const wrapped: readonly [boolean, string | null] = [row.querySelector(".diff")?.classList.contains("wrapped") ?? false, row.querySelector(".wrap")?.getAttribute("aria-pressed") ?? null];
+    const wrapped: readonly unknown[] = [row.querySelector(".diff")?.classList.contains("wrapped") ?? false, row.querySelector(".wrap")?.getAttribute("aria-pressed") ?? null];
     row.querySelector<HTMLElement>(".wrap")?.click();
     await view.fixture.whenStable();
     row.querySelector<HTMLElement>(".expand")?.click();
@@ -269,8 +269,8 @@ describe("GitFileGroupComponent", () => {
       "git.stageLines": null,
       "git.unstageLines": null,
       "git.diff": new GitDiff([
-        ...GitFixtures.diff("docs/c.md", [LineKind.Context, "a"], [LineKind.Removed, "b"], [LineKind.Added, "c"]).files,
-        ...GitFixtures.diff("src/b.ts", [LineKind.Context, "a"], [LineKind.Removed, "b"], [LineKind.Added, "c"]).files
+        ...GitFixtures.diff("docs/c.md", new FixtureLine(LineKind.Context, "a"), new FixtureLine(LineKind.Removed, "b"), new FixtureLine(LineKind.Added, "c")).files,
+        ...GitFixtures.diff("src/b.ts", new FixtureLine(LineKind.Context, "a"), new FixtureLine(LineKind.Removed, "b"), new FixtureLine(LineKind.Added, "c")).files
       ], 0, 0, false).toJson()
     });
     const rem = (pixels: number): number => pixels / parseFloat(getComputedStyle(document.documentElement).fontSize);
@@ -286,7 +286,7 @@ describe("GitFileGroupComponent", () => {
 
     row.querySelector<HTMLElement>(".name")?.click();
     await view.untilAsync(() => !Object.isNull(action()));
-    const whole: readonly [string | null | undefined, readonly (string | null)[]] = [action()?.textContent, pressed()];
+    const whole: readonly unknown[] = [action()?.textContent, pressed()];
     const diff: DOMRect = row.querySelector(".diff")?.getBoundingClientRect() ?? new DOMRect();
     const hunk: DOMRect = row.querySelector(".hunk")?.getBoundingClientRect() ?? new DOMRect();
     const button: DOMRect = action()?.getBoundingClientRect() ?? new DOMRect();
@@ -296,7 +296,7 @@ describe("GitFileGroupComponent", () => {
     row.querySelector<HTMLElement>("button.removed-line")?.click();
     row.querySelector<HTMLElement>("button.added-line")?.click();
     await view.fixture.whenStable();
-    const chosen: readonly [string | null | undefined, readonly (string | null)[], boolean] = [action()?.textContent, pressed(), row.querySelector(".removed-line")?.classList.contains("chosen") ?? false];
+    const chosen: readonly unknown[] = [action()?.textContent, pressed(), row.querySelector(".removed-line")?.classList.contains("chosen") ?? false];
     await writeAsync(action());
     const cleared: readonly (string | null)[] = pressed();
     await writeAsync(action());
@@ -329,7 +329,7 @@ describe("GitFileGroupComponent", () => {
     const view: GitViewFixture = await GitViewFixture.renderAsync({
       ...GitFixtures.watching,
       "git.status": GitFixtures.status(entries).toJson(),
-      "git.diff": GitFixtures.diff("src/b.ts", [LineKind.Context, "const a = 1;"], [LineKind.Removed, "/* old"], [LineKind.Added, "let b = 2;"]).toJson()
+      "git.diff": GitFixtures.diff("src/b.ts", new FixtureLine(LineKind.Context, "const a = 1;"), new FixtureLine(LineKind.Removed, "/* old"), new FixtureLine(LineKind.Added, "let b = 2;")).toJson()
     });
     const row: HTMLElement = view.find("nol-git-file-group:nth-of-type(2) li:has(.file)");
     const lines = (): readonly HTMLElement[] => [...row.querySelectorAll<HTMLElement>(".diff > .line:not(.hunk)")];
@@ -362,7 +362,7 @@ describe("GitFileGroupComponent", () => {
     const failed: string | undefined = text();
     fingerprint = "f2";
     view.context.raiseEvent("git.changed", { folder: GitFixtures.folder });
-    await held.answerAsync("git.diff", GitFixtures.diff("other.ts", [LineKind.Added, "x"]).toJson());
+    await held.answerAsync("git.diff", GitFixtures.diff("other.ts", new FixtureLine(LineKind.Added, "x")).toJson());
     await view.untilAsync(() => text() !== failed);
 
     expect([reading, failed, text()]).toEqual(["Reading the diff…", "The diff timed out.", "Git shows no lines for this file."]);
@@ -406,12 +406,12 @@ describe("GitFileGroupComponent", () => {
     fingerprint = "f2";
     view.context.raiseEvent("git.changed", { folder: GitFixtures.folder });
     const newerBuilt: Promise<void> = builtAsync();
-    await held.answerAsync("git.diff", GitFixtures.diff("src/b.ts", [LineKind.Added, "newer"]).toJson());
+    await held.answerAsync("git.diff", GitFixtures.diff("src/b.ts", new FixtureLine(LineKind.Added, "newer")).toJson());
     await newerBuilt;
     await view.fixture.whenStable();
     const newer: readonly string[] = lines();
     const olderBuilt: Promise<void> = builtAsync();
-    older(GitFixtures.diff("src/b.ts", [LineKind.Added, "older"]).toJson());
+    older(GitFixtures.diff("src/b.ts", new FixtureLine(LineKind.Added, "older")).toJson());
     await olderBuilt;
     await view.fixture.whenStable();
 

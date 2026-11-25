@@ -225,12 +225,12 @@ describe("GitConflictsComponent in the kit's look", () => {
       await fixture.whenStable();
       const banner: DOMRect = box(element.querySelector(".operation"));
       const text: DOMRect = box(element.querySelector(".operation-text"));
-      const whole = (selector: string): readonly [boolean, boolean] => {
+      const whole = (selector: string): readonly boolean[] => {
         const button: HTMLElement | null = element.querySelector<HTMLElement>(selector);
         const label: HTMLElement | null = button?.querySelector<HTMLElement>(".nol-button-label") ?? null;
         return [(label?.scrollWidth ?? 1) <= (label?.clientWidth ?? 0), box(button).left >= banner.left && box(button).right <= banner.right];
       };
-      const commitOf = (side: string): readonly [string, boolean] => {
+      const commitOf = (side: string): readonly unknown[] => {
         const head: Element | null = element.querySelector(`.pane-head.${side}`);
         const commit: Element | null = head?.querySelector(".side-commit") ?? null;
         const label: DOMRect = box(head?.querySelector(".label") ?? null);

@@ -12,14 +12,13 @@ import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
 import { PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
-import { FailureCode, GitCode, GitNames, type GitStatus, UntrustedSource } from "@noldova/git.protocol";
+import { FailureCode, GitCode, GitNames, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import type { GitFailureException } from "../../src/exceptions/git-failure.exception.ts";
 import { PickDuringOperationException } from "../../src/exceptions/pick-during-operation.exception.ts";
 import { PickEmptyException } from "../../src/exceptions/pick-empty.exception.ts";
 import { PickStoppedException } from "../../src/exceptions/pick-stopped.exception.ts";
-import type { RepositoryFolders } from "../../src/models/repository-folders.ts";
 import { GitVersionReader } from "../../src/services/git-version.reader.ts";
 import { HooksReader } from "../../src/services/hooks.reader.ts";
 import { PickWriter } from "../../src/services/pick.writer.ts";
@@ -28,6 +27,7 @@ import { RepositoryReader } from "../../src/services/repository.reader.ts";
 import { StatusReader } from "../../src/services/status.reader.ts";
 import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
+import { RepositoryState } from "../fixtures/repository-state.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
 
@@ -73,9 +73,9 @@ describe("PickWriter", () => {
     await cleanUps.runAsync();
   });
 
-  const readAsync = async (): Promise<[RepositoryFolders, GitStatus]> => {
+  const readAsync = async (): Promise<RepositoryState> => {
     const folders = await repositories.readAsync(repository.folder);
-    return [folders, await statuses.readAsync(folders)];
+    return new RepositoryState(folders, await statuses.readAsync(folders));
   };
   const idOf = async (revision: string): Promise<string> => (await repository.runGitAsync(["rev-parse", revision])).trim();
   const subjectsAsync = async (count: number): Promise<readonly string[]> => (await repository.runGitAsync(["log", `-${count}`, "--format=%s"])).trim().split("\n");
@@ -86,7 +86,7 @@ describe("PickWriter", () => {
 
   test("cherry-picks a commit onto the current branch as a new commit with its subject, and leaves nothing in progress", async () => {
     const write = new PickWriter(runner, hooks, GitNames.cherryPickMethod, await idOf("side~1"));
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     assert.doesNotThrow(() => write.refuse(status));
 
     await write.runAsync(folders, status);
@@ -96,7 +96,7 @@ describe("PickWriter", () => {
   });
 
   test("reverts a commit with git's own message, and takes a merge against its first parent", async () => {
-    await new PickWriter(runner, hooks, GitNames.revertMethod, await idOf("HEAD")).runAsync(...await readAsync());
+    await (await readAsync()).runAsync(new PickWriter(runner, hooks, GitNames.revertMethod, await idOf("HEAD")));
     assert.deepEqual(await subjectsAsync(1), ["Revert \"Change a on main\""]);
     await repository.runGitAsync(["switch", "--quiet", "--create", "merged", "side~1"]);
     await repository.runGitAsync(["switch", "--quiet", "main"]);
@@ -105,7 +105,7 @@ describe("PickWriter", () => {
     await repository.runGitAsync(["commit", "--quiet", "-m", "Add c"]);
     await repository.runGitAsync(["merge", "--quiet", "--no-ff", "-m", "Merge merged", "merged"]);
 
-    await new PickWriter(runner, hooks, GitNames.revertMethod, await idOf("HEAD")).runAsync(...await readAsync());
+    await (await readAsync()).runAsync(new PickWriter(runner, hooks, GitNames.revertMethod, await idOf("HEAD")));
 
     assert.deepEqual([await subjectsAsync(1), await repository.runGitAsync(["ls-files", "b.txt"])], [["Revert \"Merge merged\""], ""]);
   });
@@ -113,17 +113,17 @@ describe("PickWriter", () => {
   test("stops on a conflict with git's output marked untrusted, leaving the cherry-pick in progress to resolve or abort", async () => {
     const write = new PickWriter(runner, hooks, GitNames.cherryPickMethod, await idOf("side"));
 
-    await assert.rejects(write.runAsync(...await readAsync()), (error: unknown) =>
+    await assert.rejects((await readAsync()).runAsync(write), (error: unknown) =>
       failsWith(PickStoppedException, GitCode.Conflict)(error) && error instanceof PickStoppedException && error.output?.source === UntrustedSource.Repository
       && /CONFLICT/u.test(error.output.text));
 
-    const [, status] = await readAsync();
+    const { status } = await readAsync();
     assert.deepEqual([await existsAsync("CHERRY_PICK_HEAD"), status.entries.some(t => t.conflict !== null)], [true, true]);
     assert.throws(() => write.refuse(status), failsWith(PickDuringOperationException, GitCode.Conflict));
   });
 
   test("aborts a pick that would change nothing and says so, leaving nothing in progress", async () => {
-    await assert.rejects(new PickWriter(runner, hooks, GitNames.cherryPickMethod, await idOf("HEAD")).runAsync(...await readAsync()),
+    await assert.rejects((await readAsync()).runAsync(new PickWriter(runner, hooks, GitNames.cherryPickMethod, await idOf("HEAD"))),
       failsWith(PickEmptyException, null));
 
     assert.deepEqual([await existsAsync("CHERRY_PICK_HEAD"), await repository.runGitAsync(["status", "--porcelain=v1"]), await subjectsAsync(1)],
@@ -133,9 +133,9 @@ describe("PickWriter", () => {
   test("fails with git's errors when local changes are in the way or the commit is unknown, and changes nothing", async () => {
     await repository.writeAsync("a.txt", "local\n");
 
-    await assert.rejects(new PickWriter(runner, hooks, GitNames.cherryPickMethod, await idOf("side")).runAsync(...await readAsync()), (error: unknown) =>
+    await assert.rejects((await readAsync()).runAsync(new PickWriter(runner, hooks, GitNames.cherryPickMethod, await idOf("side"))), (error: unknown) =>
       error instanceof GitFailedException && error.output?.source === UntrustedSource.Repository);
-    await assert.rejects(new PickWriter(runner, hooks, GitNames.revertMethod, "f".repeat(40)).runAsync(...await readAsync()), (error: unknown) =>
+    await assert.rejects((await readAsync()).runAsync(new PickWriter(runner, hooks, GitNames.revertMethod, "f".repeat(40))), (error: unknown) =>
       error instanceof GitFailedException);
 
     assert.deepEqual([await repository.runGitAsync(["status", "--porcelain=v1"]), await existsAsync("CHERRY_PICK_HEAD")], [" M a.txt\n", false]);
@@ -145,12 +145,12 @@ describe("PickWriter", () => {
     const scripted = new ScriptedRunnerFixture(supervisor.context);
     scripted.failing = "revert";
 
-    await assert.rejects(new PickWriter(scripted, hooks, GitNames.revertMethod, await idOf("HEAD")).runAsync(...await readAsync()), (error: unknown) =>
+    await assert.rejects((await readAsync()).runAsync(new PickWriter(scripted, hooks, GitNames.revertMethod, await idOf("HEAD"))), (error: unknown) =>
       error instanceof GitFailedException && error.message.includes("revert"));
   });
 
   test("merges a commit into the current branch with git's own message, fast-forwards where it can, and leaves nothing in progress", async () => {
-    await new PickWriter(runner, hooks, GitNames.mergeMethod, await idOf("side~1")).runAsync(...await readAsync());
+    await (await readAsync()).runAsync(new PickWriter(runner, hooks, GitNames.mergeMethod, await idOf("side~1")));
     assert.deepEqual([(await subjectsAsync(1))[0]?.startsWith("Merge commit '"), await repository.runGitAsync(["ls-files", "b.txt"]), await existsAsync("MERGE_HEAD")],
       [true, "b.txt\n", false]);
     await repository.runGitAsync(["switch", "--quiet", "--create", "ahead"]);
@@ -159,7 +159,7 @@ describe("PickWriter", () => {
     await repository.runGitAsync(["commit", "--quiet", "-m", "Add c"]);
     await repository.runGitAsync(["switch", "--quiet", "main"]);
 
-    await new PickWriter(runner, hooks, GitNames.mergeMethod, await idOf("ahead")).runAsync(...await readAsync());
+    await (await readAsync()).runAsync(new PickWriter(runner, hooks, GitNames.mergeMethod, await idOf("ahead")));
 
     assert.deepEqual([await idOf("HEAD"), await repository.runGitAsync(["status", "--porcelain=v1"])], [await idOf("ahead"), ""]);
   });
@@ -168,20 +168,20 @@ describe("PickWriter", () => {
     const write = new PickWriter(runner, hooks, GitNames.mergeMethod, await idOf("side"));
     await repository.writeAsync("a.txt", "local\n");
 
-    await assert.rejects(write.runAsync(...await readAsync()), (error: unknown) =>
+    await assert.rejects((await readAsync()).runAsync(write), (error: unknown) =>
       error instanceof GitFailedException && error.message.includes("merge") && error.output?.source === UntrustedSource.Repository);
     assert.deepEqual([await repository.runGitAsync(["status", "--porcelain=v1"]), await existsAsync("MERGE_HEAD")], [" M a.txt\n", false]);
     await repository.runGitAsync(["checkout", "--quiet", "--", "a.txt"]);
 
-    await assert.rejects(write.runAsync(...await readAsync()), failsWith(PickStoppedException, GitCode.Conflict));
+    await assert.rejects((await readAsync()).runAsync(write), failsWith(PickStoppedException, GitCode.Conflict));
 
-    const [, status] = await readAsync();
+    const { status } = await readAsync();
     assert.deepEqual([await existsAsync("MERGE_HEAD"), status.entries.some(t => t.conflict !== null)], [true, true]);
     assert.throws(() => write.refuse(status), failsWith(PickDuringOperationException, GitCode.Conflict));
   });
 
   test("asks an agent's merge at medium risk, once only, with the commit's subject and the merge hooks that will run", async () => {
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     const id = await idOf("side");
     const hook = path.join(repository.gitFolder, "hooks", "post-merge");
     await writeFile(hook, "#!/bin/sh\n");
@@ -197,12 +197,12 @@ describe("PickWriter", () => {
       [PermissionOption.AllowOnce, PermissionOption.Deny]
     ]);
     await repository.runGitAsync(["switch", "--quiet", "--detach"]);
-    const [, detached] = await readAsync();
+    const { status: detached } = await readAsync();
     assert.equal((await new PickWriter(runner, hooks, GitNames.mergeMethod, id).requestAsync(folders, detached, call))?.title, `Merge ${id.slice(0, 7)} into the detached HEAD`);
   });
 
   test("asks an agent's pick at medium risk, once only, with the commit's subject and the hooks that will run", async () => {
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     const id = await idOf("side~1");
 
     assert.deepEqual(await new PickWriter(runner, hooks, GitNames.cherryPickMethod, id).requestAsync(folders, status, call), {
@@ -214,7 +214,7 @@ describe("PickWriter", () => {
       options: [PermissionOption.AllowOnce, PermissionOption.Deny]
     });
     await repository.runGitAsync(["switch", "--quiet", "--detach"]);
-    const [, detached] = await readAsync();
+    const { status: detached } = await readAsync();
     assert.equal((await new PickWriter(runner, hooks, GitNames.revertMethod, id).requestAsync(folders, detached, call))?.title, `Revert ${id.slice(0, 7)} on the detached HEAD`);
     assert.equal((await new PickWriter(runner, hooks, GitNames.cherryPickMethod, id).requestAsync(folders, detached, call))?.title,
       `Cherry-pick ${id.slice(0, 7)} onto the detached HEAD`);

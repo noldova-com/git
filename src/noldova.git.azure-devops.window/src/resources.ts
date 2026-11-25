@@ -11,8 +11,8 @@ import { CheckState, type HostPerson, type HostWorkItemType, PolicyState, Refere
 import { GitCounts } from "@noldova/git.window";
 
 import { WorkItemFacet } from "./app/enums/work-item-facet.ts";
+import { MergeTypeChoice } from "./app/models/merge-type-choice.ts";
 import { VoteChoice } from "./app/models/vote-choice.ts";
-import type { MergeTypeChoice } from "./app/types/merge-type-choice.ts";
 
 export class Resources {
   public static readonly accountsPage: string = "git.accounts";
@@ -153,8 +153,8 @@ export class Resources {
   public static readonly completeTitle: string = "Complete";
   public static readonly completeLabel: string = "Complete the pull request";
   public static readonly mergeTypeTitle: string = "Merge type";
-  public static readonly mergeTypeChoices: readonly MergeTypeChoice[] = [{ type: "noFastForward", label: "Merge, no fast-forward" },
-    { type: "squash", label: "Squash commit" }, { type: "rebase", label: "Rebase and fast-forward" }, { type: "rebaseMerge", label: "Semi-linear merge" }];
+  public static readonly mergeTypeChoices: readonly MergeTypeChoice[] = [new MergeTypeChoice("noFastForward", "Merge, no fast-forward"),
+    new MergeTypeChoice("squash", "Squash commit"), new MergeTypeChoice("rebase", "Rebase and fast-forward"), new MergeTypeChoice("rebaseMerge", "Semi-linear merge")];
   /** The merge type that fast-forwards, so it writes no merge commit and takes no message. */
   public static readonly fastForwardMergeType: string = "rebase";
   public static readonly squashMergeType: string = "squash";

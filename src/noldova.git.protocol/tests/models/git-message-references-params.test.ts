@@ -12,8 +12,9 @@ import { describe, it } from "vitest";
 
 import { GitMessageReferenceKind } from "../../src/enums/git-message-reference-kind.ts";
 import { GitMessageReferencesParams } from "../../src/models/git-message-references-params.ts";
+import type { IFieldFailure } from "../fixtures/field-failure.fixture.ts";
 
-const expected = (field: string, expectation: string): { name: string; field: string; message: string } =>
+const expected = (field: string, expectation: string): IFieldFailure =>
   ({ name: "ProtocolFieldException", field, message: `The field ${field} is invalid: expected ${expectation}.` });
 
 describe("GitMessageReferencesParams", () => {

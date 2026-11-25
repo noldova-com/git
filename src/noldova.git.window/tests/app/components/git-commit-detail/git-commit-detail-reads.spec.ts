@@ -15,7 +15,7 @@ import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { GitCommitView } from "../../../../src/app/models/git-commit-view.ts";
 import { GitRuntimeClient } from "../../../../src/app/services/git-runtime-client.ts";
 import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
-import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
+import { FixtureLine, GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 import { GitViewFixture } from "../../../fixtures/git-view.fixture.ts";
 
@@ -24,7 +24,7 @@ describe("GitCommitDetailComponent reads", () => {
     new GitGraphCommit(new GitCommit(id, parents, "Sample Author", "2026-11-20T14:02:00Z", `Commit ${id.slice(0, 4)}`), "author@example.com", []);
   const show = (commit: GitGraphCommit): void => GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
   const answers: Readonly<Record<string, JsonValue>> = {
-    ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("src/a.ts", [LineKind.Added, "one"]).toJson(),
+    ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("src/a.ts", new FixtureLine(LineKind.Added, "one")).toJson(),
     "git.commitDetail": new GitCommitDetail("f".repeat(40), "For another commit.", "Other Person", "other@example.com", "2026-11-21T09:30:00Z", false).toJson()
   };
   const handledBy = (): WritableSignal<string[]> => {
@@ -118,7 +118,7 @@ describe("GitCommitDetailComponent reads", () => {
     await view.fixture.whenStable();
     show(commitOf("3".repeat(40)));
     await view.fixture.whenStable();
-    await held.answerAsync("git.diff", GitFixtures.diff("late.ts", [LineKind.Added, "late"]).toJson());
+    await held.answerAsync("git.diff", GitFixtures.diff("late.ts", new FixtureLine(LineKind.Added, "late")).toJson());
     show(commitOf("4".repeat(40)));
     await view.fixture.whenStable();
     await held.answerAsync("git.diff", GitFixtures.failure(FailureCode.Git, null, "Late refusal."));

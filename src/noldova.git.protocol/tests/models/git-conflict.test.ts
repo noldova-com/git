@@ -14,6 +14,14 @@ import { ConflictKind } from "../../src/enums/conflict-kind.ts";
 import { OperationKind } from "../../src/enums/operation-kind.ts";
 import { GitConflict } from "../../src/models/git-conflict.ts";
 
+/** A conflict's kind and the texts of its stages that kind has. */
+interface IConflictCase {
+  readonly kind: ConflictKind;
+  readonly base: string | null;
+  readonly ours: string | null;
+  readonly theirs: string | null;
+}
+
 describe("GitConflict", () => {
   it("keeps a both-modified conflict with its merged text, and reads back the same", () => {
     const conflict = new GitConflict("a.ts", ConflictKind.BothModified, OperationKind.Merge, "b\n", "o\n", "t\n", "<<<<<<< main\n", "main",
@@ -58,15 +66,15 @@ describe("GitConflict", () => {
   });
 
   it("keeps each kind with exactly its stages, a merged text only when both sides have text, and a reused resolution", () => {
-    const cases: readonly [ConflictKind, string | null, string | null, string | null][] = [
-      [ConflictKind.BothAdded, null, "o", "t"],
-      [ConflictKind.BothDeleted, "b", null, null],
-      [ConflictKind.AddedByUs, null, "o", null],
-      [ConflictKind.AddedByThem, null, null, "t"],
-      [ConflictKind.DeletedByUs, "b", null, "t"],
-      [ConflictKind.DeletedByThem, "b", "o", null]
+    const cases: readonly IConflictCase[] = [
+      { kind: ConflictKind.BothAdded, base: null, ours: "o", theirs: "t" },
+      { kind: ConflictKind.BothDeleted, base: "b", ours: null, theirs: null },
+      { kind: ConflictKind.AddedByUs, base: null, ours: "o", theirs: null },
+      { kind: ConflictKind.AddedByThem, base: null, ours: null, theirs: "t" },
+      { kind: ConflictKind.DeletedByUs, base: "b", ours: null, theirs: "t" },
+      { kind: ConflictKind.DeletedByThem, base: "b", ours: "o", theirs: null }
     ];
-    for (const [kind, base, ours, theirs] of cases) {
+    for (const { kind, base, ours, theirs } of cases) {
       const merged = ours !== null && theirs !== null ? "m" : null;
       const conflict = new GitConflict("a.ts", kind, null, base, ours, theirs, merged, "ours", "theirs", null, null, false, false);
 

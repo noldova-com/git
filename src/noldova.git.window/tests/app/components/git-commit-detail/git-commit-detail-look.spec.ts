@@ -24,7 +24,7 @@ import { GitCommitView } from "../../../../src/app/models/git-commit-view.ts";
 import { GitPullRequestRow } from "../../../../src/app/models/git-pull-request-row.ts";
 import { GitPullRequests } from "../../../../src/app/services/git-pull-requests.ts";
 import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
-import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
+import { FixtureLine, GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitLayout } from "../../../fixtures/git-layout.fixture.ts";
 import { GitViewFixture } from "../../../fixtures/git-view.fixture.ts";
 
@@ -60,7 +60,7 @@ describe("GitCommitDetailComponent in the kit's look", () => {
     onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
     GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
-      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
+      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")).toJson(),
       "git.commitDetail": new GitCommitDetail("c".repeat(40), body, "Other Person", "other@example.com", "2026-11-21T09:30:00Z", false).toJson(),
       "git.predict": new GitPrediction(PredictionOutcome.Clean, []).toJson(),
       "git.commitSignature": new GitCommitSignature("c".repeat(40), SignatureState.Verified, "Other Person <other@example.com>", "SHA256:abc").toJson()
@@ -98,7 +98,7 @@ describe("GitCommitDetailComponent in the kit's look", () => {
     onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
     GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
-      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
+      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")).toJson(),
       "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson(),
       "git.predict": new GitPrediction(PredictionOutcome.Clean, []).toJson(),
       "git.commitSignature": new GitCommitSignature("c".repeat(40), SignatureState.None, null, null).toJson()
@@ -118,7 +118,7 @@ describe("GitCommitDetailComponent in the kit's look", () => {
     GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
     const renamed: DiffFile = new DiffFile("b.ts", undefined, "a.ts", undefined, FileChange.Renamed, "100644", "100644", false, null, [], false, 92);
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
-      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": new GitDiff([renamed, ...GitFixtures.diff("c.ts", [LineKind.Added, "one"]).files], 0, 0, false).toJson(),
+      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": new GitDiff([renamed, ...GitFixtures.diff("c.ts", new FixtureLine(LineKind.Added, "one")).files], 0, 0, false).toJson(),
       "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson(),
       "git.predict": new GitPrediction(PredictionOutcome.Clean, []).toJson()
     }, ".detail", [provideMarkdown()]);
@@ -143,7 +143,7 @@ describe("GitCommitDetailComponent in the kit's look", () => {
     GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
       ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(),
-      "git.diff": new GitDiff([...GitFixtures.diff("docs/notes.md", [LineKind.Added, "one"]).files, ...GitFixtures.diff("src/a.ts", [LineKind.Added, "one"]).files], 0, 0,
+      "git.diff": new GitDiff([...GitFixtures.diff("docs/notes.md", new FixtureLine(LineKind.Added, "one")).files, ...GitFixtures.diff("src/a.ts", new FixtureLine(LineKind.Added, "one")).files], 0, 0,
         false).toJson(),
       "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson(),
       "git.predict": () => answers.shift()?.toJson() ?? new GitPrediction(PredictionOutcome.Clean, []).toJson()
@@ -204,7 +204,7 @@ describe("GitCommitDetailComponent in the kit's look", () => {
     GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
       ...GitFixtures.watching, "git.status": GitFixtures.status([], null, { remote: new GitRemote("origin", "github.com", "example-owner/example-repository", RemoteTransport.Https) }).toJson(),
-      "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
+      "git.diff": GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")).toJson(),
       "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson()
     }, ".detail .files");
     view.element.style.width = "32rem";
@@ -245,7 +245,7 @@ describe("GitCommitDetailComponent in the kit's look", () => {
       GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
       const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
         ...GitFixtures.watching, "git.status": GitFixtures.status([], null, { remote: new GitRemote("origin", "github.com", "example-owner/example-repository", RemoteTransport.Https) }).toJson(),
-        "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
+        "git.diff": GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")).toJson(),
         "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson()
       }, ".detail .files");
       view.element.style.width = "32rem";
@@ -280,7 +280,7 @@ describe("GitCommitDetailComponent in the kit's look", () => {
       const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
         ...GitFixtures.watching,
         "git.status": GitFixtures.status([], null, { remote: new GitRemote("origin", "github.com", "example-owner/example-repository", RemoteTransport.Https) }).toJson(),
-        "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
+        "git.diff": GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")).toJson(),
         "git.commitDetail": new GitCommitDetail("c".repeat(40), body, "Other Person", "other@example.com", "2026-11-21T09:30:00Z", false).toJson(),
         "git.predict": new GitPrediction(PredictionOutcome.Clean, []).toJson(),
         "git.commitSignature": new GitCommitSignature("c".repeat(40), SignatureState.Verified, "Other Person <other@example.com>", "SHA256:abc").toJson()
@@ -303,7 +303,7 @@ describe("GitCommitDetailComponent in the kit's look", () => {
       onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
       GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
       const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
-        ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
+        ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")).toJson(),
         "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson()
       }, ".detail");
       view.element.style.width = "25rem";

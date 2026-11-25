@@ -49,6 +49,12 @@ function drainAsync(): Promise<void> {
 
 const live: Rig[] = [];
 
+/** A wait until a count is reached. */
+interface ICountWaiter {
+  readonly count: number;
+  readonly resolve: () => void;
+}
+
 class Rig {
   public readonly azure: FakeAzure = new FakeAzure();
   public readonly secrets: FakeModuleSecrets = new FakeModuleSecrets();
@@ -57,7 +63,7 @@ class Rig {
   public readonly log: FakeModuleLog = new FakeModuleLog();
   public readonly changes: HostSignIn[] = [];
   public readonly signIn: AzureSignIn = new AzureSignIn(new AzureApi(this.azure.fetch), new EntraFlow(this.azure.fetch), this.secrets, this.appWindows, this.log, t => this.change(t));
-  private readonly waiters: { readonly count: number; readonly resolve: () => void }[] = [];
+  private readonly waiters: ICountWaiter[] = [];
 
   public changedAsync(count: number): Promise<void> {
     return this.changes.length >= count ? Promise.resolve() : new Promise<void>(resolve => {

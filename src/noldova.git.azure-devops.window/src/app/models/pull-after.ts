@@ -7,4 +7,12 @@
  */
 
 /** The local folder, and its branch, that the person asked to pull once the pull request merges. */
-export type PullAfter = { readonly folder: string; readonly branch: string };
+export class PullAfter {
+  public readonly folder: string;
+  public readonly branch: string;
+
+  public constructor(folder: string, branch: string) {
+    this.folder = folder;
+    this.branch = branch;
+  }
+}

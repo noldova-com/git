@@ -786,7 +786,7 @@ describe("GitRebaseComponent", () => {
   it("offers Tidy up for review, not built yet, after the title only while the app turns AI features on", async () => {
     const screen: Screen = Screen.render({ "git.rebasePlan": plan.toJson(), "git.rebaseCheck": checks(clean, clean, clean, clean) });
     await screen.readyAsync();
-    const off: readonly [number, boolean] = [screen.element.querySelectorAll(".tidy-up").length,
+    const off: readonly unknown[] = [screen.element.querySelectorAll(".tidy-up").length,
       screen.find(".title-row").lastElementChild?.classList.contains("title") === true];
     GitViewOptions.showsAiFeatures.set(true);
     onTestFinished(() => GitViewOptions.showsAiFeatures.set(false));

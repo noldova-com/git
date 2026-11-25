@@ -21,15 +21,18 @@ import { AvatarSize, ButtonComponent, ButtonVariant, type ILinkReferenceSource, 
 import { MarkdownViewComponent } from "@noldova/ui.components.angular/markdown";
 
 import { PullRequestTab } from "../../enums/pull-request-tab.ts";
+import { KeptPull } from "../../models/kept-pull.ts";
+import type { PullAfter } from "../../models/pull-after.ts";
+import { PullOutcome } from "../../models/pull-outcome.ts";
 import { PullRequestChoice } from "../../models/pull-request-choice.ts";
 import { PullRequestClone } from "../../models/pull-request-clone.ts";
 import { PullRequestDocument } from "../../models/pull-request-document.ts";
+import { TabSize } from "../../models/tab-size.ts";
 import { WorkItemsPlace } from "../../models/work-items-place.ts";
 import { AzureDevOpsPages } from "../../services/azure-devops-pages.ts";
 import { AzureDevOpsPullRequestHost } from "../../services/azure-devops-pull-request-host.ts";
 import { AzureDevOpsReferenceSource } from "../../services/azure-devops-reference-source.ts";
 import { PullRequestSelection } from "../../services/pull-request-selection.ts";
-import type { PullAfter } from "../../types/pull-after.ts";
 import { AzureDevOpsPullRequestUpdatesComponent } from "../azure-devops-pull-request-updates/azure-devops-pull-request-updates.component.ts";
 import { AzureDevOpsPersonAvatarComponent } from "../azure-devops-person-avatar/azure-devops-person-avatar.component.ts";
 import { Resources } from "../../../resources.ts";
@@ -53,7 +56,7 @@ export class AzureDevOpsPullRequestComponent {
   private readonly votes: WritableSignal<ReadonlyMap<string, HostReviewer>> = signal<ReadonlyMap<string, HostReviewer>>(new Map());
   private readonly login: WritableSignal<string | null> = signal<string | null>(null);
   private generation: number = 0;
-  private pullAfter: { readonly key: string; readonly pull: PullAfter } | null = null;
+  private pullAfter: KeptPull | null = null;
   private references: AzureDevOpsReferenceSource | null = null;
   /** The comment thread whose line the Files tab reveals, which the page shows on Azure DevOps when the tab can't. */
   private revealing: ThreadLine | null = null;
@@ -140,7 +143,7 @@ export class AzureDevOpsPullRequestComponent {
   }
 
   private changed(reference: HostReference, pull: PullAfter | null): void {
-    this.pullAfter = Object.isNull(pull) ? null : { key: JSON.stringify(reference.toJson()), pull };
+    this.pullAfter = Object.isNull(pull) ? null : new KeptPull(JSON.stringify(reference.toJson()), pull);
     this.retry();
   }
 
@@ -327,21 +330,21 @@ export class AzureDevOpsPullRequestComponent {
   /** Reads the Files and Updates tabs' answers in the background, so their counts show before they open and each tab shows the answer read here. */
   private readTabsEarly(reference: HostReference, isCurrent: () => boolean): void {
     void this.readEarlyAsync(this.host.readChangesMethod, reference, t => HostPullRequestFiles.fromJson(t), this.files, PullRequestTab.Files,
-      t => [t.files.length, t.hasMore], isCurrent);
+      t => new TabSize(t.files.length, t.hasMore), isCurrent);
     void this.readEarlyAsync(AzureDevOpsNames.readPullRequestUpdatesMethod, reference, t => HostPullRequestUpdates.fromJson(t), this.updates, PullRequestTab.Updates,
-      t => [t.updates.length, t.hasMore], isCurrent);
+      t => new TabSize(t.updates.length, t.hasMore), isCurrent);
   }
 
   /** Reads one tab's answer and counts it; a failure only leaves the tab without a count, to read when it opens. */
   private async readEarlyAsync<T>(method: string, reference: HostReference, parse: (answer: JsonValue) => T, held: WritableSignal<T | null | undefined>,
-    tab: PullRequestTab, sizeOf: (read: T) => readonly [number, boolean], isCurrent: () => boolean): Promise<void> {
+    tab: PullRequestTab, sizeOf: (read: T) => TabSize, isCurrent: () => boolean): Promise<void> {
     const done = this.tasks.add();
     try {
       const read: T = parse(await this.context.requestAsync(method, reference.toJson()));
       if (isCurrent()) {
-        const [size, hasMore] = sizeOf(read);
+        const counted: TabSize = sizeOf(read);
         held.set(read);
-        this.count(tab, `${size}${hasMore ? Resources.moreMark : ""}`);
+        this.count(tab, `${counted.size}${counted.hasMore ? Resources.moreMark : ""}`);
       }
     }
     catch (error) {
@@ -371,7 +374,7 @@ export class AzureDevOpsPullRequestComponent {
     const generation: number = this.generation;
     const done = this.tasks.add();
     try {
-      const outcome: { readonly note: string | null; readonly failure: string | null } = await this.pullOutcomeAsync(pull, url);
+      const outcome: PullOutcome = await this.pullOutcomeAsync(pull, url);
       if (generation === this.generation) {
         this.pullNote.set(outcome.note);
         this.pullFailure.set(outcome.failure);
@@ -382,23 +385,23 @@ export class AzureDevOpsPullRequestComponent {
     }
   }
 
-  private async pullOutcomeAsync(pull: PullAfter, url: string): Promise<{ readonly note: string | null; readonly failure: string | null }> {
+  private async pullOutcomeAsync(pull: PullAfter, url: string): Promise<PullOutcome> {
     if (GitFolder.folder() !== pull.folder)
-      return { note: null, failure: Resources.formatPullFolderChanged(pull.branch) };
+      return new PullOutcome(null, Resources.formatPullFolderChanged(pull.branch));
     let method: string = GitNames.statusMethod;
     try {
       const status: GitStatus = GitStatus.fromJson(await this.context.requestAsync(method, new GitFolderParams(pull.folder).toJson()));
       if (!PullRequestClone.isPullTarget(status, url, pull.branch))
-        return { note: null, failure: Resources.formatPullMoved(pull.branch) };
+        return new PullOutcome(null, Resources.formatPullMoved(pull.branch));
       method = GitNames.pullMethod;
       await this.context.requestAsync(method, new GitPullParams(pull.folder, status.fingerprint).toJson());
-      return { note: Resources.formatPulled(pull.branch), failure: null };
+      return new PullOutcome(Resources.formatPulled(pull.branch), null);
     }
     catch (error) {
       if (!(error instanceof WindowException))
         throw error;
       this.context.log(Resources.formatRequestFailed(method, String(error)));
-      return { note: null, failure: error instanceof RuntimeRequestException ? error.message : Resources.formatPullUnanswered(pull.branch) };
+      return new PullOutcome(null, error instanceof RuntimeRequestException ? error.message : Resources.formatPullUnanswered(pull.branch));
     }
   }
 }

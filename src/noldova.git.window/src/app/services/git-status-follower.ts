@@ -70,7 +70,11 @@ export class GitStatusFollower {
   private async readAsync(folder: string): Promise<void> {
     const read: number = ++this.reads;
     try {
-      const [status, log]: readonly [GitStatus, GitCommandLog] = await Promise.all([this.client.statusAsync(folder), this.client.commandLogAsync(folder)]);
+      const statusRead: Promise<GitStatus> = this.client.statusAsync(folder);
+      const logRead: Promise<GitCommandLog> = this.client.commandLogAsync(folder);
+      await Promise.all([statusRead, logRead]);
+      const status: GitStatus = await statusRead;
+      const log: GitCommandLog = await logRead;
       if (read !== this.reads)
         return;
       GitStatusBar.show(folder, status);

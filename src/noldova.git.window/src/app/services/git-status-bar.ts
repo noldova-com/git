@@ -11,6 +11,7 @@ import { type StatusBarItem, StatusBarItemState } from "@noldova/desktop.window"
 import { type GitCommand, GitFolderParams, type GitStatus } from "@noldova/git.protocol";
 
 import { Resources } from "../../resources.ts";
+import { GitStatusBarItems } from "../models/git-status-bar-items.ts";
 
 /**
  * The window's status-bar items for the Git panel's repository: its branch, or detached commit, with how far it is ahead of and behind its upstream,
@@ -19,7 +20,7 @@ import { Resources } from "../../resources.ts";
 export class GitStatusBar {
   private static readonly HIDDEN: StatusBarItemState = new StatusBarItemState("", { isHidden: true });
   private static readonly MINUTE: number = 60_000;
-  private static items: readonly [StatusBarItem, StatusBarItem, StatusBarItem] | null = null;
+  private static items: GitStatusBarItems | null = null;
   private static folder: string | null = null;
   private static status: GitStatus | null = null;
   private static commandFolder: string | null = null;
@@ -27,7 +28,7 @@ export class GitStatusBar {
 
   /** Takes the branch, fetch and command items the window part registered, and keeps the fetch age current; the returned function lets them go again. */
   public static provide(branch: StatusBarItem, fetched: StatusBarItem, command: StatusBarItem): () => void {
-    const items: readonly [StatusBarItem, StatusBarItem, StatusBarItem] = [branch, fetched, command];
+    const items: GitStatusBarItems = new GitStatusBarItems(branch, fetched, command);
     GitStatusBar.items = items;
     const timer = setInterval(() => GitStatusBar.refresh(), GitStatusBar.MINUTE);
     return () => {
@@ -48,7 +49,7 @@ export class GitStatusBar {
   public static showCommand(folder: string | null, command: GitCommand | null): void {
     GitStatusBar.commandFolder = folder;
     GitStatusBar.command = command;
-    GitStatusBar.items?.[2].update(GitStatusBar.commandStateOf(folder, command));
+    GitStatusBar.items?.command.update(GitStatusBar.commandStateOf(folder, command));
   }
 
   public static commandStateOf(folder: string | null, command: GitCommand | null): StatusBarItemState {
@@ -90,8 +91,8 @@ export class GitStatusBar {
   }
 
   private static refresh(): void {
-    GitStatusBar.items?.[0].update(GitStatusBar.stateOf(GitStatusBar.folder, GitStatusBar.status));
-    GitStatusBar.items?.[1].update(GitStatusBar.fetchedStateOf(GitStatusBar.folder, GitStatusBar.status, new Date()));
-    GitStatusBar.items?.[2].update(GitStatusBar.commandStateOf(GitStatusBar.commandFolder, GitStatusBar.command));
+    GitStatusBar.items?.branch.update(GitStatusBar.stateOf(GitStatusBar.folder, GitStatusBar.status));
+    GitStatusBar.items?.fetched.update(GitStatusBar.fetchedStateOf(GitStatusBar.folder, GitStatusBar.status, new Date()));
+    GitStatusBar.items?.command.update(GitStatusBar.commandStateOf(GitStatusBar.commandFolder, GitStatusBar.command));
   }
 }

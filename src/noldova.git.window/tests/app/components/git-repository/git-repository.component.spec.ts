@@ -28,6 +28,32 @@ import { GitRepositoryLinks } from "../../../../src/app/services/git-repository-
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 
+/** A rendered repository panel, with the requests it holds and the context it reads through. */
+class RenderedRepository {
+  public readonly element: HTMLElement;
+  public readonly requests: GitHeldRequests;
+  public readonly context: FakeWindowPartContext;
+  public readonly fixture: ComponentFixture<GitRepositoryComponent>;
+
+  public constructor(element: HTMLElement, requests: GitHeldRequests, context: FakeWindowPartContext, fixture: ComponentFixture<GitRepositoryComponent>) {
+    this.element = element;
+    this.requests = requests;
+    this.context = context;
+    this.fixture = fixture;
+  }
+}
+
+/** A rendered repository panel, with the context it reads through. */
+class RenderedPanel {
+  public readonly element: HTMLElement;
+  public readonly context: FakeWindowPartContext;
+
+  public constructor(element: HTMLElement, context: FakeWindowPartContext) {
+    this.element = element;
+    this.context = context;
+  }
+}
+
 describe("GitRepositoryComponent", () => {
   const answers: Readonly<Record<string, JsonValue>> = {
     ...GitFixtures.watching,
@@ -53,9 +79,7 @@ describe("GitRepositoryComponent", () => {
   };
 
   const renderAsync = async (held: readonly string[], refusal: Error, remoteBranches: readonly string[] = [], localBranches: readonly string[] = ["feature", "main"]):
-    Promise<{
-      readonly element: HTMLElement; readonly requests: GitHeldRequests; readonly context: FakeWindowPartContext; readonly fixture: ComponentFixture<GitRepositoryComponent>;
-    }> => {
+    Promise<RenderedRepository> => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const requests: GitHeldRequests = new GitHeldRequests(context, held, {
       ...answers, "git.switchBranch": refusal, "git.branches": GitFixtures.branches("main", localBranches, remoteBranches).toJson()
@@ -65,7 +89,7 @@ describe("GitRepositoryComponent", () => {
     fixture.autoDetectChanges();
     const element: HTMLElement = fixture.nativeElement;
     await domAsync(() => !Object.isNull(element.querySelector("button[title=feature]")));
-    return { element, requests, context, fixture };
+    return new RenderedRepository(element, requests, context, fixture);
   };
 
   const currentOf = (element: HTMLElement): readonly string[] =>
@@ -77,7 +101,7 @@ describe("GitRepositoryComponent", () => {
 
     element.querySelector<HTMLElement>("button[title=feature]")?.dispatchEvent(new MouseEvent("dblclick"));
     await domAsync(() => currentOf(element)[1] === "feature");
-    const during: readonly [readonly string[], string | null] = [currentOf(element), element.querySelector(".spin")?.getAttribute("aria-label") ?? null];
+    const during: readonly unknown[] = [currentOf(element), element.querySelector(".spin")?.getAttribute("aria-label") ?? null];
     await requests.answerAsync("git.switchBranch",
       GitFixtures.failure(FailureCode.Git, GitCode.ChangesInTheWay, "Your local changes to package-lock.json would be overwritten by checkout."));
     await domAsync(() => !Object.isNull(element.querySelector("[role=alert]")) && Object.isNull(element.querySelector(".spin")));
@@ -337,7 +361,7 @@ describe("GitRepositoryComponent", () => {
   describe("its branch and tag menus", () => {
     const id: string = "0123456789abcdef0123456789abcdef01234567";
 
-    const renderWithAsync = async (extra: Readonly<Record<string, JsonValue | Error>>): Promise<{ readonly element: HTMLElement; readonly context: FakeWindowPartContext }> => {
+    const renderWithAsync = async (extra: Readonly<Record<string, JsonValue | Error>>): Promise<RenderedPanel> => {
       const context: FakeWindowPartContext = new FakeWindowPartContext();
       new GitHeldRequests(context, [], { ...answers, "git.repositoryItems": new GitRepositoryItems([new GitTag("v1", id)], [], [], false).toJson(), ...extra });
       GitFixtures.setUp(context);
@@ -345,7 +369,7 @@ describe("GitRepositoryComponent", () => {
       fixture.autoDetectChanges();
       const element: HTMLElement = fixture.nativeElement;
       await domAsync(() => !Object.isNull(element.querySelector("button[title=feature]")));
-      return { element, context };
+      return new RenderedPanel(element, context);
     };
     const menuOf = async (row: HTMLElement): Promise<readonly HTMLButtonElement[]> => {
       const box: DOMRect = row.getBoundingClientRect();

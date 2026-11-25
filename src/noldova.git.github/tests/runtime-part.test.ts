@@ -34,7 +34,7 @@ async function callAsync(context: RuntimeContext, name: string, payload: JsonVal
   return handler.handleAsync(new RequestContext(client, payload, new AbortController().signal, 1, window));
 }
 
-function failureOf(error: unknown): readonly [string, string] | null {
+function failureOf(error: unknown): readonly string[] | null {
   return error instanceof MethodFailureException ? [error.failure.code, error.failure.message] : null;
 }
 
@@ -291,7 +291,7 @@ describe("RuntimePart", () => {
     const draft: JsonValue = new PullRequestDraft("github.com", "octocat/hello-world", "fix-bug", "main", "Fix the bug", "", false).toJson();
 
     await part.activateAsync(context.fake);
-    const refusals: (readonly [string, string] | null)[] = [];
+    const refusals: (readonly string[] | null)[] = [];
     for (const [client, window] of [["cli", null], ["chat", 1], [ShellClients.mainProcess, null]] as const)
       refusals.push(await callAsync(context, "git-github.createPullRequest", draft, client, window).then(() => null, failureOf));
     const requestsBefore = github.requests.length;

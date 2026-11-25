@@ -10,6 +10,7 @@ import { FailureCode } from "@noldova/desktop.protocol";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
 import { CheckState, type HostReference, HostReviewRequestList, PolicyState, ThreadStatus, WorkItemCategory } from "@noldova/git.hosting.protocol";
 
+import { MergeTypeSetting } from "./models/merge-type-setting.ts";
 import type { ThreadWrite } from "./types/thread-write.ts";
 
 
@@ -248,9 +249,9 @@ export class Resources {
   public static readonly mergeStatusField: string = "mergeStatus";
   public static readonly settingsField: string = "settings";
   /** Azure DevOps's merge strategies, in the order its Complete panel lists them, each with the "Limit merge types" policy's setting that allows it. */
-  public static readonly mergeTypeSettings: readonly (readonly [string, string])[] = [["noFastForward", "allowNoFastForward"], ["squash", "allowSquash"],
-    ["rebase", "allowRebase"], ["rebaseMerge", "allowRebaseMerge"]];
-  public static readonly mergeTypes: readonly string[] = Resources.mergeTypeSettings.map(([type]) => type);
+  public static readonly mergeTypeSettings: readonly MergeTypeSetting[] = [new MergeTypeSetting("noFastForward", "allowNoFastForward"),
+    new MergeTypeSetting("squash", "allowSquash"), new MergeTypeSetting("rebase", "allowRebase"), new MergeTypeSetting("rebaseMerge", "allowRebaseMerge")];
+  public static readonly mergeTypes: readonly string[] = Resources.mergeTypeSettings.map(t => t.type);
   /** The merge type that rebases the commits onto the target and fast-forwards it, so it writes no merge commit and takes no message. */
   public static readonly fastForwardMergeType: string = "rebase";
   public static readonly mergeStrategyPolicyType: string = "fa4e907d-c16b-4a4c-9dfa-4916e5d171ab";

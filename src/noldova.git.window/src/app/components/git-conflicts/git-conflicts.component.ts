@@ -27,6 +27,7 @@ import { GitFolder } from "../../services/git-folder.ts";
 import { GitResolving } from "../../services/git-resolving.ts";
 import { GitRuntimeClient } from "../../services/git-runtime-client.ts";
 import { GitViewStateService } from "../../services/git-view-state.service.ts";
+import { GitResolvedFile } from "../../models/git-resolved-file.ts";
 
 /** A folder's merge, rebase, cherry-pick or revert as a document: its header with abort and continue, its files by conflict, resolved and merged cleanly, and the open file's sides. */
 @Component({
@@ -69,12 +70,12 @@ export class GitConflictsComponent {
   protected readonly status: Signal<GitStatus | null> = computed(() => this.state.folder() === this.instance() ? this.state.status() : null);
   protected readonly conflicted: Signal<readonly string[]> = computed(() => this.status()?.entries.filter(t => !Object.isNull(t.conflict)).map(t => t.path) ?? []);
   /** The files out of conflict that the operation conflicted on, each with how this screen resolved it, or no note when it was resolved elsewhere. */
-  protected readonly resolved: Signal<readonly (readonly [string, string])[]> = computed(() => {
+  protected readonly resolved: Signal<readonly GitResolvedFile[]> = computed(() => {
     const conflicted: ReadonlySet<string> = new Set(this.conflicted());
     const recorded: ReadonlyMap<string, GitResolvedBy> = GitResolving.resolutionsOf(this.instance());
     return [...new Set([...this.firstConflicts(), ...recorded.keys()])].filter(path => !conflicted.has(path)).map(path => {
       const by: GitResolvedBy | undefined = recorded.get(path);
-      return [path, Object.isUndefined(by) ? "" : Resources.resolutionNotes[by]];
+      return new GitResolvedFile(path, Object.isUndefined(by) ? "" : Resources.resolutionNotes[by]);
     });
   });
   protected readonly selected: WritableSignal<string | null> = signal<string | null>(null);
@@ -158,7 +159,7 @@ export class GitConflictsComponent {
 
   /** The staged files that merged without a conflict and weren't resolved here. */
   protected cleanOf(status: GitStatus): readonly string[] {
-    const resolved: ReadonlySet<string> = new Set(this.resolved().map(([path]) => path));
+    const resolved: ReadonlySet<string> = new Set(this.resolved().map(t => t.path));
     return status.entries.filter(t => Object.isNull(t.conflict) && t.index !== FileState.Unmodified && t.index !== FileState.Untracked && !resolved.has(t.path))
       .map(t => t.path);
   }

@@ -23,6 +23,12 @@ import { GitHubSignInComponent } from "../../../../src/app/components/github-sig
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
+/** A sign-in the settings show, by the name its screenshot takes; null when the read fails. */
+interface ISignInState {
+  readonly name: string;
+  readonly signIn: HostSignIn | null;
+}
+
 @Component({
   selector: "nol-git-github-settings-column",
   imports: [GitHubSignInComponent],
@@ -40,16 +46,16 @@ const NOW: number = 1_800_000_000_000;
 const code: DeviceCode = new DeviceCode("WDJB-MJHT", "https://github.com/login/device", NOW + 872_000);
 const picture: string = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEElEQVR4nGNoCrgPRwzEcQC6IhsRLJyGqgAAAABJRU5ErkJggg==";
 const account: HostAccount = new HostAccount("example-user", null, picture, ["repo"]);
-const states: readonly (readonly [string, HostSignIn | null])[] = [
-  ["signed-out", HostSignIn.signedOut()],
-  ["code", HostSignIn.waiting(code)],
-  ["signed-in", HostSignIn.signedIn(account)],
-  ["expired", HostSignIn.signedOut(SignInFailure.Expired)],
-  ["unforgotten", HostSignIn.signedOut(SignInFailure.Unforgotten)],
-  ["unread", null]
+const states: readonly ISignInState[] = [
+  { name: "signed-out", signIn: HostSignIn.signedOut() },
+  { name: "code", signIn: HostSignIn.waiting(code) },
+  { name: "signed-in", signIn: HostSignIn.signedIn(account) },
+  { name: "expired", signIn: HostSignIn.signedOut(SignInFailure.Expired) },
+  { name: "unforgotten", signIn: HostSignIn.signedOut(SignInFailure.Unforgotten) },
+  { name: "unread", signIn: null }
 ];
 const screenshots: string = "../../../../../../_build/github-window/screenshots";
-const cases = AppearanceFixture.modes.flatMap(mode => states.map(([name, signIn]) => [mode, name, signIn] as const));
+const cases = AppearanceFixture.modes.flatMap(mode => states.map(({ name, signIn }) => [mode, name, signIn] as const));
 
 async function openAsync(mode: ThemeMode, signIn: HostSignIn | null,
   prepare: (requests: RequestAnswers) => void = () => undefined): Promise<ComponentFixture<SettingsColumnComponent>> {
@@ -146,7 +152,7 @@ describe("GitHubSignInComponent in the kit's look", () => {
     }
   });
 
-  it.each(states)("reaches out by Settings' edge as Settings' own rows do, so its edges line up with theirs, %s", async (_name, signIn) => {
+  it.each(states)("reaches out by Settings' edge as Settings' own rows do, so its edges line up with theirs, $name", async ({ signIn }) => {
     vi.useFakeTimers({ now: NOW, toFake: ["Date", "setInterval", "clearInterval"] });
     const fixture = await openAsync(ThemeMode.Light, signIn);
     const root: HTMLElement = fixture.nativeElement;

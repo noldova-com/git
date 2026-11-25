@@ -33,6 +33,29 @@ export class FailedRequest extends WindowException {
   }
 }
 
+/** A diff line a fixture diff holds: its kind and its text. */
+export class FixtureLine {
+  public readonly kind: LineKind;
+  public readonly text: string;
+
+  public constructor(kind: LineKind, text: string) {
+    this.kind = kind;
+    this.text = text;
+  }
+}
+
+/** What a fixture status holds apart from its entries and upstream; each part left out takes the fixture's usual value. */
+export interface IFixtureStatusOptions {
+  readonly branch?: string | null;
+  readonly head?: string | null;
+  readonly operation?: GitOperation | null;
+  readonly remote?: GitRemote | null;
+  readonly truncated?: boolean;
+  readonly fingerprint?: string;
+  readonly uncheckedLfsFiles?: number;
+  readonly fetchedAt?: string | null;
+}
+
 export class GitFixtures {
   public static readonly folder: string = "/work/project";
   public static readonly watching: Readonly<Record<string, JsonValue>> = {
@@ -48,10 +71,7 @@ export class GitFixtures {
       Object.isNull(conflict) && worktree !== FileState.Unmodified ? counts : null);
   }
 
-  public static status(entries: readonly StatusEntry[] = [], upstream: StatusUpstream | null = null, options: {
-    readonly branch?: string | null; readonly head?: string | null; readonly operation?: GitOperation | null; readonly remote?: GitRemote | null; readonly truncated?: boolean;
-    readonly fingerprint?: string; readonly uncheckedLfsFiles?: number; readonly fetchedAt?: string | null;
-  } = {}): GitStatus {
+  public static status(entries: readonly StatusEntry[] = [], upstream: StatusUpstream | null = null, options: IFixtureStatusOptions = {}): GitStatus {
     return new GitStatus(Object.isUndefined(options.branch) ? "main" : options.branch,
       Object.isUndefined(options.head) ? "0123456789abcdef0123456789abcdef01234567" : options.head, upstream, entries,
       options.truncated ?? false, options.fingerprint ?? "f1", options.operation ?? null, options.remote ?? null,
@@ -62,8 +82,8 @@ export class GitFixtures {
     return new GitBranches(current, branches, remoteBranches.map(t => t.slice(0, t.indexOf("/"))).filter((t, i, all) => all.indexOf(t) === i), remoteBranches, tracks);
   }
 
-  public static diff(path: string, ...lines: readonly [LineKind, string][]): GitDiff {
-    const hunk: DiffHunk = new DiffHunk(1, 1, 1, 2, "", lines.map(([kind, text]) =>
+  public static diff(path: string, ...lines: readonly FixtureLine[]): GitDiff {
+    const hunk: DiffHunk = new DiffHunk(1, 1, 1, 2, "", lines.map(({ kind, text }) =>
       new DiffLine(kind, kind === LineKind.Context || kind === LineKind.Removed ? 1 : null, kind === LineKind.Context || kind === LineKind.Added ? 1 : null, text)));
     return new GitDiff([new DiffFile(path, undefined, path, undefined, FileChange.Modified, null, null, false, null, [hunk], false)], 0, 0, false);
   }

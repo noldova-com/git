@@ -21,6 +21,19 @@ import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 
+/** A mounted history, with the errors it reported. */
+class MountedHistory {
+  public readonly fixture: ComponentFixture<GitHistoryComponent>;
+  public readonly element: HTMLElement;
+  public readonly handled: WritableSignal<string[]>;
+
+  public constructor(fixture: ComponentFixture<GitHistoryComponent>, element: HTMLElement, handled: WritableSignal<string[]>) {
+    this.fixture = fixture;
+    this.element = element;
+    this.handled = handled;
+  }
+}
+
 describe("GitHistoryComponent reads and writes", () => {
   const commitOf = (id: string, parents: readonly string[], subject: string, refs: readonly GitRef[] = []): GitGraphCommit =>
     new GitGraphCommit(new GitCommit(id.repeat(40), parents.map(t => t.repeat(40)), "Sample Author", "2026-11-06T17:30:00Z", subject), "author@example.com", refs);
@@ -45,14 +58,14 @@ describe("GitHistoryComponent reads and writes", () => {
     });
   };
 
-  const mount = (context: FakeWindowPartContext): { readonly fixture: ComponentFixture<GitHistoryComponent>; readonly element: HTMLElement; readonly handled: WritableSignal<string[]> } => {
+  const mount = (context: FakeWindowPartContext): MountedHistory => {
     GitFixtures.setUp(context);
     const handled: WritableSignal<string[]> = signal<string[]>([]);
     vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.update(t => [...t, String(error)]));
     const fixture: ComponentFixture<GitHistoryComponent> = TestBed.createComponent(GitHistoryComponent);
     fixture.componentRef.setInput("instance", GitFixtures.folder);
     fixture.autoDetectChanges();
-    return { fixture, element: fixture.nativeElement, handled };
+    return new MountedHistory(fixture, fixture.nativeElement, handled);
   };
 
   const subjects = (element: HTMLElement): string[] => [...element.querySelectorAll("[role=option]")].map(t => (t.textContent ?? "").replace(/\s+/gu, " ").trim());

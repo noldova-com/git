@@ -11,9 +11,9 @@ LICENSE file in the root directory of this source tree.
 } @else if (diff(); as diff) {
   <div class="files">
     <div class="files-header">
-      <span class="caps grow">{{ resources.formatFilesChanged(totals()[0]) }}</span>
-      <span class="small added">{{ resources.addedPrefix }}{{ totals()[1] }}</span>
-      <span class="small removed">{{ resources.removedSign }}{{ totals()[2] }}</span>
+      <span class="caps grow">{{ resources.formatFilesChanged(totals().files) }}</span>
+      <span class="small added">{{ resources.addedPrefix }}{{ totals().added }}</span>
+      <span class="small removed">{{ resources.removedSign }}{{ totals().removed }}</span>
       @if (chosen(); as layout) {
         <nol-git-file-layout-button class="layout" [layout]="layout" />
       }

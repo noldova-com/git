@@ -11,6 +11,7 @@ import { type ILinkReferenceSource, LinkReference, LinkReferenceImage, LinkRefer
 import { describe, expect, it } from "vitest";
 
 import { GitReferencePart } from "../../../src/app/models/git-reference-part.ts";
+import { GitTextAround } from "../../../src/app/models/git-text-around.ts";
 
 const ISSUE: string = "https://dev.azure.com/fabrikam/_workitems/edit/12";
 const OTHER: string = "https://dev.azure.com/fabrikam/_workitems/edit/5";
@@ -21,7 +22,7 @@ function sourceOf(...matches: readonly LinkReferenceMatch[]): ILinkReferenceSour
   return { find: t => t === ISSUE ? issue : null, findText: () => matches };
 }
 
-function shown(parts: readonly GitReferencePart[]): readonly (readonly [string, string | null, boolean])[] {
+function shown(parts: readonly GitReferencePart[]): readonly (readonly unknown[])[] {
   return parts.map(t => [t.text, t.url, t.reference === issue]);
 }
 
@@ -48,7 +49,7 @@ describe("GitReferencePart", () => {
 
   it("finds the words before and after what links in a text, and links all of a text that doesn't write it", () => {
     expect([GitReferencePart.around("Review !8", "!8"), GitReferencePart.around("!8 open · on !7", "!8"), GitReferencePart.around("No pull request", "!8")])
-      .toEqual([["Review ", "!8", ""], ["", "!8", " open · on !7"], ["", "No pull request", ""]]);
+      .toEqual([new GitTextAround("Review ", "!8", ""), new GitTextAround("", "!8", " open · on !7"), new GitTextAround("", "No pull request", "")]);
   });
 
   it("links a whole text to an address as one reference, with the source's look for it, or none without a source", () => {

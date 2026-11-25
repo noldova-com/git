@@ -12,8 +12,9 @@ import { describe, it } from "vitest";
 
 import { GitRebaseCommit } from "../../src/models/git-rebase-commit.ts";
 import { GitRebasePlan } from "../../src/models/git-rebase-plan.ts";
+import type { IFieldFailure } from "../fixtures/field-failure.fixture.ts";
 
-const expected = (field: string, expectation: string): { name: string; field: string; message: string } =>
+const expected = (field: string, expectation: string): IFieldFailure =>
   ({ name: "ProtocolFieldException", field, message: `The field ${field} is invalid: expected ${expectation}.` });
 
 const a = "a".repeat(40);

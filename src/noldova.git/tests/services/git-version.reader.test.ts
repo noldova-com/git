@@ -12,6 +12,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vite
 import { FailureCode, GitCode, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitTooOldException } from "../../src/exceptions/git-too-old.exception.ts";
+import { GitVersion } from "../../src/models/git-version.ts";
 import { GitVersionReader } from "../../src/services/git-version.reader.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
 import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
@@ -79,10 +80,10 @@ describe("GitVersionReader", () => {
     const reader = new GitVersionReader(runner);
 
     assert.deepEqual([
-      await reader.atLeastAsync(repository.folder, [2, 40]),
-      await reader.atLeastAsync(repository.folder, [2, 41]),
-      await reader.atLeastAsync(repository.folder, [3, 0]),
-      await reader.atLeastAsync(repository.folder, [1, 99])
+      await reader.atLeastAsync(repository.folder, new GitVersion(2, 40)),
+      await reader.atLeastAsync(repository.folder, new GitVersion(2, 41)),
+      await reader.atLeastAsync(repository.folder, new GitVersion(3, 0)),
+      await reader.atLeastAsync(repository.folder, new GitVersion(1, 99))
     ], [true, false, false, true]);
     await reader.requireAsync(repository.folder);
     assert.deepEqual(commands, ["version"]);

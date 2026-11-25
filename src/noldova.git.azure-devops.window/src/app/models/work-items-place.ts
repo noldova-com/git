@@ -11,6 +11,7 @@ import type { GitRemote } from "@noldova/git.protocol";
 
 import { Resources } from "../../resources.ts";
 import { AzureDevOpsReferenceLinks } from "../services/azure-devops-reference-links.ts";
+import type { ProjectPlace } from "./project-place.ts";
 
 export class WorkItemsPlace {
   public readonly organization: string;
@@ -47,8 +48,8 @@ export class WorkItemsPlace {
 
   /** The organization and project an Azure DevOps page's address names, such as a pull request's, without a work item; null when it names none. */
   public static ofPage(url: string): WorkItemsPlace | null {
-    const place: readonly [string, string] | null = AzureDevOpsReferenceLinks.projectOf(url);
-    return Object.isNull(place) ? null : new WorkItemsPlace(place[0], place[1], null);
+    const place: ProjectPlace | null = AzureDevOpsReferenceLinks.projectOf(url);
+    return Object.isNull(place) ? null : new WorkItemsPlace(place.organization, place.project, null);
   }
 
   /** The decoded name in a URL or remote path, or `null` when there is none, it's blank, or it doesn't decode. */

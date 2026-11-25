@@ -41,11 +41,17 @@ const request: HostReviewRequest = new HostReviewRequest(new HostReference("git-
 const asked: GitPullRequestRow = new GitPullRequestRow(`fabrikam/${REPOSITORY}/533`, "!533", "Sign in with a passkey",
   "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/533", false, 0, 0, 0, 0, "");
 
+/** A pull request's page the list opened, by its address and its reference. */
+interface IOpenedPage {
+  readonly url: string;
+  readonly reference: HostReference;
+}
+
 class Host {
   public readonly context: FakeWindowPartContext = new FakeWindowPartContext();
   public readonly requests: RequestAnswers = new RequestAnswers(this.context);
-  public readonly pages: (readonly [string, HostReference])[] = [];
-  public readonly pullRequests: AzureDevOpsPullRequests = new AzureDevOpsPullRequests(this.context, (url, reference) => this.pages.push([url, reference]));
+  public readonly pages: IOpenedPage[] = [];
+  public readonly pullRequests: AzureDevOpsPullRequests = new AzureDevOpsPullRequests(this.context, (url, reference) => this.pages.push({ url, reference }));
 
   public async readAsync(where: GitRemote, state: GitPullRequestsState): Promise<Signal<GitPullRequestList | null>> {
     const list = this.pullRequests.listFor(FOLDER, where);
@@ -98,7 +104,7 @@ describe("AzureDevOpsPullRequests", () => {
       [new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site").toJson()]]);
     expect(list()).toEqual(GitPullRequestList.ready([shown]));
     expect(host.pullRequests.listFor(FOLDER, remote)).toBe(list);
-    expect(host.pages).toEqual([[URL, row.reference]]);
+    expect(host.pages).toEqual([{ url: URL, reference: row.reference }]);
   });
 
   it("keeps the rows it showed while it reads again, and gives another remote its own list", async () => {
@@ -241,7 +247,7 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
       .toEqual([null, GitBranchPullRequest.of(rowOf(2), GitPullRequestState.Open, true, "Active"), read, null]);
     expect([host.requests.methods, host.requests.payloads]).toEqual([[AzureDevOpsNames.readSignInMethod, AzureDevOpsNames.readBranchPullRequestMethod],
       [null, new BranchQuery("dev.azure.com", "fabrikam/web/_git/site", "export-notes", HEAD).toJson()]]);
-    expect(host.pages).toEqual([[URL, new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752)]]);
+    expect(host.pages).toEqual([{ url: URL, reference: new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752) }]);
   });
 
   it("maps each state with Azure DevOps' word for it, waits for review only while open without a decision, keeps the base branch, and answers none without a pull request", async () => {
@@ -331,7 +337,7 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
     expect([answer(), host.pullRequests.commitFor(FOLDER, remote, HEAD), host.requests.methods, host.requests.payloads]).toEqual([
       GitBranchPullRequest.of(rowOf(1, false, ""), GitPullRequestState.Merged, false, "Completed"), answer, [AzureDevOpsNames.readCommitPullRequestMethod],
       [new CommitQuery("dev.azure.com", "fabrikam/web/_git/site", HEAD).toJson()]]);
-    expect(host.pages).toEqual([[URL, new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752)]]);
+    expect(host.pages).toEqual([{ url: URL, reference: new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752) }]);
   });
 
   it("answers a commit's failed read as failed with the runtime's message or that Azure DevOps didn't answer, logs it, never retries that ask and keeps no "
@@ -367,7 +373,7 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
       host.pullRequests.open(FOLDER, asked)]).toEqual([null, GitPullRequestList.ready([asked], true), true, null, null, true]);
     expect([host.requests.methods, host.requests.payloads]).toEqual([[AzureDevOpsNames.readReviewRequestsMethod],
       [new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site").toJson()]]);
-    expect(host.pages).toEqual([[request.url, request.reference]]);
+    expect(host.pages).toEqual([{ url: request.url, reference: request.reference }]);
   });
 
   it("keeps the review requests it showed while it reads again and after a failed read, logging it, and says when nobody is signed in", async () => {
@@ -504,7 +510,7 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
         urlOf(i + 1), false, 0, 0, 0, 0, `change-${i + 1}`, i === 0 ? null : `change-${i}`)), true), true, GitPullRequestList.signedOut(), null]);
     expect([host.requests.methods, host.requests.payloads]).toEqual([[AzureDevOpsNames.readPullRequestHeadsMethod, AzureDevOpsNames.readPullRequestHeadsMethod],
       [new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site").toJson(), new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/docs").toJson()]]);
-    expect([host.pages.length, host.pages[0]]).toEqual([100, [urlOf(1), new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 1)]]);
+    expect([host.pages.length, host.pages[0]]).toEqual([100, { url: urlOf(1), reference: new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 1) }]);
   });
 
   it("logs a failed heads read and forgets it so the next ask reads again, reads nothing for a remote with no host or path, and passes on a failure that isn't the window's",

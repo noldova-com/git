@@ -24,8 +24,9 @@ import { GitLinkReferences } from "../../../../src/app/services/git-link-referen
 import { GitRebaseTarget, GitRebasing } from "../../../../src/app/services/git-rebasing.ts";
 import { GitViewOptions } from "../../../../src/app/services/git-view-options.ts";
 import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
-import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
+import { FixtureLine, GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitViewFixture } from "../../../fixtures/git-view.fixture.ts";
+import type { IGitLinkReferences } from "../../../../src/app/interfaces/i-git-link-references.ts";
 
 describe("GitCommitDetailComponent", () => {
   const commitOf = (parents: readonly string[]): GitGraphCommit =>
@@ -51,7 +52,7 @@ describe("GitCommitDetailComponent", () => {
 
   it("shows the selected commit beside the panel's changes, with its files read against its first parent, and how to choose one once nothing is selected", async () => {
     const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40), "e".repeat(40)]),
-      GitFixtures.diff("src/services/reader.ts", [LineKind.Added, "one"], [LineKind.Added, "two"], [LineKind.Removed, "old"]));
+      GitFixtures.diff("src/services/reader.ts", new FixtureLine(LineKind.Added, "one"), new FixtureLine(LineKind.Added, "two"), new FixtureLine(LineKind.Removed, "old")));
     await view.waitForAsync(".files");
 
     expect(view.texts(".id-row .mono, .subject, .author .strong")).toEqual(["cccccccccccc", "Follow renames", "Sample Author"]);
@@ -72,7 +73,7 @@ describe("GitCommitDetailComponent", () => {
   });
 
   it("shows a parent in the history from its link, by its whole id", async () => {
-    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40), "e".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]));
+    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40), "e".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")));
     await view.waitForAsync(".parents button");
     onTestFinished(() => GitViewing.branch.set(null));
 
@@ -82,7 +83,7 @@ describe("GitCommitDetailComponent", () => {
   });
 
   it("reads a first commit against the empty tree, and closes a folder and lists whole paths on a click", async () => {
-    const view: GitViewFixture = await showAsync(commitOf([]), GitFixtures.diff("src/a.ts", [LineKind.Added, "one"]));
+    const view: GitViewFixture = await showAsync(commitOf([]), GitFixtures.diff("src/a.ts", new FixtureLine(LineKind.Added, "one")));
     await view.waitForAsync(".files");
 
     expect(partsOf(view, ".parents")).toEqual(["Parent None: the first commit"]);
@@ -97,7 +98,7 @@ describe("GitCommitDetailComponent", () => {
 
   it("opens a file's diff from the commit's own read under its row, a step in under its folder, and closes it, without reading again", async () => {
     const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]),
-      GitFixtures.diff("src/services/reader.ts", [LineKind.Context, "a"], [LineKind.Removed, "b"], [LineKind.Added, "c"]));
+      GitFixtures.diff("src/services/reader.ts", new FixtureLine(LineKind.Context, "a"), new FixtureLine(LineKind.Removed, "b"), new FixtureLine(LineKind.Added, "c")));
     await view.waitForAsync(".files");
     const rem = (pixels: number): number => pixels / parseFloat(getComputedStyle(document.documentElement).fontSize);
 
@@ -116,7 +117,7 @@ describe("GitCommitDetailComponent", () => {
   });
 
   it("shows the message after the subject as Markdown, and who committed it when that isn't the author", async () => {
-    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]),
+    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")),
       new GitCommitDetail("c".repeat(40), "Why it changed.\n\n## Checks\n\n- `one`\n- two", "Other Person", "other@example.com", "2026-11-21T09:30:00Z", true),
       [provideMarkdown()]);
     await view.waitForAsync(".message li");
@@ -142,7 +143,7 @@ describe("GitCommitDetailComponent", () => {
         return { find: t => t === issue ? reference : null, findText: t => [new LinkReferenceMatch(t.indexOf("#5"), 2, issue)] };
       }
     }));
-    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]),
+    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")),
       new GitCommitDetail("c".repeat(40), "Fixes #5.", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false), [provideMarkdown()]);
     view.context.answer("openLinkAsync", async () => undefined);
     await view.waitForAsync(".message a[nol-link-reference-chip]");
@@ -156,7 +157,7 @@ describe("GitCommitDetailComponent", () => {
   it("reports a message link the window fails to open", async () => {
     const issue: string = "https://github.com/example-owner/example-repository/issues/5";
     onTestFinished(GitLinkReferences.provide({ referencesFor: () => ({ find: () => null, findText: t => [new LinkReferenceMatch(t.indexOf("#5"), 2, issue)] }) }));
-    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]),
+    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")),
       new GitCommitDetail("c".repeat(40), "Fixes #5.", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false), [provideMarkdown()]);
     const handled: string[] = [];
     vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.push(String(error)));
@@ -175,7 +176,7 @@ describe("GitCommitDetailComponent", () => {
     onTestFinished(GitLinkReferences.provide({
       referencesFor: () => ({ find: t => t === issue ? reference : null, findText: t => t.includes("renames") ? [new LinkReferenceMatch(t.indexOf("renames"), 7, issue)] : [] })
     }));
-    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]));
+    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")));
     view.context.answer("openLinkAsync", async () => undefined);
     await view.waitForAsync(".subject a");
 
@@ -198,7 +199,7 @@ describe("GitCommitDetailComponent", () => {
         return true;
       }
     }));
-    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]),
+    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")),
       new GitCommitDetail("c".repeat(40), "Fixes #5.", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false), [provideMarkdown()]);
     await view.waitForAsync(".message a[nol-link-reference-chip]");
 
@@ -210,14 +211,14 @@ describe("GitCommitDetailComponent", () => {
   });
 
   it.each([["declines it", { opens: (): boolean => false }], ["has no way to open one", {}]] as const)(
-    "opens a link through the window when its host %s", async (_: string, own: { readonly opens?: () => boolean }) => {
+    "opens a link through the window when its host %s", async (_: string, own: Pick<IGitLinkReferences, "opens">) => {
       const issue: string = "https://github.com/example-owner/example-repository/issues/5";
       const reference = signal<LinkReference | null>(new LinkReference("example-owner/example-repository#5", "Issue", new LinkReferenceImage("data:,")));
       onTestFinished(GitLinkReferences.provide({
         referencesFor: () => ({ find: t => t === issue ? reference : null, findText: t => [new LinkReferenceMatch(t.indexOf("#5"), 2, issue)] }),
         ...own
       }));
-      const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]),
+      const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")),
         new GitCommitDetail("c".repeat(40), "Fixes #5.", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false), [provideMarkdown()]);
       await view.waitForAsync(".message a[nol-link-reference-chip]");
       view.context.answer("openLinkAsync", () => Promise.resolve());
@@ -236,7 +237,7 @@ describe("GitCommitDetailComponent", () => {
         return image();
       }
     }));
-    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]));
+    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")));
     await view.waitForAsync(".author span.av");
     const rem = (pixels: number): number => pixels / parseFloat(getComputedStyle(document.documentElement).fontSize);
     const boxOf = (selector: string): readonly number[] => {
@@ -257,7 +258,7 @@ describe("GitCommitDetailComponent", () => {
   });
 
   it("shows no message or committer when there is none and the author committed it", async () => {
-    const plain: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]));
+    const plain: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")));
     await plain.waitForAsync(".files");
     await plain.untilAsync(() => plain.requested("git.commitDetail").length === 1);
     expect([plain.all(".message").length, plain.all(".committed").length]).toEqual([0, 0]);
@@ -272,7 +273,7 @@ describe("GitCommitDetailComponent", () => {
     ["a check Git can't make", GitFixtures.failure(FailureCode.Git, null, "gpg is missing."), ["no row", "0"]],
     ["another commit's answer", new GitCommitSignature("e".repeat(40), SignatureState.Verified, null, null), ["no row", "0"]]
   ] as const)("says under the people whether the commit's signature checks out and who signed it, with the key as its title, for %s", async (_, signature, row) => {
-    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]), undefined, [],
+    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")), undefined, [],
       { "git.commitSignature": signature instanceof Error ? signature : signature.toJson() });
     await view.waitForAsync(".files");
     await view.untilAsync(() => view.requested("git.commitSignature").length === 1);
@@ -285,7 +286,7 @@ describe("GitCommitDetailComponent", () => {
   });
 
   it("shows no message when Git can't read it, and still lists the files without an alert", async () => {
-    const failed: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]),
+    const failed: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")),
       GitFixtures.failure(FailureCode.Git, null, "Git can't read that commit."));
     await failed.waitForAsync(".files");
     await failed.untilAsync(() => failed.requested("git.commitDetail").length === 1);
@@ -298,9 +299,9 @@ describe("GitCommitDetailComponent", () => {
       new GitPrediction(PredictionOutcome.Clean, []), new GitPrediction(PredictionOutcome.Conflicts, ["a.ts"]),
       new GitPrediction(PredictionOutcome.FastForward, []), new GitPrediction(PredictionOutcome.Unavailable, [])
     ];
-    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]));
+    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")));
     GitFixtures.answerWith(view.context, {
-      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
+      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")).toJson(),
       "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson(),
       "git.predict": () => answers.shift()?.toJson() ?? null
     });
@@ -338,7 +339,7 @@ describe("GitCommitDetailComponent", () => {
     onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
     GitViewing.show(new GitCommitView(GitFixtures.folder, tip));
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
-      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
+      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")).toJson(),
       "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson(),
       "git.predict": () => answers.shift()?.toJson() ?? null,
       "git.merge": null
@@ -357,7 +358,7 @@ describe("GitCommitDetailComponent", () => {
   });
 
   it("cherry-picks the commit on the status it is based on, offers no merge for a commit no branch points at, and keeps the commit shown", async () => {
-    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]));
+    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")));
     await view.waitForAsync(".files");
     const fingerprint: string = GitFixtures.status().fingerprint;
 
@@ -373,7 +374,7 @@ describe("GitCommitDetailComponent", () => {
     const history: WritableSignal<boolean> = signal(true);
     GitViewing.show(new GitCommitView(GitFixtures.folder, new GitGraphCommit(commitOf(["d".repeat(40)]).commit, "author@example.com", [new GitRef(RefKind.Branch, "main")])));
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
-      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
+      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")).toJson(),
       "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson()
     }, ".files", [], history);
     const writes: readonly string[] = [".merge", ".cherry-pick", ".revert", ".branch-here", ".tag-here"];
@@ -397,7 +398,7 @@ describe("GitCommitDetailComponent", () => {
     ["its short id without a branch", [], "ccccccc"]
   ])("opens the rebase screen onto the commit, named by %s", async (_case: string, refs: GitRef[], name: string) => {
     onTestFinished(() => GitRebasing.forget(GitFixtures.folder));
-    const view: GitViewFixture = await showAsync(new GitGraphCommit(commitOf(["d".repeat(40)]).commit, "author@example.com", refs), GitFixtures.diff("a.ts", [LineKind.Added, "one"]));
+    const view: GitViewFixture = await showAsync(new GitGraphCommit(commitOf(["d".repeat(40)]).commit, "author@example.com", refs), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")));
     await view.waitForAsync(".files");
 
     await view.clickAsync(".rebase-here");
@@ -410,7 +411,7 @@ describe("GitCommitDetailComponent", () => {
     onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
     GitViewing.show(new GitCommitView(GitFixtures.folder, commitOf(["d".repeat(40)])));
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
-      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
+      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")).toJson(),
       "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson(),
       "git.revert": GitFixtures.failure(FailureCode.Git, null, "Git stopped on conflicts.")
     }, ".detail");
@@ -431,7 +432,7 @@ describe("GitCommitDetailComponent", () => {
   };
 
   it("asks for a name in a row as wide as the actions, makes the branch at the commit on a click, and closes the row", async () => {
-    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]));
+    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")));
     await view.waitForAsync(".files");
     const rem = (pixels: number): number => pixels / parseFloat(getComputedStyle(document.documentElement).fontSize);
 
@@ -452,7 +453,7 @@ describe("GitCommitDetailComponent", () => {
   });
 
   it("asks for a tag's name in the same row from Tag, a button as tall as Branch here, and makes the tag at the commit", async () => {
-    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]));
+    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")));
     await view.waitForAsync(".files");
     const branchHere: DOMRect = view.find(".branch-here").getBoundingClientRect();
     const tagHere: DOMRect = view.find(".tag-here").getBoundingClientRect();
@@ -470,7 +471,7 @@ describe("GitCommitDetailComponent", () => {
   });
 
   it("offers copying the id and making a branch or a tag here from More actions, each the same as its own button", async () => {
-    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]));
+    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")));
     await view.waitForAsync(".files");
     const writes = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
     onTestFinished(() => writes.mockRestore());
@@ -485,7 +486,7 @@ describe("GitCommitDetailComponent", () => {
 
     await view.clickAsync(".id-row .more");
     await view.untilAsync(() => items().length > 0);
-    const offered: readonly (readonly [string | null, boolean])[] = items().map(t => [t.getAttribute("data-action"), t.getAttribute("aria-disabled") === "true"]);
+    const offered: readonly (readonly unknown[])[] = items().map(t => [t.getAttribute("data-action"), t.getAttribute("aria-disabled") === "true"]);
     document.querySelector<HTMLElement>("button[nol-menu-item][data-action=branch-here]")?.click();
     await view.waitForAsync(".branch-form");
     const branch: string | null = placeholder();
@@ -503,7 +504,7 @@ describe("GitCommitDetailComponent", () => {
     onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
     GitViewing.show(new GitCommitView(GitFixtures.folder, commitOf(["d".repeat(40)])));
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
-      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
+      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")).toJson(),
       "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson(),
       "git.createBranchAt": GitFixtures.failure(FailureCode.Refused, null, "The branch main already exists. Choose a new name.")
     }, ".detail");
@@ -539,7 +540,7 @@ describe("GitCommitDetailComponent", () => {
       const commit: GitGraphCommit = new GitGraphCommit(new GitCommit("c".repeat(40), ["d".repeat(40)], "Sample Author", "2026-11-20T14:02:00Z", "Follow renames"), "author@example.com", [
         new GitRef(RefKind.Head, "main"), new GitRef(RefKind.Branch, "main"), new GitRef(RefKind.RemoteBranch, "origin/main"), new GitRef(RefKind.Tag, "v1"), new GitRef(RefKind.Tag, "v1.1")
       ]);
-      const view: GitViewFixture = await showAsync(commit, GitFixtures.diff("a.ts", [LineKind.Added, "one"]));
+      const view: GitViewFixture = await showAsync(commit, GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")));
       await view.waitForAsync(".parents .chip");
       const rem = (pixels: number): number => Math.round(pixels / parseFloat(getComputedStyle(document.documentElement).fontSize) * 1000) / 1000;
       const chips: readonly HTMLElement[] = view.all(".parents .chip");
@@ -554,16 +555,16 @@ describe("GitCommitDetailComponent", () => {
     });
 
   it("shows no labels and no \"· In\" for a commit without labels", async () => {
-    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]));
+    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")));
     await view.waitForAsync(".subject");
 
     expect([view.all(".chip"), view.texts(".parents > *")]).toEqual([[], ["Parent", "ddddddd"]]);
   });
 
   it("offers Explain, not built yet, after the commit's actions only while the app turns AI features on", async () => {
-    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]));
+    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")));
     await view.waitForAsync(".tag-here");
-    const off: readonly [number, boolean] = [view.all(".explain").length, view.find(".actions").lastElementChild?.classList.contains("tag-here") === true];
+    const off: readonly unknown[] = [view.all(".explain").length, view.find(".actions").lastElementChild?.classList.contains("tag-here") === true];
     GitViewOptions.showsAiFeatures.set(true);
     onTestFinished(() => GitViewOptions.showsAiFeatures.set(false));
     await view.untilAsync(() => view.all(".explain").length === 1);

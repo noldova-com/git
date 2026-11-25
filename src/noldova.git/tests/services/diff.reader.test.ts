@@ -13,7 +13,7 @@ import path from "node:path";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
-import { DiffScope, DiffScopeKind, FailureCode, FileChange, GitCode, LineKind, UntrustedSource } from "@noldova/git.protocol";
+import { DiffScope, DiffScopeKind, FailureCode, FileChange, GitCode, type GitDiff, LineKind, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import { UnsafeRepositoryException } from "../../src/exceptions/unsafe-repository.exception.ts";
@@ -59,7 +59,7 @@ describe("DiffReader", () => {
     await repository.runGitAsync(["add", ...Object.keys(files)]);
     await repository.runGitAsync(["commit", "--quiet", "-m", message]);
   };
-  const changes = (diff: { files: readonly { path: string; change: FileChange }[] }): string[][] => diff.files.map(t => [t.path, t.change]);
+  const changes = (diff: GitDiff): string[][] => diff.files.map(t => [t.path, t.change]);
 
   test("reads the worktree's changes and its untracked files with their lines, leaving out staged and ignored ones", async () => {
     await commitAsync({ "b.txt": "one\ntwo\nthree\n", "gone.txt": "g\n" }, "More");

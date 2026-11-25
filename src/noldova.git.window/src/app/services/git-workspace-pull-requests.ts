@@ -21,6 +21,7 @@ import { GitWorkspaceReview } from "../models/git-workspace-review.ts";
 import { GitWorkspaceReviews } from "../models/git-workspace-reviews.ts";
 import type { GitWorkspaceRow } from "../models/git-workspace-row.ts";
 import { GitPullRequests } from "./git-pull-requests.ts";
+import { GitReviewsRead } from "../models/git-reviews-read.ts";
 
 /**
  * The workspace page's pull requests: each repository's current branch's, from the host that claims its branch's remote, read once when its row
@@ -158,8 +159,8 @@ export class GitWorkspacePullRequests {
    */
   public reviewsOf(repositories: Signal<readonly GitWorkspaceRow[]>): Signal<GitWorkspaceReviews> {
     /** Each remote's host and review list, asked for only when the repositories or their remotes change. */
-    const reads: Signal<readonly (readonly [GitWorkspaceRow, IGitPullRequests, Signal<GitPullRequestList | null>])[]> = computed(() => {
-      const found: (readonly [GitWorkspaceRow, IGitPullRequests, Signal<GitPullRequestList | null>])[] = [];
+    const reads: Signal<readonly GitReviewsRead[]> = computed(() => {
+      const found: GitReviewsRead[] = [];
       const seen: Set<string> = new Set();
       for (const row of repositories()) {
         const remote: GitRemote | null = row.summary()?.remote ?? null;
@@ -171,14 +172,14 @@ export class GitWorkspacePullRequests {
         seen.add(key);
         const list: Signal<GitPullRequestList | null> | null = this.attempt(() => reviewsFor.call(host, remote), null);
         if (!Object.isNull(list))
-          found.push([row, host, list]);
+          found.push(new GitReviewsRead(row, host, list));
       }
       return found;
     });
     return computed(() => {
       const rows: GitWorkspaceReview[] = [];
       let hasMore: boolean = false;
-      for (const [row, host, list] of reads()) {
+      for (const { row, host, list } of reads()) {
         const answer: GitPullRequestList | null = list();
         hasMore ||= answer?.hasMore === true;
         rows.push(...(answer?.rows ?? []).map(t => new GitWorkspaceReview(t, row.folder, row.name, host)));

@@ -14,7 +14,7 @@ import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import type { JsonValue } from "@noldova/context.json";
 import {
   ConflictKind, ConflictResolution, DiffScopeKind, FailureCode, FileState, GitCode, GitCommit, GitCommitDetail, GitCommitSigning, GitConflict, type GitDiff, GitHooks, GitJournal, GitJournalEntry, GitLog, GitMarkerCheck, GitOperation,
-  type GitStatus, LineKind, OperationKind, SigningFormat, StatusUpstream, UndoMode
+  LineKind, OperationKind, SigningFormat, StatusUpstream, UndoMode
 } from "@noldova/git.protocol";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 
@@ -24,17 +24,28 @@ import { GitForcePushOffer } from "../../../src/app/models/git-force-push-offer.
 import { GitCommitPrefixes } from "../../../src/app/services/git-commit-prefixes.ts";
 import { GitFolder } from "../../../src/app/services/git-folder.ts";
 import { GitViewStateService } from "../../../src/app/services/git-view-state.service.ts";
-import { GitFixtures } from "../../fixtures/git-fixtures.fixture.ts";
+import { FixtureLine, GitFixtures } from "../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../fixtures/git-held-requests.fixture.ts";
+
+/** The started view state, with the folder the views show. */
+class StartedState {
+  public readonly state: GitViewStateService;
+  public readonly chosen: WritableSignal<string | null>;
+
+  public constructor(state: GitViewStateService, chosen: WritableSignal<string | null>) {
+    this.state = state;
+    this.chosen = chosen;
+  }
+}
 
 describe("GitViewStateService", () => {
   const folder: string = GitFixtures.folder;
 
-  const start = (context: FakeWindowPartContext): { readonly state: GitViewStateService; readonly chosen: WritableSignal<string | null> } => {
+  const start = (context: FakeWindowPartContext): StartedState => {
     const chosen: WritableSignal<string | null> = GitFixtures.setUp(context, [GitViewStateService]);
     const state: GitViewStateService = TestBed.inject(GitViewStateService);
     TestBed.tick();
-    return { state, chosen };
+    return new StartedState(state, chosen);
   };
 
   const methods = (context: FakeWindowPartContext): readonly unknown[] => context.callsOf("requestAsync").map(t => t[0]);
@@ -179,7 +190,7 @@ describe("GitViewStateService", () => {
     broken.set(true);
     TestBed.tick();
     await GitFixtures.untilAsync(() => state.phase() === GitViewPhase.FolderFailed);
-    const failed: readonly [string, GitStatus | null] = [state.readFailure(), state.status()];
+    const failed: readonly unknown[] = [state.readFailure(), state.status()];
     broken.set(false);
     TestBed.tick();
     await GitFixtures.untilAsync(() => state.phase() === GitViewPhase.Ready);
@@ -273,7 +284,7 @@ describe("GitViewStateService", () => {
 
     answer = "lost";
     await state.refreshAsync();
-    const unreadable: readonly [GitViewPhase, boolean] = [state.phase(), !Object.isNull(state.failure())];
+    const unreadable: readonly unknown[] = [state.phase(), !Object.isNull(state.failure())];
     answer = GitFixtures.status().toJson();
     await state.refreshAsync();
 
@@ -363,10 +374,10 @@ describe("GitViewStateService", () => {
     state.message.set("Fix it");
     commit = GitFixtures.failure(FailureCode.Stale);
     await state.commitAsync("Fix it");
-    const afterStale: readonly [string, string | null] = [state.message(), state.failure()];
+    const afterStale: readonly unknown[] = [state.message(), state.failure()];
     commit = GitFixtures.failure(FailureCode.Git, GitCode.HookFailed, "The hook refused.");
     await state.commitAsync("Fix it");
-    const afterRefusal: readonly [string, string | null] = [state.message(), state.failure()];
+    const afterRefusal: readonly unknown[] = [state.message(), state.failure()];
     commit = GitFixtures.lost("The runtime stopped.");
     await state.commitAsync("Fix it");
     const afterError: string | null = state.failure();
@@ -609,7 +620,7 @@ describe("GitViewStateService", () => {
     GitFixtures.answerWith(context, {
       ...GitFixtures.watching,
       "git.status": GitFixtures.status().toJson(),
-      "git.diff": () => fails ? GitFixtures.lost("no diff") : GitFixtures.diff("a.ts", [LineKind.Added, "x"]).toJson()
+      "git.diff": () => fails ? GitFixtures.lost("no diff") : GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "x")).toJson()
     });
     const { state } = start(context);
 
@@ -766,7 +777,7 @@ describe("GitViewStateService", () => {
     await GitFixtures.untilAsync(() => state.phase() === GitViewPhase.Ready);
 
     await state.pushAsync();
-    const offered: readonly [GitForcePushOffer | null, string | null, boolean] = [state.forcePushOffer(), state.failure(), state.fetchOffered()];
+    const offered: readonly unknown[] = [state.forcePushOffer(), state.failure(), state.fetchOffered()];
     push = GitFixtures.failure(FailureCode.Git, GitCode.PushRejected, "The remote refused the push.");
     await state.pushAsync();
     const rejected: GitForcePushOffer | null = state.forcePushOffer();
@@ -792,7 +803,7 @@ describe("GitViewStateService", () => {
     await GitFixtures.untilAsync(() => state.phase() === GitViewPhase.Ready);
 
     await state.pushAsync();
-    const offered: readonly [boolean, GitForcePushOffer | null] = [state.fetchOffered(), state.forcePushOffer()];
+    const offered: readonly unknown[] = [state.fetchOffered(), state.forcePushOffer()];
     await state.fetchAsync();
     const fetched: boolean = state.fetchOffered();
     await state.pushAsync();

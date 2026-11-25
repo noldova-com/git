@@ -25,6 +25,18 @@ import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
 
+/** A signed commit, and the allowed signers line that trusts its key. */
+interface ISignedCommit {
+  readonly id: string;
+  readonly signers: string;
+}
+
+/** A program that leaves a marker file when git runs it. */
+interface IMarkerScript {
+  readonly script: string;
+  readonly marker: string;
+}
+
 describe("CommitSignatureReader", () => {
   let template: RepositoryFixture;
   let repository: RepositoryFixture;
@@ -56,7 +68,7 @@ describe("CommitSignatureReader", () => {
   const headAsync = async (): Promise<string> => (await repository.runGitAsync(["rev-parse", "HEAD"])).trim();
 
   /** Signs a commit with a new SSH key, and returns the commit and the allowed signers line that trusts the key. */
-  const signAsync = async (): Promise<{ readonly id: string; readonly signers: string }> => {
+  const signAsync = async (): Promise<ISignedCommit> => {
     const key = path.join(repository.root, "signing-key");
     await promisify(execFile)("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-C", "", "-f", key]);
     await repository.runGitAsync(["-c", "gpg.format=ssh", "-c", `user.signingKey=${key.replaceAll("\\", "/")}`, "commit", "--quiet", "--allow-empty", "-S", "-m",
@@ -65,7 +77,7 @@ describe("CommitSignatureReader", () => {
   };
 
   /** A script that leaves a marker file when git runs it as a signing program, and fails as a missing gpg would. */
-  const markerScriptAsync = async (name: string): Promise<{ readonly script: string; readonly marker: string }> => {
+  const markerScriptAsync = async (name: string): Promise<IMarkerScript> => {
     const script = path.join(repository.programs, name);
     const marker = path.join(repository.root, `${name}.ran`);
     await writeFile(script, `#!/bin/sh\necho ran > "${marker.replaceAll("\\", "/")}"\nexit 1\n`);

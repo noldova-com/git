@@ -205,10 +205,11 @@ describe("GitWorkspaceComponent", () => {
     return workspace;
   };
 
-  const rem = (element: Element): { readonly width: number; readonly height: number } => {
+  /** The element's box in rem. */
+  const rem = (element: Element): DOMRect => {
     const size: number = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
     const rect: DOMRect = element.getBoundingClientRect();
-    return { width: rect.width / size, height: rect.height / size };
+    return new DOMRect(rect.x / size, rect.y / size, rect.width / size, rect.height / size);
   };
 
   it("lists a workspace's repositories in its order, each with its branch, sync and changes once its row is on screen", async () => {

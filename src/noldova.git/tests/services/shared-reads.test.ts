@@ -13,8 +13,14 @@ import { describe, test } from "vitest";
 import { KeyQueue } from "../../src/services/key-queue.ts";
 import { SharedReads } from "../../src/services/shared-reads.ts";
 
+/** A read held in a queue until the test releases it, and its end. */
+interface IBlockedRead {
+  readonly release: () => void;
+  readonly done: Promise<void>;
+}
+
 describe("SharedReads", () => {
-  const blocked = (queue: KeyQueue, top: string): { readonly release: () => void; readonly done: Promise<void> } => {
+  const blocked = (queue: KeyQueue, top: string): IBlockedRead => {
     const gate = Promise.withResolvers<void>();
     return { release: () => gate.resolve(), done: queue.runAsync(top, () => gate.promise) };
   };

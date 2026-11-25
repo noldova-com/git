@@ -20,10 +20,10 @@ export class OperationReader {
       if (headName !== null)
         return new GitOperation(OperationKind.Rebase, OperationReader.branchOf(headName), null);
     }
-    for (const [file, kind] of Resources.operationHeads) {
-      const from = await OperationReader.readLineAsync(path.join(gitFolder, file));
+    for (const head of Resources.operationHeads) {
+      const from = await OperationReader.readLineAsync(path.join(gitFolder, head.file));
       if (from !== null)
-        return new GitOperation(kind, from, await OperationReader.readLineAsync(path.join(gitFolder, Resources.mergeMessageFile)));
+        return new GitOperation(head.kind, from, await OperationReader.readLineAsync(path.join(gitFolder, Resources.mergeMessageFile)));
     }
     return null;
   }

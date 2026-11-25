@@ -10,11 +10,12 @@ import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { UnansweredCallException } from "@noldova/desktop.protocol/testing";
 import type { FakeWindowPartContext } from "@noldova/desktop.window/testing";
+import { CountWaiter } from "./count-waiter.fixture.ts";
 
 export class RequestAnswers {
   private readonly context: FakeWindowPartContext;
   private readonly queues: Map<string, (() => Promise<JsonValue>)[]> = new Map();
-  private readonly waiters: { readonly count: number; readonly resolve: () => void }[] = [];
+  private readonly waiters: CountWaiter[] = [];
   private readonly ignored: Set<string> = new Set();
 
   public readonly answered: Promise<JsonValue>[] = [];
@@ -45,7 +46,7 @@ export class RequestAnswers {
 
   public askedAsync(count: number): Promise<void> {
     return this.answered.length >= count ? Promise.resolve() : new Promise<void>(resolve => {
-      this.waiters.push({ count, resolve });
+      this.waiters.push(new CountWaiter(count, resolve));
     });
   }
 

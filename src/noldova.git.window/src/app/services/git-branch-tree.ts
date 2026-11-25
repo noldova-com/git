@@ -9,6 +9,7 @@
 import "@noldova/context.core";
 
 import { GitBranchRow } from "../models/git-branch-row.ts";
+import { GitBranchTreeNode } from "../models/git-branch-tree-node.ts";
 
 /** Lays branches out as trees, in folders split at `/`, showing only what the open rows hold. */
 export class GitBranchTree {
@@ -44,9 +45,9 @@ export class GitBranchTree {
       else
         folders.set(name.slice(0, at), [...folders.get(name.slice(0, at)) ?? [], name.slice(at + 1)]);
     }
-    const entries: (readonly [string, readonly string[] | null])[] = [...folders, ...branches.map(t => [t, null] as const)]
-      .sort(([a, aNames], [b, bNames]) => Number(!Object.isNull(bNames)) - Number(!Object.isNull(aNames)) || a.localeCompare(b, undefined, { sensitivity: "base" }));
-    for (const [name, children] of entries) {
+    const entries: GitBranchTreeNode[] = [...[...folders].map(([name, children]) => new GitBranchTreeNode(name, children)), ...branches.map(t => new GitBranchTreeNode(t, null))]
+      .sort((a, b) => Number(!Object.isNull(b.children)) - Number(!Object.isNull(a.children)) || a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    for (const { name, children } of entries) {
       const isFolder: boolean = !Object.isNull(children);
       const folder: string = isFolder ? GitBranchTree.SEPARATOR : "";
       rows.push(new GitBranchRow(key + name + folder, name, depth, isFolder, 0, isFolder ? "" : branch + name));

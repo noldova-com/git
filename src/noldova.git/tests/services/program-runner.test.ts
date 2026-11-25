@@ -32,6 +32,11 @@ import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { FakeGhFixture } from "../fixtures/fake-gh.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
+/** A stand-in for the run's time limit, which expires when the test says. */
+interface IClock {
+  expire: () => void;
+}
+
 describe("ProgramRunner", () => {
   const limits = new ProgramLimits(1024 * 1024, 30_000);
   let template: RepositoryFixture;
@@ -64,8 +69,8 @@ describe("ProgramRunner", () => {
   const write = (gitArguments: GitArguments, gitFolder: string = repository.gitFolder): ProgramRun =>
     ProgramRun.writeGit(gitArguments, repository.folder, gitFolder, repository.gitFolder, limits);
 
-  const mockClock = (): { readonly expire: () => void } => {
-    const clock = { expire: (): void => undefined };
+  const mockClock = (): IClock => {
+    const clock: IClock = { expire: (): void => undefined };
     const original = timers.setTimeout;
     const timer = vi.spyOn(timers, "setTimeout").mockImplementation((...values: Parameters<typeof timers.setTimeout>) => {
       const [handler, delay] = values;

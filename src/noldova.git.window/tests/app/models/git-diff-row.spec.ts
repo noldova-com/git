@@ -11,14 +11,14 @@ import { describe, expect, it } from "vitest";
 
 import { GitDiffRowKind } from "../../../src/app/enums/git-diff-row-kind.ts";
 import { GitDiffRow } from "../../../src/app/models/git-diff-row.ts";
-import { GitFixtures } from "../../fixtures/git-fixtures.fixture.ts";
+import { FixtureLine, GitFixtures } from "../../fixtures/git-fixtures.fixture.ts";
 
 describe("GitDiffRow", () => {
   const file = (binary: boolean, hunks: readonly DiffHunk[], truncated: boolean): DiffFile =>
     new DiffFile("a.ts", undefined, "a.ts", undefined, FileChange.Modified, null, null, binary, null, hunks, truncated);
 
   it("draws a hunk's header, then each line with its sign, and a missing newline as a note", () => {
-    const [diffFile] = GitFixtures.diff("a.ts", [LineKind.Context, "a"], [LineKind.Removed, "b"], [LineKind.Added, "c"], [LineKind.NoNewlineAtEnd, ""]).files;
+    const [diffFile] = GitFixtures.diff("a.ts", new FixtureLine(LineKind.Context, "a"), new FixtureLine(LineKind.Removed, "b"), new FixtureLine(LineKind.Added, "c"), new FixtureLine(LineKind.NoNewlineAtEnd, "")).files;
 
     expect(GitDiffRow.rowsOf(diffFile ?? null)).toEqual([
       new GitDiffRow(GitDiffRowKind.Meta, "@@ -1,1 +1,2 @@", null, [1, 2]),

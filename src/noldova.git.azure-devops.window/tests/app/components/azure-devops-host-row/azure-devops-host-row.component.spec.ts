@@ -21,6 +21,14 @@ import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
+/** A pull request's state, Azure DevOps' label and the icon for it, and when it closed, if it did. */
+interface IStateLook {
+  readonly state: ReferenceState;
+  readonly label: string;
+  readonly icon: string;
+  readonly closedAt: number | null;
+}
+
 const HEAD: string = "0123456789abcdef0123456789abcdef01234567";
 const OTHER_HEAD: string = "fedcba9876543210fedcba9876543210fedcba98";
 const REPOSITORY: string = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
@@ -39,11 +47,11 @@ const checks: readonly HostCheck[] = [
 ];
 const answer: BranchPullRequest = new BranchPullRequest(pullRequest, checks);
 const none: BranchPullRequest = new BranchPullRequest(null, []);
-const looks: readonly (readonly [ReferenceState, string, string, number | null])[] = [
-  [ReferenceState.Open, "Active", "merge", null],
-  [ReferenceState.Draft, "Draft", "draft", null],
-  [ReferenceState.Merged, "Completed", "check_circle", 1_800_000_360_000],
-  [ReferenceState.Closed, "Abandoned", "block", 1_800_000_360_000]
+const looks: readonly IStateLook[] = [
+  { state: ReferenceState.Open, label: "Active", icon: "merge", closedAt: null },
+  { state: ReferenceState.Draft, label: "Draft", icon: "draft", closedAt: null },
+  { state: ReferenceState.Merged, label: "Completed", icon: "check_circle", closedAt: 1_800_000_360_000 },
+  { state: ReferenceState.Closed, label: "Abandoned", icon: "block", closedAt: 1_800_000_360_000 }
 ];
 const boardsText: string = " My work items";
 const signedOutText: string = "key Sign in in Settings → Accounts and hosts to see this branch's pull request and its checks." + boardsText;
@@ -188,7 +196,7 @@ describe("AzureDevOpsHostRowComponent", () => {
     expect(page.texts(".title")).toEqual(["!7 Sample pull request title"]);
   });
 
-  it.each(looks)("names a pull request in the %s state with Azure DevOps' label and its icon", async (state, label, icon, closedAt) => {
+  it.each(looks)("names a pull request in the $state state with Azure DevOps' label and its icon", async ({ state, label, icon, closedAt }) => {
     const page = new Page();
     const item = new HostItem(pullRequest.reference, ReferenceKind.PullRequest, state, pullRequest.title, pullRequest.url, null, pullRequest.createdAt, closedAt, 0,
       pullRequest.changes);

@@ -169,7 +169,7 @@ describe("GitBranchCardComponent", () => {
     await press("ArrowDown");
     await press("ArrowDown");
     await press("ArrowDown");
-    const third: readonly [readonly string[], string | null] = [activeTitle(), view.find(".filter").getAttribute("aria-activedescendant")];
+    const third: readonly unknown[] = [activeTitle(), view.find(".filter").getAttribute("aria-activedescendant")];
     await press("a");
     await press("Enter");
 
@@ -222,7 +222,7 @@ describe("GitBranchCardComponent", () => {
     await leave(view.find(".filter"), push);
     const afterMovingInside: number = view.all(".menu").length;
     const handled: boolean = await escape(push);
-    const afterEscape: readonly [number, boolean] = [view.all(".menu").length, document.activeElement === view.find(".name")];
+    const afterEscape: readonly unknown[] = [view.all(".menu").length, document.activeElement === view.find(".name")];
     push.focus();
     await escape(push);
 
@@ -259,7 +259,7 @@ describe("GitBranchCardComponent", () => {
     await view.waitForAsync(".filter");
     view.find(".filter").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
     await view.fixture.whenStable();
-    const afterEscape: readonly [number, boolean] = [view.all(".menu").length, document.activeElement === name];
+    const afterEscape: readonly unknown[] = [view.all(".menu").length, document.activeElement === name];
     await view.clickAsync(".name");
     view.find(".menu").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, composed: true }));
     document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, composed: true }));
@@ -280,7 +280,7 @@ describe("GitBranchCardComponent", () => {
     for (const key of ["ArrowDown", "Enter"])
       view.find(".filter").dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
     await view.fixture.whenStable();
-    const before: readonly [number, number, string | null] = [view.all(".menu [role=option]").length, view.all(".menu").length, view.find(".filter").getAttribute("aria-activedescendant")];
+    const before: readonly unknown[] = [view.all(".menu [role=option]").length, view.all(".menu").length, view.find(".filter").getAttribute("aria-activedescendant")];
     await held.answerAsync("git.branches", branches);
     await GitFixtures.untilAsync(() => !Object.isNull(view.state.branches()));
     await view.fixture.whenStable();

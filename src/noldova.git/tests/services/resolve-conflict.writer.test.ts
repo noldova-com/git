@@ -13,14 +13,13 @@ import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
 import { PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
-import { ConflictResolution, type GitStatus } from "@noldova/git.protocol";
+import { ConflictResolution } from "@noldova/git.protocol";
 
 import { ConflictGoneException } from "../../src/exceptions/conflict-gone.exception.ts";
 import { FileOutsideRepositoryException } from "../../src/exceptions/file-outside-repository.exception.ts";
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import { ResolutionMarkersLeftException } from "../../src/exceptions/resolution-markers-left.exception.ts";
 import { ResolutionNotOfferedException } from "../../src/exceptions/resolution-not-offered.exception.ts";
-import type { RepositoryFolders } from "../../src/models/repository-folders.ts";
 import { FilterOptionsReader } from "../../src/services/filter-options.reader.ts";
 import { GitVersionReader } from "../../src/services/git-version.reader.ts";
 import { HooksReader } from "../../src/services/hooks.reader.ts";
@@ -30,6 +29,7 @@ import { ResolveConflictWriter } from "../../src/services/resolve-conflict.write
 import { StatusReader } from "../../src/services/status.reader.ts";
 import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
+import { RepositoryState } from "../fixtures/repository-state.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
 
@@ -85,14 +85,14 @@ describe("ResolveConflictWriter", () => {
     await cleanUps.runAsync();
   });
 
-  const readAsync = async (): Promise<[RepositoryFolders, GitStatus]> => {
+  const readAsync = async (): Promise<RepositoryState> => {
     const folders = await repositories.readAsync(repository.folder);
-    return [folders, await statuses.readAsync(folders)];
+    return new RepositoryState(folders, await statuses.readAsync(folders));
   };
   const writer = (file: string, resolution: ConflictResolution, text: string | null = null, programs: ProgramRunner = runner): ResolveConflictWriter =>
     new ResolveConflictWriter(programs, hooks, filters, file, resolution, text);
   const resolveAsync = async (write: ResolveConflictWriter): Promise<void> => {
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     write.refuse(status);
     await write.runAsync(folders, status);
   };
@@ -127,7 +127,7 @@ describe("ResolveConflictWriter", () => {
 
   test("refuses a file no longer unmerged, a choice its kind doesn't offer, and a text with a marker line left, changing nothing", async () => {
     await resolveAsync(writer("a.txt", ConflictResolution.Ours));
-    const [, status] = await readAsync();
+    const { status } = await readAsync();
 
     assert.throws(() => writer("a.txt", ConflictResolution.Theirs).refuse(status), (error: unknown) => error instanceof ConflictGoneException);
     assert.throws(() => writer("nothing.txt", ConflictResolution.Ours).refuse(status), (error: unknown) => error instanceof ConflictGoneException);
@@ -142,7 +142,7 @@ describe("ResolveConflictWriter", () => {
     const outside = path.join(repository.root, "outside");
     await mkdir(outside);
     await symlink(outside, path.join(repository.folder, "linked"), "junction");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
 
     await assert.rejects(writer(path.join("linked", "x.txt"), ConflictResolution.Text, "x\n").runAsync(folders, status),
       (error: unknown) => error instanceof FileOutsideRepositoryException);
@@ -161,7 +161,7 @@ describe("ResolveConflictWriter", () => {
   });
 
   test("asks an agent's resolution at medium risk, once only, saying when a side's whole file replaces the other's changes", async () => {
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
 
     assert.deepEqual(await writer("a.txt", ConflictResolution.Ours).requestAsync(folders, status, call), {
       action: "git.resolveConflict",

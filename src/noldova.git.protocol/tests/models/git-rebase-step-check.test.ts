@@ -12,8 +12,9 @@ import { describe, it } from "vitest";
 
 import { RebaseCheckOutcome } from "../../src/enums/rebase-check-outcome.ts";
 import { GitRebaseStepCheck } from "../../src/models/git-rebase-step-check.ts";
+import type { IFieldFailure } from "../fixtures/field-failure.fixture.ts";
 
-const expected = (field: string, expectation: string): { name: string; field: string; message: string } =>
+const expected = (field: string, expectation: string): IFieldFailure =>
   ({ name: "ProtocolFieldException", field, message: `The field ${field} is invalid: expected ${expectation}.` });
 
 describe("GitRebaseStepCheck", () => {

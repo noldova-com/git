@@ -17,6 +17,7 @@ import { BranchKeptException } from "../../src/exceptions/branch-kept.exception.
 import { BranchUnmergedException } from "../../src/exceptions/branch-unmerged.exception.ts";
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import { RequestDeniedException } from "../../src/exceptions/request-denied.exception.ts";
+import type { IUntrustedText } from "../../src/interfaces/i-untrusted-text.ts";
 import { WorktreeService } from "../../src/services/worktree.service.ts";
 import { WorktreeTable } from "../../src/services/worktree-table.ts";
 import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
@@ -24,6 +25,25 @@ import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { PermissionGateFixture } from "../fixtures/permission-gate.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
+
+/** The failure a test expects, by the exception's name and its codes. */
+interface IExpectedFailure {
+  readonly name: string;
+  readonly code: FailureCode;
+  readonly gitCode: GitCode | null;
+}
+
+/** The failure a test expects when git fails, with its message and the output that comes with it. */
+interface IExpectedGitFailure extends IExpectedFailure {
+  readonly message: string;
+  readonly output: IUntrustedText;
+}
+
+/** Two worktrees another tool added, one locked and one not. */
+interface IForeignWorktrees {
+  readonly locked: string;
+  readonly plain: string;
+}
 
 describe("WorktreeService", () => {
   const KEY = "conversation:QA-KEY-ÆØ-7f3c";
@@ -70,10 +90,10 @@ describe("WorktreeService", () => {
     (await repository.runGitAsync(["branch", "--format=%(refname:short)"])).split("\n").filter(t => t.length > 0);
   const headAsync = async (revision: string): Promise<string> => (await repository.runGitAsync(["rev-parse", revision])).trim();
   const existsAsync = async (folder: string): Promise<boolean> => access(folder).then(() => true, () => false);
-  const failure = (name: string, code: FailureCode, gitCode: GitCode | null = null): { name: string; code: FailureCode; gitCode: GitCode | null } =>
+  const failure = (name: string, code: FailureCode, gitCode: GitCode | null = null): IExpectedFailure =>
     ({ name, code, gitCode });
-  const untrusted = { text: "scripted failure\n", source: UntrustedSource.Repository };
-  const gitFailure = (command: string): { name: string; code: FailureCode; gitCode: GitCode | null; message: string; output: typeof untrusted } =>
+  const untrusted: IUntrustedText = { text: "scripted failure\n", source: UntrustedSource.Repository };
+  const gitFailure = (command: string): IExpectedGitFailure =>
     ({ ...failure("GitFailedException", FailureCode.Unavailable), message: `git ${command} failed; its output comes with the failure as untrusted text.`, output: untrusted });
   const gitRefusal = (command: string, said: RegExp) => (error: unknown): boolean => {
     assert.ok(error instanceof GitFailedException);
@@ -83,13 +103,13 @@ describe("WorktreeService", () => {
     return true;
   };
   const createAsync = (key: string = KEY): Promise<WorktreeRecord> => service.createWorktreeAsync(key, { repository: repository.folder });
-  const addForeignAsync = async (): Promise<readonly [string, string]> => {
+  const addForeignAsync = async (): Promise<IForeignWorktrees> => {
     const locked = path.join(repository.root, "foreign-locked");
     const plain = path.join(repository.root, "foreign-plain");
     await repository.runGitAsync(["worktree", "add", "--quiet", "-b", "foreign-1", locked, "HEAD"]);
     await repository.runGitAsync(["worktree", "lock", "--reason", "other-tool", locked]);
     await repository.runGitAsync(["worktree", "add", "--quiet", "-b", "foreign-2", plain, "HEAD"]);
-    return [locked, plain];
+    return { locked, plain };
   };
 
   describe("createWorktreeAsync", () => {
@@ -241,7 +261,7 @@ describe("WorktreeService", () => {
     });
 
     test("clears a worktree whose folder was deleted by hand, leaves other worktrees alone, and lets the key create a fresh one", async () => {
-      const [locked, plain] = await addForeignAsync();
+      const { locked, plain } = await addForeignAsync();
       const record = await createAsync();
       await rm(record.path, { recursive: true, force: true });
 
@@ -538,7 +558,7 @@ describe("WorktreeService", () => {
 
   describe("reconcileAsync", () => {
     test("keeps complete worktrees, clears pending ones, and logs the worktrees it didn't make without touching them", async () => {
-      const [locked, plain] = await addForeignAsync();
+      const { locked, plain } = await addForeignAsync();
       const kept = await createAsync("kept");
       const table = new WorktreeTable(desktop.context.database);
       const interrupted = new WorktreeRecord("interrupted", kept.repository, path.join(work, "0123456789abcdef"), "noldova/0123456789abcdef", kept.base);

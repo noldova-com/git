@@ -19,6 +19,8 @@ import { GitHistoryAction } from "./app/enums/git-history-action.ts";
 import { GitFileLayout } from "./app/enums/git-file-layout.ts";
 import type { GitResolvedBy } from "./app/enums/git-resolved-by.ts";
 import { GitWorkspaceView } from "./app/enums/git-workspace-view.ts";
+import { GitHistoryToolbar } from "./app/models/git-history-toolbar.ts";
+import { GitWorkspaceViewLabel } from "./app/models/git-workspace-view-label.ts";
 
 export class Resources {
   public static readonly maximumPathLength: number = 4_096;
@@ -490,11 +492,11 @@ export class Resources {
    * The history's toolbars in order, each a group of actions, as Noldova Desktop's view-hosted toolbar bands will take them: until then they share one
    * row in the document, and those that don't fit move, from the end, into the row's More menu.
    */
-  public static readonly historyToolbars: readonly { readonly title: string; readonly actions: readonly GitHistoryAction[] }[] = [
-    { title: "Undo", actions: [GitHistoryAction.UndoCommit] },
-    { title: "Sync", actions: [GitHistoryAction.Fetch, GitHistoryAction.Pull, GitHistoryAction.Push] },
-    { title: "Branch", actions: [GitHistoryAction.Branch, GitHistoryAction.Stash] },
-    { title: "Terminal", actions: [GitHistoryAction.Terminal] }
+  public static readonly historyToolbars: readonly GitHistoryToolbar[] = [
+    new GitHistoryToolbar("Undo", [GitHistoryAction.UndoCommit]),
+    new GitHistoryToolbar("Sync", [GitHistoryAction.Fetch, GitHistoryAction.Pull, GitHistoryAction.Push]),
+    new GitHistoryToolbar("Branch", [GitHistoryAction.Branch, GitHistoryAction.Stash]),
+    new GitHistoryToolbar("Terminal", [GitHistoryAction.Terminal])
   ];
   public static readonly historyActionLabels: Readonly<Record<GitHistoryAction, string>> = {
     [GitHistoryAction.UndoCommit]: "Undo commit",
@@ -1127,8 +1129,8 @@ export class Resources {
       paths.length > Resources.predictedPathsShown ? ` and ${Resources.formatCount(paths.length - Resources.predictedPathsShown)} more` : ""}`;
   }
 
-  public static formatDropChecked(drop: { readonly canMerge: boolean; readonly source: string; readonly target: string }): string {
-    return `Checked against ${drop.canMerge ? drop.target : drop.source} without touching your files.`;
+  public static formatDropChecked(canMerge: boolean, source: string, target: string): string {
+    return `Checked against ${canMerge ? target : source} without touching your files.`;
   }
 
   public static readonly dropSameCommit: string = "Both point at the same commit.";
@@ -1350,11 +1352,11 @@ export class Resources {
   public static readonly workspaceViewsHeading: string = "Views";
   public static readonly workspaceHostsHeading: string = "Hosts";
   /** Each view's icon and name in the workspace page's side panel. */
-  public static readonly workspaceViews: Readonly<Record<GitWorkspaceView, readonly [string, string]>> = {
-    [GitWorkspaceView.Behind]: ["sync_problem", "Behind their upstream"],
-    [GitWorkspaceView.Changed]: ["edit_note", "With uncommitted changes"],
-    [GitWorkspaceView.WaitingForReview]: ["rate_review", "Waiting for review"],
-    [GitWorkspaceView.AgentsAtWork]: ["smart_toy", "Agents at work"]
+  public static readonly workspaceViews: Readonly<Record<GitWorkspaceView, GitWorkspaceViewLabel>> = {
+    [GitWorkspaceView.Behind]: new GitWorkspaceViewLabel("sync_problem", "Behind their upstream"),
+    [GitWorkspaceView.Changed]: new GitWorkspaceViewLabel("edit_note", "With uncommitted changes"),
+    [GitWorkspaceView.WaitingForReview]: new GitWorkspaceViewLabel("rate_review", "Waiting for review"),
+    [GitWorkspaceView.AgentsAtWork]: new GitWorkspaceViewLabel("smart_toy", "Agents at work")
   };
   public static readonly hostSignedIn: string = "signed in";
   public static readonly hostSignIn: string = "Sign in";

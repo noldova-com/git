@@ -6,5 +6,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** One of Azure DevOps's merge types, as its Complete panel names it. */
-export type MergeTypeChoice = { readonly type: string; readonly label: string };
+/** A watch's connection and window, which a client's leaving matches. */
+export interface IWatchOwner {
+  readonly connection: number;
+  readonly window: number | null;
+}

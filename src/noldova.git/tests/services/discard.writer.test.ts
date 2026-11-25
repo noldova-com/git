@@ -19,7 +19,6 @@ import { FailureCode, FileState, GitNames, GitStatus, StatusEntry, SubmoduleStat
 import { CheckpointFailedException } from "../../src/exceptions/checkpoint-failed.exception.ts";
 import { DiscardRefusedException } from "../../src/exceptions/discard-refused.exception.ts";
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
-import type { RepositoryFolders } from "../../src/models/repository-folders.ts";
 import { CheckpointStore } from "../../src/services/checkpoint-store.ts";
 import { DiscardWriter } from "../../src/services/discard.writer.ts";
 import { GitVersionReader } from "../../src/services/git-version.reader.ts";
@@ -29,6 +28,7 @@ import { StatusReader } from "../../src/services/status.reader.ts";
 import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { FakeCheckpoints } from "../fixtures/fake-checkpoints.fixture.ts";
+import { RepositoryState } from "../fixtures/repository-state.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
 describe("DiscardWriter", () => {
@@ -63,9 +63,9 @@ describe("DiscardWriter", () => {
     await cleanUps.runAsync();
   });
 
-  const readAsync = async (): Promise<[RepositoryFolders, GitStatus]> => {
+  const readAsync = async (): Promise<RepositoryState> => {
     const folders = await repositories.readAsync(repository.folder);
-    return [folders, await statuses.readAsync(folders)];
+    return new RepositoryState(folders, await statuses.readAsync(folders));
   };
   const porcelainAsync = async (): Promise<string> => await repository.runGitAsync(["status", "--porcelain=v1", "--untracked-files=all"]);
   const contentAsync = async (file: string): Promise<string> => await readFile(path.join(repository.folder, file), "utf8");
@@ -79,7 +79,7 @@ describe("DiscardWriter", () => {
 
   test("is the person's own click: it never asks, and without the checkpoints module it takes no checkpoint and can't be undone", async () => {
     await repository.writeAsync("a.txt", "edited\n");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     const write = new DiscardWriter(runner, ["a.txt"], none);
 
     await write.runAsync(folders, status);
@@ -89,7 +89,7 @@ describe("DiscardWriter", () => {
 
   test("takes a checkpoint of the working folder before git discards anything, so the journal can undo it from there", async () => {
     await repository.writeAsync("a.txt", "edited\n");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     const checkpoints = new FakeCheckpoints();
     const seen: string[] = [];
     checkpoints.onCapture = async () => {
@@ -108,7 +108,7 @@ describe("DiscardWriter", () => {
   test("discards nothing when the checkpoint before it can't be taken", async () => {
     await repository.writeAsync("a.txt", "edited\n");
     await repository.writeAsync("new.txt", "new\n");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     const checkpoints = new FakeCheckpoints();
     checkpoints.capture = new CaptureResult(CaptureOutcome.HeldUp, null, null, null);
     const write = new DiscardWriter(runner, ["a.txt", "new.txt"], new CheckpointStore(() => checkpoints));
@@ -128,7 +128,7 @@ describe("DiscardWriter", () => {
     await repository.writeAsync("a.txt", "staged\n");
     await repository.runGitAsync(["add", "a.txt"]);
     await repository.writeAsync("a.txt", "staged and then edited\n");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     const write = new DiscardWriter(runner, ["a.txt", "b.txt"], none);
 
     write.refuse(status);
@@ -145,7 +145,7 @@ describe("DiscardWriter", () => {
     await repository.writeAsync(path.join("folder", "inner.txt"), "inner\n");
     await repository.writeAsync(path.join("folder", "kept.log"), "ignored\n");
     await repository.writeAsync("a.txt", "edited\n");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     const paths = status.entries.filter(t => t.index === FileState.Untracked).map(t => t.path);
     const write = new DiscardWriter(runner, paths, none);
 
@@ -159,7 +159,7 @@ describe("DiscardWriter", () => {
   test("refuses, before anything runs, a path the status doesn't list, a staged-only one and a submodule", async () => {
     await repository.writeAsync("a.txt", "staged\n");
     await repository.runGitAsync(["add", "a.txt"]);
-    const [, status] = await readAsync();
+    const { status } = await readAsync();
     const submodule = new StatusEntry("module", undefined, null, undefined, FileState.Unmodified, FileState.Modified, null, new SubmoduleStatus(false, true, false), null, null);
 
     assert.throws(() => new DiscardWriter(runner, ["missing.txt"], none).refuse(status), refused("missing.txt"));
@@ -170,7 +170,7 @@ describe("DiscardWriter", () => {
 
   test("fails with git's output when git can't discard, for a tracked and an untracked path", async () => {
     await repository.writeAsync("a.txt", "edited\n");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     const gone = withEntries(status, [new StatusEntry("gone.txt", undefined, null, undefined, FileState.Untracked, FileState.Untracked, null, null, null, null)]);
 
     await assert.rejects(new DiscardWriter(runner, ["missing.txt"], none).runAsync(folders, status), failed("restore --worktree"));

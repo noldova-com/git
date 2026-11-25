@@ -18,6 +18,7 @@ import { GitHubRepository } from "../models/github-repository.ts";
 import { NewestItems } from "../models/newest-items.ts";
 import { ReviewSearchAnswer } from "../models/review-search-answer.ts";
 import { ReviewSearch } from "../models/review-search.ts";
+import { ReviewVerdict } from "../models/review-verdict.ts";
 import { Resources } from "../resources.ts";
 import { GitHubApi } from "./github-api.ts";
 import type { GitHubAvatars } from "./github-avatars.ts";
@@ -319,9 +320,9 @@ export class GitHubReads {
     const latest: Map<string, string> = new Map<string, string>();
     for (let page: number = 1; ; page++) {
       const reviews: JsonReader | null = await this.api.getAsync(repository.pathOf(Resources.formatReviewsPath(number, page)), token, signal);
-      const read: readonly (readonly [string | null, string])[] = reviews === null ? []
+      const read: readonly ReviewVerdict[] = reviews === null ? []
         : GitHubApi.read(() => reviews.readObjectArray(Resources.itemsField).map(GitHubReads.reviewOf));
-      for (const [login, state] of read)
+      for (const { login, state } of read)
         if (login !== null && (state === Resources.approvedReview || state === Resources.changesRequestedReview || state === Resources.dismissedReview))
           latest.set(login, state);
       if (read.length < Resources.reviewsPageSize)
@@ -539,10 +540,10 @@ export class GitHubReads {
     return new HostCheck(run.readNonBlankString(Resources.nameField), state, run.readNullableString(Resources.htmlUrlField));
   }
 
-  private static reviewOf(review: JsonReader): readonly [string | null, string] {
+  private static reviewOf(review: JsonReader): ReviewVerdict {
     const login: string | null = review.readNullableObject(Resources.userField)?.readString(Resources.loginField) ?? null;
     const isReviewer: boolean = Resources.reviewerAssociations.includes(review.readString(Resources.authorAssociationField));
-    return [isReviewer ? login : null, review.readString(Resources.stateField)];
+    return new ReviewVerdict(isReviewer ? login : null, review.readString(Resources.stateField));
   }
 
   private static conclusionOf(conclusion: string): CheckState {

@@ -50,7 +50,7 @@ class Menu {
     return [...document.querySelectorAll<HTMLElement>("button[nol-menu-item]")];
   }
 
-  public rows(): readonly (readonly [string, boolean])[] {
+  public rows(): readonly (readonly unknown[])[] {
     const parts = (row: HTMLElement): string => [...row.querySelectorAll("*")].filter(t => t.children.length === 0).map(t => (t.textContent ?? "").trim())
       .filter(t => t !== "").join("|");
     return this.items.map(t => [parts(t), t.getAttribute("aria-disabled") === "true"] as const);

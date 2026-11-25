@@ -26,9 +26,20 @@ class TestSignInComponent {
   }
 }
 
+/** An open account dialog's element, and a count of each time it said it closed. */
+class OpenedDialog {
+  public readonly host: HTMLElement;
+  public readonly closes: number[];
+
+  public constructor(host: HTMLElement, closes: number[]) {
+    this.host = host;
+    this.closes = closes;
+  }
+}
+
 const opened: DialogRef<unknown, GitAccountDialogComponent>[] = [];
 
-function open(account: IProvidedGitHostAccount): { readonly host: HTMLElement; readonly closes: number[] } {
+function open(account: IProvidedGitHostAccount): OpenedDialog {
   const dialog = TestBed.inject(DialogService).open(GitAccountDialogComponent, ".nol-dialog-close");
   opened.push(dialog);
   dialog.componentRef?.setInput("account", account);
@@ -39,7 +50,7 @@ function open(account: IProvidedGitHostAccount): { readonly host: HTMLElement; r
   if (!(host instanceof HTMLElement))
     throw new Error("The dialog didn't open.");
   TestBed.inject(ApplicationRef).tick();
-  return { host, closes };
+  return new OpenedDialog(host, closes);
 }
 
 describe("GitAccountDialogComponent", () => {

@@ -30,13 +30,13 @@ LICENSE file in the root directory of this source tree.
     <div class="row heading section">
       <span class="caps grow">{{ resources.workspaceViewsHeading }}</span>
     </div>
-    @for (item of front.views(); track item[0]) {
-      @let isShown = front.view() === item[0];
-      <button type="button" class="row view" [class.selected]="isShown" [attr.aria-current]="isShown ? 'page' : null" (click)="chooseView(front, item[0])">
-        <span class="material-symbols-rounded" aria-hidden="true">{{ resources.workspaceViews[item[0]][0] }}</span>
-        <span class="grow">{{ resources.workspaceViews[item[0]][1] }}</span>
-        @if (item[1] > 0) {
-          <span class="badge">{{ item[1] }}</span>
+    @for (item of front.views(); track item.view) {
+      @let isShown = front.view() === item.view;
+      <button type="button" class="row view" [class.selected]="isShown" [attr.aria-current]="isShown ? 'page' : null" (click)="chooseView(front, item.view)">
+        <span class="material-symbols-rounded" aria-hidden="true">{{ resources.workspaceViews[item.view].icon }}</span>
+        <span class="grow">{{ resources.workspaceViews[item.view].name }}</span>
+        @if (item.count > 0) {
+          <span class="badge">{{ item.count }}</span>
         }
       </button>
     }

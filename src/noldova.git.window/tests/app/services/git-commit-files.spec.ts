@@ -12,9 +12,17 @@ import { describe, expect, it } from "vitest";
 import { GitFileLayout } from "../../../src/app/enums/git-file-layout.ts";
 import type { GitCommitFileRow } from "../../../src/app/models/git-commit-file-row.ts";
 import { GitCommitFiles } from "../../../src/app/services/git-commit-files.ts";
+import { GitLineCounts } from "../../../src/app/models/git-line-counts.ts";
+
+/** How a test file differs from a plain modified one: the path it moved from, whether it is binary, and its similarity. */
+interface IFileOptions {
+  readonly from?: string;
+  readonly binary?: boolean;
+  readonly similarity?: number;
+}
 
 describe("GitCommitFiles", () => {
-  const fileOf = (path: string, change: FileChange, added: number, removed: number, options: { readonly from?: string; readonly binary?: boolean; readonly similarity?: number } = {}): DiffFile => {
+  const fileOf = (path: string, change: FileChange, added: number, removed: number, options: IFileOptions = {}): DiffFile => {
     const lines: DiffLine[] = [
       ...Array.from({ length: added }, () => new DiffLine(LineKind.Added, null, 1, "+")),
       ...Array.from({ length: removed }, () => new DiffLine(LineKind.Removed, 1, null, "-")),
@@ -60,6 +68,6 @@ describe("GitCommitFiles", () => {
   });
 
   it("adds up the lines every file adds and removes", () => {
-    expect(GitCommitFiles.totalsOf(files)).toEqual([53, 6]);
+    expect(GitCommitFiles.totalsOf(files)).toEqual(new GitLineCounts(53, 6));
   });
 });

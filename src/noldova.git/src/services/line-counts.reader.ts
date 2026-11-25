@@ -16,6 +16,7 @@ import { GitArguments } from "../models/git-arguments.ts";
 import { GitPath } from "../models/git-path.ts";
 import { ProgramLimits } from "../models/program-limits.ts";
 import { ProgramRun } from "../models/program-run.ts";
+import { ReadBudget } from "../models/read-budget.ts";
 import { Required } from "../models/required.ts";
 import { Resources } from "../resources.ts";
 import { FilePresence } from "./file-presence.ts";
@@ -38,7 +39,7 @@ export class LineCountsReader {
       hasIndex ? this.readAsync(top, LineCountsReader.INDEX.withSettings(filters), signal) : new Map<string, LineCounts | null>(),
       hasWorktree ? this.readAsync(top, LineCountsReader.WORKTREE.withSettings(filters), signal) : new Map<string, LineCounts | null>()
     ]);
-    const budget = { remainingBytes: Resources.lineCountTotalBytes };
+    const budget = new ReadBudget(Resources.lineCountTotalBytes);
     const counted: StatusEntry[] = [];
     for (const entry of entries) {
       const untracked = entry.worktree === FileState.Untracked;
@@ -95,7 +96,7 @@ export class LineCountsReader {
     return records;
   }
 
-  private static async countFileAsync(file: string, budget: { remainingBytes: number }): Promise<LineCounts | null> {
+  private static async countFileAsync(file: string, budget: ReadBudget): Promise<LineCounts | null> {
     try {
       if (!(await lstat(file)).isFile())
         return null;

@@ -33,9 +33,15 @@ function waitForAbort(init: RequestInit, failure: (signal: AbortSignal) => unkno
   return new Promise((_resolve, reject) => init.signal?.addEventListener("abort", () => reject(failure(init.signal ?? AbortSignal.abort()))));
 }
 
+/** A fetch the reader asked for. */
+interface IAskedFetch {
+  readonly url: string;
+  readonly init: RequestInit;
+}
+
 class Rig {
   public readonly log: FakeModuleLog = new FakeModuleLog();
-  public readonly asked: { readonly url: string; readonly init: RequestInit }[] = [];
+  public readonly asked: IAskedFetch[] = [];
   public readonly answers: Answer[] = [];
   public readonly reader: GravatarReader = new GravatarReader(async (url, init) => {
     this.asked.push({ url, init });

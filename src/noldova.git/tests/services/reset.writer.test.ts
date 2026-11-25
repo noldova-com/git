@@ -19,7 +19,6 @@ import { ResetDuringOperationException } from "../../src/exceptions/reset-during
 import { ResetNoCommitException } from "../../src/exceptions/reset-no-commit.exception.ts";
 import { UndoCommitPushedException } from "../../src/exceptions/undo-commit-pushed.exception.ts";
 import { UndoCommitRootException } from "../../src/exceptions/undo-commit-root.exception.ts";
-import type { RepositoryFolders } from "../../src/models/repository-folders.ts";
 import { GitVersionReader } from "../../src/services/git-version.reader.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
 import { RepositoryReader } from "../../src/services/repository.reader.ts";
@@ -27,6 +26,7 @@ import { ResetWriter } from "../../src/services/reset.writer.ts";
 import { StatusReader } from "../../src/services/status.reader.ts";
 import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
+import { RepositoryState } from "../fixtures/repository-state.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
 describe("ResetWriter", () => {
@@ -63,14 +63,14 @@ describe("ResetWriter", () => {
     await cleanUps.runAsync();
   });
 
-  const readAsync = async (): Promise<[RepositoryFolders, GitStatus]> => {
+  const readAsync = async (): Promise<RepositoryState> => {
     const folders = await repositories.readAsync(repository.folder);
-    return [folders, await statuses.readAsync(folders)];
+    return new RepositoryState(folders, await statuses.readAsync(folders));
   };
   const idOf = async (revision: string): Promise<string> => (await repository.runGitAsync(["rev-parse", revision])).trim();
   const statusOf = async (): Promise<string> => await repository.runGitAsync(["status", "--porcelain=v1"]);
   const resetAsync = async (write: ResetWriter): Promise<void> => {
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     write.refuse(status);
     await write.runAsync(folders, status);
   };
@@ -138,14 +138,14 @@ describe("ResetWriter", () => {
     await assert.rejects(resetAsync(new ResetWriter(runner, ResetMode.Soft, await idOf("main"))), failsWith(ResetDuringOperationException, FailureCode.Refused));
 
     await repository.runGitAsync(["merge", "--abort"]);
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     await assert.rejects(new ResetWriter(runner, ResetMode.Soft, "0".repeat(40)).runAsync(folders, status), failsWith(GitFailedException, FailureCode.Unavailable));
     await assert.rejects(new ResetWriter(runner, ResetMode.Soft, "0".repeat(40)).requestAsync(folders, status, null), failsWith(GitFailedException, FailureCode.Unavailable));
   });
 
   test("asks an agent's reset and undo of the last commit at high risk, once, with the commit the branch moves to", async () => {
     const first = await idOf("HEAD~1");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     const short = first.slice(0, 7);
     const ask = async (write: ResetWriter, on: GitStatus = status): Promise<unknown> => await write.requestAsync(folders, on, null);
     const request = (action: string, title: string): unknown => ({
@@ -161,7 +161,7 @@ describe("ResetWriter", () => {
     assert.deepEqual(await ask(new ResetWriter(runner, ResetMode.Mixed, first)), request(GitNames.resetMethod, `Reset main to ${short}, keeping the changes unstaged`));
     assert.deepEqual(await ask(new ResetWriter(runner, ResetMode.Keep, null)), request(GitNames.undoCommitMethod, "Undo the last commit on main"));
     await repository.runGitAsync(["switch", "--quiet", "--detach"]);
-    const [, detached] = await readAsync();
+    const { status: detached } = await readAsync();
     assert.deepEqual(await ask(new ResetWriter(runner, ResetMode.Keep, first), detached), request(GitNames.resetMethod, `Reset the detached HEAD to ${short}, keeping local changes`));
     assert.deepEqual(await ask(new ResetWriter(runner, ResetMode.Soft, null), detached), request(GitNames.undoCommitMethod, "Undo the last commit on the detached HEAD"));
   });

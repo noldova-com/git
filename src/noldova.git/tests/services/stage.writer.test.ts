@@ -12,10 +12,9 @@ import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
 import { PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
-import { FailureCode, type GitStatus, UntrustedSource } from "@noldova/git.protocol";
+import { FailureCode, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
-import type { RepositoryFolders } from "../../src/models/repository-folders.ts";
 import { FilterOptionsReader } from "../../src/services/filter-options.reader.ts";
 import { GitVersionReader } from "../../src/services/git-version.reader.ts";
 import { HooksReader } from "../../src/services/hooks.reader.ts";
@@ -25,6 +24,7 @@ import { StageWriter } from "../../src/services/stage.writer.ts";
 import { StatusReader } from "../../src/services/status.reader.ts";
 import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
+import { RepositoryState } from "../fixtures/repository-state.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
 describe("StageWriter", () => {
@@ -62,9 +62,9 @@ describe("StageWriter", () => {
     await cleanUps.runAsync();
   });
 
-  const readAsync = async (folder: string = repository.folder): Promise<[RepositoryFolders, GitStatus]> => {
+  const readAsync = async (folder: string = repository.folder): Promise<RepositoryState> => {
     const folders = await repositories.readAsync(folder);
-    return [folders, await statuses.readAsync(folders)];
+    return new RepositoryState(folders, await statuses.readAsync(folders));
   };
   const stagedAsync = async (folder: string = repository.folder): Promise<string> =>
     await repository.runGitAsync(["-C", folder, "status", "--porcelain=v1", "--untracked-files=all"]);
@@ -83,12 +83,12 @@ describe("StageWriter", () => {
     const write = new StageWriter(runner, hooks, filters, ["a.txt"]);
 
     assert.doesNotThrow(() => write.refuse());
-    assert.equal(await write.requestAsync(...await readAsync(), call), null);
+    assert.equal(await (await readAsync()).requestAsync(write, call), null);
   });
 
   test("asks an agent's stage at low risk when a hook would run, with the paths and the hook", async () => {
     await hookAsync("post-index-change");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
 
     assert.deepEqual(await new StageWriter(runner, hooks, filters, ["a.txt", "dir/b\u001b.txt"]).requestAsync(folders, status, call), {
       action: "git.stage",
@@ -108,7 +108,7 @@ describe("StageWriter", () => {
   test("asks an agent's stage at low risk when the repository's hooks can't be read, saying so", async () => {
     const hook = path.join(repository.gitFolder, "hooks", "post-index-change");
     await symlink(hook, hook, "junction");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     const write = new StageWriter(runner, hooks, filters, ["a.txt"]);
 
     const asked = await write.requestAsync(folders, status, call);
@@ -122,11 +122,11 @@ describe("StageWriter", () => {
     await repository.runGitAsync(["config", "--file", path.join(own, "config"), "filter.own.clean", "own-filter"]);
     await repository.runGitAsync(["config", "filter.smudged.smudge", "smudge-only"]);
     const write = new StageWriter(runner, hooks, filters, ["a.txt"]);
-    const unasked = await write.requestAsync(...await readAsync(), call);
+    const unasked = await (await readAsync()).requestAsync(write, call);
     await repository.runGitAsync(["config", "filter.crypt.clean", "crypt-filter"]);
     await repository.runGitAsync(["config", "filter.lfs.process", "lfs-filter"]);
 
-    const request = await write.requestAsync(...await readAsync(), call);
+    const request = await (await readAsync()).requestAsync(write, call);
 
     assert.equal(unasked, null);
     assert.deepEqual([request?.risk, request?.details], [ToolRisk.Low, [
@@ -139,12 +139,12 @@ describe("StageWriter", () => {
   test("stages a change, a new file and a deletion as the worktree has them", async () => {
     await repository.writeAsync("a.txt", "changed\n");
     await repository.writeAsync("b.txt", "new\n");
-    await new StageWriter(runner, hooks, filters, ["a.txt", "b.txt"]).runAsync(...await readAsync());
+    await (await readAsync()).runAsync(new StageWriter(runner, hooks, filters, ["a.txt", "b.txt"]));
     assert.equal(await stagedAsync(), "M  a.txt\nA  b.txt\n");
 
     await repository.runGitAsync(["commit", "--quiet", "-m", "Two"]);
     await rm(path.join(repository.folder, "b.txt"));
-    await new StageWriter(runner, hooks, filters, ["b.txt"]).runAsync(...await readAsync());
+    await (await readAsync()).runAsync(new StageWriter(runner, hooks, filters, ["b.txt"]));
     assert.equal(await stagedAsync(), "D  b.txt\n");
   });
 
@@ -152,7 +152,7 @@ describe("StageWriter", () => {
     await repository.writeAsync("[ab].txt", "bracketed\n");
     await repository.writeAsync("a.txt", "changed\n");
 
-    await new StageWriter(runner, hooks, filters, ["[ab].txt"]).runAsync(...await readAsync());
+    await (await readAsync()).runAsync(new StageWriter(runner, hooks, filters, ["[ab].txt"]));
 
     assert.equal(await stagedAsync(), "A  [ab].txt\n M a.txt\n");
   });
@@ -161,6 +161,6 @@ describe("StageWriter", () => {
     await repository.writeAsync(".gitignore", "*.log\n");
     await repository.writeAsync("x.log", "ignored\n");
 
-    await assert.rejects(new StageWriter(runner, hooks, filters, ["x.log"]).runAsync(...await readAsync()), unavailable("add"));
+    await assert.rejects((await readAsync()).runAsync(new StageWriter(runner, hooks, filters, ["x.log"])), unavailable("add"));
   });
 });

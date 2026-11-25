@@ -9,11 +9,16 @@ import assert from "node:assert/strict";
 
 import { describe, test } from "vitest";
 
+import { ClientWatch } from "../../src/models/client-watch.ts";
 import { WatchTable } from "../../src/services/watch-table.ts";
 
 describe("WatchTable", () => {
-  const folders = (table: WatchTable, top: string): [number, number | null, string, number][] =>
-    table.watchesOf(top).map(t => [t.connection, t.window, t.folder, t.count]);
+  const folders = (table: WatchTable, top: string): ClientWatch[] => table.watchesOf(top);
+  const watch = (connection: number, window: number | null, folder: string, count: number): ClientWatch => {
+    const counted = new ClientWatch(connection, window, folder);
+    counted.count = count;
+    return counted;
+  };
   const add = (table: WatchTable, connection: number, window: number | null, folder: string, top: string): boolean =>
     table.complete(table.begin(connection, window, folder), top);
 
@@ -23,11 +28,11 @@ describe("WatchTable", () => {
     assert.equal(add(table, 1, 2, "/repo", "/repo"), true);
     assert.equal(add(table, 1, 2, "/repo", "/repo"), false);
     assert.equal(add(table, 1, 3, "/repo/src", "/repo"), false);
-    assert.deepEqual(folders(table, "/repo"), [[1, 2, "/repo", 2], [1, 3, "/repo/src", 1]]);
+    assert.deepEqual(folders(table, "/repo"), [watch(1, 2, "/repo", 2), watch(1, 3, "/repo/src", 1)]);
 
     assert.equal(table.remove(1, 2, "/repo"), null);
     assert.equal(table.remove(1, 2, "/repo"), null);
-    assert.deepEqual(folders(table, "/repo"), [[1, 3, "/repo/src", 1]]);
+    assert.deepEqual(folders(table, "/repo"), [watch(1, 3, "/repo/src", 1)]);
     assert.equal(table.remove(1, 3, "/repo/src"), "/repo");
     assert.deepEqual(folders(table, "/repo"), []);
     assert.equal(add(table, 1, 3, "/repo/src", "/repo"), true);
@@ -41,7 +46,7 @@ describe("WatchTable", () => {
 
     table.drop("/repo");
 
-    assert.deepEqual([folders(table, "/repo"), table.remove(1, 3, "/repo/src"), folders(table, "/other")], [[], null, [[1, 2, "/other", 1]]]);
+    assert.deepEqual([folders(table, "/repo"), table.remove(1, 3, "/repo/src"), folders(table, "/other")], [[], null, [watch(1, 2, "/other", 1)]]);
     assert.equal(add(table, 1, 2, "/repo", "/repo"), true);
   });
 
@@ -52,7 +57,7 @@ describe("WatchTable", () => {
     assert.equal(table.remove(1, 2, "/other"), null);
     assert.equal(table.remove(1, 4, "/repo"), null);
     assert.equal(table.remove(9, null, "/repo"), null);
-    assert.deepEqual(folders(table, "/repo"), [[1, 2, "/repo", 1]]);
+    assert.deepEqual(folders(table, "/repo"), [watch(1, 2, "/repo", 1)]);
   });
 
   test("drops a closed window's watches, or every window's of a closed connection, and names the repositories no one watches", () => {
@@ -63,7 +68,7 @@ describe("WatchTable", () => {
     add(table, 2, null, "/c", "/c");
 
     assert.deepEqual(table.removeClient(1, 3), ["/b"]);
-    assert.deepEqual(folders(table, "/a"), [[1, 2, "/a", 1]]);
+    assert.deepEqual(folders(table, "/a"), [watch(1, 2, "/a", 1)]);
     assert.deepEqual(table.removeClient(2, 5), []);
     assert.deepEqual(table.removeClient(1, null), ["/a"]);
     assert.deepEqual(table.removeClient(2, null), ["/c"]);
@@ -83,7 +88,7 @@ describe("WatchTable", () => {
     assert.equal(table.complete(second, "/repo"), false);
     assert.deepEqual(folders(table, "/repo"), []);
     assert.equal(table.complete(other, "/repo"), true);
-    assert.deepEqual(folders(table, "/repo"), [[1, 2, "/other", 1]]);
+    assert.deepEqual(folders(table, "/repo"), [watch(1, 2, "/other", 1)]);
   });
 
   test("takes back a counted watch before a pending one", () => {
@@ -93,7 +98,7 @@ describe("WatchTable", () => {
 
     assert.equal(table.remove(1, 2, "/repo"), "/repo");
     assert.equal(table.complete(pending, "/repo"), true);
-    assert.deepEqual(folders(table, "/repo"), [[1, 2, "/repo", 1]]);
+    assert.deepEqual(folders(table, "/repo"), [watch(1, 2, "/repo", 1)]);
   });
 
   test("cancels the pending watches of a window or connection that closes before their repository is read", () => {
@@ -107,7 +112,7 @@ describe("WatchTable", () => {
     assert.equal(table.complete(closing, "/repo"), false);
     assert.equal(table.complete(connection, "/repo"), false);
     assert.equal(table.complete(staying, "/repo"), true);
-    assert.deepEqual(folders(table, "/repo"), [[1, 3, "/repo", 1]]);
+    assert.deepEqual(folders(table, "/repo"), [watch(1, 3, "/repo", 1)]);
   });
 
   test("forgets an abandoned watch, so a later unwatch cancels the next pending watch instead", () => {
@@ -118,6 +123,6 @@ describe("WatchTable", () => {
     assert.equal(table.remove(1, 2, "/repo"), null);
     assert.equal(table.complete(next, "/repo"), false);
     assert.equal(table.complete(table.begin(1, 2, "/repo"), "/repo"), true);
-    assert.deepEqual(folders(table, "/repo"), [[1, 2, "/repo", 1]]);
+    assert.deepEqual(folders(table, "/repo"), [watch(1, 2, "/repo", 1)]);
   });
 });

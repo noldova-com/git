@@ -71,7 +71,7 @@ describe("GitRefChip", () => {
   it("keeps a row's labels up to the limit and leaves the rest to its +N label", () => {
     const chips: GitRefChip[] = GitRefChip.chipsOf([new GitRef(RefKind.Branch, "a"), new GitRef(RefKind.Branch, "b"), new GitRef(RefKind.Tag, "c")]);
 
-    expect([GitRefChip.split(chips, 2), GitRefChip.split(chips, 3)].map(([shown, more]) => [shown.map(t => t.name), more.map(t => t.name)]))
+    expect([GitRefChip.split(chips, 2), GitRefChip.split(chips, 3)].map(({ shown, hidden }) => [shown.map(t => t.name), hidden.map(t => t.name)]))
       .toEqual([[["a", "b"], ["c"]], [["a", "b", "c"], []]]);
   });
 

@@ -15,8 +15,14 @@ import { AzureDevOpsReferenceLink } from "../../../src/app/models/azure-devops-r
 import { AzureDevOpsHomeReferences } from "../../../src/app/services/azure-devops-home-references.ts";
 import { AzureDevOpsReferenceLooks } from "../../../src/app/services/azure-devops-reference-looks.ts";
 
+/** A link the source was asked about, by its address and its text. */
+interface IAskedReference {
+  readonly url: string;
+  readonly text: string;
+}
+
 class RecordedSource implements ILinkReferenceSource {
-  public readonly asked: (readonly [string, string])[] = [];
+  public readonly asked: IAskedReference[] = [];
   public readonly answer: Signal<LinkReference | null>;
 
   public constructor(answer: Signal<LinkReference | null>) {
@@ -24,7 +30,7 @@ class RecordedSource implements ILinkReferenceSource {
   }
 
   public find(url: string, text: string): Signal<LinkReference | null> | null {
-    this.asked.push([url, text]);
+    this.asked.push({ url, text });
     return url.includes("_workitems") ? this.answer : null;
   }
 }
@@ -40,7 +46,7 @@ describe("AzureDevOpsHomeReferences", () => {
     const found = [references.find("https://dev.azure.com/fabrikam/web/_workitems/edit/42", "#42"), references.find("https://example.com/", "home")];
 
     expect([found[0], found[1], source.asked]).toEqual([source.answer, null,
-      [["https://dev.azure.com/fabrikam/web/_workitems/edit/42", "#42"], ["https://example.com/", "home"]]]);
+      [{ url: "https://dev.azure.com/fabrikam/web/_workitems/edit/42", text: "#42" }, { url: "https://example.com/", text: "home" }]]);
   });
 
   it("finds #N and AB#N in a commit's message as work items of its home organization, without asking the source", () => {

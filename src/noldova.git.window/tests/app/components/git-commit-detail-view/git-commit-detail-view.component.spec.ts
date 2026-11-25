@@ -11,14 +11,14 @@ import { describe, expect, it, onTestFinished } from "vitest";
 
 import { GitCommitView } from "../../../../src/app/models/git-commit-view.ts";
 import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
-import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
+import { FixtureLine, GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitViewFixture } from "../../../fixtures/git-view.fixture.ts";
 
 describe("GitCommitDetailViewComponent", () => {
   const commitOf = (id: string, subject: string): GitGraphCommit =>
     new GitGraphCommit(new GitCommit(id.repeat(40), ["d".repeat(40)], "Sample Author", "2026-11-20T14:02:00Z", subject), "author@example.com", []);
   const answers = {
-    ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
+    ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")).toJson(),
     "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson()
   };
 

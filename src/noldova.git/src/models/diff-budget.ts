@@ -8,6 +8,7 @@
 
 import { DiffFile, DiffHunk, type DiffLine, GitDiff } from "@noldova/git.protocol";
 
+import type { IJsonWritable } from "../interfaces/i-json-writable.ts";
 import { Resources } from "../resources.ts";
 import type { ParsedDiff } from "./parsed-diff.ts";
 
@@ -92,7 +93,7 @@ export class DiffBudget {
     return new GitDiff(this.files, this.totalBytes, this.omittedFiles, this.truncated);
   }
 
-  private static sizeOf(value: { toJson(): unknown }): number {
+  private static sizeOf(value: IJsonWritable): number {
     return Buffer.byteLength(JSON.stringify(value.toJson()));
   }
 

@@ -25,6 +25,13 @@ import { GitHubHostRowComponent } from "../../../../src/app/components/github-ho
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
+/** A pull request's state, GitHub's colour for its icon, null when the icon keeps its own, and when it closed, if it did. */
+interface IStateColour {
+  readonly state: ReferenceState;
+  readonly colour: string | null;
+  readonly closedAt: number | null;
+}
+
 @Component({
   selector: "nol-git-github-dock",
   imports: [GitHubHostRowComponent],
@@ -199,12 +206,15 @@ describe("GitHubHostRowComponent in the kit's look", () => {
   });
 
   it.each(AppearanceFixture.modes)("draws each pull request state's icon in GitHub's colour for that state, in %s mode", async mode => {
-    const states: readonly (readonly [ReferenceState, string | null, number | null])[] = [[ReferenceState.Open, "var(--nol-status-ok)", null],
-      [ReferenceState.Draft, "var(--nol-text-muted)", null], [ReferenceState.Closed, "var(--nol-status-failed)", 1_800_000_360_000],
-      [ReferenceState.Merged, null, 1_800_000_360_000]];
+    const states: readonly IStateColour[] = [
+      { state: ReferenceState.Open, colour: "var(--nol-status-ok)", closedAt: null },
+      { state: ReferenceState.Draft, colour: "var(--nol-text-muted)", closedAt: null },
+      { state: ReferenceState.Closed, colour: "var(--nol-status-failed)", closedAt: 1_800_000_360_000 },
+      { state: ReferenceState.Merged, colour: null, closedAt: 1_800_000_360_000 }
+    ];
     const shown: string[] = [];
     const expected: string[] = [];
-    for (const [state, colour, closedAt] of states) {
+    for (const { state, colour, closedAt } of states) {
       const item = new HostItem(merged.reference, ReferenceKind.PullRequest, state, "Sample pull request", merged.url, null, merged.createdAt, closedAt, 0,
         merged.changes);
       const fixture = await openAsync(mode, HostSignIn.signedIn(account), new BranchPullRequest(item, []));

@@ -95,7 +95,7 @@ LICENSE file in the root directory of this source tree.
             @if (row.pullRequest(); as pullRequest) {
               @let words = around(row.pullRequestText(), pullRequest.label);
               @let linkTitle = resources.formatPullRequestLinkTitle(row.pullRequestText(), pullRequest.title);
-              <span class="link" (click)="openPullRequest(row, pullRequest)"><span [title]="linkTitle">{{ words[0] }}</span><nol-git-reference-text [text]="words[1]" [folder]="row.folder" [link]="pullRequest.url" /><span [title]="linkTitle">{{ words[2] }}</span></span>
+              <span class="link" (click)="openPullRequest(row, pullRequest)"><span [title]="linkTitle">{{ words.before }}</span><nol-git-reference-text [text]="words.linked" [folder]="row.folder" [link]="pullRequest.url" /><span [title]="linkTitle">{{ words.after }}</span></span>
             }
             @else {
               {{ row.pullRequestText() }}

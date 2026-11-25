@@ -11,6 +11,8 @@ import type { BinaryToTextEncoding } from "node:crypto";
 import { ConflictKind, ConflictResolution, FileChange, FileState, LineKind, OperationKind, ResetMode, SigningFormat, UndoMode } from "@noldova/git.protocol";
 
 import { TreeWatch } from "./enums/tree-watch.ts";
+import { GitVersion } from "./models/git-version.ts";
+import { OperationHead } from "./models/operation-head.ts";
 
 export class Resources {
   public static readonly indexLocked: string = "Another process holds the repository's index.lock. Let it finish, then try again.";
@@ -232,7 +234,7 @@ export class Resources {
   public static readonly headCommitCheckArguments: readonly string[] = ["rev-parse", "--verify", "--quiet", "HEAD"];
   public static readonly noCommitExitCode: number = 1;
   /** The oldest git whose `for-each-ref` prints `%(ahead-behind:HEAD)`. */
-  public static readonly aheadBehindVersion: readonly [number, number] = [2, 41];
+  public static readonly aheadBehindVersion: GitVersion = new GitVersion(2, 41);
   public static readonly forEachRefCommand: string = "for-each-ref";
   public static readonly remoteCommand: string = "remote";
   public static readonly remoteUrlPart: string = "a remote URL";
@@ -533,7 +535,8 @@ export class Resources {
   public static readonly rebaseFolders: readonly string[] = ["rebase-merge", "rebase-apply"];
   public static readonly headNameFile: string = "head-name";
   public static readonly mergeMessageFile: string = "MERGE_MSG";
-  public static readonly operationHeads: readonly (readonly [string, OperationKind])[] = [["MERGE_HEAD", OperationKind.Merge], ["CHERRY_PICK_HEAD", OperationKind.CherryPick], ["REVERT_HEAD", OperationKind.Revert]];
+  public static readonly operationHeads: readonly OperationHead[] = [new OperationHead("MERGE_HEAD", OperationKind.Merge), new OperationHead("CHERRY_PICK_HEAD", OperationKind.CherryPick),
+    new OperationHead("REVERT_HEAD", OperationKind.Revert)];
   public static readonly logArguments: readonly string[] = ["log", "-z", "--no-color", "--no-show-signature", "--no-notes", "--encoding=UTF-8", "--format=%H%x00%P%x00%an%x00%aI%x00%at%x00%s"];
   public static readonly logCommand: string = "log";
   public static readonly cherryPickCommand: string = "cherry-pick";
@@ -615,7 +618,7 @@ export class Resources {
   public static readonly versionCommand: string = "version";
   public static readonly versionPattern: RegExp = /^git version (\d+)\.(\d+)/v;
   public static readonly reportedVersionPattern: RegExp = /^git version (\d{1,4}\.\d{1,4}(?:\.[0-9A-Za-z]{1,16}){0,4})(?:\s|$)/v;
-  public static readonly oldestGitVersion: readonly [number, number] = [2, 39];
+  public static readonly oldestGitVersion: GitVersion = new GitVersion(2, 39);
   public static readonly indexFile: string = "index";
   public static readonly fetchHeadFile: string = "FETCH_HEAD";
   public static readonly missingFingerprint: string = "\0missing";
@@ -1304,7 +1307,7 @@ export class Resources {
   public static readonly mergeTreeArguments: readonly string[] = ["merge-tree", "--write-tree", "--name-only", "--no-messages", "-z"];
   public static readonly mergeTreeConflictsExitCode: number = 1;
   /** The oldest git whose `merge-tree` takes `--merge-base`, which a cherry-pick's and a revert's prediction need. */
-  public static readonly mergeBaseOptionVersion: readonly [number, number] = [2, 40];
+  public static readonly mergeBaseOptionVersion: GitVersion = new GitVersion(2, 40);
   public static readonly mergeDriverArguments: readonly string[] = ["config", "--show-scope", "--name-only", "--get-regexp", "^merge\\..+\\.driver$"];
   /** A commit's parents, one a line, then the tree HEAD points at. */
   public static readonly predictRevisionsArguments: readonly string[] = ["rev-parse"];
@@ -1343,7 +1346,7 @@ export class Resources {
   public static readonly trailingNewlines: RegExp = /\n+$/u;
 
   /** The oldest git whose `merge-tree` merges trees as well as commits, which replaying a rebase's steps on each other's results needs. */
-  public static readonly mergeTreesVersion: readonly [number, number] = [2, 45];
+  public static readonly mergeTreesVersion: GitVersion = new GitVersion(2, 45);
 
   public static formatFirstParentRevision(id: string): string {
     return `${id}^1`;

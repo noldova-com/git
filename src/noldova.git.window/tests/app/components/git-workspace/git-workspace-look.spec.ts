@@ -31,6 +31,19 @@ import { GitWorkspaces } from "../../../../src/app/services/git-workspaces.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitLayout } from "../../../fixtures/git-layout.fixture.ts";
 
+/** The workspace page, the Workspaces view and its side panel. */
+class WorkspaceScreens {
+  public readonly page: HTMLElement;
+  public readonly view: HTMLElement;
+  public readonly side: HTMLElement;
+
+  public constructor(page: HTMLElement, view: HTMLElement, side: HTMLElement) {
+    this.page = page;
+    this.view = view;
+    this.side = side;
+  }
+}
+
 describe("GitWorkspaceComponent in the kit's look", () => {
   const screenshots: string = "../../../../../../_build/window/screenshots";
   const rem = (pixels: number): number => Math.round(pixels / parseFloat(getComputedStyle(document.documentElement).fontSize) * 1000) / 1000;
@@ -60,14 +73,14 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     new GitPullRequestRow(String(number), `#${number}`, `Change ${number}`, `https://github.com/example-owner/site/pull/${number}`, isDraft, 1, passed, failing, pending, "branch");
 
   /** The artboard's repositories: each one's branch, how far it is from its upstream, its changed files and its branch's pull request. */
-  const repositories: readonly (readonly [string, string, number, number, number, GitBranchPullRequest])[] = [
+  const repositories = [
     ["/work/git", "feature/kit-0.0.25", 3, 0, 3, GitBranchPullRequest.of(pull(214, 3, 0, 0), GitPullRequestState.Open, false)],
     ["/work/ui-components", "feature/kit-0.0.25", 1, 2, 1, GitBranchPullRequest.of(pull(1046, 2, 1, 0, true), GitPullRequestState.Draft, false)],
     ["/work/desktop", "main", 0, 4, 0, GitBranchPullRequest.of(pull(533, 4, 0, 0), GitPullRequestState.Open, true)],
     ["/work/terminal", "feature/kit-0.0.25", 2, 0, 0, GitBranchPullRequest.none(1, 0, 2)],
     ["/work/tools", "main", 0, 0, 0, GitBranchPullRequest.none(0, 0, 0)],
     ["/work/website-noldova", "main", 0, 0, 0, GitBranchPullRequest.of(pull(22, 5, 0, 0), GitPullRequestState.Merged, false)]
-  ];
+  ] as const;
 
   async function renderAsync(): Promise<HTMLElement> {
     return (await renderBothAsync()).page;
@@ -77,7 +90,7 @@ describe("GitWorkspaceComponent in the kit's look", () => {
    * Renders the page at 90rem by 24rem with the Across repositories view beside it at the dock's 22rem and the Workspaces view at the left dock's 15rem, once
    * every row shows its checks.
    */
-  async function renderBothAsync(): Promise<{ readonly page: HTMLElement; readonly view: HTMLElement; readonly side: HTMLElement }> {
+  async function renderBothAsync(): Promise<WorkspaceScreens> {
     await page.viewport(1440, 900);
     localStorage.clear();
     GitWorkspaces.restore();
@@ -142,7 +155,7 @@ describe("GitWorkspaceComponent in the kit's look", () => {
       observer.observe(element, { characterData: true, childList: true, subtree: true });
       check();
     });
-    return { page: element, view: viewElement, side: sideElement };
+    return new WorkspaceScreens(element, viewElement, sideElement);
   }
 
   /** Waits until done holds, checking again on each change under the root. */
@@ -300,8 +313,8 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     const table: HTMLElement = element.querySelector<HTMLElement>(".table") ?? element;
     const row: HTMLElement = table.querySelector<HTMLElement>(".tr:not(.th)") ?? element;
     const cut: readonly HTMLElement[] = [".name-cell", ".branch .ellipsis", ".pull-request .link"].map(t => row.querySelector<HTMLElement>(t) ?? row);
-    const widest: readonly (readonly [string, string])[] = [[".name-cell", "website-noldova"], [".sync", "↑12 ↓3"], [".sync", "Upstream gone"], [".changes", "12 conflicts"],
-      [".pull-request .link", "#215 open · on #214"], [".fetched", "12 min ago"]];
+    const widest = [[".name-cell", "website-noldova"], [".sync", "↑12 ↓3"], [".sync", "Upstream gone"], [".changes", "12 conflicts"],
+      [".pull-request .link", "#215 open · on #214"], [".fetched", "12 min ago"]] as const;
 
     expect([rem(box(row.children[2] ?? row).width) >= 8, table.scrollWidth - table.clientWidth]).toEqual([true, 0]);
     /* The pull request link leaves its title to its words, so its tooltip never shows over the reference card. */

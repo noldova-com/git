@@ -20,6 +20,17 @@ import { GitStatusFollower } from "../../../src/app/services/git-status-follower
 import { GitFixtures } from "../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../fixtures/git-held-requests.fixture.ts";
 
+/** Two command log reads held open, the earlier one asked first, each answered when the test chooses. */
+class LogReads {
+  public readonly earlier: (answer: JsonValue | Error) => void;
+  public readonly later: (answer: JsonValue | Error) => void;
+
+  public constructor(earlier: (answer: JsonValue | Error) => void, later: (answer: JsonValue | Error) => void) {
+    this.earlier = earlier;
+    this.later = later;
+  }
+}
+
 describe("GitStatusFollower", () => {
   const at: string = "2026-11-22T18:05:00Z";
   const logOf = (...lines: readonly string[]): JsonValue => new GitCommandLog(lines.map((t, i) => new GitCommand(String(i + 1), at, t, 0, 40))).toJson();
@@ -56,7 +67,7 @@ describe("GitStatusFollower", () => {
       "git.commandLog": () => fingerprint === 1 ? logOf("git add -- a.txt") : logOf("git add -- a.txt", "git fetch --quiet") });
     follow();
     await until(() => command.state().text === "git add -- a.txt");
-    const first: readonly [boolean, number] = [branch.state().isHidden, calls(context, "git.watch")];
+    const first: readonly unknown[] = [branch.state().isHidden, calls(context, "git.watch")];
 
     fingerprint = 2;
     context.raiseEvent("git.changed", { folder: "/elsewhere" });
@@ -76,20 +87,20 @@ describe("GitStatusFollower", () => {
     const settledAsync = async (): Promise<void> => {
       await Promise.allSettled(reads.mock.results.flatMap(t => t.type === "return" ? [t.value] : []));
     };
-    const pair = async (): Promise<readonly [(answer: JsonValue | Error) => void, (answer: JsonValue | Error) => void]> => {
+    const pair = async (): Promise<LogReads> => {
       const earlier = await held.nextAsync("git.commandLog");
       context.raiseEvent("git.changed", { folder: GitFixtures.folder });
-      return [earlier, await held.nextAsync("git.commandLog")];
+      return new LogReads(earlier, await held.nextAsync("git.commandLog"));
     };
     follow();
-    const [first, second] = await pair();
+    const { earlier: first, later: second } = await pair();
     second(logOf("git fetch --quiet"));
     await until(() => command.state().text === "git fetch --quiet");
     first(logOf("git add -- a.txt"));
     await settledAsync();
     const answered: string = command.state().text;
     context.raiseEvent("git.changed", { folder: GitFixtures.folder });
-    const [third, fourth] = await pair();
+    const { earlier: third, later: fourth } = await pair();
     fourth(logOf("git fetch --quiet", "git status"));
     await until(() => command.state().text === "git status");
     third(new Error("late read broke"));
@@ -135,7 +146,7 @@ describe("GitStatusFollower", () => {
     const { branch, context, shown, follow } = setUp(answers, null);
     const stop = GitStatusFollower.follow(context);
     await Promise.resolve();
-    const idle: readonly [boolean, number] = [branch.state().isHidden, context.callsOf("requestAsync").length];
+    const idle: readonly unknown[] = [branch.state().isHidden, context.callsOf("requestAsync").length];
     stop();
     shown.set(GitFixtures.folder);
     await Promise.resolve();

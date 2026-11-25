@@ -11,6 +11,19 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { FocusKeeper } from "../../../src/app/services/focus-keeper.ts";
 
+/** A rendered list whose focus the keeper keeps, and the function that stops it. */
+class KeptList {
+  public readonly root: HTMLElement;
+  public readonly list: HTMLElement;
+  public readonly stop: () => void;
+
+  public constructor(root: HTMLElement, list: HTMLElement, stop: () => void) {
+    this.root = root;
+    this.list = list;
+    this.stop = stop;
+  }
+}
+
 describe("FocusKeeper", () => {
   const roots: HTMLElement[] = [];
 
@@ -18,7 +31,7 @@ describe("FocusKeeper", () => {
     roots.splice(0).forEach(t => t.remove());
   });
 
-  const render = (rows: number): { readonly root: HTMLElement; readonly list: HTMLElement; readonly stop: () => void } => {
+  const render = (rows: number): KeptList => {
     const root: HTMLElement = document.createElement("section");
     root.innerHTML = `<button type="button" class="head">Head</button><ul>${Array.from({ length: rows }, (_, at) =>
       `<li><button type="button" class="name">Name ${String(at)}</button><button type="button" class="move">Move ${String(at)}</button></li>`).join("")}</ul>`;
@@ -27,7 +40,7 @@ describe("FocusKeeper", () => {
     const list: HTMLElement | null = root.querySelector("ul");
     if (Object.isNull(list))
       throw new Error("No list.");
-    return { root, list, stop: FocusKeeper.keep(root) };
+    return new KeptList(root, list, FocusKeeper.keep(root));
   };
   const press = (control: Element | undefined): void => {
     if (!(control instanceof HTMLElement))

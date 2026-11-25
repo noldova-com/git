@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import type { IWatchOwner } from "../interfaces/i-watch-owner.ts";
 import { ClientWatch } from "../models/client-watch.ts";
 import { PendingWatch } from "../models/pending-watch.ts";
 
@@ -86,7 +87,7 @@ export class WatchTable {
     return true;
   }
 
-  private static isOf(watch: { readonly connection: number; readonly window: number | null }, connection: number, window: number | null): boolean {
+  private static isOf(watch: IWatchOwner, connection: number, window: number | null): boolean {
     return watch.connection === connection && (window === null || watch.window === window);
   }
 

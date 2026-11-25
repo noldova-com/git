@@ -26,7 +26,7 @@ import { GitFileLayout } from "../../../../src/app/enums/git-file-layout.ts";
 import { GitForcePushOffer } from "../../../../src/app/models/git-force-push-offer.ts";
 import { GitFolder } from "../../../../src/app/services/git-folder.ts";
 import { GitViewOptions } from "../../../../src/app/services/git-view-options.ts";
-import { type FailedRequest, GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
+import { FixtureLine, GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 import { GitLayout } from "../../../fixtures/git-layout.fixture.ts";
 import { GitViewFixture } from "../../../fixtures/git-view.fixture.ts";
@@ -48,8 +48,8 @@ describe("GitViewComponent in the kit's look", () => {
     operation: new GitOperation(OperationKind.Merge, "main", "Merge branch 'main' into sample/1234-branch"),
     remote: new GitRemote("nas", "nas.home", "notes", RemoteTransport.Ssh)
   });
-  const diff = GitFixtures.diff("src/Example.Project.Core/src/resources.ts", [LineKind.Context, "  public static formatSampleServerRunFailed("],
-    [LineKind.Added, "    if (failure.kind === SampleRunFailureKind.Untrusted)"], [LineKind.Removed, "      return `${failure.server} refused`;"]);
+  const diff = GitFixtures.diff("src/Example.Project.Core/src/resources.ts", new FixtureLine(LineKind.Context, "  public static formatSampleServerRunFailed("),
+    new FixtureLine(LineKind.Added, "    if (failure.kind === SampleRunFailureKind.Untrusted)"), new FixtureLine(LineKind.Removed, "      return `${failure.server} refused`;"));
 
   const resolve = (color: string): string => {
     const probe: HTMLSpanElement = document.createElement("span");
@@ -381,14 +381,14 @@ describe("GitViewComponent in the kit's look", () => {
     await page.screenshot({ element: view.element, path: `${screenshots}/git-view-unfollowed-${mode}.png` });
   });
 
-  const emptyStates: readonly (readonly [string, FailedRequest, string])[] = [
+  const emptyStates = [
     ["not-repository", GitFixtures.failure(FailureCode.NotRepository), "Not a Git repository"],
     ["folder-unreadable", GitFixtures.failure(FailureCode.Unavailable, GitCode.FolderUnreadable), "Can't read this folder"],
     ["git-missing", GitFixtures.failure(FailureCode.Unavailable, GitCode.GitMissing), "Git isn't installed"],
     ["too-old", GitFixtures.failure(FailureCode.Unavailable, GitCode.GitTooOld, "Git is too old.", "2.34.1"), "Git 2.34.1 is too old"]
-  ];
+  ] as const;
 
-  it.each(emptyStates.flatMap(([name, failure, heading]) => AppearanceFixture.modes.map((mode): readonly [string, typeof mode, FailedRequest, string] => [name, mode, failure, heading])))("draws the %s state's icon, heading and text on one edge in %s mode", async (name, mode, failure, heading) => {
+  it.each(emptyStates.flatMap(([name, failure, heading]) => AppearanceFixture.modes.map(mode => [name, mode, failure, heading] as const)))("draws the %s state's icon, heading and text on one edge in %s mode", async (name, mode, failure, heading) => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
     const view: GitViewFixture = await GitViewFixture.renderAsync({ ...GitFixtures.watching, "git.status": failure }, ".empty");
     view.element.style.width = "25rem";

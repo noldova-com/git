@@ -8,17 +8,40 @@
 
 import "@noldova/context.core";
 import { LineKind } from "@noldova/git.protocol";
+import { FixtureLine } from "./git-fixtures.fixture.ts";
 
-type Rgba = readonly [number, number, number, number];
+/** A color as red, green and blue from 0 to 255 and alpha from 0 to 1. */
+class Rgba {
+  public static readonly NONE: Rgba = new Rgba(0, 0, 0, 0);
+  public static readonly WHITE: Rgba = new Rgba(255, 255, 255, 1);
+
+  public readonly red: number;
+  public readonly green: number;
+  public readonly blue: number;
+  public readonly alpha: number;
+
+  public constructor(red: number, green: number, blue: number, alpha: number) {
+    this.red = red;
+    this.green = green;
+    this.blue = blue;
+    this.alpha = alpha;
+  }
+
+  /** The opaque color this one makes drawn over another. */
+  public over(below: Rgba): Rgba {
+    const mix = (top: number, under: number): number => top * this.alpha + under * (1 - this.alpha);
+    return new Rgba(mix(this.red, below.red), mix(this.green, below.green), mix(this.blue, below.blue), 1);
+  }
+}
 
 /** Measures the WCAG contrast of a diff's syntax colors on its lines' backgrounds, in whatever space the browser keeps the colors. */
 export class GitContrast {
   /** TypeScript that draws every kind of token, as context, removed and added lines. */
-  public static readonly lines: readonly [LineKind, string][] = [LineKind.Context, LineKind.Removed, LineKind.Added].flatMap(kind => [
+  public static readonly lines: readonly FixtureLine[] = [LineKind.Context, LineKind.Removed, LineKind.Added].flatMap(kind => [
     "function area(r: number): number { return 3.14 * r; } // note",
     "const name = \"old\"; /* gone */ if (name) throw new Error(name);",
     "export class Shape { static of(x: string) { return /a+/g.test(x) ? 1 : 0; } }"
-  ].map((text): [LineKind, string] => [kind, text]));
+  ].map(text => new FixtureLine(kind, text)));
 
   /**
    * The syntax colors under WCAG's 4.5 for text on the kit's added and removed tints, by mode, as measured: the kit's colors, which a
@@ -64,7 +87,7 @@ export class GitContrast {
   /** The WCAG contrast of a span's color on its line's background, to two places. */
   private static contrastOf(span: Element, line: Element): number {
     const background: Rgba = GitContrast.backgroundOf(line);
-    const text: number = GitContrast.luminanceOf(GitContrast.over(GitContrast.channelsOf(getComputedStyle(span).color), background));
+    const text: number = GitContrast.luminanceOf(GitContrast.channelsOf(getComputedStyle(span).color).over(background));
     const behind: number = GitContrast.luminanceOf(background);
     return Math.round((Math.max(text, behind) + 0.05) / (Math.min(text, behind) + 0.05) * 100) / 100;
   }
@@ -73,17 +96,12 @@ export class GitContrast {
   private static channelsOf(color: string): Rgba {
     const context: CanvasRenderingContext2D | null = GitContrast.canvas.getContext("2d", { willReadFrequently: true });
     if (Object.isNull(context))
-      return [0, 0, 0, 0];
+      return Rgba.NONE;
     context.clearRect(0, 0, 1, 1);
     context.fillStyle = color;
     context.fillRect(0, 0, 1, 1);
     const [red = 0, green = 0, blue = 0, alpha = 0] = context.getImageData(0, 0, 1, 1).data;
-    return [red, green, blue, alpha / 255];
-  }
-
-  private static over(top: Rgba, below: Rgba): Rgba {
-    const mix = (i: 0 | 1 | 2): number => top[i] * top[3] + below[i] * (1 - top[3]);
-    return [mix(0), mix(1), mix(2), 1];
+    return new Rgba(red, green, blue, alpha / 255);
   }
 
   /** The color drawn behind an element: its own background over each ancestor's, down to the first opaque one. */
@@ -91,16 +109,16 @@ export class GitContrast {
     const layers: Rgba[] = [];
     for (let at: Element | null = element; !Object.isNull(at); at = at.parentElement) {
       const layer: Rgba = GitContrast.channelsOf(getComputedStyle(at).backgroundColor);
-      if (layer[3] > 0)
+      if (layer.alpha > 0)
         layers.push(layer);
-      if (layer[3] === 1)
+      if (layer.alpha === 1)
         break;
     }
-    return layers.reduceRight<Rgba>((below, top) => GitContrast.over(top, below), [255, 255, 255, 1]);
+    return layers.reduceRight<Rgba>((below, top) => top.over(below), Rgba.WHITE);
   }
 
   private static luminanceOf(color: Rgba): number {
     const linear = (channel: number): number => channel / 255 <= 0.04045 ? channel / 255 / 12.92 : ((channel / 255 + 0.055) / 1.055) ** 2.4;
-    return 0.2126 * linear(color[0]) + 0.7152 * linear(color[1]) + 0.0722 * linear(color[2]);
+    return 0.2126 * linear(color.red) + 0.7152 * linear(color.green) + 0.0722 * linear(color.blue);
   }
 }

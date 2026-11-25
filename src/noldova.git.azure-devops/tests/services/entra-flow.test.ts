@@ -18,7 +18,7 @@ import { FakeAzure } from "../fixtures/fake-azure.fixture.ts";
 
 const signal: AbortSignal = new AbortController().signal;
 
-async function failureOf(work: Promise<unknown>): Promise<readonly [string, string] | unknown> {
+async function failureOf(work: Promise<unknown>): Promise<readonly string[] | unknown> {
   try {
     return await work;
   }

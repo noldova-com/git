@@ -21,6 +21,19 @@ import { GitRebaseTarget, GitRebasing } from "../../../../src/app/services/git-r
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 
+/** A mounted history, with the errors it reported. */
+class MountedHistory {
+  public readonly fixture: ComponentFixture<GitHistoryComponent>;
+  public readonly element: HTMLElement;
+  public readonly handled: WritableSignal<string[]>;
+
+  public constructor(fixture: ComponentFixture<GitHistoryComponent>, element: HTMLElement, handled: WritableSignal<string[]>) {
+    this.fixture = fixture;
+    this.element = element;
+    this.handled = handled;
+  }
+}
+
 describe("GitHistoryComponent branch drops", () => {
   const commitOf = (id: string, parents: readonly string[], subject: string, refs: readonly GitRef[] = []): GitGraphCommit =>
     new GitGraphCommit(new GitCommit(id.repeat(40), parents.map(t => t.repeat(40)), "Sample Author", "2026-11-06T17:30:00Z", subject), "author@example.com", refs);
@@ -31,23 +44,23 @@ describe("GitHistoryComponent branch drops", () => {
   ], false);
   const clean: JsonValue = new GitPrediction(PredictionOutcome.Clean, []).toJson();
 
-  const mount = (context: FakeWindowPartContext): { readonly fixture: ComponentFixture<GitHistoryComponent>; readonly element: HTMLElement; readonly handled: WritableSignal<string[]> } => {
+  const mount = (context: FakeWindowPartContext): MountedHistory => {
     GitFixtures.setUp(context);
     const handled: WritableSignal<string[]> = signal<string[]>([]);
     vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.update(t => [...t, String(error)]));
     const fixture: ComponentFixture<GitHistoryComponent> = TestBed.createComponent(GitHistoryComponent);
     fixture.componentRef.setInput("instance", GitFixtures.folder);
     fixture.autoDetectChanges();
-    return { fixture, element: fixture.nativeElement, handled };
+    return new MountedHistory(fixture, fixture.nativeElement, handled);
   };
   const chip = (element: HTMLElement, name: string): HTMLElement =>
     [...element.querySelectorAll<HTMLElement>(".chip")].find(t => t.querySelector(".ellipsis")?.textContent === name) ?? element.ownerDocument.createElement("span");
   /** Drags one chip onto another, at the given point; whether the target took the drag over, and whether it took the drop. */
-  const drag = (element: HTMLElement, from: string, to: string, at: readonly [number, number] = [200, 150]): readonly [boolean, boolean] => {
+  const drag = (element: HTMLElement, from: string, to: string, at: DOMPoint = new DOMPoint(200, 150)): readonly boolean[] => {
     chip(element, from).dispatchEvent(new DragEvent("dragstart", { bubbles: true }));
     const over: DragEvent = new DragEvent("dragover", { bubbles: true, cancelable: true });
     chip(element, to).dispatchEvent(over);
-    const dropped: DragEvent = new DragEvent("drop", { bubbles: true, cancelable: true, clientX: at[0], clientY: at[1] });
+    const dropped: DragEvent = new DragEvent("drop", { bubbles: true, cancelable: true, clientX: at.x, clientY: at.y });
     chip(element, to).dispatchEvent(dropped);
     return [over.defaultPrevented, dropped.defaultPrevented];
   };
@@ -69,7 +82,7 @@ describe("GitHistoryComponent branch drops", () => {
     await until(() => chip(element, "main").getAttribute("draggable") === "true");
 
     expect(["main", "feature", "origin/other", "v1"].map(t => chip(element, t).getAttribute("draggable"))).toEqual(["true", "true", "true", "false"]);
-    expect(drag(element, "feature", "main", [240, 160])).toEqual([true, true]);
+    expect(drag(element, "feature", "main", new DOMPoint(240, 160))).toEqual([true, true]);
     await until(() => text(element, ".heading") === "check_circle No conflicts predicted");
     const box: DOMRect = element.querySelector(".drop")?.getBoundingClientRect() ?? new DOMRect();
     expect([box.left, box.top, context.callsOf("requestAsync").filter(t => t[0] === "git.predict").map(t => t[1])]).toEqual([
@@ -101,7 +114,7 @@ describe("GitHistoryComponent branch drops", () => {
 
     drag(element, "topic", "main");
     await until(() => !Object.isNull(element.querySelector(".option.request")));
-    const held: readonly [boolean | undefined, string | undefined] = [element.querySelector<HTMLButtonElement>(".option.request")?.disabled,
+    const held: readonly unknown[] = [element.querySelector<HTMLButtonElement>(".option.request")?.disabled,
       element.querySelector<HTMLButtonElement>(".option.request")?.title];
     element.querySelector<HTMLElement>(".backdrop")?.click();
     await until(() => Object.isNull(element.querySelector(".drop")));
@@ -218,7 +231,7 @@ describe("GitHistoryComponent branch drops", () => {
 
     expect(drag(element, "feature", "main")).toEqual([true, false]);
     await held.answerAsync("git.status", GitFixtures.status().toJson());
-    await until(() => drag(element, "feature", "main")[1]);
+    await until(() => drag(element, "feature", "main")[1] === true);
     await until(() => !Object.isNull(element.querySelector(".drop")));
     element.querySelector<HTMLElement>(".backdrop")?.click();
     await held.answerAsync("git.predict", clean);

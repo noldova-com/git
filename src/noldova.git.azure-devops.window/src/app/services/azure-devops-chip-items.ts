@@ -13,6 +13,7 @@ import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
 import { type HostWorkItem, HostWorkItemList, WorkItemScope, WorkItemsQuery } from "@noldova/git.hosting.protocol";
 
 import { Resources } from "../../resources.ts";
+import { WaitingItems } from "../models/waiting-items.ts";
 
 /**
  * The work items a page's commit subjects name, for their chips: the ones a render asks for are read together, after it, through
@@ -22,7 +23,7 @@ import { Resources } from "../../resources.ts";
 export class AzureDevOpsChipItems {
   private readonly context: IWindowPartContext;
   private readonly items: Map<string, WritableSignal<HostWorkItem | null>> = new Map();
-  private readonly waiting: Map<string, { readonly organization: string; readonly project: string; readonly ids: number[] }> = new Map();
+  private readonly waiting: Map<string, WaitingItems> = new Map();
 
   public constructor(context: IWindowPartContext) {
     this.context = context;
@@ -38,7 +39,7 @@ export class AzureDevOpsChipItems {
     if (this.waiting.size === 0)
       queueMicrotask(() => void this.readWaitingAsync());
     const place: string = JSON.stringify([organization, project]);
-    const group = this.waiting.get(place) ?? { organization, project, ids: [] };
+    const group: WaitingItems = this.waiting.get(place) ?? new WaitingItems(organization, project);
     group.ids.push(id);
     this.waiting.set(place, group);
     return item;

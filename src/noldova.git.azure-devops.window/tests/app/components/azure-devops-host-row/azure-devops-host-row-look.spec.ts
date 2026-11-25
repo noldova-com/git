@@ -25,6 +25,13 @@ import { AzureDevOpsHostRowComponent } from "../../../../src/app/components/azur
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
+/** A pull request's state, the kit's colour for its icon, and when it closed, if it did. */
+interface IStateColour {
+  readonly state: ReferenceState;
+  readonly colour: string;
+  readonly closedAt: number | null;
+}
+
 @Component({
   selector: "nol-git-azure-devops-dock",
   imports: [AzureDevOpsHostRowComponent],
@@ -206,12 +213,15 @@ describe("AzureDevOpsHostRowComponent in the kit's look", () => {
   });
 
   it.each(AppearanceFixture.modes)("draws each pull request state's icon in the kit's colour for that state, in %s mode", async mode => {
-    const states: readonly (readonly [ReferenceState, string, number | null])[] = [[ReferenceState.Open, "var(--nol-status-ok)", null],
-      [ReferenceState.Draft, "var(--nol-text-muted)", null], [ReferenceState.Closed, "var(--nol-text-muted)", 1_800_000_360_000],
-      [ReferenceState.Merged, "var(--nol-accent)", 1_800_000_360_000]];
+    const states: readonly IStateColour[] = [
+      { state: ReferenceState.Open, colour: "var(--nol-status-ok)", closedAt: null },
+      { state: ReferenceState.Draft, colour: "var(--nol-text-muted)", closedAt: null },
+      { state: ReferenceState.Closed, colour: "var(--nol-text-muted)", closedAt: 1_800_000_360_000 },
+      { state: ReferenceState.Merged, colour: "var(--nol-accent)", closedAt: 1_800_000_360_000 }
+    ];
     const shown: string[] = [];
     const expected: string[] = [];
-    for (const [state, colour, closedAt] of states) {
+    for (const { state, colour, closedAt } of states) {
       const item = new HostItem(completed.reference, ReferenceKind.PullRequest, state, "Sample pull request", completed.url, null, completed.createdAt, closedAt, 0,
         completed.changes);
       const fixture = await openAsync(mode, HostSignIn.signedIn(account), new BranchPullRequest(item, []));

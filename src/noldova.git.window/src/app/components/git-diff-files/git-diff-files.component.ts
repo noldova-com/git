@@ -11,7 +11,7 @@ import {
 } from "@angular/core";
 import "@noldova/context.core";
 import { type IWindowPartContext, WindowPartTokens } from "@noldova/desktop.window";
-import { type DiffFile, type DiffScope, type DiffTotals, type GitDiff, LineKind } from "@noldova/git.protocol";
+import { type DiffFile, type DiffScope, DiffTotals, type GitDiff, LineKind } from "@noldova/git.protocol";
 import { FileBadgeComponent } from "@noldova/ui.components.angular";
 
 import { GitDiffRowKind } from "../../enums/git-diff-row-kind.ts";
@@ -25,6 +25,7 @@ import { GitRuntimeClient } from "../../services/git-runtime-client.ts";
 import { GitViewStateService } from "../../services/git-view-state.service.ts";
 import { Resources } from "../../../resources.ts";
 import { GitFileLayoutButtonComponent } from "../git-file-layout-button/git-file-layout-button.component.ts";
+import { GitMarkedLine } from "../../models/git-marked-line.ts";
 
 /**
  * The files a diff changes, read from the repository: a header with their count and lines added and removed, a folder tree or flat list, and each file's diff under
@@ -59,15 +60,15 @@ export class GitDiffFilesComponent {
   protected readonly open: WritableSignal<ReadonlySet<string>> = signal<ReadonlySet<string>>(new Set());
   protected readonly rows: Signal<readonly GitCommitFileRow[]> = computed(() => GitCommitFiles.rowsOf(this.files(), this.chosen()?.() ?? GitFileLayout.Folders, this.closed()));
   /** The header's files and lines added and removed: the whole diff's when its budget cut it and Git counted it, else its files'. */
-  protected readonly totals: Signal<readonly [number, number, number]> = computed(() => {
+  protected readonly totals: Signal<DiffTotals> = computed(() => {
     const whole: DiffTotals | null = this.diff()?.totals ?? null;
     if (!Object.isNull(whole))
-      return [whole.files, whole.added, whole.removed];
-    const [added, removed] = GitCommitFiles.totalsOf(this.files());
-    return [this.files().length, added, removed];
+      return whole;
+    const { added, removed } = GitCommitFiles.totalsOf(this.files());
+    return new DiffTotals(this.files().length, added, removed);
   });
   /** The line a reveal marked, by its file's path and its row in the file's diff lines. */
-  protected readonly marked: WritableSignal<readonly [string, number] | null> = signal<readonly [string, number] | null>(null);
+  protected readonly marked: WritableSignal<GitMarkedLine | null> = signal<GitMarkedLine | null>(null);
   /** The diff lines of each open file, by path. */
   protected readonly openLines: Signal<ReadonlyMap<string, readonly GitDiffRow[]>> = computed(() =>
     new Map(this.files().filter(t => this.open().has(t.path)).map(t => [t.path, GitDiffRow.rowsOf(t)])));
@@ -143,7 +144,7 @@ export class GitDiffFilesComponent {
     this.open.set(new Set([...this.open(), path]));
     const file: DiffFile | undefined = this.files().find(t => t.path === path);
     const index: number = Object.isNull(line) || Object.isUndefined(file) ? -1 : GitDiffFilesComponent.rowIndexOf(file, line);
-    this.marked.set(index < 0 ? null : [path, index]);
+    this.marked.set(index < 0 ? null : new GitMarkedLine(path, index));
     afterNextRender(() => {
       const marked: HTMLElement | null = this.host.querySelector<HTMLElement>(".marked-line");
       if (!Object.isNull(marked)) {
@@ -158,8 +159,7 @@ export class GitDiffFilesComponent {
 
   /** Whether a line of an open file's diff is the one a reveal marked. */
   protected isMarked(path: string, index: number): boolean {
-    const marked: readonly [string, number] | null = this.marked();
-    return !Object.isNull(marked) && marked[0] === path && marked[1] === index;
+    return this.marked()?.isAt(path, index) ?? false;
   }
 
   /** The row of a file's diff lines that shows a line of the file as the diff leaves it, counting each hunk's header row as the lines do; -1 when none does. */

@@ -14,20 +14,21 @@ import type { GitRemote } from "@noldova/git.protocol";
 import type { IGitPullRequests } from "../interfaces/i-git-pull-requests.ts";
 import type { GitRefChip } from "../models/git-ref-chip.ts";
 import { Resources } from "../../resources.ts";
+import { GitProvidedPullRequests } from "../models/git-provided-pull-requests.ts";
 
 /** The pull request lists host modules give the repository panel, with the context each was given by, asked in the order they were given. */
 export class GitPullRequests {
-  private static readonly provided: WritableSignal<readonly (readonly [IWindowPartContext, IGitPullRequests])[]> = signal([]);
+  private static readonly provided: WritableSignal<readonly GitProvidedPullRequests[]> = signal<readonly GitProvidedPullRequests[]>([]);
 
   public static provide(context: IWindowPartContext, pullRequests: IGitPullRequests): () => void {
-    const provided = [context, pullRequests] as const;
+    const provided: GitProvidedPullRequests = new GitProvidedPullRequests(context, pullRequests);
     GitPullRequests.provided.update(t => [...t, provided]);
     return () => GitPullRequests.provided.update(t => t.filter(u => u !== provided));
   }
 
   /** The first host that claims the remote, logging to its own part a host whose claim throws and passing over it. */
   public static of(remote: GitRemote): IGitPullRequests | null {
-    for (const [context, pullRequests] of GitPullRequests.provided())
+    for (const { context, pullRequests } of GitPullRequests.provided())
       try {
         if (pullRequests.claims(remote))
           return pullRequests;

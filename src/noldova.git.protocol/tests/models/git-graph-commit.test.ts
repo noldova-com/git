@@ -14,8 +14,9 @@ import { RefKind } from "../../src/enums/ref-kind.ts";
 import { GitCommit } from "../../src/models/git-commit.ts";
 import { GitGraphCommit } from "../../src/models/git-graph-commit.ts";
 import { GitRef } from "../../src/models/git-ref.ts";
+import type { IFieldFailure } from "../fixtures/field-failure.fixture.ts";
 
-const expected = (field: string, expectation: string): { name: string; field: string; message: string } =>
+const expected = (field: string, expectation: string): IFieldFailure =>
   ({ name: "ProtocolFieldException", field, message: `The field ${field} is invalid: expected ${expectation}.` });
 
 describe("GitGraphCommit", () => {

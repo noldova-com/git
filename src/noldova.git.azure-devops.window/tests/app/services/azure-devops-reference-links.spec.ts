@@ -11,6 +11,7 @@ import { WorkItemQuery } from "@noldova/git.hosting.protocol";
 import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
 import { describe, expect, it } from "vitest";
 
+import { ProjectPlace } from "../../../src/app/models/project-place.ts";
 import { AzureDevOpsReferenceLinks } from "../../../src/app/services/azure-devops-reference-links.ts";
 
 describe("AzureDevOpsReferenceLinks", () => {
@@ -54,7 +55,8 @@ describe("AzureDevOpsReferenceLinks", () => {
       "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/752",
       "http://fabrikam.visualstudio.com/DefaultCollection/web/_git/site/pullrequest/7",
       "https://fabrikam.visualstudio.com/web/_workitems/edit/3"
-    ].map(t => AzureDevOpsReferenceLinks.projectOf(t))).toEqual([["fabrikam", "Web Site"], ["fabrikam", "web"], ["fabrikam", "web"]]);
+    ].map(t => AzureDevOpsReferenceLinks.projectOf(t))).toEqual([new ProjectPlace("fabrikam", "Web Site"), new ProjectPlace("fabrikam", "web"),
+      new ProjectPlace("fabrikam", "web")]);
   });
 
   it("names no project for an address it can't read, another scheme or host, a page without a project, one that doesn't decode or a bad organization", () => {

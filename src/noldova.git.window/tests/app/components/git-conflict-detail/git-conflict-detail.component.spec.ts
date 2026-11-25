@@ -17,9 +17,20 @@ import { GitConflictDetail } from "../../../../src/app/models/git-conflict-detai
 import { GitConflictDetails } from "../../../../src/app/services/git-conflict-details.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 
+/** The Conflict view, with the front document's choice the test sets. */
+class RenderedConflict {
+  public readonly chosen: WritableSignal<GitConflictDetail | null>;
+  public readonly view: ComponentFixture<GitConflictDetailComponent>;
+
+  public constructor(chosen: WritableSignal<GitConflictDetail | null>, view: ComponentFixture<GitConflictDetailComponent>) {
+    this.chosen = chosen;
+    this.view = view;
+  }
+}
+
 describe("GitConflictDetailComponent", () => {
   /** The Conflict view, following one conflicts document in front whose choice the test sets. */
-  const render = async (first: GitConflictDetail | null): Promise<{ readonly chosen: WritableSignal<GitConflictDetail | null>; readonly view: ComponentFixture<GitConflictDetailComponent> }> => {
+  const render = async (first: GitConflictDetail | null): Promise<RenderedConflict> => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     GitFixtures.setUp(context);
     const chosen: WritableSignal<GitConflictDetail | null> = signal(first);
@@ -28,7 +39,7 @@ describe("GitConflictDetailComponent", () => {
     view.componentRef.setInput("instance", "selected");
     view.autoDetectChanges();
     await view.whenStable();
-    return { chosen, view };
+    return new RenderedConflict(chosen, view);
   };
 
   const textsOf = (view: ComponentFixture<GitConflictDetailComponent>, selector: string): readonly string[] => {

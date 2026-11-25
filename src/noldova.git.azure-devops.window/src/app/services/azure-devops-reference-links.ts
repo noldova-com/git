@@ -14,6 +14,8 @@ import { LinkReferenceMatch } from "@noldova/ui.components.angular";
 
 import { Resources } from "../../resources.ts";
 import { AzureDevOpsReferenceLink } from "../models/azure-devops-reference-link.ts";
+import { OrganizationPath } from "../models/organization-path.ts";
+import { ProjectPlace } from "../models/project-place.ts";
 
 export class AzureDevOpsReferenceLinks {
   public static of(url: string): AzureDevOpsReferenceLink | null {
@@ -25,9 +27,9 @@ export class AzureDevOpsReferenceLinks {
     if (segments.at(-1) === String.empty)
       segments.pop();
     const place = AzureDevOpsReferenceLinks.placeOf(address.hostname, segments);
-    if (Object.isNull(place) || !Resources.organizationPattern.test(place[0]))
+    if (Object.isNull(place) || !Resources.organizationPattern.test(place.organization))
       return null;
-    const [organization, path] = place;
+    const { organization, path } = place;
     const workItem = Resources.workItemPathPattern.exec(path);
     if (!Object.isNull(workItem)) {
       const id = Number(workItem[2]);
@@ -47,13 +49,13 @@ export class AzureDevOpsReferenceLinks {
   }
 
   /** The organization and project an Azure DevOps page's address names, such as a pull request's; null for another address or one that names no project. */
-  public static projectOf(url: string): readonly [string, string] | null {
+  public static projectOf(url: string): ProjectPlace | null {
     const address = URL.parse(url);
     if (Object.isNull(address) || !Resources.webProtocols.includes(address.protocol))
       return null;
     const place = AzureDevOpsReferenceLinks.placeOf(address.hostname, address.pathname.split(Resources.slash).slice(1));
-    const project = Object.isNull(place) ? null : AzureDevOpsReferenceLinks.decode(Resources.pageProjectPattern.exec(place[1])?.[1]);
-    return Object.isNull(place) || Object.isNull(project) || !Resources.organizationPattern.test(place[0]) ? null : [place[0], project];
+    const project = Object.isNull(place) ? null : AzureDevOpsReferenceLinks.decode(Resources.pageProjectPattern.exec(place.path)?.[1]);
+    return Object.isNull(place) || Object.isNull(project) || !Resources.organizationPattern.test(place.organization) ? null : new ProjectPlace(place.organization, project);
   }
 
   public static inText(text: string, home: string | null): readonly LinkReferenceMatch[] {
@@ -81,7 +83,7 @@ export class AzureDevOpsReferenceLinks {
     if (Object.isNull(address) || !Resources.webProtocols.includes(address.protocol))
       return null;
     const place = AzureDevOpsReferenceLinks.placeOf(address.hostname, address.pathname.split(Resources.slash).slice(1));
-    return Object.isNull(place) || !Resources.organizationPattern.test(place[0]) ? null : place[0];
+    return Object.isNull(place) || !Resources.organizationPattern.test(place.organization) ? null : place.organization;
   }
 
   public static isVisualStudio(remote: GitRemote): boolean {
@@ -101,13 +103,13 @@ export class AzureDevOpsReferenceLinks {
     }
   }
 
-  private static placeOf(host: string, segments: readonly string[]): readonly [string, string] | null {
+  private static placeOf(host: string, segments: readonly string[]): OrganizationPath | null {
     if (host === Resources.azureHost)
-      return [segments[0] ?? String.empty, segments.slice(1).join(Resources.slash)];
+      return new OrganizationPath(segments[0] ?? String.empty, segments.slice(1).join(Resources.slash));
     if (!host.endsWith(Resources.visualStudioSuffix))
       return null;
     const path = segments[0]?.toLowerCase() === Resources.defaultCollection ? segments.slice(1) : segments;
-    return [host.slice(0, -Resources.visualStudioSuffix.length), path.join(Resources.slash)];
+    return new OrganizationPath(host.slice(0, -Resources.visualStudioSuffix.length), path.join(Resources.slash));
   }
 
   private static organizationOf(host: string, path: string): string | null {

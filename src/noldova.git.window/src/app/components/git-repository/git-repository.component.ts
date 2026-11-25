@@ -28,6 +28,7 @@ import { GitRuntimeClient } from "../../services/git-runtime-client.ts";
 import { GitViewStateService } from "../../services/git-view-state.service.ts";
 import { GitViewing } from "../../services/git-viewing.ts";
 import { Resources } from "../../../resources.ts";
+import { GitTrackCounts } from "../../models/git-track-counts.ts";
 
 /** The repository's side panel: its name and folder, its changes and history, its host modules' rows, and its branches, agents, pull requests, remotes, tags, stashes, worktrees and submodules. */
 @Component({
@@ -122,17 +123,17 @@ export class GitRepositoryComponent {
   }
 
   /** A local branch's commits ahead of and behind its upstream: the status's for the current branch, which it reads after every change, and the branch list's for the others. */
-  protected countsOf(branch: string, isCurrent: boolean): readonly [number, number] {
+  protected countsOf(branch: string, isCurrent: boolean): GitTrackCounts {
     if (isCurrent)
-      return [this.ahead(), this.behind()];
+      return new GitTrackCounts(this.ahead(), this.behind());
     const track: GitBranchTrack | undefined = this.tracks().get(branch);
-    return Object.isUndefined(track) ? [0, 0] : [track.ahead, track.behind];
+    return Object.isUndefined(track) ? GitTrackCounts.NONE : new GitTrackCounts(track.ahead, track.behind);
   }
 
   /** A remote branch's commits ahead of and behind HEAD. */
-  protected remoteCountsOf(branch: string): readonly [number, number] {
+  protected remoteCountsOf(branch: string): GitTrackCounts {
     const track: GitBranchTrack | undefined = this.remoteTracks().get(branch);
-    return Object.isUndefined(track) ? [0, 0] : [track.ahead, track.behind];
+    return Object.isUndefined(track) ? GitTrackCounts.NONE : new GitTrackCounts(track.ahead, track.behind);
   }
 
   /** A branch tree row's start inset in rem: the row's own, then a step per level. */

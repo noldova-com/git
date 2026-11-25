@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 
+import type { GitVersion } from "../../src/models/git-version.ts";
 import { FilePresence } from "../../src/services/file-presence.ts";
 
 export class RepositoryFixture {
@@ -107,9 +108,9 @@ export class RepositoryFixture {
   }
 
   /** Whether the git these tests run is at least this version, for a test of a feature an older git lacks, such as Apple's git on a Mac. */
-  public async hasGitAsync([major, minor]: readonly [number, number]): Promise<boolean> {
+  public async hasGitAsync(version: GitVersion): Promise<boolean> {
     const [found, foundMajor, foundMinor] = /^git version (\d+)\.(\d+)/v.exec(await this.runGitAsync(["version"])) ?? [];
-    return found !== undefined && (Number(foundMajor) > major || (Number(foundMajor) === major && Number(foundMinor) >= minor));
+    return found !== undefined && version.isReachedBy(Number(foundMajor), Number(foundMinor));
   }
 
   public supervisorEnvironment(searchPath: string = process.env["PATH"] ?? ""): Record<string, string> {

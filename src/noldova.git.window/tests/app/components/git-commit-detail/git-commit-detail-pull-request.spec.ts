@@ -22,7 +22,7 @@ import { GitCommitView } from "../../../../src/app/models/git-commit-view.ts";
 import { GitPullRequestRow } from "../../../../src/app/models/git-pull-request-row.ts";
 import { GitPullRequests } from "../../../../src/app/services/git-pull-requests.ts";
 import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
-import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
+import { FixtureLine, GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 import { GitViewFixture } from "../../../fixtures/git-view.fixture.ts";
 
@@ -34,7 +34,7 @@ describe("GitCommitDetailComponent's pull request", () => {
   const rowOf = (approvals: number, passed: number, failing: number, pending: number): GitPullRequestRow =>
     new GitPullRequestRow("pull-212", "#212", "Follow renames in the history", url, false, approvals, passed, failing, pending, "fix/rename-detection");
   const answersOf = (shown: GitRemote | null): Readonly<Record<string, JsonValue>> => ({
-    ...GitFixtures.watching, "git.status": GitFixtures.status([], null, { remote: shown }).toJson(), "git.diff": GitFixtures.diff("src/a.ts", [LineKind.Added, "one"]).toJson(),
+    ...GitFixtures.watching, "git.status": GitFixtures.status([], null, { remote: shown }).toJson(), "git.diff": GitFixtures.diff("src/a.ts", new FixtureLine(LineKind.Added, "one")).toJson(),
     "git.commitDetail": new GitCommitDetail(id, "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson()
   });
   const provide = (host: Partial<IGitPullRequests>): void => {
@@ -130,14 +130,14 @@ describe("GitCommitDetailComponent's pull request", () => {
         ["2 approvals · 6 of 6 checks passed · 3 review comments on this commit"], ["3 review comments on this commit"], 0, [[comments, { place: LinkPlace.System }]]]);
     });
 
-  const quiet: readonly (readonly [string, GitRemote | null, Partial<IGitPullRequests>])[] = [
+  const quiet = [
     ["the status names no remote", null, { commitFor: () => signal(GitBranchPullRequest.of(rowOf(0, 0, 0, 0), GitPullRequestState.Open, false)) }],
     ["no host claims the remote", new GitRemote("nas", "nas.home", "notes", RemoteTransport.Ssh), {}],
     ["the host reads no commit's pull request", remote, {}],
     ["the host has no answer yet", remote, { commitFor: () => signal(null) }],
     ["no pull request brought the commit in", remote, { commitFor: () => signal(GitBranchPullRequest.none(3, 0, 0)) }],
     ["the host can't read it", remote, { commitFor: () => signal(GitBranchPullRequest.failed("Rate limited.")) }]
-  ];
+  ] as const;
 
   it.each(quiet)("shows no card when %s", async (_, shown, host) => {
     provide(host);

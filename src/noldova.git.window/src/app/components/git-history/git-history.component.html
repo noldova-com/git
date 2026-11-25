@@ -70,15 +70,15 @@ LICENSE file in the root directory of this source tree.
       [class.sel]="row.id === selectedId()" [class.dim]="!row.matches" [attr.aria-selected]="row.id === selectedId()" (click)="select(row)">
       <div class="cell">
         @let split = row.chipsWithin(chipLimit());
-        @for (chip of split[0]; track chip.title + chip.icon) {
+        @for (chip of split.shown; track chip.title + chip.icon) {
           <span class="chip" [class]="chip.isTag ? 'chip ltag' : 'chip l' + row.graph.color" [class.current]="chip.isCurrent" [title]="chip.title"
             [attr.draggable]="chip.branch !== null" (dragstart)="dragBranch(chip, row)" (dragover)="overBranch($event, chip)" (drop)="dropBranch($event, chip, row)"
             (dragend)="endDrag()">
             <span class="ms chip-icon">{{ chip.icon }}</span><span class="ellipsis">{{ chip.name }}</span>
           </span>
         }
-        @if (split[1].length > 0) {
-          <span class="chip ltag more" [title]="moreTitle(split[1])">{{ resources.formatMoreChips(split[1].length) }}</span>
+        @if (split.hidden.length > 0) {
+          <span class="chip ltag more" [title]="moreTitle(split.hidden)">{{ resources.formatMoreChips(split.hidden.length) }}</span>
         }
       </div>
       <svg class="graph" aria-hidden="true" [attr.width]="graphPixels()" [attr.height]="resources.graphRowPixels"

@@ -10,6 +10,7 @@ import type { Signal } from "@angular/core";
 
 import type { GitWorkspaceView } from "../enums/git-workspace-view.ts";
 import type { GitWorkspaceHost } from "./git-workspace-host.ts";
+import type { GitWorkspaceViewCount } from "./git-workspace-view-count.ts";
 
 /** What the Workspaces view shows of the workspace page in front: which page it is, its views with their counts, the one chosen, and its hosts. */
 export class GitWorkspaceSide {
@@ -18,11 +19,11 @@ export class GitWorkspaceSide {
   /** The view the page shows, or null while it shows every repository. */
   public readonly view: Signal<GitWorkspaceView | null>;
   /** Each view with how many of the page's repositories it holds. */
-  public readonly views: Signal<readonly (readonly [GitWorkspaceView, number])[]>;
+  public readonly views: Signal<readonly GitWorkspaceViewCount[]>;
   public readonly hosts: Signal<readonly GitWorkspaceHost[]>;
   private readonly choose: (view: GitWorkspaceView | null) => void;
 
-  public constructor(workspaceId: string | null, view: Signal<GitWorkspaceView | null>, views: Signal<readonly (readonly [GitWorkspaceView, number])[]>,
+  public constructor(workspaceId: string | null, view: Signal<GitWorkspaceView | null>, views: Signal<readonly GitWorkspaceViewCount[]>,
     hosts: Signal<readonly GitWorkspaceHost[]>, choose: (view: GitWorkspaceView | null) => void) {
     this.workspaceId = workspaceId;
     this.view = view;

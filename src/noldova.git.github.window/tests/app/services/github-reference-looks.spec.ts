@@ -15,6 +15,14 @@ import { GitHubReferenceLink } from "../../../src/app/models/github-reference-li
 import { GitHubLooks } from "../../../src/app/services/github-looks.ts";
 import { GitHubReferenceLooks } from "../../../src/app/services/github-reference-looks.ts";
 
+/** A reference's kind and state, and the labels GitHub gives them. */
+interface IKindLook {
+  readonly kind: ReferenceKind;
+  readonly state: ReferenceState;
+  readonly kindLabel: string;
+  readonly stateLabel: string;
+}
+
 describe("GitHubReferenceLooks", () => {
   const openedAt = Date.parse("2026-11-01T09:30:00.000Z");
   const closedAt = Date.parse("2026-11-07T18:05:00.000Z");
@@ -32,22 +40,22 @@ describe("GitHubReferenceLooks", () => {
   };
   const shown = (chip: LinkReference): readonly unknown[] =>
     [chip.reference, chip.kind, chip.state?.label ?? null, chip.icon.url, chip.icon.isMonochrome, chip.mark?.url ?? null, chip.title, chip.location];
-  const kinds: readonly (readonly [ReferenceKind, ReferenceState, string, string])[] = [
-    [ReferenceKind.PullRequest, ReferenceState.Open, "Pull request", "Open"],
-    [ReferenceKind.PullRequest, ReferenceState.Draft, "Pull request", "Draft"],
-    [ReferenceKind.PullRequest, ReferenceState.Merged, "Pull request", "Merged"],
-    [ReferenceKind.PullRequest, ReferenceState.Closed, "Pull request", "Closed"],
-    [ReferenceKind.Issue, ReferenceState.Open, "Issue", "Open"],
-    [ReferenceKind.Issue, ReferenceState.ClosedDone, "Issue", "Closed"],
-    [ReferenceKind.Issue, ReferenceState.ClosedNotPlanned, "Issue", "Closed"]
+  const kinds: readonly IKindLook[] = [
+    { kind: ReferenceKind.PullRequest, state: ReferenceState.Open, kindLabel: "Pull request", stateLabel: "Open" },
+    { kind: ReferenceKind.PullRequest, state: ReferenceState.Draft, kindLabel: "Pull request", stateLabel: "Draft" },
+    { kind: ReferenceKind.PullRequest, state: ReferenceState.Merged, kindLabel: "Pull request", stateLabel: "Merged" },
+    { kind: ReferenceKind.PullRequest, state: ReferenceState.Closed, kindLabel: "Pull request", stateLabel: "Closed" },
+    { kind: ReferenceKind.Issue, state: ReferenceState.Open, kindLabel: "Issue", stateLabel: "Open" },
+    { kind: ReferenceKind.Issue, state: ReferenceState.ClosedDone, kindLabel: "Issue", stateLabel: "Closed" },
+    { kind: ReferenceKind.Issue, state: ReferenceState.ClosedNotPlanned, kindLabel: "Issue", stateLabel: "Closed" }
   ];
 
   it("draws each kind in each state with GitHub's mark, the state's label, icon and colours in both modes, and the item's title and place", () => {
-    const chips = kinds.map(([kind, state]) => lookOf(itemOf(kind, state)));
+    const chips = kinds.map(({ kind, state }) => lookOf(itemOf(kind, state)));
 
-    expect(chips.map(shown)).toEqual(kinds.map(([kind, state, kindLabel, stateLabel]) => ["octocat/hello-world#42", kindLabel, stateLabel,
+    expect(chips.map(shown)).toEqual(kinds.map(({ kind, state, kindLabel, stateLabel }) => ["octocat/hello-world#42", kindLabel, stateLabel,
       GitHubLooks.of(kind, state)?.icon, true, GitHubLooks.mark, "Fix the greeting", "octocat/hello-world #42"]));
-    expect(chips.map(t => [t.state?.light.color, t.state?.light.background, t.state?.dark.color, t.state?.dark.background])).toEqual(kinds.map(([kind, state]) => {
+    expect(chips.map(t => [t.state?.light.color, t.state?.light.background, t.state?.dark.color, t.state?.dark.background])).toEqual(kinds.map(({ kind, state }) => {
       const look = GitHubLooks.of(kind, state);
       return [look?.light.color, look?.light.background, look?.dark.color, look?.dark.background];
     }));
@@ -74,7 +82,7 @@ describe("GitHubReferenceLooks", () => {
   });
 
   it("dates a merged or closed item by when it was merged or closed, and an open or draft one by when it was opened", () => {
-    expect(kinds.map(([kind, state]) => lookOf(itemOf(kind, state)).time?.toISOString())).toEqual(kinds.map(([, state]) =>
+    expect(kinds.map(({ kind, state }) => lookOf(itemOf(kind, state)).time?.toISOString())).toEqual(kinds.map(({ state }) =>
       state === ReferenceState.Open || state === ReferenceState.Draft ? "2026-11-01T09:30:00.000Z" : "2026-11-07T18:05:00.000Z"));
   });
 

@@ -15,12 +15,20 @@ import { ConflictKind, FailureCode, FileState, GitCode, type JsonObject } from "
 import type { ParsedStatus } from "../../src/models/parsed-status.ts";
 import { StatusParser } from "../../src/services/status.parser.ts";
 
+/** The failure a test expects when git prints what the module can't read. */
+interface IUnreadableFailure {
+  readonly name: string;
+  readonly code: FailureCode;
+  readonly gitCode: GitCode;
+  readonly message: string;
+}
+
 describe("StatusParser", () => {
   const HEAD = "0123456789abcdef0123456789abcdef01234567";
   const ID = "89abcdef0123456789abcdef0123456789abcdef";
   const output = (...records: readonly string[]): Buffer => Buffer.from(records.map(t => `${t}\0`).join(""));
   const json = (parsed: ParsedStatus): JsonObject => parsed.toStatus(parsed.entries, "f", null, null, 0, null, null).toJson();
-  const unreadable = (part: string): { name: string; code: FailureCode; gitCode: GitCode; message: string } =>
+  const unreadable = (part: string): IUnreadableFailure =>
     ({ name: "UnreadableOutputException", code: FailureCode.Git, gitCode: GitCode.UnreadableOutput, message: `git status printed ${part} that the module can't read.` });
 
   test("reads the branch, HEAD, the upstream and every kind of entry", () => {

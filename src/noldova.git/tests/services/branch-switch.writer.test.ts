@@ -22,7 +22,6 @@ import { SwitchChangesInTheWayException } from "../../src/exceptions/switch-chan
 import { SwitchDuringOperationException } from "../../src/exceptions/switch-during-operation.exception.ts";
 import { SwitchNoBranchException } from "../../src/exceptions/switch-no-branch.exception.ts";
 import { SwitchRemoteAmbiguousException } from "../../src/exceptions/switch-remote-ambiguous.exception.ts";
-import type { RepositoryFolders } from "../../src/models/repository-folders.ts";
 import { BranchSwitchWriter } from "../../src/services/branch-switch.writer.ts";
 import { CheckoutRisksReader } from "../../src/services/checkout-risks.reader.ts";
 import { FilterOptionsReader } from "../../src/services/filter-options.reader.ts";
@@ -33,6 +32,7 @@ import { RepositoryReader } from "../../src/services/repository.reader.ts";
 import { StatusReader } from "../../src/services/status.reader.ts";
 import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
+import { RepositoryState } from "../fixtures/repository-state.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
 
@@ -72,9 +72,9 @@ describe("BranchSwitchWriter", () => {
     await cleanUps.runAsync();
   });
 
-  const readAsync = async (folder: string = repository.folder): Promise<[RepositoryFolders, GitStatus]> => {
+  const readAsync = async (folder: string = repository.folder): Promise<RepositoryState> => {
     const folders = await repositories.readAsync(folder);
-    return [folders, await statuses.readAsync(folders)];
+    return new RepositoryState(folders, await statuses.readAsync(folders));
   };
   const currentAsync = async (folder: string = repository.folder): Promise<string> => (await repository.runGitAsync(["-C", folder, "branch", "--show-current"])).trim();
   const hookAsync = async (name: string, hooksFolder: string = path.join(repository.gitFolder, "hooks")): Promise<void> => {
@@ -91,7 +91,7 @@ describe("BranchSwitchWriter", () => {
   test("asks an agent's switch when the repository's hooks can't be read, saying so", async () => {
     const hook = path.join(repository.gitFolder, "hooks", "post-index-change");
     await symlink(hook, hook, "junction");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     const hooksDetail = { label: "Hooks that will run", kind: PermissionDetailKind.Text, value: "Unknown: the hooks couldn't be read, so any of them may run" };
 
     const switching = new BranchSwitchWriter(runner, new CheckoutRisksReader(hooks, new FilterOptionsReader(runner)), "next");
@@ -99,12 +99,12 @@ describe("BranchSwitchWriter", () => {
   });
 
   test("refuses to switch during a merge or to the branch HEAD is on", async () => {
-    const [, status] = await readAsync();
+    const { status } = await readAsync();
     const head = (await repository.runGitAsync(["rev-parse", "HEAD"])).trim();
     assert.throws(() => new BranchSwitchWriter(runner, risks, "main").refuse(status), failsWith(AlreadyOnBranchException, FailureCode.Refused, null, "HEAD is already on main."));
 
     await writeFile(path.join(repository.gitFolder, "MERGE_HEAD"), `${head}\n`);
-    const [, merging] = await readAsync();
+    const { status: merging } = await readAsync();
     assert.throws(() => new BranchSwitchWriter(runner, risks, "next").refuse(merging), failsWith(SwitchDuringOperationException, FailureCode.Git, GitCode.Conflict));
     assert.doesNotThrow(() => new BranchSwitchWriter(runner, risks, "next").refuse(status));
   });
@@ -136,9 +136,9 @@ describe("BranchSwitchWriter", () => {
       await writeFile(path.join(gitFolder, "hooks", name), `#!/bin/sh\necho ${name} >> "$(git rev-parse --absolute-git-dir)/fired"\n`).then(() => chmod(path.join(gitFolder, "hooks", name), 0o755));
     await repository.runGitAsync(["config", "submodule.recurse", "true"]);
     const write = new BranchSwitchWriter(runner, risks, "moved");
-    const named = (await write.requestAsync(...await readAsync(), call))?.details[1]?.value;
+    const named = (await (await readAsync()).requestAsync(write, call))?.details[1]?.value;
 
-    await write.runAsync(...await readAsync());
+    await (await readAsync()).runAsync(write);
 
     const fired = [...new Set((await readFile(path.join(gitFolder, "fired"), "utf8")).split(/\s+/v).filter(t => t.length > 0))];
     assert.equal((await repository.runGitAsync(["-C", library, "rev-parse", "HEAD"])).trim(), second);
@@ -151,11 +151,11 @@ describe("BranchSwitchWriter", () => {
     await repository.runGitAsync(["config", "--file", path.join(own, "config"), "filter.own.smudge", "own-filter"]);
     await repository.runGitAsync(["config", "filter.crypt.clean", "crypt-filter"]);
     const write = new BranchSwitchWriter(runner, risks, "next");
-    const without = (await write.requestAsync(...await readAsync(), call))?.details.length;
+    const without = (await (await readAsync()).requestAsync(write, call))?.details.length;
     await repository.runGitAsync(["config", "filter.smudged.smudge", "smudge-filter"]);
     await repository.runGitAsync(["config", "filter.lfs.process", "lfs-filter"]);
 
-    const request = await write.requestAsync(...await readAsync(), call);
+    const request = await (await readAsync()).requestAsync(write, call);
 
     assert.deepEqual([without, request?.risk, request?.details[2]], [2, ToolRisk.Medium,
       { label: "Filters that will run", kind: PermissionDetailKind.Text, value: "smudged, lfs" }]);
@@ -185,10 +185,10 @@ describe("BranchSwitchWriter", () => {
     await hookAsync("post-index-change", await hooksOf(library));
     await hookAsync("reference-transaction", await hooksOf(path.join(library, "inner")));
     const write = new BranchSwitchWriter(runner, risks, "next");
-    const alone = (await write.requestAsync(...await readAsync(), call))?.details;
+    const alone = (await (await readAsync()).requestAsync(write, call))?.details;
     await repository.runGitAsync(["config", "submodule.recurse", "true"]);
 
-    const request = await write.requestAsync(...await readAsync(), call);
+    const request = await (await readAsync()).requestAsync(write, call);
 
     assert.deepEqual([alone?.[1]?.value, alone?.[2]?.value], ["post-checkout", "top"]);
     assert.deepEqual([request?.details[1]?.value, request?.details[2]?.value],
@@ -197,7 +197,7 @@ describe("BranchSwitchWriter", () => {
 
   test("asks an agent's switch at medium risk, from and to, with how many unstaged changes stay", async () => {
     const write = new BranchSwitchWriter(runner, risks, "next");
-    const [folders, clean] = await readAsync();
+    const { folders, status: clean } = await readAsync();
     assert.deepEqual(await write.requestAsync(folders, clean, call), {
       action: "git.switchBranch",
       subject: folders.top,
@@ -217,7 +217,7 @@ describe("BranchSwitchWriter", () => {
     await repository.writeAsync("b.txt", "new\n");
     await repository.writeAsync("c.txt", "staged\n");
     await repository.runGitAsync(["add", "c.txt"]);
-    const [, changed] = await readAsync();
+    const { status: changed } = await readAsync();
     assert.equal((await write.requestAsync(folders, changed, call))?.details[0]?.value,
       "Your 2 unstaged changes stay in the folder. Git refuses the switch if one of them would be overwritten.");
     const cut = new GitStatus(changed.branch, changed.head, changed.upstream, changed.entries, true, changed.fingerprint, changed.operation, changed.remote);
@@ -227,7 +227,7 @@ describe("BranchSwitchWriter", () => {
     await repository.runGitAsync(["switch", "--quiet", "--detach"]);
     await repository.runGitAsync(["restore", "--staged", "c.txt"]);
     await repository.runGitAsync(["clean", "--quiet", "--force"]);
-    const [, detached] = await readAsync();
+    const { status: detached } = await readAsync();
     const asked = await write.requestAsync(folders, detached, call);
     assert.equal(asked?.title, "Switch from a detached HEAD to next");
     assert.equal(asked?.details[0]?.value, "Your 1 unstaged change stays in the folder. Git refuses the switch if one of them would be overwritten.");
@@ -236,7 +236,7 @@ describe("BranchSwitchWriter", () => {
   test("names the remote branch an agent's switch makes a new branch from and tracks, with checkout.defaultRemote breaking a tie", async () => {
     await repository.runGitAsync(["remote", "add", "origin", repository.folder]);
     await repository.runGitAsync(["update-ref", "refs/remotes/origin/feature", "HEAD"]);
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     const titleAsync = async (name: string): Promise<string | undefined> => (await new BranchSwitchWriter(runner, risks, name).requestAsync(folders, status, call))?.title;
     const one = await titleAsync("feature");
     await repository.runGitAsync(["remote", "add", "upstream", repository.folder]);
@@ -251,7 +251,7 @@ describe("BranchSwitchWriter", () => {
 
   test("refuses an agent's switch to a name no remote has, or several have with no checkout.defaultRemote naming one, which git itself refuses", async () => {
     await repository.runGitAsync(["update-ref", "refs/remotes/stray/feature", "HEAD"]);
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     const write = (name: string): BranchSwitchWriter => new BranchSwitchWriter(runner, risks, name);
     const none = (error: unknown): boolean => error instanceof SwitchNoBranchException && error.branch === "feature" && error.code === FailureCode.Refused && error.gitCode === null
       && error.message === "There is no branch named feature here or on a remote, so there is nothing to switch to. Check the name, or fetch first.";
@@ -278,7 +278,7 @@ describe("BranchSwitchWriter", () => {
     await repository.runGitAsync(["update-ref", "refs/remotes/origin/feature", "HEAD"]);
     await repository.runGitAsync(["update-ref", "refs/remotes/upstream/feature", "HEAD"]);
     await repository.runGitAsync(["config", "checkout.defaultRemote", "stray"]);
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     const scripted = new ScriptedRunnerFixture(supervisor.context);
     const request = (): Promise<unknown> => new BranchSwitchWriter(scripted, new CheckoutRisksReader(new HooksReader(scripted), new FilterOptionsReader(scripted)), "feature")
       .requestAsync(folders, status, call);
@@ -302,7 +302,7 @@ describe("BranchSwitchWriter", () => {
   test("switches to another branch, keeping the worktree's changes", async () => {
     await repository.writeAsync("b.txt", "new\n");
 
-    await new BranchSwitchWriter(runner, risks, "next").runAsync(...await readAsync());
+    await (await readAsync()).runAsync(new BranchSwitchWriter(runner, risks, "next"));
 
     assert.equal(await currentAsync(), "next");
     assert.equal(await repository.runGitAsync(["status", "--porcelain=v1", "--untracked-files=all"]), "?? b.txt\n");
@@ -315,7 +315,7 @@ describe("BranchSwitchWriter", () => {
     await repository.runGitAsync(["switch", "--quiet", "main"]);
     await repository.writeAsync("a.txt", "mine\n");
 
-    await assert.rejects(new BranchSwitchWriter(runner, risks, "next").runAsync(...await readAsync()), failsWith(SwitchChangesInTheWayException, FailureCode.Git, GitCode.ChangesInTheWay,
+    await assert.rejects((await readAsync()).runAsync(new BranchSwitchWriter(runner, risks, "next")), failsWith(SwitchChangesInTheWayException, FailureCode.Git, GitCode.ChangesInTheWay,
       "Switching would overwrite your changes to a.txt, so git didn't switch. Commit or stash them first."));
 
     assert.equal(await currentAsync(), "main");
@@ -323,10 +323,10 @@ describe("BranchSwitchWriter", () => {
 
   test("fails as BranchCheckedOut for a branch another worktree has, and with git's output for any other refusal", async () => {
     await repository.runGitAsync(["worktree", "add", "--quiet", path.join(repository.root, "other"), "next"]);
-    await assert.rejects(new BranchSwitchWriter(runner, risks, "next").runAsync(...await readAsync()), failsWith(BranchCheckedOutException, FailureCode.Git, GitCode.BranchCheckedOut,
+    await assert.rejects((await readAsync()).runAsync(new BranchSwitchWriter(runner, risks, "next")), failsWith(BranchCheckedOutException, FailureCode.Git, GitCode.BranchCheckedOut,
       "next is checked out in another worktree, so git didn't switch to it."));
 
-    await assert.rejects(new BranchSwitchWriter(runner, risks, "missing").runAsync(...await readAsync()), failsWith(GitFailedException, FailureCode.Unavailable, null,
+    await assert.rejects((await readAsync()).runAsync(new BranchSwitchWriter(runner, risks, "missing")), failsWith(GitFailedException, FailureCode.Unavailable, null,
       "git switch failed; its output comes with the failure as untrusted text."));
   });
 });

@@ -116,14 +116,12 @@ describe("AzureDevOpsReferenceLooks", () => {
   });
 
   it("gives a pull request's card the lines it adds and removes and the files it changes, linked to its page's Files tab, and none without them", () => {
-    const counted = (counts: readonly [number, number, number] | null): HostItem => {
+    const counted = (changes: HostChanges): HostItem => {
       const item: HostItem = pullRequestOf(ReferenceState.Open);
-      return new HostItem(item.reference, item.kind, item.state, item.title, item.url, item.author, item.createdAt, item.closedAt, item.comments,
-        counts === null ? HostChanges.uncounted("feature/greeting", "main", "0123456789abcdef0123456789abcdef01234567")
-          : new HostChanges(counts[0], counts[1], counts[2], "feature/greeting", "main", "0123456789abcdef0123456789abcdef01234567"));
+      return new HostItem(item.reference, item.kind, item.state, item.title, item.url, item.author, item.createdAt, item.closedAt, item.comments, changes);
     };
-    const chip = AzureDevOpsReferenceLooks.pullRequestOf(counted([12, 3, 4]), null);
-    const partial = AzureDevOpsReferenceLooks.pullRequestOf(counted(null), null);
+    const chip = AzureDevOpsReferenceLooks.pullRequestOf(counted(new HostChanges(12, 3, 4, "feature/greeting", "main", "0123456789abcdef0123456789abcdef01234567")), null);
+    const partial = AzureDevOpsReferenceLooks.pullRequestOf(counted(HostChanges.uncounted("feature/greeting", "main", "0123456789abcdef0123456789abcdef01234567")), null);
     const open: HostItem = pullRequestOf(ReferenceState.Open);
     const unchanged = AzureDevOpsReferenceLooks.pullRequestOf(new HostItem(open.reference, ReferenceKind.Issue, open.state, open.title, open.url, open.author, open.createdAt,
       open.closedAt, open.comments, null), null);

@@ -10,6 +10,7 @@ import { GitRepositoryItems, GitStash, GitSubmodule, GitTag, ProtocolException, 
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
 import { GitArguments } from "../models/git-arguments.ts";
+import { KeptItems } from "../models/kept-items.ts";
 import { ProgramLimits } from "../models/program-limits.ts";
 import { ProgramRun } from "../models/program-run.ts";
 import type { ProgramResult } from "../models/program-result.ts";
@@ -35,7 +36,7 @@ export class RepositoryItemsReader {
     return new GitRepositoryItems(tags.items, stashes.items, submodules.items, tags.cut || stashes.cut || submodules.cut);
   }
 
-  private async tagsAsync(top: string, signal?: AbortSignal): Promise<{ readonly items: GitTag[]; readonly cut: boolean }> {
+  private async tagsAsync(top: string, signal?: AbortSignal): Promise<KeptItems<GitTag>> {
     const lines = RepositoryItemsReader.linesOf(await this.runAsync(top, new GitArguments([...Resources.tagListArguments, Resources.formatRefCount(Resources.repositoryItemsLimit + 1), Resources.tagsRef]),
       Resources.forEachRefCommand, signal));
     return RepositoryItemsReader.kept(lines, line => {
@@ -44,10 +45,10 @@ export class RepositoryItemsReader {
     });
   }
 
-  private async stashesAsync(top: string, signal?: AbortSignal): Promise<{ readonly items: GitStash[]; readonly cut: boolean }> {
+  private async stashesAsync(top: string, signal?: AbortSignal): Promise<KeptItems<GitStash>> {
     const exists = await this.runner.runAsync(ProgramRun.readGit(RepositoryItemsReader.HAS_STASH, top, RepositoryItemsReader.LIMITS, signal));
     if (exists.exit.code !== 0)
-      return { items: [], cut: false };
+      return new KeptItems<GitStash>([], false);
     const lines = RepositoryItemsReader.linesOf(await this.runAsync(top,
       new GitArguments([...Resources.stashListArguments, Resources.formatMaxCount(Resources.repositoryItemsLimit + 1), Resources.stashRef]), Resources.stashListCommand, signal));
     let index = 0;
@@ -57,7 +58,7 @@ export class RepositoryItemsReader {
     });
   }
 
-  private async submodulesAsync(top: string, signal?: AbortSignal): Promise<{ readonly items: GitSubmodule[]; readonly cut: boolean }> {
+  private async submodulesAsync(top: string, signal?: AbortSignal): Promise<KeptItems<GitSubmodule>> {
     const result = await this.runner.runAsync(ProgramRun.readGit(RepositoryItemsReader.SUBMODULES, top, RepositoryItemsReader.LIMITS, signal));
     RepositoryItemsReader.requireSuccess(result, Resources.lsFilesCommand);
     const records = result.output.toString(Resources.utf8Encoding).split(Resources.nulCharacter)
@@ -66,7 +67,7 @@ export class RepositoryItemsReader {
       const [id = "", path = ""] = record.split(Resources.nulCharacter);
       return new GitSubmodule(path, id);
     });
-    return { items: kept.items, cut: kept.cut || result.isTruncated };
+    return new KeptItems(kept.items, kept.cut || result.isTruncated);
   }
 
   private async runAsync(top: string, gitArguments: GitArguments, command: string, signal?: AbortSignal): Promise<string> {
@@ -85,7 +86,7 @@ export class RepositoryItemsReader {
   }
 
   /** The items the protocol takes, up to the limit, and whether any were left out, past the limit or refused. */
-  private static kept<T>(records: readonly string[], make: (record: string) => T): { readonly items: T[]; readonly cut: boolean } {
+  private static kept<T>(records: readonly string[], make: (record: string) => T): KeptItems<T> {
     const items: T[] = [];
     let cut = records.length > Resources.repositoryItemsLimit;
     for (const record of records.slice(0, Resources.repositoryItemsLimit))
@@ -96,6 +97,6 @@ export class RepositoryItemsReader {
           throw error;
         cut = true;
       }
-    return { items, cut };
+    return new KeptItems(items, cut);
   }
 }

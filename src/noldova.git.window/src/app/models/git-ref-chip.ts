@@ -10,6 +10,7 @@ import "@noldova/context.core";
 import { type GitRef, RefKind } from "@noldova/git.protocol";
 
 import { Resources } from "../../resources.ts";
+import { GitChipSplit } from "./git-chip-split.ts";
 
 /**
  * A label on a commit: a local branch, with the remotes that hold the same branch on the same commit as marks on it,
@@ -96,7 +97,7 @@ export class GitRefChip {
   }
 
   /** Splits a row's labels into those it shows and those its `+N` label lists, so that a row shows at most `limit` and the `+N` one. */
-  public static split(chips: readonly GitRefChip[], limit: number): readonly [readonly GitRefChip[], readonly GitRefChip[]] {
-    return chips.length > limit ? [chips.slice(0, limit), chips.slice(limit)] : [chips, []];
+  public static split(chips: readonly GitRefChip[], limit: number): GitChipSplit {
+    return chips.length > limit ? new GitChipSplit(chips.slice(0, limit), chips.slice(limit)) : new GitChipSplit(chips, []);
   }
 }

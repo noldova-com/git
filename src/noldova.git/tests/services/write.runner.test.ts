@@ -88,6 +88,13 @@ class FailingAfterReader extends RefSnapshotReader {
   }
 }
 
+/** A person's answer that runs no write, and the failure the write then ends with. */
+interface IUnansweredCase {
+  readonly decision: PermissionDecision;
+  readonly code: FailureCode;
+  readonly type: abstract new (...args: never[]) => GitFailureException;
+}
+
 describe("WriteRunner", () => {
   const request = (subject: string): IPermissionRequest => ({
     action: "git.switchBranch",
@@ -233,13 +240,13 @@ describe("WriteRunner", () => {
 
   test("runs nothing when the person denies, doesn't answer, or the call is withdrawn", async () => {
     const basedOn = await basedOnAsync();
-    const cases: [PermissionDecision, FailureCode, abstract new (...args: never[]) => GitFailureException][] = [
-      [PermissionDecision.Denied, FailureCode.Denied, RequestDeniedException],
-      [PermissionDecision.DeniedAlways, FailureCode.Denied, RequestDeniedException],
-      [PermissionDecision.Expired, FailureCode.Expired, RequestExpiredException],
-      [PermissionDecision.Withdrawn, FailureCode.Withdrawn, RequestWithdrawnException]
+    const cases: IUnansweredCase[] = [
+      { decision: PermissionDecision.Denied, code: FailureCode.Denied, type: RequestDeniedException },
+      { decision: PermissionDecision.DeniedAlways, code: FailureCode.Denied, type: RequestDeniedException },
+      { decision: PermissionDecision.Expired, code: FailureCode.Expired, type: RequestExpiredException },
+      { decision: PermissionDecision.Withdrawn, code: FailureCode.Withdrawn, type: RequestWithdrawnException }
     ];
-    for (const [decision, code, type] of cases) {
+    for (const { decision, code, type } of cases) {
       const write = new RecordingWrite(request("asked"));
       await rejectsAsync(type, writes.runAsync(folders, basedOn, write, callOf(decision)), code);
       assert.equal(write.ran.length, 0, decision);

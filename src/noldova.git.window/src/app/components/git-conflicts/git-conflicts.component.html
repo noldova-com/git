@@ -34,10 +34,10 @@ LICENSE file in the root directory of this source tree.
         }
         @if (resolved().length > 0) {
           <h2 class="group">{{ resources.resolvedTitle }} {{ resolved().length }}</h2>
-          @for (item of resolved(); track item[0]) {
-            <div class="file resolved" [title]="item[0]">
-              <span class="file-icon ok material-symbols-rounded" aria-hidden="true">{{ resources.resolvedIcon }}</span><span class="name">{{ nameOf(item[0]) }}</span><span
-                class="folder">{{ folderOf(item[0]) }}</span><span class="note">{{ item[1] }}</span>
+          @for (item of resolved(); track item.path) {
+            <div class="file resolved" [title]="item.path">
+              <span class="file-icon ok material-symbols-rounded" aria-hidden="true">{{ resources.resolvedIcon }}</span><span class="name">{{ nameOf(item.path) }}</span><span
+                class="folder">{{ folderOf(item.path) }}</span><span class="note">{{ item.note }}</span>
             </div>
           }
         }

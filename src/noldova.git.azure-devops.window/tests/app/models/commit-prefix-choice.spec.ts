@@ -11,6 +11,12 @@ import { describe, expect, it } from "vitest";
 
 import { CommitPrefixChoice } from "../../../src/app/models/commit-prefix-choice.ts";
 
+/** JSON a choice refuses, and the path of the field it names. */
+interface IRefusal {
+  readonly json: JsonValue;
+  readonly path: string;
+}
+
 describe("CommitPrefixChoice", () => {
   it("writes a repository's branch and its work item as JSON and reads them back", () => {
     const choice: CommitPrefixChoice = new CommitPrefixChoice("/work/garden", "users/kim/7532-tag-filter", 7532);
@@ -26,11 +32,11 @@ describe("CommitPrefixChoice", () => {
   });
 
   it("refuses a blank or missing folder or branch, and an id that isn't a whole number", () => {
-    const refusals: readonly (readonly [JsonValue, string])[] = [[{ folder: " ", branch: "main", id: 1 }, "$.folder"], [{ branch: "main", id: 1 }, "$.folder"],
-      [{ folder: "/work/garden", branch: "", id: 1 }, "$.branch"], [{ folder: "/work/garden", branch: "main", id: 1.5 }, "$.id"],
-      [{ folder: "/work/garden", branch: "main", id: "1" }, "$.id"]];
+    const refusals: readonly IRefusal[] = [{ json: { folder: " ", branch: "main", id: 1 }, path: "$.folder" }, { json: { branch: "main", id: 1 }, path: "$.folder" },
+      { json: { folder: "/work/garden", branch: "", id: 1 }, path: "$.branch" }, { json: { folder: "/work/garden", branch: "main", id: 1.5 }, path: "$.id" },
+      { json: { folder: "/work/garden", branch: "main", id: "1" }, path: "$.id" }];
 
-    for (const [json, path] of refusals)
+    for (const { json, path } of refusals)
       expect(() => CommitPrefixChoice.fromJson(JsonReader.fromValue(json))).toThrow(expect.objectContaining({ name: "JsonException", path }));
   });
 });

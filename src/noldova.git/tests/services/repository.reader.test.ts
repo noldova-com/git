@@ -17,6 +17,7 @@ import { FailureCode, GitCode, UntrustedSource } from "@noldova/git.protocol";
 import { FolderUnreadableException } from "../../src/exceptions/folder-unreadable.exception.ts";
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import { UnsafeRepositoryException } from "../../src/exceptions/unsafe-repository.exception.ts";
+import { GitVersion } from "../../src/models/git-version.ts";
 import { FilePresence } from "../../src/services/file-presence.ts";
 import { GitVersionReader } from "../../src/services/git-version.reader.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
@@ -137,7 +138,7 @@ describe("RepositoryReader", () => {
   });
 
   test("tells a repository that keeps its refs in a reftable from one that keeps them as files, and fails with git's words when git can't read its configuration", async context => {
-    context.skip(!(await repository.hasGitAsync([2, 45])), "git keeps refs in a reftable from 2.45; an older git can't make or read one.");
+    context.skip(!(await repository.hasGitAsync(new GitVersion(2, 45))), "git keeps refs in a reftable from 2.45; an older git can't make or read one.");
     const reftable = path.join(repository.root, "reftable");
     await repository.runGitAsync(["init", "--quiet", "--ref-format=reftable", reftable]);
     const runner = new ScriptedRunnerFixture(supervisor.context);

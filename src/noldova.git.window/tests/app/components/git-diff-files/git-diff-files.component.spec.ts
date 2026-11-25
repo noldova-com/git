@@ -17,13 +17,24 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { GitDiffFilesComponent } from "../../../../src/app/components/git-diff-files/git-diff-files.component.ts";
 import { GitFileLayout } from "../../../../src/app/enums/git-file-layout.ts";
-import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
+import { FixtureLine, GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
+
+/** The rendered files, with the answers still to give the diff reads. */
+class OpenedFiles {
+  public readonly fixture: ComponentFixture<GitDiffFilesComponent>;
+  public readonly answers: (() => Promise<JsonValue>)[];
+
+  public constructor(fixture: ComponentFixture<GitDiffFilesComponent>, answers: (() => Promise<JsonValue>)[]) {
+    this.fixture = fixture;
+    this.answers = answers;
+  }
+}
 
 describe("GitDiffFilesComponent outside the Git view", () => {
   it("reads the scope's diff from the repository and lists its files in folders, with no layout button to switch", async () => {
     const context = new FakeWindowPartContext();
     const scope = new DiffScope(DiffScopeKind.Range, "0".repeat(40), "9".repeat(40));
-    context.answer("requestAsync", async () => GitFixtures.diff("src/a.ts", [LineKind.Added, "one"]).toJson());
+    context.answer("requestAsync", async () => GitFixtures.diff("src/a.ts", new FixtureLine(LineKind.Added, "one")).toJson());
     TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: context }] });
     const fixture = TestBed.createComponent(GitDiffFilesComponent);
     fixture.componentRef.setInput("folder", GitFixtures.folder);
@@ -48,7 +59,7 @@ describe("GitDiffFilesComponent outside the Git view", () => {
   it("follows a layout it is given, such as a pull request page's own, with the layout button that sets it", async () => {
     const context = new FakeWindowPartContext();
     const layout: WritableSignal<GitFileLayout> = signal(GitFileLayout.List);
-    context.answer("requestAsync", async () => GitFixtures.diff("src/a.ts", [LineKind.Added, "one"]).toJson());
+    context.answer("requestAsync", async () => GitFixtures.diff("src/a.ts", new FixtureLine(LineKind.Added, "one")).toJson());
     TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: context }] });
     const fixture = TestBed.createComponent(GitDiffFilesComponent);
     fixture.componentRef.setInput("folder", GitFixtures.folder);
@@ -67,7 +78,7 @@ describe("GitDiffFilesComponent outside the Git view", () => {
 
   it("heads a diff its budget cut with the whole diff's files and lines, and one it read whole with its own files'", async () => {
     const context = new FakeWindowPartContext();
-    const shown: GitDiff = GitFixtures.diff("src/a.ts", [LineKind.Added, "one"], [LineKind.Removed, "two"]);
+    const shown: GitDiff = GitFixtures.diff("src/a.ts", new FixtureLine(LineKind.Added, "one"), new FixtureLine(LineKind.Removed, "two"));
     const diffs: GitDiff[] = [new GitDiff(shown.files, shown.totalBytes, 2389, true, new DiffTotals(2391, 14214, 13074)), shown];
     context.answer("requestAsync", async () => diffs.shift()?.toJson() ?? null);
     TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: context }] });
@@ -114,7 +125,7 @@ describe("GitDiffFilesComponent outside the Git view", () => {
       vi.restoreAllMocks();
     });
 
-    async function openAsync(): Promise<{ readonly fixture: ComponentFixture<GitDiffFilesComponent>; readonly answers: (() => Promise<JsonValue>)[] }> {
+    async function openAsync(): Promise<OpenedFiles> {
       const context = new FakeWindowPartContext();
       const answers: (() => Promise<JsonValue>)[] = [async () => twoHunks.toJson(), async () => twoHunks.toJson()];
       context.answer("requestAsync", async () => answers.shift()?.() ?? null);
@@ -124,7 +135,7 @@ describe("GitDiffFilesComponent outside the Git view", () => {
       fixture.componentRef.setInput("scope", new DiffScope(DiffScopeKind.Range, "0".repeat(40), "9".repeat(40)));
       fixture.autoDetectChanges();
       await vi.waitUntil(() => fixture.componentInstance.isRead());
-      return { fixture, answers };
+      return new OpenedFiles(fixture, answers);
     }
 
     it("marks the line as the diff leaves it, counting each hunk's header and skipping removed lines, and scrolls it into view", async () => {

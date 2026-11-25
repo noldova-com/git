@@ -21,10 +21,13 @@ import type { IAzureToken } from "../interfaces/i-azure-token.ts";
 import type { AzureCredential } from "../models/azure-credential.ts";
 import { AzureRepository } from "../models/azure-repository.ts";
 import { ChangeCounts } from "../models/change-counts.ts";
+import { EvaluatedPolicy } from "../models/evaluated-policy.ts";
 import { FoundPerson } from "../models/found-person.ts";
 import { KnownReviewer } from "../models/known-reviewer.ts";
 import { LineCounts } from "../models/line-counts.ts";
 import type { PeopleQuery } from "../models/people-query.ts";
+import { QueriedIds } from "../models/queried-ids.ts";
+import { RanBuild } from "../models/ran-build.ts";
 import { WorkItemTypeStates } from "../models/work-item-type-states.ts";
 import { Resources } from "../resources.ts";
 import { AzureApi } from "./azure-api.ts";
@@ -81,7 +84,7 @@ export class AzureReads {
         this.readBuildsAsync(item, project, token, signal),
         this.readCommitCountAsync(reference, token, signal), this.readWorkItemLinksAsync(reference, token, signal)]);
       return AzureApi.read(() => new HostPullRequest(item, pull.readObjectArray(Resources.reviewersField).map(AzureReads.reviewerOf),
-        policies.map(([policy, , buildId]) => AzureReads.withBuildNumber(policy, buildId, builds)), builds.map(([build]) => build),
+        policies.map(t => AzureReads.withBuildNumber(t.policy, t.buildId, builds)), builds.map(t => t.build),
         pull.hasField(Resources.autoCompleteSetByField),
         pull.hasField(Resources.descriptionField) ? pull.readString(Resources.descriptionField) : "", commitCount, workItems,
         AzureReads.autoCompleteMergeTypeOf(pull)));
@@ -486,13 +489,13 @@ export class AzureReads {
     if (token === null || !Resources.organizationPattern.test(query.organization))
       return new HostWorkItemList([], false);
     const list: HostWorkItemList = await this.askAsync(token, async () => {
-      const [ids, isTruncated] = await this.queryIdsAsync(query, token, signal);
-      const found: readonly JsonReader[] = await this.readBatchAsync(query.organization, ids, token, signal);
+      const queried: QueriedIds = await this.queryIdsAsync(query, token, signal);
+      const found: readonly JsonReader[] = await this.readBatchAsync(query.organization, queried.ids, token, signal);
       const items: readonly JsonReader[] = query.scope === WorkItemScope.Mine ? await this.withAncestorsAsync(query.organization, found, token, signal) : found;
       const details: HostWorkItemDetail[] = [];
       for (const item of items)
         details.push(await this.detailOfAsync(query.organization, item, token, signal));
-      return new HostWorkItemList(AzureReads.treeOf(details), isTruncated);
+      return new HostWorkItemList(AzureReads.treeOf(details), queried.isTruncated);
     });
     return this.signIn.token === token ? list : new HostWorkItemList([], false);
   }
@@ -501,17 +504,17 @@ export class AzureReads {
     return this.askAsync(token, () => this.detailOfAsync(organization, answer, token, signal));
   }
 
-  private async queryIdsAsync(query: WorkItemsQuery, token: AzureCredential, signal: AbortSignal): Promise<readonly [readonly number[], boolean]> {
+  private async queryIdsAsync(query: WorkItemsQuery, token: AzureCredential, signal: AbortSignal): Promise<QueriedIds> {
     if (query.scope === WorkItemScope.Ids)
-      return [query.ids, false];
+      return new QueriedIds(query.ids, false);
     const closed: readonly string[] = await this.readClosedStatesAsync(query.organization, query.project, token, signal);
     return this.queryAsync(Resources.formatWiqlUrl(query.organization, query.project), Resources.formatMineQuery(closed), token, signal);
   }
 
-  private async queryAsync(url: string, wiql: string, token: AzureCredential, signal: AbortSignal): Promise<readonly [readonly number[], boolean]> {
+  private async queryAsync(url: string, wiql: string, token: AzureCredential, signal: AbortSignal): Promise<QueriedIds> {
     const answer: JsonReader | null = await this.api.postAsync(url, token, { [Resources.queryField]: wiql }, signal);
     const ids: readonly number[] = answer === null ? [] : AzureApi.read(() => answer.readObjectArray(Resources.workItemsField).map(t => t.readInteger(Resources.idField)));
-    return [ids, ids.length >= Resources.batchSize];
+    return new QueriedIds(ids, ids.length >= Resources.batchSize);
   }
 
   private async readClosedStatesAsync(organization: string, project: string, token: AzureCredential, signal: AbortSignal): Promise<readonly string[]> {
@@ -604,7 +607,7 @@ export class AzureReads {
   private async readChecksAsync(item: HostItem, pull: JsonReader, token: AzureCredential, signal: AbortSignal): Promise<readonly HostCheck[]> {
     const project: string = AzureApi.read(() => pull.readObject(Resources.repositoryField).readObject(Resources.projectField).readNonBlankString(Resources.idField));
     const [policies, builds] = await Promise.all([this.readPoliciesAsync(item, project, token, signal), this.readBuildsAsync(item, project, token, signal)]);
-    return [...builds.map(([build]) => AzureReads.checkOfBuild(build, item)), ...policies.filter(([, isBuild]) => !isBuild).map(([policy]) => AzureReads.checkOfPolicy(policy))];
+    return [...builds.map(t => AzureReads.checkOfBuild(t.build, item)), ...policies.filter(t => !t.isBuild).map(t => AzureReads.checkOfPolicy(t.policy))];
   }
 
   private async readCommitCountAsync(reference: HostReference, token: AzureCredential, signal: AbortSignal): Promise<number | null> {
@@ -642,16 +645,16 @@ export class AzureReads {
    * now, so it shows as not applying.
    */
   private async readPoliciesAsync(item: HostItem, project: string, token: AzureCredential,
-    signal: AbortSignal): Promise<readonly (readonly [HostPolicy, boolean, number | null])[]> {
+    signal: AbortSignal): Promise<readonly EvaluatedPolicy[]> {
     const evaluations: JsonReader | null = await this.api.getAsync(Resources.formatPolicyEvaluationsUrl(item.reference.owner, project, item.reference.number),
       token, signal);
     const read = evaluations === null ? [] : AzureApi.read(() => evaluations.readObjectArray(Resources.valueField).map(AzureReads.policyOf));
-    return item.closedAt === null ? read : read.map(([policy, isBuild, buildId]) => [AzureReads.closedPolicyOf(policy), isBuild, buildId] as const);
+    return item.closedAt === null ? read : read.map(t => new EvaluatedPolicy(AzureReads.closedPolicyOf(t.policy), t.isBuild, t.buildId));
   }
 
   /** The newest build of each pipeline the pull request ran, as its page shows them, not every run of every push. */
   private async readBuildsAsync(item: HostItem, project: string, token: AzureCredential,
-    signal: AbortSignal): Promise<readonly (readonly [HostBuild, number | null])[]> {
+    signal: AbortSignal): Promise<readonly RanBuild[]> {
     const { owner, repository, number } = item.reference;
     const builds: JsonReader | null = await this.api.getAsync(Resources.formatBuildsUrl(owner, project, repository, number), token, signal);
     return builds === null ? [] : AzureApi.read(() => builds.readObjectArray(Resources.valueField).map(AzureReads.buildOf));
@@ -939,7 +942,7 @@ export class AzureReads {
   }
 
   /** A policy, whether it's a build policy, and the id of the build its evaluation ran, from the evaluation's context; null when it ran none. */
-  private static policyOf(evaluation: JsonReader): readonly [HostPolicy, boolean, number | null] {
+  private static policyOf(evaluation: JsonReader): EvaluatedPolicy {
     const configuration: JsonReader = evaluation.readObject(Resources.configurationField);
     const type: JsonReader = configuration.readObject(Resources.typeField);
     const state: PolicyState | undefined = Resources.policyStates.get(evaluation.readString(Resources.statusField));
@@ -947,12 +950,12 @@ export class AzureReads {
       configuration.readBoolean(Resources.isBlockingField), null);
     const context: JsonReader | null = evaluation.hasField(Resources.evaluationContextField) ? evaluation.readNullableObject(Resources.evaluationContextField) : null;
     const buildId: number | null = context !== null && context.hasField(Resources.buildIdField) ? context.readNullableInteger(Resources.buildIdField) : null;
-    return [policy, type.readString(Resources.idField) === Resources.buildPolicyType, buildId];
+    return new EvaluatedPolicy(policy, type.readString(Resources.idField) === Resources.buildPolicyType, buildId);
   }
 
   /** The policy with the number of the build its evaluation ran, when the pull request's builds hold that build and it has one. */
-  private static withBuildNumber(policy: HostPolicy, buildId: number | null, builds: readonly (readonly [HostBuild, number | null])[]): HostPolicy {
-    const number: string | null = buildId === null ? null : builds.find(([, id]) => id === buildId)?.[0].number ?? null;
+  private static withBuildNumber(policy: HostPolicy, buildId: number | null, builds: readonly RanBuild[]): HostPolicy {
+    const number: string | null = buildId === null ? null : builds.find(t => t.id === buildId)?.build.number ?? null;
     return number === null ? policy : new HostPolicy(policy.name, policy.state, policy.isBlocking, policy.url, number);
   }
 
@@ -964,8 +967,8 @@ export class AzureReads {
   }
 
   private static allowedBy(settings: JsonReader): readonly string[] {
-    if (Resources.mergeTypeSettings.some(([, setting]) => settings.hasField(setting)))
-      return Resources.mergeTypeSettings.filter(([, setting]) => settings.hasField(setting) && settings.readBoolean(setting)).map(([type]) => type);
+    if (Resources.mergeTypeSettings.some(t => settings.hasField(t.setting)))
+      return Resources.mergeTypeSettings.filter(t => settings.hasField(t.setting) && settings.readBoolean(t.setting)).map(t => t.type);
     const isSquash: boolean = settings.hasField(Resources.useSquashMergeField) && settings.readBoolean(Resources.useSquashMergeField);
     return [isSquash ? Resources.legacySquashMergeType : Resources.legacyMergeType];
   }
@@ -979,17 +982,17 @@ export class AzureReads {
   }
 
   /** A build and its id, which a build policy's evaluation names; null when Azure DevOps gives none. */
-  private static buildOf(build: JsonReader): readonly [HostBuild, number | null] {
+  private static buildOf(build: JsonReader): RanBuild {
     const status: string = build.readString(Resources.statusField);
     const state: CheckState = status === Resources.completedStatus ? Resources.buildResults.get(build.readString(Resources.resultField)) ?? CheckState.Failed
       : Resources.runningBuildStatuses.includes(status) ? CheckState.Running : CheckState.Queued;
     const isDone: boolean = status === Resources.completedStatus;
     const web: string = build.readObject(Resources.linksField).readObject(Resources.webField).readString(Resources.hrefField);
-    return [new HostBuild(build.readObject(Resources.definitionField).readString(Resources.nameField), state, web,
+    return new RanBuild(new HostBuild(build.readObject(Resources.definitionField).readString(Resources.nameField), state, web,
       build.hasField(Resources.startTimeField) ? Date.parse(build.readString(Resources.startTimeField)) : null,
       isDone ? Date.parse(build.readString(Resources.finishTimeField)) : null,
       build.hasField(Resources.buildNumberField) ? build.readNonBlankString(Resources.buildNumberField) : null),
-    build.hasField(Resources.idField) ? build.readInteger(Resources.idField) : null];
+    build.hasField(Resources.idField) ? build.readInteger(Resources.idField) : null);
   }
 
   private static closedPolicyOf(policy: HostPolicy): HostPolicy {

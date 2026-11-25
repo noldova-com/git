@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
-import { PredictionAction, PredictionOutcome, UntrustedSource } from "@noldova/git.protocol";
+import { GitPrediction, PredictionAction, PredictionOutcome, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import { Resources } from "../../src/resources.ts";
@@ -66,13 +66,11 @@ describe("PredictionReader", () => {
   });
 
   /** A cherry-pick's or a revert's predictions on the git these tests run: each unavailable on a git older than 2.40, whose merge-tree takes no merge base, as Apple's git on a Mac. */
-  const onThisGitAsync = async (predictions: readonly [string, readonly string[]][]): Promise<readonly [string, readonly string[]][]> =>
-    await repository.hasGitAsync(Resources.mergeBaseOptionVersion) ? predictions : predictions.map(() => [PredictionOutcome.Unavailable, []]);
+  const onThisGitAsync = async (predictions: readonly GitPrediction[]): Promise<readonly GitPrediction[]> =>
+    await repository.hasGitAsync(Resources.mergeBaseOptionVersion) ? predictions : predictions.map(() => new GitPrediction(PredictionOutcome.Unavailable, []));
   const idOf = async (revision: string): Promise<string> => (await repository.runGitAsync(["rev-parse", revision])).trim();
-  const predictAsync = async (revision: string, action: PredictionAction): Promise<[string, readonly string[]]> => {
-    const prediction = await reader.readAsync(repository.folder, await idOf(revision), action);
-    return [prediction.outcome, prediction.paths];
-  };
+  const predictAsync = async (revision: string, action: PredictionAction): Promise<GitPrediction> =>
+    reader.readAsync(repository.folder, await idOf(revision), action);
 
   test("predicts a merge of an ancestor as up to date, of a descendant as a fast-forward, and of a diverged commit as clean or with its conflicting paths", async () => {
     await repository.runGitAsync(["switch", "--quiet", "--create", "ahead"]);
@@ -87,7 +85,7 @@ describe("PredictionReader", () => {
       await predictAsync("ahead", PredictionAction.Merge),
       await predictAsync("clean", PredictionAction.Merge),
       await predictAsync("side", PredictionAction.Merge)
-    ], [[PredictionOutcome.UpToDate, []], [PredictionOutcome.FastForward, []], [PredictionOutcome.Clean, []], [PredictionOutcome.Conflicts, ["a.txt"]]]);
+    ], [new GitPrediction(PredictionOutcome.UpToDate, []), new GitPrediction(PredictionOutcome.FastForward, []), new GitPrediction(PredictionOutcome.Clean, []), new GitPrediction(PredictionOutcome.Conflicts, ["a.txt"])]);
     assert.equal(await repository.runGitAsync(["status", "--porcelain=v1", "--branch"]), before);
   });
 
@@ -97,7 +95,7 @@ describe("PredictionReader", () => {
       await predictAsync("side", PredictionAction.CherryPick),
       await predictAsync("HEAD", PredictionAction.CherryPick),
       await predictAsync("main~2", PredictionAction.CherryPick)
-    ], await onThisGitAsync([[PredictionOutcome.Clean, []], [PredictionOutcome.Conflicts, ["a.txt"]], [PredictionOutcome.UpToDate, []], [PredictionOutcome.Unavailable, []]]));
+    ], await onThisGitAsync([new GitPrediction(PredictionOutcome.Clean, []), new GitPrediction(PredictionOutcome.Conflicts, ["a.txt"]), new GitPrediction(PredictionOutcome.UpToDate, []), new GitPrediction(PredictionOutcome.Unavailable, [])]));
   });
 
   test("predicts a revert as clean, conflicting, up to date when its change isn't here, and unavailable for a root commit, or each unavailable on a git older than 2.40", async () => {
@@ -106,7 +104,7 @@ describe("PredictionReader", () => {
       await predictAsync("HEAD~1", PredictionAction.Revert),
       await predictAsync("clean", PredictionAction.Revert),
       await predictAsync("main~2", PredictionAction.Revert)
-    ], await onThisGitAsync([[PredictionOutcome.Clean, []], [PredictionOutcome.Conflicts, ["a.txt"]], [PredictionOutcome.UpToDate, []], [PredictionOutcome.Unavailable, []]]));
+    ], await onThisGitAsync([new GitPrediction(PredictionOutcome.Clean, []), new GitPrediction(PredictionOutcome.Conflicts, ["a.txt"]), new GitPrediction(PredictionOutcome.UpToDate, []), new GitPrediction(PredictionOutcome.Unavailable, [])]));
   });
 
   test("answers a cherry-pick and a revert as unavailable on a git older than 2.40, whose merge-tree takes no merge base, while a merge still predicts", async () => {
@@ -116,7 +114,7 @@ describe("PredictionReader", () => {
       await predictAsync("side~1", PredictionAction.CherryPick),
       await predictAsync("HEAD", PredictionAction.Revert),
       await predictAsync("side", PredictionAction.Merge)
-    ], [[PredictionOutcome.Unavailable, []], [PredictionOutcome.Unavailable, []], [PredictionOutcome.Conflicts, ["a.txt"]]]);
+    ], [new GitPrediction(PredictionOutcome.Unavailable, []), new GitPrediction(PredictionOutcome.Unavailable, []), new GitPrediction(PredictionOutcome.Conflicts, ["a.txt"])]);
   });
 
   test("answers unavailable, running nothing more, when the repository's own configuration names a merge driver, and switches its own filters off for merge-tree", async () => {
@@ -124,12 +122,12 @@ describe("PredictionReader", () => {
     runner.starting = command => commands.push(command);
     await repository.runGitAsync(["config", "filter.mine.clean", "false"]);
 
-    assert.deepEqual(await predictAsync("clean", PredictionAction.Merge), [PredictionOutcome.Clean, []]);
+    assert.deepEqual(await predictAsync("clean", PredictionAction.Merge), new GitPrediction(PredictionOutcome.Clean, []));
     assert.ok(commands.some(t => t.includes("-c filter.mine.clean= -c filter.mine.process= -c filter.mine.required=false merge-tree --write-tree")), commands.join("\n"));
     await repository.runGitAsync(["config", "merge.mine.driver", "false"]);
     commands.length = 0;
 
-    assert.deepEqual(await predictAsync("side", PredictionAction.Merge), [PredictionOutcome.Unavailable, []]);
+    assert.deepEqual(await predictAsync("side", PredictionAction.Merge), new GitPrediction(PredictionOutcome.Unavailable, []));
     assert.deepEqual(commands.map(t => t.split(" ")[0]), ["config"]);
   });
 

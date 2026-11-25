@@ -8,7 +8,7 @@
 
 import type { HostPullRequest, HostReviewer } from "@noldova/git.hosting.protocol";
 
-import type { PullRequestActions } from "../types/pull-request-actions.ts";
+import type { IPullRequestActions } from "../interfaces/i-pull-request-actions.ts";
 
 /**
  * The pull request a document shows, for the Pull request view: as the page read it, with its reviewers as the person's votes since have them, when the page
@@ -18,9 +18,9 @@ export class PullRequestChoice {
   public readonly pullRequest: HostPullRequest;
   public readonly reviewers: readonly HostReviewer[];
   public readonly readAt: number;
-  public readonly actions: PullRequestActions;
+  public readonly actions: IPullRequestActions;
 
-  public constructor(pullRequest: HostPullRequest, reviewers: readonly HostReviewer[], readAt: number, actions: PullRequestActions) {
+  public constructor(pullRequest: HostPullRequest, reviewers: readonly HostReviewer[], readAt: number, actions: IPullRequestActions) {
     this.pullRequest = pullRequest;
     this.reviewers = reviewers;
     this.readAt = readAt;

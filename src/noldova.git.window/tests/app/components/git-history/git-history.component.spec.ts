@@ -29,6 +29,28 @@ import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 
+/** A rendered history, with the context it reads through. */
+class RenderedHistory {
+  public readonly element: HTMLElement;
+  public readonly context: FakeWindowPartContext;
+
+  public constructor(element: HTMLElement, context: FakeWindowPartContext) {
+    this.element = element;
+    this.context = context;
+  }
+}
+
+/** A promise the test settles when it chooses. */
+class Gate {
+  public readonly promise: Promise<void>;
+  public readonly open: () => void;
+
+  public constructor(promise: Promise<void>, open: () => void) {
+    this.promise = promise;
+    this.open = open;
+  }
+}
+
 describe("GitHistoryComponent", () => {
   const graph: GitGraph = new GitGraph([
     new GitGraphCommit(new GitCommit("a".repeat(40), ["b".repeat(40)], "Sample Author", "2026-11-06T17:30:00Z", "Second"), "author@example.com",
@@ -83,7 +105,7 @@ describe("GitHistoryComponent", () => {
 
   const ringOf = (element: HTMLElement): number => [...element.querySelectorAll("[role=option]")].findIndex(t => !Object.isNull(t.querySelector("circle.ring")));
 
-  const renderAsync = async (shown: () => GitGraph): Promise<{ readonly element: HTMLElement; readonly context: FakeWindowPartContext }> => {
+  const renderAsync = async (shown: () => GitGraph): Promise<RenderedHistory> => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     new GitHeldRequests(context, ["git.status"], { ...GitFixtures.watching, "git.graph": () => shown().toJson() });
     GitFixtures.setUp(context);
@@ -92,15 +114,15 @@ describe("GitHistoryComponent", () => {
     fixture.autoDetectChanges();
     const element: HTMLElement = fixture.nativeElement;
     await untilAsync(element, () => ringOf(element) === 0);
-    return { element, context };
+    return new RenderedHistory(element, context);
   };
 
-  const gate = (): { readonly promise: Promise<void>; readonly open: () => void } => {
+  const gate = (): Gate => {
     let open: () => void = () => undefined;
     const promise: Promise<void> = new Promise<void>(resolve => {
       open = resolve;
     });
-    return { promise, open };
+    return new Gate(promise, open);
   };
 
   it("shows each author's picture in place of their initials once a host has it, as a circle of the same size in the same place, asking by the row's commit", async () => {
@@ -323,7 +345,7 @@ describe("GitHistoryComponent", () => {
       const boxes: DOMRect[] = [...element.querySelectorAll(selector)].map(t => t.getBoundingClientRect()).filter(t => t.width > 0);
       return boxes.every((box, index) => index === 0 || Math.abs(box.left - (boxes[index - 1]?.right ?? 0)) < 0.5);
     };
-    const measure = (width: string): readonly [number, boolean] => {
+    const measure = (width: string): readonly unknown[] => {
       element.style.width = width;
       return [[...element.querySelectorAll(".header > .cell")].filter(t => t.getBoundingClientRect().width > 0).length, abut(".header > .cell")];
     };
@@ -353,7 +375,7 @@ describe("GitHistoryComponent", () => {
     const box = (selector: string): DOMRect => element.querySelector(selector)?.getBoundingClientRect() ?? new DOMRect();
     const groups = (): readonly string[] => [...element.querySelectorAll(".group")].map(t => t.getAttribute("aria-label") ?? "");
     const labeled = (): boolean => box("[data-action=UndoCommit]").width > 1.5 * box("[data-action=UndoCommit]").height;
-    const layoutAsync = async (width: string, fits: (count: number) => boolean, isLabeled: boolean): Promise<readonly [readonly string[], boolean, boolean, boolean]> => {
+    const layoutAsync = async (width: string, fits: (count: number) => boolean, isLabeled: boolean): Promise<readonly unknown[]> => {
       element.style.width = width;
       await untilAsync(element, () => fits(groups().length) && (!Object.isNull(element.querySelector(".more"))) === groups().length < 4 && labeled() === isLabeled);
       const ends: readonly DOMRect[] = [...element.querySelectorAll(".actions > *")].map(t => t.getBoundingClientRect());
@@ -377,7 +399,7 @@ describe("GitHistoryComponent", () => {
     const before: number = context.callsOf("requestAsync").filter(t => t[0] === "git.push").length;
     element.querySelector<HTMLElement>(".more")?.click();
     await untilAsync(document.body, () => document.querySelectorAll("button[nol-menu-item]").length > 0);
-    const items: readonly (readonly [string | null, boolean])[] = [...document.querySelectorAll<HTMLButtonElement>("button[nol-menu-item]")]
+    const items: readonly (readonly unknown[])[] = [...document.querySelectorAll<HTMLButtonElement>("button[nol-menu-item]")]
       .map(t => [t.getAttribute("data-action"), t.getAttribute("aria-disabled") === "true"]);
     document.querySelector<HTMLElement>("button[nol-menu-item][data-action=Push]")?.click();
     await GitFixtures.untilAsync(() => context.callsOf("requestAsync").filter(t => t[0] === "git.push").length > before);

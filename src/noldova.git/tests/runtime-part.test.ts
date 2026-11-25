@@ -13,6 +13,7 @@ import path from "node:path";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it, onTestFinished, vi } from "vitest";
 
+import { JsonReader } from "@noldova/context.json";
 import { FailureCode as DesktopCode, ShellClients } from "@noldova/desktop.protocol";
 import { ClientClosure, MethodFailureException, RequestContext } from "@noldova/desktop.runtime";
 import type { FakeRuntimePartContext } from "@noldova/desktop.runtime/testing";
@@ -25,12 +26,19 @@ import {
 import { RuntimePart } from "../src/api/index.ts";
 import { WatchStart } from "../src/enums/watch-start.ts";
 import { ColumnInvalidException } from "../src/exceptions/column-invalid.exception.ts";
+import { GitVersion } from "../src/models/git-version.ts";
 import { ChangeMonitor } from "../src/services/change-monitor.ts";
 import { WorktreeTable } from "../src/services/worktree-table.ts";
 import { CleanUps } from "./fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "./fixtures/desktop.fixture.ts";
 import { FakeCheckpoints } from "./fixtures/fake-checkpoints.fixture.ts";
 import { RepositoryFixture } from "./fixtures/repository.fixture.ts";
+
+/** A write method, and the payload it's called with for the given fingerprint. */
+interface IWriteCase {
+  readonly name: string;
+  readonly payload: (basedOn: string) => JsonValue;
+}
 
 describe("RuntimePart", () => {
   let template: RepositoryFixture;
@@ -84,8 +92,8 @@ describe("RuntimePart", () => {
   };
 
   it("registers exactly the methods module.json declares, since Noldova Desktop refuses an undeclared one and the module then fails to load", () => {
-    const declaration = JSON.parse(readFileSync(new URL("../module.json", import.meta.url), "utf8")) as { contributes: { methods: string[] } };
-    assert.deepEqual([...supervisor.methods.keys()].sort(), [...declaration.contributes.methods].sort());
+    const declaration = JsonReader.fromValue(JSON.parse(readFileSync(new URL("../module.json", import.meta.url), "utf8")));
+    assert.deepEqual([...supervisor.methods.keys()].sort(), [...declaration.readObject("contributes").readStringArray("methods")].sort());
   });
 
   it("declares the worktrees table's migration", () => {
@@ -285,7 +293,7 @@ describe("RuntimePart", () => {
 
     const answer = GitRemoteTracks.fromJson(await callAsync(GitNames.remoteTracksMethod, { folder: repository.folder }));
 
-    assert.deepEqual(answer, new GitRemoteTracks(await repository.hasGitAsync([2, 41]) ? [new GitBranchTrack("origin/old", 0, 1)] : []));
+    assert.deepEqual(answer, new GitRemoteTracks(await repository.hasGitAsync(new GitVersion(2, 41)) ? [new GitBranchTrack("origin/old", 0, 1)] : []));
   });
 
   it("registers git.log, which answers HEAD's newest commits up to the limit", async () => {
@@ -464,7 +472,7 @@ describe("RuntimePart", () => {
   });
 
   it("watches a repository that keeps its refs in a reftable, so a window hears its branch move there", async context => {
-    context.skip(!(await repository.hasGitAsync([2, 45])), "git keeps refs in a reftable from 2.45; an older git can't make or read one.");
+    context.skip(!(await repository.hasGitAsync(new GitVersion(2, 45))), "git keeps refs in a reftable from 2.45; an older git can't make or read one.");
     const reftable = path.join(repository.root, "reftable");
     await repository.runGitAsync(["init", "--quiet", "--ref-format=reftable", reftable]);
     await repository.runGitAsync(["-C", reftable, "commit", "--quiet", "--allow-empty", "-m", "First"]);
@@ -501,39 +509,39 @@ describe("RuntimePart", () => {
     const unauthorized = (error: unknown): boolean =>
       error instanceof MethodFailureException && error.failure.code === DesktopCode.Unauthorized
       && error.failure.message === "Only the app writes to a repository for a person's own click; an agent's write goes through its tools.";
-    const writes: [string, (basedOn: string) => JsonValue][] = [
-      [GitNames.stageMethod, basedOn => ({ folder: repository.folder, paths: ["a.txt"], basedOn })],
-      [GitNames.unstageMethod, basedOn => ({ folder: repository.folder, paths: ["a.txt"], basedOn })],
-      [GitNames.discardMethod, basedOn => ({ folder: repository.folder, paths: ["a.txt"], basedOn })],
-      [GitNames.createBranchMethod, basedOn => ({ folder: repository.folder, name: "feature", basedOn })],
-      [GitNames.switchBranchMethod, basedOn => ({ folder: repository.folder, name: "feature", basedOn })],
-      [GitNames.commitMethod, basedOn => ({ folder: repository.folder, message: "Change a", basedOn })],
-      [GitNames.amendMethod, basedOn => ({ folder: repository.folder, message: "Change a", basedOn })],
-      [GitNames.pushMethod, basedOn => ({ folder: repository.folder, basedOn })],
-      [GitNames.pullMethod, basedOn => ({ folder: repository.folder, basedOn })],
-      [GitNames.cherryPickMethod, basedOn => ({ folder: repository.folder, id: "0".repeat(40), basedOn })],
-      [GitNames.revertMethod, basedOn => ({ folder: repository.folder, id: "0".repeat(40), basedOn })],
-      [GitNames.createBranchAtMethod, basedOn => ({ folder: repository.folder, name: "feature", id: "0".repeat(40), basedOn })],
-      [GitNames.renameBranchMethod, basedOn => ({ folder: repository.folder, name: "main", newName: "trunk", basedOn })],
-      [GitNames.deleteBranchMethod, basedOn => ({ folder: repository.folder, name: "feature", basedOn })],
-      [GitNames.createTagMethod, basedOn => ({ folder: repository.folder, name: "v1", id: "0".repeat(40), basedOn })],
-      [GitNames.deleteTagMethod, basedOn => ({ folder: repository.folder, name: "v1", basedOn })],
-      [GitNames.stageLinesMethod, basedOn => ({ folder: repository.folder, path: "a.txt", lines: [0], basedOn })],
-      [GitNames.unstageLinesMethod, basedOn => ({ folder: repository.folder, path: "a.txt", lines: [0], basedOn })],
-      [GitNames.undoMethod, basedOn => ({ folder: repository.folder, id: "1", basedOn })],
-      [GitNames.resetMethod, basedOn => ({ folder: repository.folder, id: "0".repeat(40), mode: "Soft", basedOn })],
-      [GitNames.undoCommitMethod, basedOn => ({ folder: repository.folder, basedOn })],
-      [GitNames.forcePushMethod, basedOn => ({ folder: repository.folder, expected: "0".repeat(40), basedOn })],
-      [GitNames.resolveConflictMethod, basedOn => ({ folder: repository.folder, path: "a.txt", resolution: "Ours", text: null, basedOn })],
-      [GitNames.continueOperationMethod, basedOn => ({ folder: repository.folder, basedOn })],
-      [GitNames.abortOperationMethod, basedOn => ({ folder: repository.folder, basedOn })],
-      [GitNames.mergeMethod, basedOn => ({ folder: repository.folder, id: "0".repeat(40), basedOn })],
-      [GitNames.rebaseMethod, basedOn => ({ folder: repository.folder, onto: "0".repeat(40), steps: [{ id: "1".repeat(40), action: "Pick", message: null }], updateRefs: false, basedOn })],
-      [GitNames.fetchMethod, basedOn => ({ folder: repository.folder, basedOn })],
-      [GitNames.stashMethod, basedOn => ({ folder: repository.folder, message: null, includeUntracked: false, basedOn })]
+    const writes: IWriteCase[] = [
+      { name: GitNames.stageMethod, payload: basedOn => ({ folder: repository.folder, paths: ["a.txt"], basedOn }) },
+      { name: GitNames.unstageMethod, payload: basedOn => ({ folder: repository.folder, paths: ["a.txt"], basedOn }) },
+      { name: GitNames.discardMethod, payload: basedOn => ({ folder: repository.folder, paths: ["a.txt"], basedOn }) },
+      { name: GitNames.createBranchMethod, payload: basedOn => ({ folder: repository.folder, name: "feature", basedOn }) },
+      { name: GitNames.switchBranchMethod, payload: basedOn => ({ folder: repository.folder, name: "feature", basedOn }) },
+      { name: GitNames.commitMethod, payload: basedOn => ({ folder: repository.folder, message: "Change a", basedOn }) },
+      { name: GitNames.amendMethod, payload: basedOn => ({ folder: repository.folder, message: "Change a", basedOn }) },
+      { name: GitNames.pushMethod, payload: basedOn => ({ folder: repository.folder, basedOn }) },
+      { name: GitNames.pullMethod, payload: basedOn => ({ folder: repository.folder, basedOn }) },
+      { name: GitNames.cherryPickMethod, payload: basedOn => ({ folder: repository.folder, id: "0".repeat(40), basedOn }) },
+      { name: GitNames.revertMethod, payload: basedOn => ({ folder: repository.folder, id: "0".repeat(40), basedOn }) },
+      { name: GitNames.createBranchAtMethod, payload: basedOn => ({ folder: repository.folder, name: "feature", id: "0".repeat(40), basedOn }) },
+      { name: GitNames.renameBranchMethod, payload: basedOn => ({ folder: repository.folder, name: "main", newName: "trunk", basedOn }) },
+      { name: GitNames.deleteBranchMethod, payload: basedOn => ({ folder: repository.folder, name: "feature", basedOn }) },
+      { name: GitNames.createTagMethod, payload: basedOn => ({ folder: repository.folder, name: "v1", id: "0".repeat(40), basedOn }) },
+      { name: GitNames.deleteTagMethod, payload: basedOn => ({ folder: repository.folder, name: "v1", basedOn }) },
+      { name: GitNames.stageLinesMethod, payload: basedOn => ({ folder: repository.folder, path: "a.txt", lines: [0], basedOn }) },
+      { name: GitNames.unstageLinesMethod, payload: basedOn => ({ folder: repository.folder, path: "a.txt", lines: [0], basedOn }) },
+      { name: GitNames.undoMethod, payload: basedOn => ({ folder: repository.folder, id: "1", basedOn }) },
+      { name: GitNames.resetMethod, payload: basedOn => ({ folder: repository.folder, id: "0".repeat(40), mode: "Soft", basedOn }) },
+      { name: GitNames.undoCommitMethod, payload: basedOn => ({ folder: repository.folder, basedOn }) },
+      { name: GitNames.forcePushMethod, payload: basedOn => ({ folder: repository.folder, expected: "0".repeat(40), basedOn }) },
+      { name: GitNames.resolveConflictMethod, payload: basedOn => ({ folder: repository.folder, path: "a.txt", resolution: "Ours", text: null, basedOn }) },
+      { name: GitNames.continueOperationMethod, payload: basedOn => ({ folder: repository.folder, basedOn }) },
+      { name: GitNames.abortOperationMethod, payload: basedOn => ({ folder: repository.folder, basedOn }) },
+      { name: GitNames.mergeMethod, payload: basedOn => ({ folder: repository.folder, id: "0".repeat(40), basedOn }) },
+      { name: GitNames.rebaseMethod, payload: basedOn => ({ folder: repository.folder, onto: "0".repeat(40), steps: [{ id: "1".repeat(40), action: "Pick", message: null }], updateRefs: false, basedOn }) },
+      { name: GitNames.fetchMethod, payload: basedOn => ({ folder: repository.folder, basedOn }) },
+      { name: GitNames.stashMethod, payload: basedOn => ({ folder: repository.folder, message: null, includeUntracked: false, basedOn }) }
     ];
 
-    for (const [name, payload] of writes)
+    for (const { name, payload } of writes)
       it(`refuses ${name} from any caller but the app's main process acting for a window, before reading its request`, async () => {
         await repository.writeAsync("a.txt", "changed\n");
         const basedOn = await basedOnAsync();
@@ -589,7 +597,7 @@ describe("RuntimePart", () => {
         branch: "side", onto, base: onto, ontoAhead: 0, commits: [{ id, message: "Add b", fixupOf: null }], stacked: [], pushed: false
       });
       assert.deepEqual(await callAsync(GitNames.rebaseCheckMethod, { folder: repository.folder, onto, steps: [{ id, action: "Pick", message: null }] }), {
-        steps: [{ outcome: await repository.hasGitAsync([2, 45]) ? "Clean" : "Unavailable", paths: [] }]
+        steps: [{ outcome: await repository.hasGitAsync(new GitVersion(2, 45)) ? "Clean" : "Unavailable", paths: [] }]
       });
       await repository.runGitAsync(["switch", "--quiet", "main"]);
       await repository.writeAsync("c.txt", "c\n");

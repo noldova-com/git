@@ -23,6 +23,12 @@ import { AzureDevOpsSignInComponent } from "../../../../src/app/components/azure
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
+/** A sign-in the settings show, by the name its screenshot takes; null when the read fails. */
+interface ISignInState {
+  readonly name: string;
+  readonly signIn: HostSignIn | null;
+}
+
 @Component({
   selector: "nol-git-azure-devops-settings-column",
   imports: [AzureDevOpsSignInComponent],
@@ -37,18 +43,21 @@ class SettingsColumnComponent {
 }
 
 const account: HostAccount = new HostAccount("monalisa@example.com", "Mona Lisa", null, []);
-const states: readonly (readonly [string, HostSignIn | null])[] = [
-  ["signed-out", HostSignIn.signedOut()],
-  ["signed-in", HostSignIn.signedIn(account)],
-  ["waiting", HostSignIn.waitingInBrowser("https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?client_id=contoso")],
-  ["refused", HostSignIn.signedOut(SignInFailure.Refused)],
-  ["unforgotten", HostSignIn.signedOut(SignInFailure.Unforgotten)],
-  ["unread", null]
+const states: readonly ISignInState[] = [
+  { name: "signed-out", signIn: HostSignIn.signedOut() },
+  { name: "signed-in", signIn: HostSignIn.signedIn(account) },
+  { name: "waiting", signIn: HostSignIn.waitingInBrowser("https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?client_id=contoso") },
+  { name: "refused", signIn: HostSignIn.signedOut(SignInFailure.Refused) },
+  { name: "unforgotten", signIn: HostSignIn.signedOut(SignInFailure.Unforgotten) },
+  { name: "unread", signIn: null }
 ];
-const tokenStates: readonly (readonly [string, HostSignIn])[] = [["signed-out", HostSignIn.signedOut()], ["refused", HostSignIn.signedOut(SignInFailure.Refused)]];
+const tokenStates: readonly ISignInState[] = [
+  { name: "signed-out", signIn: HostSignIn.signedOut() },
+  { name: "refused", signIn: HostSignIn.signedOut(SignInFailure.Refused) }
+];
 const screenshots: string = "../../../../../../_build/azure-devops-window/screenshots";
-const cases = AppearanceFixture.modes.flatMap(mode => states.map(([name, signIn]) => [mode, name, signIn] as const));
-const tokenCases = AppearanceFixture.modes.flatMap(mode => tokenStates.map(([name, signIn]) => [mode, name, signIn] as const));
+const cases = AppearanceFixture.modes.flatMap(mode => states.map(({ name, signIn }) => [mode, name, signIn] as const));
+const tokenCases = AppearanceFixture.modes.flatMap(mode => tokenStates.map(({ name, signIn }) => [mode, name, signIn] as const));
 
 async function openAsync(mode: ThemeMode, signIn: HostSignIn | null,
   prepare: (requests: RequestAnswers) => void = () => undefined): Promise<ComponentFixture<SettingsColumnComponent>> {
@@ -156,7 +165,7 @@ describe("AzureDevOpsSignInComponent in the kit's look", () => {
     }
   });
 
-  it.each(states)("reaches out by Settings' edge as Settings' own rows do, so its edges line up with theirs, %s", async (_name, signIn) => {
+  it.each(states)("reaches out by Settings' edge as Settings' own rows do, so its edges line up with theirs, $name", async ({ signIn }) => {
     const fixture = await openAsync(ThemeMode.Light, signIn);
     const root: HTMLElement = fixture.nativeElement;
     const before = find(root, "section").getBoundingClientRect();

@@ -23,7 +23,7 @@ function codeOf(error: unknown): string | null {
   return error instanceof MethodFailureException ? error.failure.code : null;
 }
 
-function failureOf(error: unknown): readonly [string, string] | null {
+function failureOf(error: unknown): readonly string[] | null {
   return error instanceof MethodFailureException ? [error.failure.code, error.failure.message] : null;
 }
 
@@ -337,7 +337,7 @@ describe("GitHubApi", () => {
     github.answer(...targets.map(t => FakeGitHub.json({}, 301, t)));
     const api = new GitHubApi(github.fetch);
 
-    const failures: (readonly [string, string] | null)[] = [];
+    const failures: (readonly string[] | null)[] = [];
     for (const name of ["one", "two", "three", "four", "five"])
       failures.push(await api.getAsync(`/repos/octocat/${name}`, "gho_token", signal).then(() => null, failureOf));
 
@@ -362,7 +362,7 @@ describe("GitHubApi", () => {
       FakeGitHub.json({}, 308, { Location: "https://api.fabrikam.com/repos/octocat/hello-world/pulls" }));
     const api = new GitHubApi(github.fetch);
 
-    const failures: (readonly [string, string] | null)[] = [];
+    const failures: (readonly string[] | null)[] = [];
     for (let i = 0; i < 2; i++)
       failures.push(await api.postAsync("/repos/octocat/hello-world/pulls", "gho_token", { title: "Add a feature" }, signal).then(() => null, failureOf));
 

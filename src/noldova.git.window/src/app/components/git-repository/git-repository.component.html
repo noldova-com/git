@@ -75,11 +75,11 @@ LICENSE file in the root directory of this source tree.
             }
             <span class="grow" [class.strong]="isCurrent">{{ row.name }}</span>
             @let counts = countsOf(row.branch, isCurrent);
-            @if (counts[0] > 0) {
-              <span class="small count ahead" [title]="resources.formatAheadTitle(counts[0])"><span class="arrow" aria-hidden="true">{{ resources.aheadArrow }}</span>{{ counts[0] }}</span>
+            @if (counts.ahead > 0) {
+              <span class="small count ahead" [title]="resources.formatAheadTitle(counts.ahead)"><span class="arrow" aria-hidden="true">{{ resources.aheadArrow }}</span>{{ counts.ahead }}</span>
             }
-            @if (counts[1] > 0) {
-              <span class="small count behind" [title]="resources.formatBehindTitle(counts[1])"><span class="arrow" aria-hidden="true">{{ resources.behindArrow }}</span>{{ counts[1] }}</span>
+            @if (counts.behind > 0) {
+              <span class="small count behind" [title]="resources.formatBehindTitle(counts.behind)"><span class="arrow" aria-hidden="true">{{ resources.behindArrow }}</span>{{ counts.behind }}</span>
             }
           </button>
           <ng-template #branchMenu>
@@ -125,11 +125,11 @@ LICENSE file in the root directory of this source tree.
           <button type="button" class="row" [class.sel]="isViewed(row.branch, true)" [style.padding-left.rem]="indentOf(row)" [title]="row.key" (click)="view(path, row.branch, true)">
             <svg class="octicon" viewBox="0 0 16 16" aria-hidden="true"><path [attr.d]="resources.branchIconPath" /></svg><span class="grow">{{ row.name }}</span>
             @let remoteCounts = remoteCountsOf(row.branch);
-            @if (remoteCounts[0] > 0) {
-              <span class="small count ahead" [title]="resources.formatRemoteAheadTitle(remoteCounts[0])"><span class="arrow" aria-hidden="true">{{ resources.aheadArrow }}</span>{{ remoteCounts[0] }}</span>
+            @if (remoteCounts.ahead > 0) {
+              <span class="small count ahead" [title]="resources.formatRemoteAheadTitle(remoteCounts.ahead)"><span class="arrow" aria-hidden="true">{{ resources.aheadArrow }}</span>{{ remoteCounts.ahead }}</span>
             }
-            @if (remoteCounts[1] > 0) {
-              <span class="small count behind" [title]="resources.formatRemoteBehindTitle(remoteCounts[1])"><span class="arrow" aria-hidden="true">{{ resources.behindArrow }}</span>{{ remoteCounts[1] }}</span>
+            @if (remoteCounts.behind > 0) {
+              <span class="small count behind" [title]="resources.formatRemoteBehindTitle(remoteCounts.behind)"><span class="arrow" aria-hidden="true">{{ resources.behindArrow }}</span>{{ remoteCounts.behind }}</span>
             }
           </button>
         }

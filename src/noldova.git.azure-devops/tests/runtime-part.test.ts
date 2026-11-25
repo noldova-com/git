@@ -37,7 +37,7 @@ async function callAsync(context: RuntimeContext, name: string, payload: JsonVal
   return handler.handleAsync(new RequestContext(client, payload, new AbortController().signal, 1, window));
 }
 
-function failureOf(error: unknown): readonly [string, string] | null {
+function failureOf(error: unknown): readonly string[] | null {
   return error instanceof MethodFailureException ? [error.failure.code, error.failure.message] : null;
 }
 
@@ -102,7 +102,7 @@ describe("RuntimePart", () => {
     const context = new RuntimeContext();
 
     await part.activateAsync(context.fake);
-    const refusals: (readonly [string, string] | null)[] = [];
+    const refusals: (readonly string[] | null)[] = [];
     for (const [client, window] of [["cli", null], ["chat", 1], [ShellClients.mainProcess, null]] as const)
       refusals.push(await callAsync(context, "git-azure-devops.startSignIn", { organization: "fabrikam" }, client, window).then(() => null, failureOf));
     for (const payload of [null, { organization: 42 }, { organization: "fab/rikam" }, { organization: "" }])
@@ -125,7 +125,7 @@ describe("RuntimePart", () => {
     const context = new RuntimeContext();
 
     await part.activateAsync(context.fake);
-    const refusals: (readonly [string, string] | null)[] = [];
+    const refusals: (readonly string[] | null)[] = [];
     for (const [client, window] of [["cli", null], ["chat", 1], [ShellClients.mainProcess, null]] as const)
       refusals.push(await callAsync(context, "git-azure-devops.signInWithToken", { token: "azure-token", organization: "fabrikam" }, client, window).then(() => null, failureOf));
     for (const payload of [null, { token: " ", organization: "fabrikam" }, { token: 42, organization: "fabrikam" }, { token: "azure-token" },
@@ -285,7 +285,7 @@ describe("RuntimePart", () => {
     const link = { host: "dev.azure.com", path: "fabrikam/web/_git/site", id: 42, branch: "42-sign-in" };
 
     await part.activateAsync(context.fake);
-    const refusals: (readonly [string, string] | null)[] = [];
+    const refusals: (readonly string[] | null)[] = [];
     for (const [client, window] of [["cli", null], ["chat", 1], [ShellClients.mainProcess, null]] as const)
       refusals.push(await callAsync(context, "git-azure-devops.linkBranch", link, client, window).then(() => null, failureOf));
     for (const payload of [null, { ...link, host: "github.com" }, { ...link, branch: " " }])
@@ -354,7 +354,7 @@ describe("RuntimePart", () => {
     const change = { reference, thread: 3, state: "Resolved" };
 
     await part.activateAsync(context.fake);
-    const refusals: (readonly [string, string] | null)[] = [];
+    const refusals: (readonly string[] | null)[] = [];
     for (const [client, window] of [["cli", null], ["chat", 1], [ShellClients.mainProcess, null]] as const) {
       refusals.push(await callAsync(context, "git-azure-devops.replyToThread", reply, client, window).then(() => null, failureOf));
       refusals.push(await callAsync(context, "git-azure-devops.changeThread", change, client, window).then(() => null, failureOf));
@@ -398,7 +398,7 @@ describe("RuntimePart", () => {
 
     await part.activateAsync(context.fake);
     const types = await callAsync(context, "git-azure-devops.readMergeTypes", reference);
-    const refusals: (readonly [string, string] | null)[] = [await callAsync(context, "git-azure-devops.readMergeTypes", null).then(() => null, failureOf)];
+    const refusals: (readonly string[] | null)[] = [await callAsync(context, "git-azure-devops.readMergeTypes", null).then(() => null, failureOf)];
     for (const [client, window] of [["cli", null], ["chat", 1], [ShellClients.mainProcess, null]] as const)
       refusals.push(await callAsync(context, "git-azure-devops.completePullRequest", completion, client, window).then(() => null, failureOf));
     for (const payload of [null, { ...completion, mergeType: "fastForward" }])
@@ -437,7 +437,7 @@ describe("RuntimePart", () => {
       ["git-azure-devops.abandonPullRequest", { reference, sourceCommit: commit }]] as const;
 
     await part.activateAsync(context.fake);
-    const refusals: (readonly [string, string] | null)[] = [];
+    const refusals: (readonly string[] | null)[] = [];
     for (const [method, payload] of writes)
       for (const [client, window] of [["cli", null], ["chat", 1], [ShellClients.mainProcess, null]] as const)
         refusals.push(await callAsync(context, method, payload, client, window).then(() => null, failureOf));
@@ -472,7 +472,7 @@ describe("RuntimePart", () => {
     const vote = { reference, vote: 5 };
 
     await part.activateAsync(context.fake);
-    const refusals: (readonly [string, string] | null)[] = [];
+    const refusals: (readonly string[] | null)[] = [];
     for (const [client, window] of [["cli", null], ["chat", 1], [ShellClients.mainProcess, null]] as const)
       refusals.push(await callAsync(context, "git-azure-devops.vote", vote, client, window).then(() => null, failureOf));
     for (const payload of [null, { ...vote, vote: 7 }])
@@ -502,7 +502,7 @@ describe("RuntimePart", () => {
     const addition = { reference, descriptor: "aad.TW9uYQ" };
 
     await part.activateAsync(context.fake);
-    const refusals: (readonly [string, string] | null)[] = [];
+    const refusals: (readonly string[] | null)[] = [];
     for (const [client, window] of [["cli", null], ["chat", 1], [ShellClients.mainProcess, null]] as const) {
       refusals.push(await callAsync(context, "git-azure-devops.searchPeople", search, client, window).then(() => null, failureOf));
       refusals.push(await callAsync(context, "git-azure-devops.addReviewer", addition, client, window).then(() => null, failureOf));

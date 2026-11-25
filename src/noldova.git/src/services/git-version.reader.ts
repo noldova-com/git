@@ -11,6 +11,7 @@ import { UntrustedSource } from "@noldova/git.protocol";
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
 import { GitTooOldException } from "../exceptions/git-too-old.exception.ts";
 import { GitArguments } from "../models/git-arguments.ts";
+import type { GitVersion } from "../models/git-version.ts";
 import { ProgramLimits } from "../models/program-limits.ts";
 import { ProgramRun } from "../models/program-run.ts";
 import { Resources } from "../resources.ts";
@@ -33,7 +34,7 @@ export class GitVersionReader {
   }
 
   /** Whether the person's git is at least this version, for a feature newer than the oldest git the module takes. */
-  public async atLeastAsync(folder: string, version: readonly [number, number]): Promise<boolean> {
+  public async atLeastAsync(folder: string, version: GitVersion): Promise<boolean> {
     return GitVersionReader.isAtLeast(await this.readAsync(folder), version);
   }
 
@@ -52,12 +53,11 @@ export class GitVersionReader {
     return result.output.toString(Resources.utf8Encoding);
   }
 
-  private static isAtLeast(output: string, [oldestMajor, oldestMinor]: readonly [number, number]): boolean {
+  private static isAtLeast(output: string, oldest: GitVersion): boolean {
     const match = Resources.versionPattern.exec(output);
     if (match === null)
       return false;
-    const [major, minor] = [Number(match[1]), Number(match[2])];
-    return major > oldestMajor || (major === oldestMajor && minor >= oldestMinor);
+    return oldest.isReachedBy(Number(match[1]), Number(match[2]));
   }
 
   private static versionOf(output: string): string | null {

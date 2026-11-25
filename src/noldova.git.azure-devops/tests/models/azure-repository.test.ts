@@ -17,6 +17,12 @@ function partsOf(host: string, path: string): readonly string[] | null {
   return repository === null ? null : [repository.organization, repository.project, repository.name];
 }
 
+/** A remote's host and path. */
+interface IRemote {
+  readonly host: string;
+  readonly path: string;
+}
+
 describe("AzureRepository", () => {
   it("reads the organization, project and repository from each kind of Azure DevOps remote", () => {
     assert.deepEqual([
@@ -39,10 +45,10 @@ describe("AzureRepository", () => {
   });
 
   it("reads no repository from another host, a path of another shape or an organization that isn't a name", () => {
-    const remotes: readonly (readonly [string, string])[] = [["github.com", "octocat/hello-world"], ["dev.azure.com", "fabrikam/web/site"],
-      ["dev.azure.com", "fabrikam/web/_git/site/extra"], ["ssh.dev.azure.com", "v2/fabrikam/web/site"], ["vs-ssh.visualstudio.com", "fabrikam/web/_git/site"],
-      ["fabrikam.visualstudio.com", "Collection/web/_git/site"], ["dev.azure.com", "-fabrikam/web/_git/site"], ["fab_rikam.visualstudio.com", "web/_git/site"]];
+    const remotes: readonly IRemote[] = [{ host: "github.com", path: "octocat/hello-world" }, { host: "dev.azure.com", path: "fabrikam/web/site" },
+      { host: "dev.azure.com", path: "fabrikam/web/_git/site/extra" }, { host: "ssh.dev.azure.com", path: "v2/fabrikam/web/site" }, { host: "vs-ssh.visualstudio.com", path: "fabrikam/web/_git/site" },
+      { host: "fabrikam.visualstudio.com", path: "Collection/web/_git/site" }, { host: "dev.azure.com", path: "-fabrikam/web/_git/site" }, { host: "fab_rikam.visualstudio.com", path: "web/_git/site" }];
 
-    assert.deepEqual(remotes.map(([host, path]) => partsOf(host, path)), remotes.map(() => null));
+    assert.deepEqual(remotes.map(({ host, path }) => partsOf(host, path)), remotes.map(() => null));
   });
 });

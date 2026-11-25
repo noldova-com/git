@@ -12,8 +12,9 @@ import { describe, it } from "vitest";
 
 import { ResetMode } from "../../src/enums/reset-mode.ts";
 import { GitResetParams } from "../../src/models/git-reset-params.ts";
+import type { IFieldFailure } from "../fixtures/field-failure.fixture.ts";
 
-const expected = (field: string, expectation: string): { name: string; field: string; message: string } =>
+const expected = (field: string, expectation: string): IFieldFailure =>
   ({ name: "ProtocolFieldException", field, message: `The field ${field} is invalid: expected ${expectation}.` });
 
 describe("GitResetParams", () => {

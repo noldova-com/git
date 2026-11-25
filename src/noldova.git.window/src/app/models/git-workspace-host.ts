@@ -13,6 +13,7 @@ import { GitPullRequestsState } from "../enums/git-pull-requests-state.ts";
 import type { IGitPullRequests } from "../interfaces/i-git-pull-requests.ts";
 import { Resources } from "../../resources.ts";
 import type { GitWorkspaceRow } from "./git-workspace-row.ts";
+import { GitHostTally } from "./git-host-tally.ts";
 
 /** A row of the workspace page's Hosts: a host that claims the repositories' remotes, or the remotes no host claims, by how Git reaches them. */
 export class GitWorkspaceHost {
@@ -38,7 +39,7 @@ export class GitWorkspaceHost {
    * out when any row's read says so, else signed in when one answered.
    */
   public static listOf(rows: readonly GitWorkspaceRow[], hostOf: (remote: GitRemote) => IGitPullRequests | null): readonly GitWorkspaceHost[] {
-    const hosts: Map<IGitPullRequests, [Set<string>, Set<GitPullRequestsState | null>]> = new Map();
+    const hosts: Map<IGitPullRequests, GitHostTally> = new Map();
     const plain: Map<RemoteTransport, Set<string>> = new Map();
     for (const row of rows) {
       const remote: GitRemote | null = row.summary()?.remote ?? null;
@@ -50,11 +51,12 @@ export class GitWorkspaceHost {
         plain.set(remote.transport, (plain.get(remote.transport) ?? new Set()).add(key));
         continue;
       }
-      const [remotes, states] = hosts.get(host) ?? [new Set<string>(), new Set<GitPullRequestsState | null>()];
-      hosts.set(host, [remotes.add(key), states.add(row.hostState())]);
+      const tally: GitHostTally = hosts.get(host) ?? new GitHostTally();
+      tally.add(key, row.hostState());
+      hosts.set(host, tally);
     }
     return [
-      ...[...hosts].map(([host, [remotes, states]]) => GitWorkspaceHost.ofHost(host, remotes.size, states)),
+      ...[...hosts].map(([host, tally]) => GitWorkspaceHost.ofHost(host, tally.remotes.size, tally.states)),
       ...[...plain].map(([transport, remotes]) => new GitWorkspaceHost(transport, Resources.plainGitHosts[transport], null, Resources.formatRemoteCount(remotes.size), "none"))
     ];
   }

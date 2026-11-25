@@ -12,6 +12,7 @@ import { describe, test } from "vitest";
 
 import { DiffFile, DiffHunk, DiffLine, FileChange, LineKind } from "@noldova/git.protocol";
 
+import type { IJsonWritable } from "../../src/interfaces/i-json-writable.ts";
 import { DiffBudget } from "../../src/models/diff-budget.ts";
 import { ParsedDiff } from "../../src/models/parsed-diff.ts";
 
@@ -20,7 +21,7 @@ describe("DiffBudget", () => {
   const firstHunk = new DiffHunk(0, 0, 1, 3, "", lines);
   const hunks = [firstHunk, new DiffHunk(0, 0, 4, 3, "next", lines)];
   const file = new DiffFile("a.txt", undefined, "a.txt", undefined, FileChange.Added, null, "100644", false, null, hunks, false);
-  const sizeOf = (value: { toJson(): unknown }): number => Buffer.byteLength(JSON.stringify(value.toJson()));
+  const sizeOf = (value: IJsonWritable): number => Buffer.byteLength(JSON.stringify(value.toJson()));
   const BASE = sizeOf(new DiffFile("a.txt", undefined, "a.txt", undefined, FileChange.Added, null, "100644", false, null, [], false));
   const HUNK = sizeOf(new DiffHunk(0, 0, 1, 3, "", [])) + 1;
   const LINE = sizeOf(new DiffLine(LineKind.Added, null, 1, "line 1")) + 1;

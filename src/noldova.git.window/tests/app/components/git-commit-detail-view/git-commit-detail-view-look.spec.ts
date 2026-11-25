@@ -15,7 +15,7 @@ import { page } from "vitest/browser";
 
 import { GitCommitView } from "../../../../src/app/models/git-commit-view.ts";
 import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
-import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
+import { FixtureLine, GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitLayout } from "../../../fixtures/git-layout.fixture.ts";
 import { GitViewFixture } from "../../../fixtures/git-view.fixture.ts";
 
@@ -26,7 +26,7 @@ describe("GitCommitDetailViewComponent in the kit's look", () => {
   const commit: GitGraphCommit = new GitGraphCommit(new GitCommit("c".repeat(40), ["d".repeat(40)], "Sample Author", "2026-11-20T14:02:00Z", "Follow renames"),
     "author@example.com", []);
   const answers = {
-    ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("src/services/reader.ts", [LineKind.Added, "one"]).toJson(),
+    ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("src/services/reader.ts", new FixtureLine(LineKind.Added, "one")).toJson(),
     "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson()
   };
 

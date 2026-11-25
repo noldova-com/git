@@ -12,7 +12,13 @@ import { describe, it } from "vitest";
 
 import { AnswerText } from "../../src/services/answer-text.ts";
 
-function streamOf(...chunks: readonly Uint8Array[]): { readonly response: Response; readonly isCancelled: () => boolean } {
+/** A response whose body streams the chunks, and whether its reader cancelled the stream. */
+interface IStreamedAnswer {
+  readonly response: Response;
+  readonly isCancelled: () => boolean;
+}
+
+function streamOf(...chunks: readonly Uint8Array[]): IStreamedAnswer {
   let cancelled: boolean = false;
   let index: number = 0;
   const body = new ReadableStream<Uint8Array>({

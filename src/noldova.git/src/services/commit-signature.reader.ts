@@ -9,6 +9,7 @@
 import { GitCommitSignature, SignatureState, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
+import { ConfigSetting } from "../models/config-setting.ts";
 import { GitArguments } from "../models/git-arguments.ts";
 import { ProgramLimits } from "../models/program-limits.ts";
 import { ProgramRun } from "../models/program-run.ts";
@@ -66,8 +67,9 @@ export class CommitSignatureReader {
         values.set(key, value);
     }
     const pinned = openPgp ?? program ?? Resources.defaultGpgProgram;
-    const settings: readonly (readonly [string, string])[] = [[Resources.gpgProgramSetting, pinned], [Resources.openPgpProgramSetting, pinned], ...values];
-    return settings.flatMap(([key, value]) => [Resources.configOption, Resources.formatSetting(key, value)]);
+    const settings: readonly ConfigSetting[] = [new ConfigSetting(Resources.gpgProgramSetting, pinned), new ConfigSetting(Resources.openPgpProgramSetting, pinned),
+      ...[...values].map(([key, value]) => new ConfigSetting(key, value))];
+    return settings.flatMap(t => [Resources.configOption, Resources.formatSetting(t.key, t.value)]);
   }
 
   /** Whether the commit's own headers carry a signature, which git reports as none when it can't run the program that checks it. */

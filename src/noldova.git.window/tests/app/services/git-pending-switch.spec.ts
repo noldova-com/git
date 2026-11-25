@@ -10,13 +10,24 @@ import { describe, expect, it } from "vitest";
 
 import { GitPendingSwitch } from "../../../src/app/services/git-pending-switch.ts";
 
+/** A promise the test settles when it chooses. */
+class Gate {
+  public readonly promise: Promise<void>;
+  public readonly resolve: () => void;
+
+  public constructor(promise: Promise<void>, resolve: () => void) {
+    this.promise = promise;
+    this.resolve = resolve;
+  }
+}
+
 describe("GitPendingSwitch", () => {
-  const gate = (): { readonly promise: Promise<void>; readonly resolve: () => void } => {
+  const gate = (): Gate => {
     let open: () => void = () => undefined;
     const promise: Promise<void> = new Promise<void>(resolve => {
       open = resolve;
     });
-    return { promise, resolve: () => open() };
+    return new Gate(promise, () => open());
   };
 
   it("names the target branch for its folder only while the switch runs", async () => {

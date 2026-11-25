@@ -21,7 +21,7 @@ import { GitFolder } from "@noldova/git.window";
 import { describe, expect, it, onTestFinished } from "vitest";
 
 import { AzureDevOpsCompleteComponent } from "../../../../src/app/components/azure-devops-complete/azure-devops-complete.component.ts";
-import type { PullAfter } from "../../../../src/app/types/pull-after.ts";
+import type { PullAfter } from "../../../../src/app/models/pull-after.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";

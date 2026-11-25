@@ -9,6 +9,7 @@
 import type { Signal } from "@angular/core";
 import "@noldova/context.core";
 import type { ILinkReferenceSource, LinkReference } from "@noldova/ui.components.angular";
+import { GitTextAround } from "./git-text-around.ts";
 
 /** A run of a text the Git view shows: plain words, or a reference it links to the reference's page. */
 export class GitReferencePart {
@@ -45,9 +46,9 @@ export class GitReferencePart {
   }
 
   /** A text's words before and after the first time it writes what links, such as "Review " and "" around "!8"; all of it links when it doesn't write it. */
-  public static around(text: string, linked: string): readonly [string, string, string] {
+  public static around(text: string, linked: string): GitTextAround {
     const at = text.indexOf(linked);
-    return at < 0 ? ["", text, ""] : [text.slice(0, at), linked, text.slice(at + linked.length)];
+    return at < 0 ? new GitTextAround("", text, "") : new GitTextAround(text.slice(0, at), linked, text.slice(at + linked.length));
   }
 
   /** A text that links as a whole to an address, such as a pull request's number to its page, as one reference. */

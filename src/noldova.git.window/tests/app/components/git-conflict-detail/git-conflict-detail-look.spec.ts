@@ -25,6 +25,17 @@ import { GitConflictsComponent } from "../../../../src/app/components/git-confli
 import { GitResolving } from "../../../../src/app/services/git-resolving.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 
+/** The conflicts document and the Conflict view beside it. */
+class ConflictScreens {
+  public readonly document: HTMLElement;
+  public readonly view: HTMLElement;
+
+  public constructor(document: HTMLElement, view: HTMLElement) {
+    this.document = document;
+    this.view = view;
+  }
+}
+
 describe("GitConflictDetailComponent in the kit's look", () => {
   const screenshots: string = "../../../../../../_build/window/screenshots";
   const rem = (pixels: number): number => Math.round(pixels / parseFloat(getComputedStyle(document.documentElement).fontSize) * 1000) / 1000;
@@ -56,7 +67,7 @@ describe("GitConflictDetailComponent in the kit's look", () => {
   };
 
   /** The conflicts document and the Conflict view beside it, with a merge's conflicted file open and its conflict active. */
-  const renderAsync = async (viewWidth: string): Promise<{ readonly document: HTMLElement; readonly view: HTMLElement }> => {
+  const renderAsync = async (viewWidth: string): Promise<ConflictScreens> => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     GitFixtures.answerWith(context, {
       ...GitFixtures.watching,
@@ -86,7 +97,7 @@ describe("GitConflictDetailComponent in the kit's look", () => {
     fixture.debugElement.query(By.directive(MergeEditorComponent)).injector.get(MergeEditorComponent).nextConflict();
     await untilAsync([viewElement], () => !Object.isNull(viewElement.querySelector(".base-text .nol-code-text-line")) && !Object.isNull(viewElement.querySelector(".markers")));
     await fixture.whenStable();
-    return { document: documentElement, view: viewElement };
+    return new ConflictScreens(documentElement, viewElement);
   };
 
   afterEach(async () => {
