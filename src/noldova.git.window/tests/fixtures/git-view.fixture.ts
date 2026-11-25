@@ -6,8 +6,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { computed, type EnvironmentProviders, Injector, type Provider, signal, type WritableSignal } from "@angular/core";
+import { computed, type EnvironmentProviders, Injector, type Provider, type Signal, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitCommitDetailViewComponent } from "../../src/app/components/git-commit-detail-view/git-commit-detail-view.component.ts";
@@ -52,13 +53,16 @@ export class GitViewFixture {
     return view;
   }
 
-  /** The Git panel and the Commit view beside it, which follows the folder's viewed commit as the history document in front does; the fixture looks in the view. */
+  /**
+   * The Git panel and the Commit view beside it, which follows the folder's viewed commit as the history document in front does; the fixture looks in the view.
+   * @param active Whether that history document is the window's active document; while it isn't, the view keeps the commit it showed.
+   */
   public static async renderCommitAsync(answers: Readonly<Record<string, JsonValue | Error | (() => JsonValue | Error)>>, selector: string = ".detail",
-    providers: readonly (Provider | EnvironmentProviders)[] = []): Promise<GitViewFixture> {
+    providers: readonly (Provider | EnvironmentProviders)[] = [], active: Signal<boolean> = signal(true)): Promise<GitViewFixture> {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     GitFixtures.answerWith(context, answers);
     const folder: WritableSignal<string | null> = GitFixtures.setUp(context, providers);
-    GitCommitDetails.of(context).follow(computed(() => GitViewing.commitOf(folder())), signal(true), TestBed.inject(Injector));
+    GitCommitDetails.of(context).follow(computed(() => GitViewing.commitOf(folder())), active, TestBed.inject(Injector));
     const panel: ComponentFixture<GitViewComponent> = TestBed.createComponent(GitViewComponent);
     panel.autoDetectChanges();
     const fixture: ComponentFixture<GitCommitDetailViewComponent> = TestBed.createComponent(GitCommitDetailViewComponent);
@@ -73,7 +77,7 @@ export class GitViewFixture {
 
   public find<T extends HTMLElement = HTMLElement>(selector: string): T {
     const found: T | null = this.element.querySelector<T>(selector);
-    if (found === null)
+    if (Object.isNull(found))
       throw new Error(`Nothing matches ${selector}.`);
     return found;
   }
@@ -87,7 +91,7 @@ export class GitViewFixture {
   }
 
   public waitForAsync(selector: string): Promise<void> {
-    return this.untilAsync(() => this.element.querySelector(selector) !== null);
+    return this.untilAsync(() => !Object.isNull(this.element.querySelector(selector)));
   }
 
   public untilAsync(done: () => boolean): Promise<void> {
@@ -115,7 +119,7 @@ export class GitViewFixture {
     await this.clickAsync(trigger);
     await this.untilAsync(() => rows().length > 0);
     const row: HTMLElement | undefined = rows().find(t => t.textContent?.includes(label) === true);
-    if (row === undefined)
+    if (Object.isUndefined(row))
       throw new Error(`No menu row reads ${label}.`);
     row.click();
     await this.untilAsync(() => rows().length === 0);

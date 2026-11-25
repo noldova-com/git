@@ -15,6 +15,7 @@ import { PickEmptyException } from "../exceptions/pick-empty.exception.ts";
 import { PickStoppedException } from "../exceptions/pick-stopped.exception.ts";
 import type { IGitWrite } from "../interfaces/i-git-write.ts";
 import { GitArguments } from "../models/git-arguments.ts";
+import { PickedCommit } from "../models/picked-commit.ts";
 import { ProgramLimits } from "../models/program-limits.ts";
 import { ProgramRun } from "../models/program-run.ts";
 import type { RepositoryFolders } from "../models/repository-folders.ts";
@@ -107,12 +108,12 @@ export class PickWriter implements IGitWrite {
     return [...command, ...commit.isMerge ? Resources.mainlineArguments : []];
   }
 
-  private async readAsync(top: string, signal?: AbortSignal): Promise<{ readonly isMerge: boolean; readonly subject: string }> {
+  private async readAsync(top: string, signal?: AbortSignal): Promise<PickedCommit> {
     const gitArguments = new GitArguments([...Resources.pickCommitArguments, Resources.endOfOptions, this.id]);
     const result = await this.runner.runAsync(ProgramRun.readGit(gitArguments, top, PickWriter.READ_LIMITS, signal));
     if (result.exit.code !== 0)
       throw new GitFailedException(Resources.logCommand, { text: result.errors.toString(Resources.utf8Encoding), source: UntrustedSource.Repository });
     const [parents = "", subject = ""] = result.output.toString(Resources.utf8Encoding).split(Resources.nulCharacter);
-    return { isMerge: parents.trim().split(Resources.space).length > 1, subject: LogReader.toLine(subject.trimEnd()) };
+    return new PickedCommit(parents.trim().split(Resources.space).length > 1, LogReader.toLine(subject.trimEnd()));
   }
 }

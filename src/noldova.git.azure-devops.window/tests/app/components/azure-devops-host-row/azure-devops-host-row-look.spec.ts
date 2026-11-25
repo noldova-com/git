@@ -9,6 +9,7 @@
 import type {} from "@vitest/browser-playwright";
 import { Component } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
@@ -43,7 +44,7 @@ const builds: string = "https://dev.azure.com/fabrikam/web/_build/results?buildI
 const longCheck: string = "Sample build with a long name (Linux x64) that runs on past the width of the row, so the row cuts it short at its end, with a few more words added";
 const completed: HostItem = new HostItem(new HostReference("git-azure-devops", "fabrikam", "3f2504e0-4f89-11d3-9a0c-0305e82c3301", 1234), ReferenceKind.PullRequest,
   ReferenceState.Merged, title, "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/1234", null, 1_800_000_000_000, 1_800_000_360_000, 0,
-  new HostChanges(null, null, null, "feature/readme", "main", "0123456789abcdef0123456789abcdef01234567"));
+  HostChanges.uncounted("feature/readme", "main", "0123456789abcdef0123456789abcdef01234567"));
 const answer: BranchPullRequest = new BranchPullRequest(completed, [
   new HostCheck("Linux x64", CheckState.Succeeded, `${builds}1`),
   new HostCheck("macOS arm64", CheckState.Running, `${builds}2`),
@@ -58,7 +59,7 @@ async function openAsync(mode: ThemeMode, signIn: HostSignIn, pullRequest: Branc
   const context = new FakeWindowPartContext();
   const requests = new RequestAnswers(context);
   requests.answer(AzureDevOpsNames.readSignInMethod, signIn.toJson());
-  if (pullRequest !== null)
+  if (!Object.isNull(pullRequest))
     requests.answer(AzureDevOpsNames.readBranchPullRequestMethod, pullRequest.toJson());
   prepare(context, requests);
   TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: context }, TooltipFixture.atOnce] });

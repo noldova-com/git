@@ -8,6 +8,7 @@
 
 import { computed, Injector, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { describe, expect, it, onTestFinished } from "vitest";
 
@@ -41,18 +42,25 @@ describe("GitWorkspacesComponent", () => {
     return fixture;
   };
 
+  const elementOf = (fixture: ComponentFixture<GitWorkspacesComponent>): HTMLElement => {
+    const element: unknown = fixture.nativeElement;
+    if (!(element instanceof HTMLElement))
+      throw new Error("The view isn't rendered.");
+    return element;
+  };
+
   /** Each match's pieces of text, such as an icon's name and a label, apart. */
   const texts = (fixture: ComponentFixture<GitWorkspacesComponent>, selector: string): readonly string[] =>
-    [...(fixture.nativeElement as HTMLElement).querySelectorAll(selector)].map(element => {
+    [...elementOf(fixture).querySelectorAll(selector)].map(element => {
       const walker: TreeWalker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
       const pieces: string[] = [];
-      for (let node: Node | null = walker.nextNode(); node !== null; node = walker.nextNode())
+      for (let node: Node | null = walker.nextNode(); !Object.isNull(node); node = walker.nextNode())
         pieces.push((node.textContent ?? "").trim());
       return pieces.filter(t => t.length > 0).join(" ");
     });
 
   const click = (fixture: ComponentFixture<GitWorkspacesComponent>, selector: string, index: number = 0): void => {
-    (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(selector)[index]?.click();
+    elementOf(fixture).querySelectorAll<HTMLElement>(selector)[index]?.click();
     fixture.detectChanges();
   };
 

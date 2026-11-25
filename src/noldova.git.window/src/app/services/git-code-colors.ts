@@ -7,6 +7,7 @@
  */
 
 import { DestroyRef, ErrorHandler, inject, Injectable, signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { CodeLanguage, ShikiLineTokenizer } from "@noldova/editor.angular";
 
 /**
@@ -28,8 +29,8 @@ export class GitCodeColors {
    * load, which goes to the error handler; read in a computed or an effect, it follows the load.
    */
   public tokenizerOf(path: string | null): ShikiLineTokenizer | null {
-    const language: string | null = path === null ? null : CodeLanguage.forPath(path)?.id ?? null;
-    if (language === null)
+    const language: string | null = Object.isNull(path) ? null : CodeLanguage.forPath(path)?.id ?? null;
+    if (Object.isNull(language))
       return null;
     const loaded: ReadonlyMap<string, ShikiLineTokenizer | null> = this.loaded();
     if (!loaded.has(language) && !this.loading.has(language))

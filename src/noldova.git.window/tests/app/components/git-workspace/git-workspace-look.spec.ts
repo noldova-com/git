@@ -8,6 +8,7 @@
 
 import { ApplicationRef, signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { JsonReader, type JsonValue } from "@noldova/context.json";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { FileState, GitRemote, RemoteTransport, StatusUpstream } from "@noldova/git.protocol";
@@ -49,7 +50,7 @@ describe("GitWorkspaceComponent in the kit's look", () => {
   const textBox = (element: Element): DOMRect => {
     const range: Range = document.createRange();
     const text: Node | undefined = [...element.childNodes].find(t => t.nodeType === Node.TEXT_NODE && (t.textContent ?? "").trim().length > 0);
-    if (text === undefined)
+    if (Object.isUndefined(text))
       return new DOMRect();
     range.selectNodeContents(text);
     return range.getBoundingClientRect();
@@ -81,10 +82,11 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     localStorage.clear();
     GitWorkspaces.restore();
     GitRecentRepositories.restore();
-    onTestFinished(() => {
+    onTestFinished(async () => {
       localStorage.clear();
       GitWorkspaces.restore();
       GitRecentRepositories.restore();
+      await page.viewport(1280, 800);
     });
     const workspace: GitWorkspace = GitWorkspaces.create("Noldova");
     for (const [folder] of repositories)
@@ -95,7 +97,7 @@ describe("GitWorkspaceComponent in the kit's look", () => {
       const repository: (typeof repositories)[number] | undefined = repositories.find(t => t[0] === folder);
       if (method === "git.pull")
         return null;
-      if (method !== "git.status" || repository === undefined)
+      if (method !== "git.status" || Object.isUndefined(repository))
         return GitFixtures.answerFor(GitFixtures.watching, method);
       const [, branch, ahead, behind, files] = repository;
       const status: JsonValue = GitFixtures.status(Array.from({ length: files }, (_, i) => GitFixtures.entry(`f${i}.ts`, FileState.Unmodified, FileState.Modified)),
@@ -196,7 +198,7 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     async mode => {
       AppearanceFixture.apply(DefaultTheme.theme, mode);
       const { page: element, view: panel } = await renderBothAsync();
-      await untilAsync(panel, () => panel.querySelector(".across .behind") !== null);
+      await untilAsync(panel, () => !Object.isNull(panel.querySelector(".across .behind")));
 
       const card: HTMLElement = panel.querySelector<HTMLElement>(".change") ?? panel;
       const across: HTMLElement = panel.querySelector<HTMLElement>("nol-git-workspace-across") ?? panel;
@@ -252,7 +254,7 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     const element: HTMLElement = await renderAsync();
     for (const row of [2, 3, 5])
       element.querySelector<HTMLElement>(`.tr:not(.th):nth-child(${row + 1}) nol-checkbox input`)?.click();
-    await untilAsync(element, () => element.querySelector(".new-branch") !== null);
+    await untilAsync(element, () => !Object.isNull(element.querySelector(".new-branch")));
     const toolbar: HTMLElement = element.querySelector<HTMLElement>(".toolbar") ?? element;
     const buttons: HTMLElement[] = [".fetch-all", ".pull-chosen", ".new-branch"].map(t => toolbar.querySelector<HTMLElement>(t) ?? toolbar);
     const labels: readonly string[] = buttons.map(t => t.innerText.replace(/\s+/gu, " ").trim());
@@ -260,7 +262,7 @@ describe("GitWorkspaceComponent in the kit's look", () => {
       i === 0 ? 0.25 : rem(box(t).left - box(buttons[i - 1] ?? t).right)]);
 
     buttons[1]?.click();
-    await untilAsync(element, () => element.querySelector(".result p") !== null);
+    await untilAsync(element, () => !Object.isNull(element.querySelector(".result p")));
     const result: HTMLElement = element.querySelector<HTMLElement>(".result") ?? element;
     const line: HTMLElement = result.querySelector<HTMLElement>("p") ?? result;
     const table: HTMLElement = element.querySelector<HTMLElement>(".table") ?? element;
@@ -270,13 +272,13 @@ describe("GitWorkspaceComponent in the kit's look", () => {
 
     buttons[2]?.click();
     TestBed.inject(ApplicationRef).tick();
-    await untilAsync(document.documentElement, () => document.querySelector("nol-git-bulk-branch-dialog .name") !== null);
+    await untilAsync(document.documentElement, () => !Object.isNull(document.querySelector("nol-git-bulk-branch-dialog .name")));
     const dialog: HTMLElement = document.querySelector<HTMLElement>("nol-git-bulk-branch-dialog") ?? document.body;
     const field: HTMLInputElement = dialog.querySelector<HTMLInputElement>(".name") ?? document.createElement("input");
     field.value = "a..b";
     field.dispatchEvent(new Event("input"));
     TestBed.inject(ApplicationRef).tick();
-    await untilAsync(dialog, () => dialog.querySelector(".refused") !== null);
+    await untilAsync(dialog, () => !Object.isNull(dialog.querySelector(".refused")));
     const refused: HTMLElement = dialog.querySelector<HTMLElement>(".refused") ?? dialog;
     const text: HTMLElement = dialog.querySelector<HTMLElement>(".text") ?? dialog;
     const item: HTMLElement = dialog.querySelector<HTMLElement>("li") ?? dialog;
@@ -374,11 +376,11 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     element.style.height = "27rem";
     const table: HTMLElement = element.querySelector<HTMLElement>(".table") ?? element;
     const rows: readonly HTMLElement[] = [...table.querySelectorAll<HTMLElement>(".tr")];
-    const checked: readonly HTMLElement[] = rows.filter(t => t.querySelector(".select") !== null);
+    const checked: readonly HTMLElement[] = rows.filter(t => !Object.isNull(t.querySelector(".select")));
     const left: number = box(table).left;
     const inset: number = rem(box(table.querySelector(".select")).left - left);
     const clear: readonly number[] = checked.map(t => rem(box(t.children[1] ?? t).left - box(t.querySelector(".select .nol-checkbox-control")).right));
-    const start = (cell: Element): number => cell.firstElementChild === null ? textBox(cell).left : box(cell.firstElementChild).left;
+    const start = (cell: Element): number => Object.isNull(cell.firstElementChild) ? textBox(cell).left : box(cell.firstElementChild).left;
     const before: readonly number[] = rows.map(t => box(t.children[2] ?? t).left);
 
     table.scrollLeft = table.scrollWidth;

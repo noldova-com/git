@@ -3309,7 +3309,7 @@ export declare class GitRef {
    * @param kind What it names.
    * @param name The short name; empty only for a detached HEAD.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
-   * @throws {ProtocolFieldException} When the kind is unknown, or the name isn't one line, or is empty for a branch or tag.
+   * @throws {ProtocolFieldException} When the name isn't one line, or is empty for a branch or tag.
    */
   public constructor(kind: RefKind, name: string, reader?: JsonReader);
 
@@ -4895,7 +4895,7 @@ export declare class GitJournalEntry {
 }
 
 /**
- * The answer of `git.journal`: a repository's recent writes while the module runs, oldest first, at most 50.
+ * The answer of `git.journal`: a repository's recent writes while the module runs, oldest first, at most 500.
  * @example
  * ```ts
  * import { GitJournal } from "@noldova/git.protocol";
@@ -4904,7 +4904,7 @@ export declare class GitJournalEntry {
  */
 export declare class GitJournal {
   /**
-   * The entries, at most 50.
+   * The entries, at most 500.
    */
   public readonly entries: readonly GitJournalEntry[];
 
@@ -4916,7 +4916,7 @@ export declare class GitJournal {
 
   /**
    * Creates the journal.
-   * @param entries The entries; at most 50.
+   * @param entries The entries; at most 500.
    * @param checkpoints Whether a discard now takes a checkpoint first; false by default.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
    * @throws {ProtocolFieldException} When it holds more than 50 entries.
@@ -5825,10 +5825,8 @@ export declare class GitCommitSigning {
    * Creates the answer.
    * @param signs Whether git signs a new commit.
    * @param format The format, or `null` for one git doesn't know.
-   * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
-   * @throws {ProtocolFieldException} When the format isn't a {@link SigningFormat} or `null`.
    */
-  public constructor(signs: boolean, format: SigningFormat | null, reader?: JsonReader);
+  public constructor(signs: boolean, format: SigningFormat | null);
 
   /**
    * Reads the answer from its JSON form.
@@ -5927,7 +5925,7 @@ export declare class GitPrediction {
    * @param outcome What the write would do.
    * @param paths The paths that would conflict; at least one exactly when the outcome is `Conflicts`.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
-   * @throws {ProtocolFieldException} When the outcome is unknown, the paths don't match it, or a path isn't a relative path.
+   * @throws {ProtocolFieldException} When the paths don't match the outcome or a path isn't a relative path.
    */
   public constructor(outcome: PredictionOutcome, paths: readonly string[], reader?: JsonReader);
 
@@ -6700,7 +6698,7 @@ export declare class GitMessageReferencesParams {
    * @param kind Which references to find.
    * @param limit How many commits; 1 to 5000.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
-   * @throws {ProtocolFieldException} When the folder isn't absolute, the kind is unknown, or the limit is outside 1 to 5000.
+   * @throws {ProtocolFieldException} When the folder isn't absolute or the limit is outside 1 to 5000.
    */
   public constructor(folder: string, kind: GitMessageReferenceKind, limit: number, reader?: JsonReader);
 

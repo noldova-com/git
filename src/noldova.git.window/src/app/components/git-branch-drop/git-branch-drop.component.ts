@@ -7,6 +7,7 @@
  */
 
 import { afterNextRender, Component, computed, type ElementRef, input, type InputSignal, output, type OutputEmitterRef, type Signal, viewChild } from "@angular/core";
+import "@noldova/context.core";
 import { type GitPrediction, PredictionOutcome } from "@noldova/git.protocol";
 
 import type { GitBranchDrop } from "../../models/git-branch-drop.ts";
@@ -57,7 +58,7 @@ export class GitBranchDropComponent {
     if (this.checking())
       return { icon: Resources.dropCheckingIcon, text: Resources.dropChecking, tone: "" };
     const prediction = this.prediction();
-    if (prediction === null)
+    if (Object.isNull(prediction))
       return null;
     switch (prediction.outcome) {
       case PredictionOutcome.Clean:
@@ -78,7 +79,7 @@ export class GitBranchDropComponent {
   });
   protected readonly detail: Signal<string> = computed(() => {
     const drop = this.drop();
-    if (drop.predicted !== null)
+    if (!Object.isNull(drop.predicted))
       return Resources.formatDropChecked(drop);
     return drop.canMerge || drop.canRebase ? Resources.dropSameCommit : Resources.formatDropUnpredicted(drop.source, drop.target);
   });

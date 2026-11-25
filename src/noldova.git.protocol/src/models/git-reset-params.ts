@@ -23,8 +23,6 @@ export class GitResetParams {
   public constructor(folder: string, id: string, mode: ResetMode, basedOn: string, reader?: JsonReader) {
     FieldCheck.requireFolder(folder, Resources.folderField, reader);
     FieldCheck.requireObjectId(id, Resources.idField, reader);
-    if (!Object.values(ResetMode).includes(mode))
-      FieldCheck.fail(Resources.modeField, Resources.resetModeExpected, reader);
     FieldCheck.requireText(basedOn, Resources.basedOnField, reader);
 
     this.folder = folder;

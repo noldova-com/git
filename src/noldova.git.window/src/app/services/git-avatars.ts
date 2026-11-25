@@ -7,6 +7,7 @@
  */
 
 import { signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 
 import type { IGitAvatars } from "../interfaces/i-git-avatars.ts";
 
@@ -30,7 +31,7 @@ export class GitAvatars {
   public static imageOf(folder: string, email: string, commitId: string): string | null {
     for (const avatars of [...GitAvatars.provided(), ...GitAvatars.fallbacks()]) {
       const image: string | null | undefined = avatars.avatarOf(folder, email, commitId);
-      if (image !== null)
+      if (!Object.isNull(image))
         return image ?? null;
     }
     return null;

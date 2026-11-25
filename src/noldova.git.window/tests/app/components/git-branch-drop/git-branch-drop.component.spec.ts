@@ -7,6 +7,7 @@
  */
 
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { GitPrediction, PredictionOutcome } from "@noldova/git.protocol";
 import { describe, expect, it } from "vitest";
 
@@ -40,7 +41,7 @@ describe("GitBranchDropComponent", () => {
   /** The element's text, its children's texts apart by a space. */
   const text = (element: HTMLElement, selector: string): string => {
     const found: Element | null = element.querySelector(selector);
-    const parts: string[] = found === null ? [] : found.children.length === 0 ? [found.textContent ?? ""] : [...found.children].map(t => t.textContent ?? "");
+    const parts: string[] = Object.isNull(found) ? [] : found.children.length === 0 ? [found.textContent ?? ""] : [...found.children].map(t => t.textContent ?? "");
     return parts.map(t => t.trim()).filter(t => t.length > 0).join(" ");
   };
   const option = (element: HTMLElement, name: string): HTMLButtonElement => element.querySelector<HTMLButtonElement>(`.option.${name}`) ?? document.createElement("button");

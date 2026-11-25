@@ -12,13 +12,22 @@ import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
 import { HostPolicy, HostPullRequest, HostWorkItem, HostWorkItemDetail, HostWorkItemType, PolicyState, WorkItemCategory, WorkItemScope, WorkItemsQuery } from "@noldova/git.hosting.protocol";
 import { GitCommit, GitGraph, GitGraphCommit, GitGraphParams, GitNames } from "@noldova/git.protocol";
 import { GitFolder } from "@noldova/git.window";
-import { describe, expect, it, onTestFinished } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { Wait } from "../../../fixtures/wait.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
-import { azureStatus, bug, childrenQuery, detailOf, githubStatus, history, HOST, INSTANCE, itemOf, listOf, messages, noMessages, Page, pr482, PROJECT,
+import { azureStatus, bug, childrenQuery, detailOf, githubStatus, history, HOST, INSTANCE, itemOf, listOf, messages, noMessages, NOW, Page, pr482, PROJECT,
   pullRequest, story, task, tasks, urlOf } from "../../../fixtures/work-items-page.fixture.ts";
+
+/** Fixes the clock the ages read to the one the history's commits are dated from; only Date is faked, so the page's timers still run. */
+function pinNow(): void {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(NOW);
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
+}
 
 describe("AzureDevOpsWorkItemDetailComponent", () => {
   it("shows the instance's work item with its fields, acceptance criteria, tasks with their hours, and its development", async () => {
@@ -200,6 +209,7 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
 
   it("lists the open repository's commits among its last 1,000 that name the shown work item in the subject or AB#N in the message, newest first, saying the read stops there",
     async () => {
+      pinNow();
       onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/garden-web")));
       const page = new Page().answerMine();
       page.requests.answer(GitNames.statusMethod, azureStatus.toJson());

@@ -19,13 +19,25 @@ export class AzureRepository {
     this.name = name;
   }
 
+  /** The repository a remote's host and path name, its project and repository names decoded from the percent escapes the path carries them in. */
   public static parse(host: string, path: string): AzureRepository | null {
     const full: string | null = AzureRepository.fullPathOf(host, path);
     if (full === null || !Resources.fullPathPattern.test(full))
       return null;
     const first: number = full.indexOf(Resources.pathSeparator);
     const last: number = full.lastIndexOf(Resources.pathSeparator);
-    return new AzureRepository(full.slice(0, first), full.slice(first + 1, last), full.slice(last + 1));
+    const project: string | null = AzureRepository.decode(full.slice(first + 1, last));
+    const name: string | null = AzureRepository.decode(full.slice(last + 1));
+    return project === null || name === null ? null : new AzureRepository(full.slice(0, first), project, name);
+  }
+
+  private static decode(text: string): string | null {
+    try {
+      return decodeURIComponent(text);
+    }
+    catch {
+      return null;
+    }
   }
 
   private static fullPathOf(host: string, path: string): string | null {

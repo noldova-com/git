@@ -7,6 +7,7 @@
  */
 
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { HostChanges, HostPullRequestConflicts, HostReference } from "@noldova/git.hosting.protocol";
@@ -25,7 +26,7 @@ const HEAD: string = "0123456789abcdef0123456789abcdef01234567";
 const FOLDER: string = "/work/site";
 const reference: HostReference = new HostReference("git-example", "fabrikam", REPOSITORY, 752);
 const other: HostReference = new HostReference("git-example", "fabrikam", REPOSITORY, 7);
-const changes: HostChanges = new HostChanges(null, null, null, "users/monalisa/export-notes", "main", HEAD);
+const changes: HostChanges = HostChanges.uncounted("users/monalisa/export-notes", "main", HEAD);
 const conflicts: HostPullRequestConflicts = new HostPullRequestConflicts(["src/app.ts", "README.md"], false);
 const merge: GitOperation = new GitOperation(OperationKind.Merge, HEAD, null);
 const statusOf = (branch: string | null, operation: GitOperation | null): GitStatus => new GitStatus(branch, "a".repeat(40), null, [], false, "f1", operation,
@@ -34,7 +35,7 @@ const statusOf = (branch: string | null, operation: GitOperation | null): GitSta
 function wordsOf(node: Node): string {
   const words: string[] = [];
   const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-  for (let text = walker.nextNode(); text !== null; text = walker.nextNode())
+  for (let text = walker.nextNode(); !Object.isNull(text); text = walker.nextNode())
     words.push((text.textContent ?? "").trim());
   return words.filter(t => t.length > 0).join(" ").replace(/\s+/g, " ");
 }
@@ -92,7 +93,7 @@ class Tab {
 
   public async clickAsync(selector: string): Promise<void> {
     const found = this.element.querySelector<HTMLElement>(selector);
-    if (found === null)
+    if (Object.isNull(found))
       throw new Error(`Nothing matches ${selector}.`);
     found.click();
     await this.settleAsync();

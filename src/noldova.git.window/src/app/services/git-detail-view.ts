@@ -7,7 +7,11 @@
  */
 
 import { computed, DestroyRef, effect, type Injector, linkedSignal, type Signal, signal, untracked, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import type { IWindowPartContext } from "@noldova/desktop.window";
+
+import { GitDetailFront } from "../models/git-detail-front.ts";
+import { GitDetailPage } from "../models/git-detail-page.ts";
 
 /**
  * A detail view beside the documents that shows what the active document of its kind chose, such as a work item or a conflict. One rule brings it to the
@@ -20,21 +24,21 @@ export class GitDetailView<T> {
   private readonly instance: string;
   private readonly titleOf: (choice: T) => string;
   private readonly isBroughtForward: boolean;
-  private readonly pages: WritableSignal<readonly (readonly [Signal<T | null>, Signal<boolean>])[]> = signal([]);
+  private readonly pages: WritableSignal<readonly GitDetailPage<T>[]> = signal([]);
   private readonly opened: WritableSignal<boolean> = signal<boolean>(false);
   /** The choice the view last opened for while its document stayed in front, so a document showing the one the person just chose doesn't open it twice. */
   private lastOpened: T | null = null;
 
   /** The choice of the followed document that is the window's active document: `undefined` while none is, `null` while it has nothing chosen. */
-  public readonly front: Signal<T | null | undefined> = computed(() => this.pages().find(t => t[1]())?.[0]());
+  public readonly front: Signal<T | null | undefined> = computed(() => this.pages().find(t => t.active())?.choice());
 
   /** What the view shows: the front choice, kept while a document of another kind is in front; `null` once no followed document is open. */
-  public readonly shown: Signal<T | null> = linkedSignal({
-    source: (): { readonly front: T | null | undefined; readonly isFollowing: boolean } => ({ front: this.front(), isFollowing: this.pages().length > 0 }),
-    computation: (source: { readonly front: T | null | undefined; readonly isFollowing: boolean }, previous?: { value: T | null }): T | null => {
+  public readonly shown: Signal<T | null> = linkedSignal<GitDetailFront<T>, T | null>({
+    source: (): GitDetailFront<T> => new GitDetailFront(this.front(), this.pages().length > 0),
+    computation: (source, previous): T | null => {
       if (!source.isFollowing)
         return null;
-      return source.front === undefined ? previous?.value ?? null : source.front;
+      return Object.isUndefined(source.front) ? previous?.value ?? null : source.front;
     }
   });
 
@@ -59,7 +63,7 @@ export class GitDetailView<T> {
    * documents for another kind gives its group's front back with `returnView`.
    */
   public follow(choice: Signal<T | null>, active: Signal<boolean>, injector: Injector): void {
-    const page: readonly [Signal<T | null>, Signal<boolean>] = [choice, active];
+    const page: GitDetailPage<T> = new GitDetailPage(choice, active);
     this.pages.update(t => [...t, page]);
     injector.get(DestroyRef).onDestroy(() => this.pages.update(t => t.filter(u => u !== page)));
     let wasShowing: boolean = false;
@@ -67,13 +71,13 @@ export class GitDetailView<T> {
     effect(() => {
       const isActive: boolean = active();
       const chosen: T | null = choice();
-      const isShowing: boolean = isActive && chosen !== null;
+      const isShowing: boolean = isActive && !Object.isNull(chosen);
       untracked(() => {
         if (wasActive && !isActive)
           this.lastOpened = null;
-        if (isShowing && !wasShowing && chosen !== null && chosen !== this.lastOpened && this.isBroughtForward)
+        if (isShowing && !wasShowing && !Object.isNull(chosen) && chosen !== this.lastOpened && this.isBroughtForward)
           this.open(chosen);
-        else if (wasActive && !isActive && this.opened() && this.front() === undefined)
+        else if (wasActive && !isActive && this.opened() && Object.isUndefined(this.front()))
           this.context.returnView(this.view, this.instance);
       });
       wasShowing = isShowing;
@@ -89,7 +93,7 @@ export class GitDetailView<T> {
   /** Brings the view to the front of its group for the followed document in front's choice; with none, the next one in front with a choice brings it. */
   public bringForward(): void {
     const front: T | null | undefined = this.front();
-    if (front !== undefined && front !== null)
+    if (!Object.isNullOrUndefined(front))
       this.open(front);
   }
 

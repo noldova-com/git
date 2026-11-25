@@ -22,8 +22,6 @@ export class GitMessageReferencesParams {
 
   public constructor(folder: string, kind: GitMessageReferenceKind, limit: number, reader?: JsonReader) {
     FieldCheck.requireFolder(folder, Resources.folderField, reader);
-    if (!Object.values(GitMessageReferenceKind).includes(kind))
-      FieldCheck.fail(Resources.kindField, Resources.messageReferenceKindExpected, reader);
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > Resources.maximumGraphLimit)
       FieldCheck.fail(Resources.limitField, Resources.graphLimitExpected, reader);
 

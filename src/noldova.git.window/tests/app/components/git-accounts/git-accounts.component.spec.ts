@@ -8,6 +8,7 @@
 
 import { Component, inject, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { type IWindowPartContext, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { afterEach, describe, expect, it, onTestFinished } from "vitest";
@@ -48,7 +49,7 @@ class Page {
 
   public find(selector: string, root: ParentNode = this.element): HTMLElement {
     const found: HTMLElement | null = root.querySelector<HTMLElement>(selector);
-    if (found === null)
+    if (Object.isNull(found))
       throw new Error(`Nothing matches ${selector}.`);
     return found;
   }
@@ -78,7 +79,7 @@ class Page {
 
   public async closeDialogAsync(): Promise<void> {
     await this.clickAsync(this.find(".nol-dialog-close", document));
-    await this.untilAsync(() => this.dialog() === null);
+    await this.untilAsync(() => Object.isNull(this.dialog()));
   }
 }
 
@@ -133,7 +134,7 @@ describe("GitAccountsComponent", () => {
     await page.fixture.whenStable();
 
     await page.clickAsync(page.find(".card button[nol-button]"));
-    await page.untilAsync(() => page.dialog()?.querySelector(".test-sign-in") !== null);
+    await page.untilAsync(() => !Object.isNull(page.dialog()?.querySelector(".test-sign-in")));
     const title: string[] = page.texts(".nol-dialog-title", document);
     await page.closeDialogAsync();
 
@@ -147,7 +148,7 @@ describe("GitAccountsComponent", () => {
     await page.fixture.whenStable();
 
     await page.clickAsync(page.find(".card button[nol-icon-button]"));
-    await page.untilAsync(() => page.dialog()?.querySelector(".test-sign-in") !== null);
+    await page.untilAsync(() => !Object.isNull(page.dialog()?.querySelector(".test-sign-in")));
     const title: string[] = page.texts(".nol-dialog-title", document);
     await page.closeDialogAsync();
 
@@ -167,10 +168,10 @@ describe("GitAccountsComponent", () => {
     await page.untilAsync(() => rows().length > 0);
     const listed: string[] = rows().map(t => t.textContent?.trim() ?? "");
     const chosen: HTMLElement | undefined = rows()[1];
-    if (chosen === undefined)
+    if (Object.isUndefined(chosen))
       throw new Error("The menu has no second row.");
     await page.clickAsync(chosen);
-    await page.untilAsync(() => page.dialog()?.querySelector(".test-sign-in") !== null);
+    await page.untilAsync(() => !Object.isNull(page.dialog()?.querySelector(".test-sign-in")));
     const title: string[] = page.texts(".nol-dialog-title", document);
     await page.closeDialogAsync();
 

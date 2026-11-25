@@ -8,6 +8,7 @@
 
 import { ErrorHandler, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { FailureCode, FileState, GitCommit, GitGraph, GitGraphCommit, GitRef, RefKind, StatusUpstream } from "@noldova/git.protocol";
@@ -80,7 +81,7 @@ describe("GitHistoryComponent reads and writes", () => {
   });
 
   it("moves the selection with the arrow keys and shows the commit, ignores other keys, and dims rows the filter leaves out", async () => {
-    onTestFinished(() => GitViewing.commit.set(null));
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.graph": twoCommits.toJson() });
     const { element } = mount(context);
@@ -103,7 +104,7 @@ describe("GitHistoryComponent reads and writes", () => {
     const search: HTMLInputElement = element.querySelector<HTMLInputElement>("input[type=search]") ?? element.ownerDocument.createElement("input");
     search.value = "First";
     search.dispatchEvent(new Event("input"));
-    await untilAsync(element, () => element.querySelector("[role=option].dim") !== null);
+    await untilAsync(element, () => !Object.isNull(element.querySelector("[role=option].dim")));
 
     expect([down.defaultPrevented, shown, other.defaultPrevented, [...element.querySelectorAll("[role=option]")].map(t => t.classList.contains("dim"))])
       .toEqual([true, "First", false, [true, false]]);
@@ -213,7 +214,7 @@ describe("GitHistoryComponent reads and writes", () => {
     const dialog = (): HTMLElement | null => document.querySelector("nol-git-bulk-branch-dialog");
     const part = <T extends HTMLElement>(selector: string): T => {
       const found: T | null | undefined = dialog()?.querySelector<T>(selector);
-      if (found === null || found === undefined)
+      if (Object.isNullOrUndefined(found))
         throw new Error(`The dialog has no ${selector}.`);
       return found;
     };
@@ -221,12 +222,12 @@ describe("GitHistoryComponent reads and writes", () => {
     await untilAsync(element, () => !unavailable(element, "Branch"));
 
     button(element, "Branch").click();
-    await GitFixtures.untilAsync(() => dialog() !== null);
+    await GitFixtures.untilAsync(() => !Object.isNull(dialog()));
     part<HTMLButtonElement>(".cancel").click();
-    await GitFixtures.untilAsync(() => dialog() === null);
+    await GitFixtures.untilAsync(() => Object.isNull(dialog()));
     const cancelled: readonly unknown[] = created();
     button(element, "Branch").click();
-    await GitFixtures.untilAsync(() => dialog() !== null);
+    await GitFixtures.untilAsync(() => !Object.isNull(dialog()));
     await fixture.whenStable();
     const field: HTMLInputElement = part<HTMLInputElement>(".name");
     field.value = "feature/kit";
@@ -295,7 +296,7 @@ describe("GitHistoryComponent reads and writes", () => {
     let shown: JsonValue | Error = switchable().toJson();
     GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.graph": () => shown });
     const { element } = mount(context);
-    const ring = (): number => [...element.querySelectorAll("[role=option]")].findIndex(t => t.querySelector("circle.ring") !== null);
+    const ring = (): number => [...element.querySelectorAll("[role=option]")].findIndex(t => !Object.isNull(t.querySelector("circle.ring")));
     await untilAsync(element, () => ring() === 0);
     let open: () => void = () => undefined;
     const switching: Promise<void> = GitPendingSwitch.runAsync(GitFixtures.folder, "feature", () => new Promise<void>(resolve => {
@@ -305,7 +306,7 @@ describe("GitHistoryComponent reads and writes", () => {
 
     shown = switchable(["v2"]).toJson();
     context.raiseEvent("git.changed", { folder: GitFixtures.folder });
-    await untilAsync(element, () => element.querySelector(".chip.ltag") !== null);
+    await untilAsync(element, () => !Object.isNull(element.querySelector(".chip.ltag")));
     const kept: number = ring();
     shown = GitFixtures.failure(FailureCode.Git, null, "Busy.");
     context.raiseEvent("git.changed", { folder: GitFixtures.folder });

@@ -11,6 +11,7 @@ import { Failure, FailureCode } from "@noldova/desktop.protocol";
 import { MethodFailureException } from "@noldova/desktop.runtime";
 import { HostingArgumentException, HostingFieldException } from "@noldova/git.hosting.protocol";
 
+import type { IRequestWrite } from "../interfaces/i-request-write.ts";
 import type { AzureCredential } from "../models/azure-credential.ts";
 import { Resources } from "../resources.ts";
 import type { Fetcher } from "../types/fetcher.ts";
@@ -82,7 +83,7 @@ export class AzureApi {
   }
 
   private async fetchAsync(url: string, token: AzureCredential,
-    write: { readonly method?: string; readonly headers?: Readonly<Record<string, string>>; readonly body?: string }, accept: string,
+    write: IRequestWrite, accept: string,
     signal: AbortSignal): Promise<Response> {
     let response: Response;
     try {
@@ -100,7 +101,7 @@ export class AzureApi {
     return response;
   }
 
-  private async sendAsync(url: string, token: AzureCredential, write: { readonly method?: string; readonly headers?: Readonly<Record<string, string>>; readonly body?: string },
+  private async sendAsync(url: string, token: AzureCredential, write: IRequestWrite,
     signal: AbortSignal, isWrite: boolean = false): Promise<JsonReader | null> {
     const response: Response = await this.fetchAsync(url, token, write, Resources.jsonType, signal);
     if (response.status === Resources.notFoundStatus) {

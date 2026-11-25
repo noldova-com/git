@@ -7,6 +7,7 @@
  */
 
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { HostReference, HostWorkItem, HostWorkItemDetail, HostWorkItemType, WorkItemCategory } from "@noldova/git.hosting.protocol";
@@ -69,7 +70,7 @@ describe("AzureDevOpsWorkItemTableComponent", () => {
   it("shows a pull request as a chip and the other links as muted text", () => {
     const fixture = open(rows);
 
-    expect(rowsOf(fixture).map(t => [t.querySelector(".links .chip") !== null, t.querySelector(".links .muted") !== null]))
+    expect(rowsOf(fixture).map(t => [!Object.isNull(t.querySelector(".links .chip")), !Object.isNull(t.querySelector(".links .muted"))]))
       .toEqual([[false, true], [true, false], [false, true], [false, true]]);
   });
 

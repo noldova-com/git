@@ -10,6 +10,7 @@ import { GitRebaseCommit, GitRebasePlan, UntrustedSource } from "@noldova/git.pr
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
 import { RebaseTooLongException } from "../exceptions/rebase-too-long.exception.ts";
+import { BranchTip } from "../models/branch-tip.ts";
 import { GitArguments } from "../models/git-arguments.ts";
 import { ProgramLimits } from "../models/program-limits.ts";
 import { ProgramRun } from "../models/program-run.ts";
@@ -44,23 +45,23 @@ export class RebasePlanReader {
       Resources.revListCommand, RebasePlanReader.LIMITS, signal)).trim());
     const commits = RebasePlanReader.pair(await this.readCommitsAsync(top, range, signal));
     const ids: ReadonlySet<string> = new Set(commits.map(t => t.id));
-    const stacked = (await this.readBranchTipsAsync(top, signal)).filter(([id, name]) => ids.has(id) && name !== branch).map(([, name]) => name);
+    const stacked = (await this.readBranchTipsAsync(top, signal)).filter(t => ids.has(t.id) && t.name !== branch).map(t => t.name);
     const oldest = commits[0];
     const pushed = branch !== null && oldest !== undefined && await this.isPushedAsync(top, branch, oldest.id, signal);
     return new GitRebasePlan(branch, onto, base, ontoAhead, commits, stacked, pushed);
   }
 
   /** Pairs each `fixup!`, `squash!` or `amend!` commit with the nearest earlier commit whose subject is the rest of its subject, or whose id starts with it. */
-  public static pair(commits: readonly (readonly [string, string])[]): GitRebaseCommit[] {
+  public static pair(commits: readonly GitRebaseCommit[]): GitRebaseCommit[] {
     const paired: GitRebaseCommit[] = [];
-    for (const [id, message] of commits) {
-      const subject = new GitRebaseCommit(id, message, null).subject;
+    for (const commit of commits) {
+      const subject = commit.subject;
       let target = subject;
       while (Resources.foldPrefixes.some(t => target.startsWith(t)))
         target = target.slice(target.indexOf(Resources.foldPrefixEnd) + Resources.foldPrefixEnd.length);
       const found = target === subject ? undefined : paired.findLast(t => t.subject === target)
         ?? (Resources.abbreviatedIdPattern.test(target) ? paired.findLast(t => t.id.startsWith(target)) : undefined);
-      paired.push(new GitRebaseCommit(id, message, found?.id ?? null));
+      paired.push(new GitRebaseCommit(commit.id, commit.message, found?.id ?? null));
     }
     return paired;
   }
@@ -71,17 +72,17 @@ export class RebasePlanReader {
     return result.exit.code === 0 && branch.length > 0 ? branch : null;
   }
 
-  private async readCommitsAsync(top: string, range: string, signal?: AbortSignal): Promise<(readonly [string, string])[]> {
+  private async readCommitsAsync(top: string, range: string, signal?: AbortSignal): Promise<GitRebaseCommit[]> {
     const text = await this.readTextAsync(top, new GitArguments(Resources.rebaseLogArguments, [range]), Resources.logCommand, RebasePlanReader.LIST_LIMITS, signal);
     return text.split(Resources.nulCharacter).filter(t => t.length > 0).map(t => {
       const end = t.indexOf(Resources.lineEnd);
-      return [t.slice(0, end), t.slice(end + 1).replace(Resources.trailingNewlines, "")] as const;
+      return new GitRebaseCommit(t.slice(0, end), t.slice(end + 1).replace(Resources.trailingNewlines, ""), null);
     });
   }
 
-  private async readBranchTipsAsync(top: string, signal?: AbortSignal): Promise<(readonly [string, string])[]> {
+  private async readBranchTipsAsync(top: string, signal?: AbortSignal): Promise<BranchTip[]> {
     const text = await this.readTextAsync(top, new GitArguments(Resources.branchTipsArguments), Resources.forEachRefCommand, RebasePlanReader.LIST_LIMITS, signal);
-    return text.split(Resources.lineEnd).filter(t => t.length > 0).map(t => [t.slice(0, t.indexOf(" ")), t.slice(t.indexOf(" ") + 1)] as const);
+    return text.split(Resources.lineEnd).filter(t => t.length > 0).map(t => new BranchTip(t.slice(0, t.indexOf(" ")), t.slice(t.indexOf(" ") + 1)));
   }
 
   private async isPushedAsync(top: string, branch: string, oldest: string, signal?: AbortSignal): Promise<boolean> {

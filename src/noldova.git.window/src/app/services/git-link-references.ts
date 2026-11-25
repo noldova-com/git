@@ -7,6 +7,7 @@
  */
 
 import { type Injector, signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import type { ILinkReferenceSource } from "@noldova/ui.components.angular";
 
 import type { IGitLinkReferences } from "../interfaces/i-git-link-references.ts";
@@ -29,7 +30,7 @@ export class GitLinkReferences {
     const sources: ILinkReferenceSource[] = [];
     for (const provided of GitLinkReferences.provided()) {
       const source = provided.referencesFor(folder);
-      if (source !== null)
+      if (!Object.isNull(source))
         sources.push(source);
     }
     return sources.length > 1 ? new GitLinkReferenceSet(sources) : sources[0] ?? null;

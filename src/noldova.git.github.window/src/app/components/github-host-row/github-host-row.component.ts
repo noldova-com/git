@@ -8,6 +8,7 @@
 
 import { Component, computed, DestroyRef, effect, ElementRef, inject, input, type InputSignal, type OnInit, PendingTasks, type Signal,
   signal, untracked, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, LinkPlace, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { BranchPullRequest, BranchQuery, CheckState, type HostCheck, HostSignIn, SignInState } from "@noldova/git.hosting.protocol";
@@ -64,8 +65,8 @@ export class GitHubHostRowComponent implements OnInit {
   protected readonly shown: Signal<ShownPullRequest | null> = computed(() => {
     const answer: BranchPullRequest | null = this.answer();
     const pullRequest = answer?.pullRequest ?? null;
-    const look: GitHubLook | null = pullRequest === null ? null : GitHubLooks.of(pullRequest.kind, pullRequest.state);
-    return answer === null || pullRequest === null || look === null ? null : new ShownPullRequest(pullRequest, look, [...answer.checks]
+    const look: GitHubLook | null = Object.isNull(pullRequest) ? null : GitHubLooks.of(pullRequest.kind, pullRequest.state);
+    return Object.isNull(answer) || Object.isNull(pullRequest) || Object.isNull(look) ? null : new ShownPullRequest(pullRequest, look, [...answer.checks]
       .sort((a, b) => GitHubHostRowComponent.WORST_FIRST.indexOf(a.state) - GitHubHostRowComponent.WORST_FIRST.indexOf(b.state)));
   });
 
@@ -87,8 +88,8 @@ export class GitHubHostRowComponent implements OnInit {
         if (!GitHubHostRowComponent.isSameBranch(query, this.shownQuery))
           this.answer.set(null);
         this.shownQuery = query;
-        this.isReading.set(query !== null);
-        if (query !== null)
+        this.isReading.set(!Object.isNull(query));
+        if (!Object.isNull(query))
           void this.readAsync(query, () => isCurrent);
       });
     });
@@ -125,7 +126,7 @@ export class GitHubHostRowComponent implements OnInit {
 
   protected retry(): void {
     this.failure.set(null);
-    if (this.signIn() === null)
+    if (Object.isNull(this.signIn()))
       void this.askAsync(GitHubNames.readSignInMethod);
     else
       this.attempt.update(t => t + 1);
@@ -134,7 +135,7 @@ export class GitHubHostRowComponent implements OnInit {
   protected async startAsync(): Promise<void> {
     const answer = await this.askAsync(GitHubNames.startSignInMethod);
     const code = answer?.deviceCode ?? null;
-    if (code !== null) {
+    if (!Object.isNull(code)) {
       await this.copyAsync(code.userCode);
       await this.openAsync(code.verificationUri, LinkPlace.System);
     }
@@ -158,7 +159,7 @@ export class GitHubHostRowComponent implements OnInit {
     const done = this.tasks.add();
     this.failedLink.set(null);
     try {
-      await (place === null ? this.context.openLinkAsync(url) : this.context.openLinkAsync(url, { place }));
+      await (Object.isNull(place) ? this.context.openLinkAsync(url) : this.context.openLinkAsync(url, { place }));
     }
     catch (error) {
       if (!(error instanceof WindowException))
@@ -225,7 +226,7 @@ export class GitHubHostRowComponent implements OnInit {
   }
 
   private static queryOf(remote: GitRemote, branch: string | null, head: string | null): BranchQuery | null {
-    return branch === null || remote.host === null || remote.path === null ? null : new BranchQuery(remote.host, remote.path, branch, head);
+    return Object.isNull(branch) || Object.isNull(remote.host) || Object.isNull(remote.path) ? null : new BranchQuery(remote.host, remote.path, branch, head);
   }
 
   private static isSameQuery(a: BranchQuery | null, b: BranchQuery | null): boolean {
@@ -233,7 +234,7 @@ export class GitHubHostRowComponent implements OnInit {
   }
 
   private static isSameBranch(a: BranchQuery | null, b: BranchQuery | null): boolean {
-    return a === null || b === null ? a === b : a.host === b.host && a.path === b.path && a.branch === b.branch;
+    return Object.isNull(a) || Object.isNull(b) ? a === b : a.host === b.host && a.path === b.path && a.branch === b.branch;
   }
 
   private static imageOf(svg: string): string {

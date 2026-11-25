@@ -14,6 +14,7 @@ import { FailureCode, GitCommand, GitCommandLog } from "@noldova/git.protocol";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { GitFolder } from "../../../src/app/services/git-folder.ts";
+import { GitRuntimeClient } from "../../../src/app/services/git-runtime-client.ts";
 import { GitStatusBar } from "../../../src/app/services/git-status-bar.ts";
 import { GitStatusFollower } from "../../../src/app/services/git-status-follower.ts";
 import { GitFixtures } from "../../fixtures/git-fixtures.fixture.ts";
@@ -70,6 +71,11 @@ describe("GitStatusFollower", () => {
   it("keeps the later read over an earlier one still running, whether the earlier one answers or fails, and logs nothing for it", async () => {
     const { command, context, follow } = setUp({});
     const held: GitHeldRequests = new GitHeldRequests(context, ["git.commandLog"], answers);
+    const reads = vi.spyOn(GitRuntimeClient.prototype, "commandLogAsync");
+    onTestFinished(() => reads.mockRestore());
+    const settledAsync = async (): Promise<void> => {
+      await Promise.allSettled(reads.mock.results.flatMap(t => t.type === "return" ? [t.value] : []));
+    };
     const pair = async (): Promise<readonly [(answer: JsonValue | Error) => void, (answer: JsonValue | Error) => void]> => {
       const earlier = await held.nextAsync("git.commandLog");
       context.raiseEvent("git.changed", { folder: GitFixtures.folder });
@@ -80,14 +86,14 @@ describe("GitStatusFollower", () => {
     second(logOf("git fetch --quiet"));
     await until(() => command.state().text === "git fetch --quiet");
     first(logOf("git add -- a.txt"));
-    await Promise.resolve();
+    await settledAsync();
     const answered: string = command.state().text;
     context.raiseEvent("git.changed", { folder: GitFixtures.folder });
     const [third, fourth] = await pair();
     fourth(logOf("git fetch --quiet", "git status"));
     await until(() => command.state().text === "git status");
     third(new Error("late read broke"));
-    await Promise.resolve();
+    await settledAsync();
 
     expect([answered, command.state().text, context.callsOf("log")]).toEqual(["git fetch --quiet", "git status", []]);
   });

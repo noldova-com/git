@@ -8,6 +8,7 @@
 
 import { signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
@@ -49,7 +50,7 @@ function updatesOf(count: number): HostPullRequestUpdates {
 function wordsOf(node: Node): string {
   const words: string[] = [];
   const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-  for (let text = walker.nextNode(); text !== null; text = walker.nextNode())
+  for (let text = walker.nextNode(); !Object.isNull(text); text = walker.nextNode())
     words.push((text.textContent ?? "").trim());
   return words.filter(t => t.length > 0).join(" ").replace(/\s+/g, " ");
 }

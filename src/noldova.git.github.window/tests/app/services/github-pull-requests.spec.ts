@@ -7,6 +7,7 @@
  */
 
 import type { Signal } from "@angular/core";
+import "@noldova/context.core";
 import { FailureCode } from "@noldova/desktop.protocol";
 import { RuntimeRequestException } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
@@ -237,13 +238,13 @@ describe("GitHubPullRequests", () => {
     const before = comments();
 
     await Wait.until(() => {
-      if (comments() === null)
+      if (Object.isNull(comments()))
         throw new Error("The comments aren't read yet.");
     });
     const again = host.pullRequests.commentsFor(FOLDER, remote, COMMENTED);
     const otherCommit = host.pullRequests.commentsFor(FOLDER, remote, UNCOMMENTED);
     await Wait.until(() => {
-      if (otherCommit() === null)
+      if (Object.isNull(otherCommit()))
         throw new Error("The other commit's comments aren't read yet.");
     });
 
@@ -268,7 +269,7 @@ describe("GitHubPullRequests", () => {
       });
       const retried = host.pullRequests.commentsFor(FOLDER, remote, COMMENTED);
       await Wait.until(() => {
-        if (retried() === null)
+        if (Object.isNull(retried()))
           throw new Error("The comments aren't read again yet.");
       });
       const hostless = host.pullRequests.commentsFor(FOLDER, new GitRemote("origin", null, null, RemoteTransport.Https), COMMENTED)();

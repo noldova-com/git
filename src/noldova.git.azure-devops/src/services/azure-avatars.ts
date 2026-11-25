@@ -54,6 +54,7 @@ export class AzureAvatars {
     if (known !== undefined)
       return known;
     let avatar: string | null;
+    await this.signIn.readyAsync();
     try {
       avatar = await this.readAsync(signedIn, email, token, signal);
     }

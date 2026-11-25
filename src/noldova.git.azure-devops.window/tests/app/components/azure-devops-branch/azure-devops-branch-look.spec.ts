@@ -7,6 +7,7 @@
  */
 
 import type {} from "@vitest/browser-playwright";
+import "@noldova/context.core";
 import { GitNames } from "@noldova/git.protocol";
 import { DefaultTheme, type ThemeMode } from "@noldova/ui.components.angular";
 import { AppearanceFixture } from "@noldova/ui.components.angular/testing";
@@ -53,8 +54,8 @@ describe("AzureDevOpsBranchComponent in the kit's look", () => {
     const [patternNote, baseNote] = boxes(root, ".nol-git-azure-devops-branch-note");
     const [link, active, prefix, push] = boxes(root, "nol-checkbox");
     const [nameGroup, baseGroup] = boxes(root, ".nol-git-azure-devops-branch-group");
-    if (nameLabel === undefined || baseLabel === undefined || patternNote === undefined || baseNote === undefined || nameGroup === undefined || baseGroup === undefined
-      || link === undefined || active === undefined || prefix === undefined || push === undefined)
+    if (Object.isUndefined(nameLabel) || Object.isUndefined(baseLabel) || Object.isUndefined(patternNote) || Object.isUndefined(baseNote) || Object.isUndefined(nameGroup) || Object.isUndefined(baseGroup)
+      || Object.isUndefined(link) || Object.isUndefined(active) || Object.isUndefined(prefix) || Object.isUndefined(push))
       throw new Error("The dialog lacks a label, a note, a group or a choice.");
     AppearanceFixture.expectPixels(frame.getBoundingClientRect().width, px(27.5));
     for (const left of [line.left, nameLabel.left, field.left, patternNote.left, baseLabel.left, base.left, baseNote.left, link.left, active.left, prefix.left, push.left])

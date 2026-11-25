@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { UnansweredCallException } from "@noldova/desktop.protocol/testing";
 import type { FakeWindowPartContext } from "@noldova/desktop.window/testing";
@@ -24,7 +25,7 @@ export class RequestAnswers {
       if (this.ignored.has(method))
         return Promise.reject(new UnansweredCallException("requestAsync"));
       const next = this.queue(method).shift();
-      const reply: Promise<JsonValue> = next === undefined ? Promise.reject(new UnansweredCallException("requestAsync")) : next();
+      const reply: Promise<JsonValue> = Object.isUndefined(next) ? Promise.reject(new UnansweredCallException("requestAsync")) : next();
       this.answered.push(reply);
       for (const waiter of this.waiters.filter(t => t.count <= this.answered.length)) {
         this.waiters.splice(this.waiters.indexOf(waiter), 1);

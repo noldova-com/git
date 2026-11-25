@@ -7,6 +7,7 @@
  */
 
 import { signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { JsonException, JsonReader, type JsonValue } from "@noldova/context.json";
 import { type IWindowPartContext, WindowException } from "@noldova/desktop.window";
 import { GitBranches, GitChanged, GitFolderParams, GitNames, ProtocolException } from "@noldova/git.protocol";
@@ -20,7 +21,7 @@ export class AzureDevOpsCommitPrefixes implements IGitCommitPrefixes {
 
   public prefixFor(folder: string, branch: string): string | null {
     const choice: CommitPrefixChoice | undefined = AzureDevOpsCommitPrefixes.kept().find(t => t.isFor(folder, branch));
-    return choice === undefined ? null : Resources.formatCommitPrefix(choice.id);
+    return Object.isUndefined(choice) ? null : Resources.formatCommitPrefix(choice.id);
   }
 
   public static provide(context: IWindowPartContext): () => void {

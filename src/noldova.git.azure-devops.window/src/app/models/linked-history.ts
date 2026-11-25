@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { GitCommit, GitGraphCommit, GitMessageReference } from "@noldova/git.protocol";
 
 import { Resources } from "../../resources.ts";
@@ -59,7 +60,7 @@ export class LinkedHistory {
    * `git.messageReferences` found them, or none for a repository not on Azure DevOps.
    */
   public static of(commits: readonly GitGraphCommit[], messages: readonly GitMessageReference[], home: string | null, isTruncated: boolean): LinkedHistory {
-    if (home === null)
+    if (Object.isNull(home))
       return LinkedHistory.none;
     const named: ReadonlyMap<string, readonly number[]> = new Map(messages.map(t => [t.id, t.numbers]));
     const byItem: Map<string, GitCommit[]> = new Map();

@@ -6,6 +6,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
+
 import type { GitPullRequestState } from "../enums/git-pull-request-state.ts";
 import type { IGitPullRequests } from "../interfaces/i-git-pull-requests.ts";
 import type { GitBranchPullRequest } from "./git-branch-pull-request.ts";
@@ -32,7 +34,7 @@ export class GitCommitPullRequest {
 
   /** The card for a host's answer, or null while it has none or no pull request brought the commit in. */
   public static of(host: IGitPullRequests, answer: GitBranchPullRequest | null): GitCommitPullRequest | null {
-    return answer !== null && answer.pullRequest !== null && answer.pullRequestState !== null
+    return !Object.isNull(answer) && !Object.isNull(answer.pullRequest) && !Object.isNull(answer.pullRequestState)
       ? new GitCommitPullRequest(host, answer.pullRequest, answer.pullRequestState, answer) : null;
   }
 }

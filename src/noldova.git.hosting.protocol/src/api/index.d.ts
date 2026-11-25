@@ -614,22 +614,22 @@ export declare class HostSignIn {
    *
    * @param state Where it stands.
    * @param deviceCode The code, while it waits for the person to enter it; while it waits, exactly one of `deviceCode` and `address`.
-   * @param address The https address, while it waits for the person in the browser.
    * @param account The account, exactly while signed in.
    * @param failure The failure, only while signed out.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
+   * @param address The https address, while it waits for the person in the browser; null by default, as for a sign-in made before 0.0.7, which had none.
    * @throws {HostingArgumentException} Without a reader, when the parts don't fit the state, naming the field as the parameter, such as `account`.
    * @throws {HostingFieldException} With a reader, when the parts don't fit the state, naming the field by its path, such as `$.account`.
    * @example
    * ```ts
    * import { HostSignIn, SignInFailure, SignInState } from "@noldova/git.hosting.protocol";
    *
-   * const signIn = new HostSignIn(SignInState.SignedOut, null, null, null, SignInFailure.Denied);
+   * const signIn = new HostSignIn(SignInState.SignedOut, null, null, SignInFailure.Denied);
    * console.log(signIn.failure);
    * ```
    */
-  public constructor(state: SignInState, deviceCode: DeviceCode | null, address: string | null, account: HostAccount | null, failure: SignInFailure | null,
-    reader?: JsonReader);
+  public constructor(state: SignInState, deviceCode: DeviceCode | null, account: HostAccount | null, failure: SignInFailure | null, reader?: JsonReader,
+    address?: string | null);
 
   /**
    * A sign-out, with why the last sign-in ended or null.
@@ -710,7 +710,7 @@ export declare class HostSignIn {
   public static fromJson(value: unknown, path?: string): HostSignIn;
 
   /**
-   * Writes the sign-in as JSON: `state`, `deviceCode`, `address`, `account` and `failure`, each null when it has none.
+   * Writes the sign-in as JSON: `state`, `deviceCode`, `account` and `failure`, each null when it has none, and `address` only while it waits in the browser.
    *
    * @returns The JSON.
    * @example
@@ -900,7 +900,7 @@ export declare class HostReference {
    * Makes a reference from its parts.
    *
    * @param host The id of the host module that reads the reference, which isn't blank.
-   * @param owner The owner of the repository on the host: names of letters, digits, `.`, `_` and `-` joined by `/` for nested groups, none of them `.` or `..`.
+   * @param owner The owner of the repository on the host: names of letters, digits, `.`, `_`, `-` and percent escapes such as `%20` but not of `/` or `\` joined by `/` for nested groups, none of them `.` or `..`, `%2e` counting as a dot.
    * @param repository The repository's name on the host: letters, digits, `.`, `_` and `-`, other than `.` and `..`.
    * @param number The issue's or pull request's number in its repository, a whole number above zero.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
@@ -1055,19 +1055,19 @@ export declare class HostPerson {
  */
 export declare class HostChanges {
   /**
-   * The lines the pull request adds, or null when the host doesn't count them.
+   * The lines the pull request adds; zero when the host doesn't count them.
    */
-  public readonly additions: number | null;
+  public readonly additions: number;
 
   /**
-   * The lines the pull request deletes, or null when the host doesn't count them.
+   * The lines the pull request deletes; zero when the host doesn't count them.
    */
-  public readonly deletions: number | null;
+  public readonly deletions: number;
 
   /**
-   * The files the pull request changes, or null when the host doesn't count them.
+   * The files the pull request changes; zero when the host doesn't count them.
    */
-  public readonly changedFiles: number | null;
+  public readonly changedFiles: number;
 
   /**
    * The branch whose changes the pull request brings.
@@ -1085,15 +1085,21 @@ export declare class HostChanges {
   public readonly headCommit: string;
 
   /**
+   * Whether the host counts the lines and files; when it doesn't, the three counts are zero and show nothing.
+   */
+  public readonly isCounted: boolean;
+
+  /**
    * Makes changes from their parts.
    *
-   * @param additions The lines added, a whole number, zero or more, or null with the other two counts when the host doesn't count them.
-   * @param deletions The lines deleted, a whole number, zero or more, or null with the other two counts.
-   * @param changedFiles The files changed, a whole number, zero or more, or null with the other two counts.
+   * @param additions The lines added, a whole number, zero or more.
+   * @param deletions The lines deleted, a whole number, zero or more.
+   * @param changedFiles The files changed, a whole number, zero or more.
    * @param headBranch The head branch, which isn't blank.
    * @param baseBranch The base branch, which isn't blank.
    * @param headCommit The head commit, a full hash of 40 or 64 lowercase hexadecimal digits.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
+   * @param isCounted Whether the host counts the lines and files, true by default; false needs the three counts at zero.
    * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `headCommit`.
    * @throws {HostingFieldException} With a reader, when a part is out of its range, naming the field by its path, such as `$.headCommit`.
    * @example
@@ -1103,8 +1109,26 @@ export declare class HostChanges {
    * const changes = new HostChanges(0, 0, 0, "monalisa/fix", "main", "6dcb09b5b57875f334f61aebed695e2e4193db5e");
    * ```
    */
-  public constructor(additions: number | null, deletions: number | null, changedFiles: number | null, headBranch: string, baseBranch: string,
-    headCommit: string, reader?: JsonReader);
+  public constructor(additions: number, deletions: number, changedFiles: number, headBranch: string, baseBranch: string, headCommit: string,
+    reader?: JsonReader, isCounted?: boolean);
+
+  /**
+   * Makes changes whose host doesn't count the lines and files: their counts are zero, and `isCounted` is false.
+   *
+   * @param headBranch The head branch, which isn't blank.
+   * @param baseBranch The base branch, which isn't blank.
+   * @param headCommit The head commit, a full hash of 40 or 64 lowercase hexadecimal digits.
+   * @returns The changes.
+   * @throws {HostingArgumentException} When a part is out of its range, naming the parameter.
+   * @example
+   * ```ts
+   * import { HostChanges } from "@noldova/git.hosting.protocol";
+   *
+   * const changes = HostChanges.uncounted("monalisa/fix", "main", "6dcb09b5b57875f334f61aebed695e2e4193db5e");
+   * console.log(changes.isCounted);
+   * ```
+   */
+  public static uncounted(headBranch: string, baseBranch: string, headCommit: string): HostChanges;
 
   /**
    * Reads changes from their JSON.
@@ -1131,7 +1155,8 @@ export declare class HostChanges {
   public static fromJson(value: unknown, path?: string): HostChanges;
 
   /**
-   * Writes the changes as JSON: `additions`, `deletions`, `changedFiles`, `headBranch`, `baseBranch` and `headCommit`.
+   * Writes the changes as JSON: `additions`, `deletions`, `changedFiles`, `headBranch`, `baseBranch` and `headCommit`, and `isCounted`, false, only for
+   * changes the host doesn't count.
    *
    * @returns The JSON.
    * @example
@@ -1398,7 +1423,7 @@ export declare class AuthorQuery {
    * Makes a query from its parts.
    *
    * @param host The host, which isn't blank.
-   * @param path The repository's path: names of letters, digits, `.`, `_` and `-` joined by `/`, none of them `.` or `..`.
+   * @param path The repository's path: names of letters, digits, `.`, `_`, `-` and percent escapes such as `%20` but not of `/` or `\` joined by `/`, none of them `.` or `..`, `%2e` counting as a dot.
    * @param email The email, which isn't blank.
    * @param commit The commit, a full hash of 40 or 64 lowercase hexadecimal digits.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
@@ -1475,7 +1500,7 @@ export declare class PersonQuery {
    * Makes a query from its parts.
    *
    * @param host The host, which isn't blank.
-   * @param path The organization's path: names of letters, digits, `.`, `_` and `-` joined by `/`, none of them `.` or `..`.
+   * @param path The organization's path: names of letters, digits, `.`, `_`, `-` and percent escapes such as `%20` but not of `/` or `\` joined by `/`, none of them `.` or `..`, `%2e` counting as a dot.
    * @param login The person's sign-in name, which isn't blank.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
    * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `login`.
@@ -1619,7 +1644,7 @@ export declare class BranchQuery {
    * Makes a query from its parts.
    *
    * @param host The host, which isn't blank.
-   * @param path The repository's path: names of letters, digits, `.`, `_` and `-` joined by `/`, none of them `.` or `..`.
+   * @param path The repository's path: names of letters, digits, `.`, `_`, `-` and percent escapes such as `%20` but not of `/` or `\` joined by `/`, none of them `.` or `..`, `%2e` counting as a dot.
    * @param branch The branch, which isn't blank.
    * @param headCommit The commit, a full hash of 40 or 64 lowercase hexadecimal digits, or null.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
@@ -1696,7 +1721,7 @@ export declare class CommitQuery {
    * Makes a query from its parts.
    *
    * @param host The host, which isn't blank.
-   * @param path The repository's path: names of letters, digits, `.`, `_` and `-` joined by `/`, none of them `.` or `..`.
+   * @param path The repository's path: names of letters, digits, `.`, `_`, `-` and percent escapes such as `%20` but not of `/` or `\` joined by `/`, none of them `.` or `..`, `%2e` counting as a dot.
    * @param commit The commit, a full hash of 40 or 64 lowercase hexadecimal digits.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
    * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `commit`.
@@ -1899,7 +1924,7 @@ export declare class PullRequestDraft {
    * Makes a draft from its parts.
    *
    * @param host The host, which isn't blank.
-   * @param path The repository's path: names of letters, digits, `.`, `_` and `-` joined by `/`, none of them `.` or `..`.
+   * @param path The repository's path: names of letters, digits, `.`, `_`, `-` and percent escapes such as `%20` but not of `/` or `\` joined by `/`, none of them `.` or `..`, `%2e` counting as a dot.
    * @param headBranch The head branch, which isn't blank.
    * @param baseBranch The base branch, which isn't blank and isn't the head branch.
    * @param title The title, which isn't blank.
@@ -3705,7 +3730,7 @@ export declare class RepositoryQuery {
    * Makes a query from its parts.
    *
    * @param host The host, which isn't blank.
-   * @param path The repository's path: names of letters, digits, `.`, `_` and `-` joined by `/`, none of them `.` or `..`.
+   * @param path The repository's path: names of letters, digits, `.`, `_`, `-` and percent escapes such as `%20` but not of `/` or `\` joined by `/`, none of them `.` or `..`, `%2e` counting as a dot.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
    * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `path`.
    * @throws {HostingFieldException} With a reader, when a part is out of its range, naming the field by its path, such as `$.path`.

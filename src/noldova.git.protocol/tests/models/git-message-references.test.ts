@@ -48,7 +48,6 @@ describe("GitMessageReferencesParams", () => {
     assert.deepEqual(GitMessageReferencesParams.fromJson(params.toJson()), params);
     assert.throws(() => GitMessageReferencesParams.fromJson({ folder: "repo", kind: "AzureBoards", limit: 1 }), { name: "ProtocolFieldException", field: "$.folder" });
     assert.throws(() => GitMessageReferencesParams.fromJson({ folder: "/r", kind: "GitHub", limit: 1 }), { name: "JsonException", path: "$.kind" });
-    assert.throws(() => new GitMessageReferencesParams("/r", "GitHub" as GitMessageReferenceKind, 1), { name: "ProtocolFieldException", field: "kind" });
     assert.throws(() => GitMessageReferencesParams.fromJson({ folder: "/r", kind: "AzureBoards", limit: 0 }), { name: "ProtocolFieldException", field: "$.limit" });
     assert.throws(() => GitMessageReferencesParams.fromJson({ folder: "/r", kind: "AzureBoards", limit: 5_001 }), { name: "ProtocolFieldException", field: "$.limit" });
     assert.throws(() => new GitMessageReferencesParams("/r", GitMessageReferenceKind.AzureBoards, 1.5), { name: "ProtocolFieldException", field: "limit" });

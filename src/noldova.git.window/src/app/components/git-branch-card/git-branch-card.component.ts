@@ -10,6 +10,7 @@ import {
   Component, computed, effect, ElementRef, inject, input, type InputSignal, signal, type Signal, viewChild, type WritableSignal
 } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import "@noldova/context.core";
 import type { GitStatus, StatusUpstream } from "@noldova/git.protocol";
 import { ButtonComponent, ButtonVariant, TooltipDirective } from "@noldova/ui.components.angular";
 
@@ -82,7 +83,7 @@ export class GitBranchCardComponent {
       case "Enter": {
         event.preventDefault();
         const item: GitBranchMenuItem | undefined = this.items()[this.active()];
-        if (item !== undefined)
+        if (!Object.isUndefined(item))
           this.choose(item);
         break;
       }

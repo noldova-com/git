@@ -42,8 +42,8 @@ export class GitHubReferenceLooks {
     });
   }
 
-  private static diffOf({ additions, deletions, changedFiles }: HostChanges): LinkReferenceDiff | null {
-    return additions === null || deletions === null || changedFiles === null ? null : new LinkReferenceDiff(additions, deletions, changedFiles);
+  private static diffOf(changes: HostChanges): LinkReferenceDiff | null {
+    return changes.isCounted ? new LinkReferenceDiff(changes.additions, changes.deletions, changes.changedFiles) : null;
   }
 
   private static addressOf(person: HostPerson): string {

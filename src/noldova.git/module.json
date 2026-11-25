@@ -83,6 +83,6 @@
       "git_pull"
     ],
     "settingsPages": ["git.accounts"],
-    "settings": ["git.gravatar"]
+    "settings": ["git.gravatar", "git.undoHistory"]
   }
 }

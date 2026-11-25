@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { LineKind } from "@noldova/git.protocol";
 
 type Rgba = readonly [number, number, number, number];
@@ -71,7 +72,7 @@ export class GitContrast {
   /** A CSS color as red, green and blue from 0 to 255 and alpha from 0 to 1. */
   private static channelsOf(color: string): Rgba {
     const context: CanvasRenderingContext2D | null = GitContrast.canvas.getContext("2d", { willReadFrequently: true });
-    if (context === null)
+    if (Object.isNull(context))
       return [0, 0, 0, 0];
     context.clearRect(0, 0, 1, 1);
     context.fillStyle = color;
@@ -88,7 +89,7 @@ export class GitContrast {
   /** The color drawn behind an element: its own background over each ancestor's, down to the first opaque one. */
   private static backgroundOf(element: Element): Rgba {
     const layers: Rgba[] = [];
-    for (let at: Element | null = element; at !== null; at = at.parentElement) {
+    for (let at: Element | null = element; !Object.isNull(at); at = at.parentElement) {
       const layer: Rgba = GitContrast.channelsOf(getComputedStyle(at).backgroundColor);
       if (layer[3] > 0)
         layers.push(layer);

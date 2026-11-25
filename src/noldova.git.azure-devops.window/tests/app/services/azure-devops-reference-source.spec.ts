@@ -17,8 +17,9 @@ import { DeviceCode, HostAccount, HostAvatar, HostChanges, HostItem, HostPerson,
 import { DiffScope, DiffScopeKind, DiffTotals, GitDiffParams, GitFolderParams, GitRemote, GitStatus, RemoteTransport } from "@noldova/git.protocol";
 import { GitFolder } from "@noldova/git.window";
 import { LinkReferenceDiff, type LinkReference } from "@noldova/ui.components.angular";
-import { afterEach, beforeEach, describe, expect, it, onTestFinished } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
+import { AzureDevOpsReferenceRead } from "../../../src/app/models/azure-devops-reference-read.ts";
 import { AzureDevOpsReferenceSource } from "../../../src/app/services/azure-devops-reference-source.ts";
 import { DeferredResponse } from "../../fixtures/deferred-response.fixture.ts";
 import { PartReadError } from "../../fixtures/part-read-error.fixture.ts";
@@ -43,7 +44,7 @@ describe("AzureDevOpsReferenceSource", () => {
       urlOf(id), null, null, null, null).toJson();
   const pullRequest = new HostItem(new HostReference("git-azure-devops", "fabrikam", repository, 7), ReferenceKind.PullRequest, ReferenceState.Open, "Fix the greeting",
     "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/7", new HostPerson("octocat@example.com", null, null), Date.parse("2026-11-01T09:30:00.000Z"), null, 0,
-    new HostChanges(null, null, null, "feature/greeting", "main", "0123456789abcdef0123456789abcdef01234567")).toJson();
+    HostChanges.uncounted("feature/greeting", "main", "0123456789abcdef0123456789abcdef01234567")).toJson();
   const idOf = (parameters: JsonValue): number => WorkItemQuery.fromJson(parameters).id;
   const signedIn = HostSignIn.signedIn(new HostAccount("monalisa@example.com", "Mona Lisa", null, [])).toJson();
   const signedOut = HostSignIn.signedOut().toJson();
@@ -306,6 +307,8 @@ describe("AzureDevOpsReferenceSource", () => {
   });
 
   it("shows every chip as its type and number alone when the person signs out, and drops the reads under way, answered or failed, without a log", async () => {
+    const shows = vi.spyOn(AzureDevOpsReferenceRead.prototype, "show");
+    onTestFinished(() => shows.mockRestore());
     const items = [1, 2, 3, 4].map(t => find(urlOf(t)));
     const waitingRead = find(urlOf(5));
     await Wait.until(() => expect(reads()).toEqual([1, 2, 3, 4]));
@@ -316,7 +319,8 @@ describe("AzureDevOpsReferenceSource", () => {
     const later = [6, 7].map(t => find(urlOf(t)));
     held.get(1)?.resolve(itemOf(1));
     held.get(2)?.reject(new Error("Azure DevOps answered 401."));
-    expect([[...items, ...later].map(shown), reads()]).toEqual([[1, 2, 3, 4, 6, 7].map(t => [`Work item ${String(t)}`, null, null]), [1, 2, 3, 4]]);
+    await Wait.until(() => expect(shows).toHaveBeenCalledTimes(2));
+    expect([[...items, ...later].map(shown), reads(), context.lines]).toEqual([[1, 2, 3, 4, 6, 7].map(t => [`Work item ${String(t)}`, null, null]), [1, 2, 3, 4], []]);
 
     context.emitModule(signInEvent, signedIn);
 

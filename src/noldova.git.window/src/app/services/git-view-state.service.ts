@@ -7,6 +7,7 @@
  */
 
 import { computed, DestroyRef, effect, ErrorHandler, inject, Injectable, signal, type Signal, untracked, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, WindowPartTokens } from "@noldova/desktop.window";
 import {
   type ConflictResolution, DiffScope, type DiffScopeKind, FailureCode, type GitBranches, GitCode, type GitCommitSigning, type GitConflict, type GitDiff, type GitFailure, type GitHooks,
@@ -59,7 +60,7 @@ export class GitViewStateService {
   public readonly forcePushOffer: WritableSignal<GitForcePushOffer | null> = signal(null);
   /** Whether the view offers a fetch, after the remote refused a push for commits the last fetch hadn't seen; until the next write or another folder. */
   public readonly fetchOffered: WritableSignal<boolean> = signal(false);
-  /** The repository's recent writes, newest first and at most `Resources.recentActionsLimit`, as the last read of the journal found them. */
+  /** The repository's recent writes, newest first, all the journal keeps, as the last read of the journal found them. */
   public readonly recentActions: WritableSignal<readonly GitJournalEntry[]> = signal([]);
   /** How the lists of changed files are laid out; the file groups and the commit's files all follow it. */
   public readonly fileLayout: WritableSignal<GitFileLayout> = signal(GitFileLayout.Folders);
@@ -72,13 +73,13 @@ export class GitViewStateService {
   /** Whether git signs a new commit in the folder's repository, and in which format; null until it is read for this folder, or when it can't be. */
   public readonly commitSigning: Signal<GitCommitSigning | null> = computed(() => {
     const read = this.signing();
-    return read !== null && read.folder === this.folder() ? read.signing : null;
+    return !Object.isNull(read) && read.folder === this.folder() ? read.signing : null;
   });
   /** The prefix a host gives a new commit's message on the current branch, or null without one, a folder or a branch. */
   public readonly prefix: Signal<string | null> = computed(() => {
     const folder: string | null = this.folder();
     const branch: string | null = this.status()?.branch ?? null;
-    return folder === null || branch === null ? null : GitCommitPrefixes.prefixFor(folder, branch);
+    return Object.isNull(folder) || Object.isNull(branch) ? null : GitCommitPrefixes.prefixFor(folder, branch);
   });
 
   public constructor() {
@@ -87,7 +88,7 @@ export class GitViewStateService {
       const folder: string | null = this.folder();
       this.folderFailure();
       untracked(() => void this.openAsync(folder));
-      if (folder !== null)
+      if (!Object.isNull(folder))
         onCleanup(() => void this.unwatchAsync(folder));
     });
     effect(() => {
@@ -113,7 +114,7 @@ export class GitViewStateService {
   public async refreshAsync(): Promise<void> {
     const folder: string | null = this.folder();
     const read: number = ++this.reads;
-    if (folder === null) {
+    if (Object.isNull(folder)) {
       this.showNoFolder();
       return;
     }
@@ -137,7 +138,7 @@ export class GitViewStateService {
 
   public async loadBranchesAsync(): Promise<void> {
     const folder: string | null = this.folder();
-    if (folder === null)
+    if (Object.isNull(folder))
       return;
     const opened: number = this.opened;
     const load: number = ++this.branchLoads;
@@ -161,7 +162,7 @@ export class GitViewStateService {
    */
   public async loadSigningAsync(): Promise<void> {
     const folder: string | null = this.folder();
-    if (folder === null)
+    if (Object.isNull(folder))
       return;
     const read: number = ++this.signingReads;
     try {
@@ -178,7 +179,7 @@ export class GitViewStateService {
 
   public async loadPullHooksAsync(): Promise<void> {
     const folder: string | null = this.folder();
-    if (folder === null || this.pullHooks() !== null)
+    if (Object.isNull(folder) || !Object.isNull(this.pullHooks()))
       return;
     const opened: number = this.opened;
     try {
@@ -197,11 +198,11 @@ export class GitViewStateService {
   public diffAsync(scope: DiffScopeKind): Promise<GitDiff> {
     const folder: string | null = this.folder();
     const status: GitStatus | null = this.status();
-    if (folder === null || status === null)
+    if (Object.isNull(folder) || Object.isNull(status))
       return Promise.reject(new StatusMissingException());
     const key: string = Resources.formatDiffKey(status.fingerprint, scope);
     const known: Promise<GitDiff> | undefined = this.diffs.get(key);
-    if (known !== undefined)
+    if (!Object.isUndefined(known))
       return known;
     const diff: Promise<GitDiff> = this.client.diffAsync(folder, new DiffScope(scope));
     this.diffs.set(key, diff);
@@ -212,13 +213,13 @@ export class GitViewStateService {
   /** Reads a conflicted file's stages, Git's merge of them and its sides' names. */
   public conflictAsync(path: string): Promise<GitConflict> {
     const folder: string | null = this.folder();
-    return folder === null ? Promise.reject(new StatusMissingException()) : this.client.conflictAsync(folder, path);
+    return Object.isNull(folder) ? Promise.reject(new StatusMissingException()) : this.client.conflictAsync(folder, path);
   }
 
   /** Finds the tracked files, staged or not, that still have a conflict marker line. */
   public markerCheckAsync(): Promise<GitMarkerCheck> {
     const folder: string | null = this.folder();
-    return folder === null ? Promise.reject(new StatusMissingException()) : this.client.markerCheckAsync(folder);
+    return Object.isNull(folder) ? Promise.reject(new StatusMissingException()) : this.client.markerCheckAsync(folder);
   }
 
   /** Resolves a conflicted file with its resolved text, one side's whole file, or its deletion, and stages it. */
@@ -254,7 +255,7 @@ export class GitViewStateService {
   /** Puts the last discard's paths back from its checkpoint. */
   public undoDiscardAsync(): Promise<void> {
     const entry: GitJournalEntry | null = this.discarded();
-    return entry === null ? Promise.resolve() : this.undoEntryAsync(entry);
+    return Object.isNull(entry) ? Promise.resolve() : this.undoEntryAsync(entry);
   }
 
   /** Undoes one write of the journal; the runtime refuses one that can't be undone, or whose refs or index moved since. */
@@ -265,15 +266,15 @@ export class GitViewStateService {
   /** Reads the journal again for the recent actions, keeping the last list when it can't be read. */
   public async readRecentActionsAsync(): Promise<void> {
     const folder: string | null = this.folder();
-    const journal: GitJournal | null = folder === null ? null : await this.readJournalAsync(folder);
-    if (journal !== null && folder === this.folder())
-      this.recentActions.set(journal.entries.slice(-Resources.recentActionsLimit).reverse());
+    const journal: GitJournal | null = Object.isNull(folder) ? null : await this.readJournalAsync(folder);
+    if (!Object.isNull(journal) && folder === this.folder())
+      this.recentActions.set([...journal.entries].reverse());
   }
 
   /** Whether a discard now takes a checkpoint first, so it can be undone; false when the journal can't be read. */
   public async canUndoDiscardAsync(): Promise<boolean> {
     const folder: string | null = this.folder();
-    return folder !== null && (await this.readJournalAsync(folder))?.checkpoints === true;
+    return !Object.isNull(folder) && (await this.readJournalAsync(folder))?.checkpoints === true;
   }
 
   /** Stages the chosen lines of one file's worktree changes, or unstages them from its staged ones, as the diff numbers them. */
@@ -283,7 +284,7 @@ export class GitViewStateService {
 
   public async switchBranchAsync(name: string): Promise<void> {
     const folder: string | null = this.folder();
-    if (folder === null)
+    if (Object.isNull(folder))
       return;
     await GitPendingSwitch.runAsync(folder, name, () => this.writeAsync((at, basedOn) => this.client.switchBranchAsync(at, name, basedOn)));
   }
@@ -306,7 +307,7 @@ export class GitViewStateService {
       catch (error) {
         if (opened === this.opened && GitRuntimeClient.failureOf(error)?.gitCode === GitCode.PushBehind) {
           this.forcePushOffer.set(offer);
-          this.fetchOffered.set(offer === null);
+          this.fetchOffered.set(Object.isNull(offer));
         }
         throw error;
       }
@@ -362,7 +363,7 @@ export class GitViewStateService {
       this.fillMessage(this.prefix() ?? "");
       return;
     }
-    if (folder === null || head === null)
+    if (Object.isNull(folder) || Object.isNull(head))
       return;
     try {
       const [log, detail] = await Promise.all([this.client.logAsync(folder, 1), this.client.commitDetailAsync(folder, head)]);
@@ -394,7 +395,7 @@ export class GitViewStateService {
 
   public async followAgainAsync(): Promise<void> {
     const folder: string | null = this.folder();
-    if (folder === null)
+    if (Object.isNull(folder))
       return;
     this.watchFailure.set(null);
     await this.watchAsync(folder);
@@ -444,7 +445,7 @@ export class GitViewStateService {
     this.recentActions.set([]);
     this.message.set("");
     this.diffs.clear();
-    if (folder !== null) {
+    if (!Object.isNull(folder)) {
       this.phase.set(GitViewPhase.Loading);
       this.status.set(null);
       void this.watchAsync(folder);
@@ -496,7 +497,7 @@ export class GitViewStateService {
   private async writeAsync(write: (folder: string, basedOn: string) => Promise<void>): Promise<void> {
     const folder: string | null = this.folder();
     const status: GitStatus | null = this.status();
-    if (folder === null || status === null || this.busy())
+    if (Object.isNull(folder) || Object.isNull(status) || this.busy())
       return;
     const opened: number = this.opened;
     this.busy.set(true);
@@ -530,7 +531,7 @@ export class GitViewStateService {
 
   private showNoFolder(): void {
     const failure: string | null = this.folderFailure();
-    this.show(failure === null ? GitViewPhase.NoFolder : GitViewPhase.FolderFailed, null);
+    this.show(Object.isNull(failure) ? GitViewPhase.NoFolder : GitViewPhase.FolderFailed, null);
     this.readFailure.set(failure ?? "");
   }
 

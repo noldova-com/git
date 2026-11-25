@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
-import { FailureCode, UntrustedSource } from "@noldova/git.protocol";
+import { FailureCode, GitRebaseCommit, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import { RebaseTooLongException } from "../../src/exceptions/rebase-too-long.exception.ts";
@@ -85,13 +85,13 @@ describe("RebasePlanReader", () => {
     const first = "a".repeat(40);
     const second = "b".repeat(40);
     const paired = RebasePlanReader.pair([
-      [first, "Same"],
-      [second, "Same"],
-      ["c".repeat(40), "fixup! Same"],
-      ["d".repeat(40), "amend! aaaa"],
-      ["e".repeat(40), "fixup! aaa"],
-      ["f".repeat(40), "squash! Missing"],
-      ["1".repeat(40), "Not a fixup! Same"]
+      new GitRebaseCommit(first, "Same", null),
+      new GitRebaseCommit(second, "Same", null),
+      new GitRebaseCommit("c".repeat(40), "fixup! Same", null),
+      new GitRebaseCommit("d".repeat(40), "amend! aaaa", null),
+      new GitRebaseCommit("e".repeat(40), "fixup! aaa", null),
+      new GitRebaseCommit("f".repeat(40), "squash! Missing", null),
+      new GitRebaseCommit("1".repeat(40), "Not a fixup! Same", null)
     ]);
 
     assert.deepEqual(paired.map(t => t.fixupOf), [null, null, second, first, null, null, null]);

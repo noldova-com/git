@@ -45,6 +45,8 @@ describe("The Git agent tools", () => {
     cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
     cleanUps.add(() => supervisor.disposeAsync());
+    // Noldova Desktop answers a module's declared setting with its value; these tests take the defaults.
+    supervisor.context.settings.answer("read", () => null);
     part = new RuntimePart();
     await part.activateAsync(supervisor.context);
     cleanUps.add(() => part.deactivateAsync());

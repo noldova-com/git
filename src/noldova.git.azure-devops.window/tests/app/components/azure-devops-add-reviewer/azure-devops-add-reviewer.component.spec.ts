@@ -7,6 +7,7 @@
  */
 
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { FailureCode } from "@noldova/desktop.protocol";
 import { RuntimeRequestException, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
@@ -28,7 +29,7 @@ const added: HostReviewer = new HostReviewer(new HostPerson("monalisa@fabrikam.c
 function wordsOf(node: Node): string {
   const words: string[] = [];
   const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-  for (let text = walker.nextNode(); text !== null; text = walker.nextNode())
+  for (let text = walker.nextNode(); !Object.isNull(text); text = walker.nextNode())
     words.push((text.textContent ?? "").trim());
   return words.filter(t => t.length > 0).join(" ").replace(/\s+/g, " ");
 }
@@ -191,7 +192,7 @@ describe("AzureDevOpsAddReviewerComponent", () => {
     await search.typeAsync("mon");
 
     search.people()[0]?.click();
-    await search.untilAsync(() => search.element.querySelector("[role=alert]") !== null);
+    await search.untilAsync(() => !Object.isNull(search.element.querySelector("[role=alert]")));
     const refused: string[] = search.texts("[role=alert]");
     search.people()[0]?.click();
     await search.untilAsync(() => search.texts("[role=alert]")[0] !== refused[0]);

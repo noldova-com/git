@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type DiffFile, FileChange, LineKind } from "@noldova/git.protocol";
 
 import type { GitFileLayout } from "../enums/git-file-layout.ts";
@@ -17,7 +18,7 @@ import { Resources } from "../../resources.ts";
 export class GitCommitFiles {
   /** The rows to show; a closed folder's rows are left out. */
   public static rowsOf(files: readonly DiffFile[], layout: GitFileLayout, closed: ReadonlySet<string>): GitCommitFileRow[] {
-    return GitPathLayout.layout(files, t => t.path, layout, closed).map(t => t.item === null
+    return GitPathLayout.layout(files, t => t.path, layout, closed).map(t => Object.isNull(t.item)
       ? new GitCommitFileRow(t.folder, t.name, "", true, t.depth, "", null, null)
       : GitCommitFiles.fileOf(t.item, t.name, t.depth));
   }
@@ -30,9 +31,9 @@ export class GitCommitFiles {
   private static fileOf(file: DiffFile, name: string, depth: number): GitCommitFileRow {
     const moved: boolean = file.change === FileChange.Renamed || file.change === FileChange.Copied;
     const [added, removed] = GitCommitFiles.countsOf(file);
-    const hasLines: boolean = !file.binary && file.submodule === null;
+    const hasLines: boolean = !file.binary && Object.isNull(file.submodule);
     const letter: string = Resources.changeLetters[file.change];
-    return new GitCommitFileRow(file.path, name, moved ? file.oldPath : "", false, depth, file.similarity === null ? letter : Resources.formatSimilarity(letter, file.similarity),
+    return new GitCommitFileRow(file.path, name, moved ? file.oldPath : "", false, depth, Object.isNull(file.similarity) ? letter : Resources.formatSimilarity(letter, file.similarity),
       hasLines ? added : null, hasLines ? removed : null);
   }
 

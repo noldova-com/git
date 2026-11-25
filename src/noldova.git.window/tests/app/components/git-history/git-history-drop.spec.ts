@@ -8,6 +8,7 @@
 
 import { ErrorHandler, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { LinkPlace } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
@@ -54,7 +55,7 @@ describe("GitHistoryComponent branch drops", () => {
   /** The element's text, its children's texts apart by a space. */
   const text = (element: HTMLElement, selector: string): string => {
     const found: Element | null = element.querySelector(selector);
-    const parts: string[] = found === null ? [] : found.children.length === 0 ? [found.textContent ?? ""] : [...found.children].map(t => t.textContent ?? "");
+    const parts: string[] = Object.isNull(found) ? [] : found.children.length === 0 ? [found.textContent ?? ""] : [...found.children].map(t => t.textContent ?? "");
     return parts.map(t => t.trim()).filter(t => t.length > 0).join(" ");
   };
   const readyAsync = (element: HTMLElement, context: FakeWindowPartContext): Promise<boolean> =>
@@ -75,7 +76,7 @@ describe("GitHistoryComponent branch drops", () => {
       240, 160, [{ folder: GitFixtures.folder, id: "b".repeat(40), action: "Merge" }]
     ]);
     element.querySelector<HTMLButtonElement>(".option.merge")?.click();
-    await until(() => context.callsOf("requestAsync").some(t => t[0] === "git.merge") && element.querySelector(".drop") === null);
+    await until(() => context.callsOf("requestAsync").some(t => t[0] === "git.merge") && Object.isNull(element.querySelector(".drop")));
 
     expect([context.callsOf("requestAsync").find(t => t[0] === "git.merge")?.[1], element.querySelector(".drop")]).toEqual([
       { folder: GitFixtures.folder, id: "b".repeat(40), basedOn: "f1" }, null
@@ -99,15 +100,15 @@ describe("GitHistoryComponent branch drops", () => {
     await readyAsync(element, context);
 
     drag(element, "topic", "main");
-    await until(() => element.querySelector(".option.request") !== null);
+    await until(() => !Object.isNull(element.querySelector(".option.request")));
     const held: readonly [boolean | undefined, string | undefined] = [element.querySelector<HTMLButtonElement>(".option.request")?.disabled,
       element.querySelector<HTMLButtonElement>(".option.request")?.title];
     element.querySelector<HTMLElement>(".backdrop")?.click();
-    await until(() => element.querySelector(".drop") === null);
+    await until(() => Object.isNull(element.querySelector(".drop")));
     drag(element, "feature", "main");
-    await until(() => element.querySelector(".option.request:enabled") !== null);
+    await until(() => !Object.isNull(element.querySelector(".option.request:enabled")));
     element.querySelector<HTMLButtonElement>(".option.request")?.click();
-    await until(() => handled().length > 0 && element.querySelector(".drop") === null);
+    await until(() => handled().length > 0 && Object.isNull(element.querySelector(".drop")));
 
     expect([held, asked, context.callsOf("openLinkAsync"), handled()]).toEqual([
       [true, "Push topic to a remote whose host opens pull requests to open one into main"], ["octocat/site feature main"],
@@ -124,9 +125,9 @@ describe("GitHistoryComponent branch drops", () => {
     await readyAsync(element, context);
 
     drag(element, "main", "topic");
-    await until(() => element.querySelector(".option.rebase:enabled") !== null);
+    await until(() => !Object.isNull(element.querySelector(".option.rebase:enabled")));
     element.querySelector<HTMLButtonElement>(".option.rebase")?.click();
-    await until(() => element.querySelector(".drop") === null);
+    await until(() => Object.isNull(element.querySelector(".drop")));
 
     expect([GitRebasing.targetOf(GitFixtures.folder), context.callsOf("openDocument"), element.querySelector(".drop")]).toEqual([
       new GitRebaseTarget("c".repeat(40), "topic"), [["git.interactiveRebase", GitFixtures.folder, expect.any(String)]], null
@@ -149,12 +150,12 @@ describe("GitHistoryComponent branch drops", () => {
     expect([late.defaultPrevented, element.querySelector(".drop")]).toEqual([false, null]);
 
     drag(element, "feature", "topic");
-    await until(() => element.querySelector(".drop") !== null);
+    await until(() => !Object.isNull(element.querySelector(".drop")));
     expect([text(element, ".detail"), context.callsOf("requestAsync").filter(t => t[0] === "git.predict")]).toEqual([
       "Switch to feature or topic to see what a merge of the two would do.", []
     ]);
     element.querySelector<HTMLElement>(".backdrop")?.click();
-    await until(() => element.querySelector(".drop") === null);
+    await until(() => Object.isNull(element.querySelector(".drop")));
   });
 
   it("switches to a local branch that isn't current and merges the dropped one into it once asked, on each step's own status, and does nothing when cancelled", async () => {
@@ -172,15 +173,15 @@ describe("GitHistoryComponent branch drops", () => {
     const requested = (method: string): readonly unknown[] => context.callsOf("requestAsync").filter(t => t[0] === method).map(t => t[1]);
     const askAsync = async (): Promise<void> => {
       drag(element, "feature", "topic");
-      await until(() => element.querySelector(".drop") !== null);
+      await until(() => !Object.isNull(element.querySelector(".drop")));
       element.querySelector<HTMLButtonElement>(".option.merge")?.click();
-      await until(() => (dialog()?.querySelector(".text")?.textContent ?? "").length > 0 && element.querySelector(".drop") === null);
+      await until(() => (dialog()?.querySelector(".text")?.textContent ?? "").length > 0 && Object.isNull(element.querySelector(".drop")));
     };
 
     await askAsync();
     const asked: readonly unknown[] = [element.querySelector(".drop"), dialog()?.querySelector(".text")?.textContent?.trim()];
     dialog()?.querySelector<HTMLButtonElement>(".cancel")?.click();
-    await until(() => dialog() === null);
+    await until(() => Object.isNull(dialog()));
     const cancelled: readonly unknown[] = [requested("git.switchBranch"), requested("git.merge")];
     await askAsync();
     dialog()?.querySelector<HTMLButtonElement>(".switch-merge")?.click();
@@ -200,9 +201,9 @@ describe("GitHistoryComponent branch drops", () => {
     await readyAsync(element, context);
 
     drag(element, "feature", "topic");
-    await until(() => element.querySelector(".drop") !== null);
+    await until(() => !Object.isNull(element.querySelector(".drop")));
     element.querySelector<HTMLButtonElement>(".option.merge")?.click();
-    await until(() => element.querySelector("[role=alert]") !== null);
+    await until(() => !Object.isNull(element.querySelector("[role=alert]")));
 
     expect([element.querySelector("[role=alert]")?.textContent?.trim(), document.querySelector("nol-git-switch-merge-dialog"), element.querySelector(".drop"),
       context.callsOf("requestAsync").filter(t => t[0] === "git.switchBranch")])
@@ -218,14 +219,14 @@ describe("GitHistoryComponent branch drops", () => {
     expect(drag(element, "feature", "main")).toEqual([true, false]);
     await held.answerAsync("git.status", GitFixtures.status().toJson());
     await until(() => drag(element, "feature", "main")[1]);
-    await until(() => element.querySelector(".drop") !== null);
+    await until(() => !Object.isNull(element.querySelector(".drop")));
     element.querySelector<HTMLElement>(".backdrop")?.click();
     await held.answerAsync("git.predict", clean);
-    await until(() => element.querySelector(".drop") === null);
+    await until(() => Object.isNull(element.querySelector(".drop")));
 
     drag(element, "feature", "main");
     await held.answerAsync("git.predict", GitFixtures.failure(FailureCode.Git, null, "Git can't tell."));
-    await until(() => text(element, ".detail") !== "" && element.querySelector(".heading") === null);
+    await until(() => text(element, ".detail") !== "" && Object.isNull(element.querySelector(".heading")));
     drag(element, "main", "feature");
     await held.answerAsync("git.predict", new Error("predict broke"));
     await until(() => handled().includes("Error: predict broke"));

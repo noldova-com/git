@@ -696,6 +696,8 @@ export class Resources {
   public static readonly booleanType: string = "boolean";
   public static readonly integerType: string = "integer";
   public static readonly undoUnknown: string = "The write to undo is no longer in the journal.";
+  public static readonly rebasePlanMoved: string = "The branch has moved since its rebase plan was read, so its steps no longer match the commits to rebase; read the plan again.";
+  public static readonly rebaseRangeArguments: readonly string[] = ["rev-list", "--no-merges", "--right-only"];
   public static readonly undoMoved: string = "Something the write changed has moved since, so undoing it would lose that change.";
   /** The checkpoints module's service, which a discard takes a checkpoint through when the app includes the module. */
   public static readonly checkpointsService: string = "checkpoints.service";
@@ -711,6 +713,9 @@ export class Resources {
   public static readonly undoCommitPushed: string = "The last commit is already on the branch's upstream; undoing it would change pushed history.";
   public static readonly forcePushNoUpstream: string = "The branch has no upstream on its remote to replace.";
   public static readonly journalLimit: number = 50;
+  public static readonly journalLimitMinimum: number = 1;
+  public static readonly journalLimitMaximum: number = 500;
+  public static readonly undoHistorySetting: string = "git.undoHistory";
   public static readonly commandLogLimit: number = 200;
   public static readonly commandLineLimit: number = 1000;
   public static readonly configOption: string = "-c";
@@ -732,6 +737,7 @@ export class Resources {
   public static readonly parentArguments: readonly string[] = ["rev-parse", "--verify", "--quiet", "HEAD^"];
   public static readonly endOfArguments: string = "--";
   public static readonly refsLabel: string = "Refs";
+  public static readonly deletedBranchSettingsNote: string = "The branch comes back at its commit, but its upstream and other settings were removed with it and don't come back.";
   public static readonly pathsLabel: string = "Paths";
   public static readonly replacesLabel: string = "Replaces";
   public static readonly noRef: string = "none";
@@ -1345,6 +1351,10 @@ export class Resources {
 
   public static formatRange(from: string, to: string): string {
     return `${from}..${to}`;
+  }
+
+  public static formatSymmetricRange(from: string, to: string): string {
+    return `${from}...${to}`;
   }
 
   public static readonly rebaseStopped: string = "The rebase stopped on conflicts. Resolve them, stage the files and continue, or abort.";

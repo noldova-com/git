@@ -13,7 +13,6 @@
   min-width: 0;
   overflow: auto;
   color: var(--nol-text);
-  background-color: var(--nol-panel);
 }
 
 .empty-view {
@@ -172,7 +171,7 @@ button.row:hover {
   box-sizing: border-box;
   width: 0.875rem;
   height: 0.875rem;
-  border: 2px solid var(--nol-panel);
+  border: 2px solid var(--nol-window);
   border-radius: 50%;
   background-color: var(--nol-text-muted);
 }

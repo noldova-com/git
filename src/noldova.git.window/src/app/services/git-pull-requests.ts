@@ -7,6 +7,7 @@
  */
 
 import { signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import type { IWindowPartContext } from "@noldova/desktop.window";
 import type { GitRemote } from "@noldova/git.protocol";
 
@@ -43,13 +44,13 @@ export class GitPullRequests {
    * remote at its commit, or for a remote branch of another remote.
    */
   public static newPullRequestUrlOf(remote: GitRemote | null, source: GitRefChip, labels: readonly GitRefChip[], target: GitRefChip): string | null {
-    if (remote === null)
+    if (Object.isNull(remote))
       return null;
     const host: IGitPullRequests | null = GitPullRequests.of(remote);
     const newPullRequestUrl: IGitPullRequests["newPullRequestUrl"] = host?.newPullRequestUrl;
     const sourceName: string | null = source.branchOn(remote.name, labels);
     const targetName: string | null = target.baseOn(remote.name);
-    if (host === null || newPullRequestUrl === undefined || sourceName === null || targetName === null)
+    if (Object.isNull(host) || Object.isUndefined(newPullRequestUrl) || Object.isNull(sourceName) || Object.isNull(targetName))
       return null;
     return newPullRequestUrl.call(host, remote, sourceName, targetName);
   }

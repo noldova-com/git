@@ -8,6 +8,7 @@
 
 import { computed, ErrorHandler } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import type { JsonValue } from "@noldova/context.json";
@@ -354,7 +355,7 @@ describe("GitViewComponent", () => {
     dismiss.focus();
     await view.clickAsync("[role=alert] .banner-action");
 
-    expect([view.all("[role=alert]").length, next !== undefined && document.activeElement === next]).toEqual([0, true]);
+    expect([view.all("[role=alert]").length, !Object.isUndefined(next) && document.activeElement === next]).toEqual([0, true]);
   });
 
   it.each([
@@ -393,7 +394,7 @@ describe("GitViewComponent", () => {
     };
     const answerAsync = async (selector: string): Promise<void> => {
       dialog()?.querySelector<HTMLElement>(selector)?.click();
-      await view.untilAsync(() => dialog() === null);
+      await view.untilAsync(() => Object.isNull(dialog()));
       await view.fixture.whenStable();
     };
 

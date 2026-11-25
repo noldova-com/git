@@ -44,13 +44,15 @@ import {
   GitRebaseCheckParams,
   GitRebaseParams,
   GitRebasePlanParams,
-  type JsonObject,
   type JsonValue
 } from "@noldova/git.protocol";
 
 import { BranchExistsException } from "./exceptions/branch-exists.exception.ts";
 import { TagExistsException } from "./exceptions/tag-exists.exception.ts";
+import type { IFolderParams } from "./interfaces/i-folder-params.ts";
 import type { IGitWrite } from "./interfaces/i-git-write.ts";
+import type { IJsonAnswer } from "./interfaces/i-json-answer.ts";
+import type { IWriteParams } from "./interfaces/i-write-params.ts";
 import type { RepositoryFolders } from "./models/repository-folders.ts";
 import { Resources } from "./resources.ts";
 import { BranchAtWriter } from "./services/branch-at.writer.ts";
@@ -170,11 +172,11 @@ export class RuntimePart implements IRuntimePart {
         changed.publishTo(watch.connection, watch.window, new GitChanged(watch.folder).toJson());
     }, Resources.treeWatchOf(process.platform));
     this.monitor = monitor;
-    const sharedReads = new SharedReads(this.reads);
-    const register = <T extends { readonly folder: string }>(
+    const sharedReads = new SharedReads<IJsonAnswer>(this.reads);
+    const register = <T extends IFolderParams>(
       name: string,
       parse: (payload: unknown) => T,
-      read: (folders: RepositoryFolders, params: T, signal: AbortSignal) => Promise<{ toJson(): JsonObject }>): void =>
+      read: (folders: RepositoryFolders, params: T, signal: AbortSignal) => Promise<IJsonAnswer>): void =>
       context.registerMethod(name, {
         handleAsync: request => RuntimePart.answerAsync(async () => {
           const params = parse(request.payload);
@@ -257,14 +259,14 @@ export class RuntimePart implements IRuntimePart {
         monitor.unwatch(top);
     });
     const snapshots = new RefSnapshotReader(runner);
-    const journal = new Journal();
+    const journal = new Journal(() => new Date(), () => context.settings.read(Resources.undoHistorySetting));
     const checkpoints = new CheckpointStore(() => context.findService(Resources.checkpointsService, CheckpointStore.isCheckpoints));
     register(GitNames.journalMethod, t => GitFolderParams.fromJson(t), async folders => journal.read(folders.commonGitFolder, checkpoints.isAvailable));
     register(GitNames.commandLogMethod, t => GitFolderParams.fromJson(t), async folders => commands.read(folders.commonGitFolder));
     const writes = new WriteRunner(statuses, snapshots, journal, top => monitor.notifyWriting(top), top => monitor.notifyWritten(top));
     const filters = new FilterOptionsReader(runner);
     const risks = new CheckoutRisksReader(hooks, filters);
-    const registerWrite = <T extends { readonly folder: string; readonly basedOn: string }>(
+    const registerWrite = <T extends IWriteParams>(
       name: string,
       parse: (payload: unknown) => T,
       write: (params: T) => IGitWrite): void =>

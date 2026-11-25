@@ -8,6 +8,7 @@
 
 import { Component, ErrorHandler, input, type InputSignal, signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { By } from "@angular/platform-browser";
@@ -78,12 +79,19 @@ class Row {
     this.fixture.autoDetectChanges();
   }
 
+  public get element(): HTMLElement {
+    const element: unknown = this.fixture.nativeElement;
+    if (!(element instanceof HTMLElement))
+      throw new Error("The row isn't rendered.");
+    return element;
+  }
+
   public get links(): HTMLAnchorElement[] {
-    return [...(this.fixture.nativeElement as HTMLElement).querySelectorAll<HTMLAnchorElement>("a")];
+    return [...this.element.querySelectorAll<HTMLAnchorElement>("a")];
   }
 
   public get text(): string {
-    return (this.fixture.nativeElement as HTMLElement).querySelector(".row")?.textContent ?? "";
+    return this.element.querySelector(".row")?.textContent ?? "";
   }
 
   public get rowClicks(): number {
@@ -103,7 +111,7 @@ describe("GitReferenceTextComponent", () => {
   it("follows a chip with its title, keeps it out of the tab order when asked, and puts a work item's state after it, a space apart and outside the link", async () => {
     const row = new Row(() => false, { chipTabIndex: -1 }, READ);
     await row.fixture.whenStable();
-    const state = (row.fixture.nativeElement as HTMLElement).querySelector("nol-link-reference-work-item-state");
+    const state = row.element.querySelector("nol-link-reference-work-item-state");
 
     expect([row.text, row.links.map(t => t.textContent), state?.textContent, state?.closest("a"), state?.previousElementSibling?.matches("a[nol-link-reference-chip]"),
       row.links.map(t => t.getAttribute("tabindex"))]).toEqual(["Fixes Bug 12 · Fix the login Active and #5", ["Bug 12 · Fix the login", "#5"], "Active", null, true, ["-1", "-1"]]);
@@ -120,7 +128,7 @@ describe("GitReferenceTextComponent", () => {
     const title = [...document.querySelectorAll<HTMLAnchorElement>(`a[href="${ISSUE}"]`)].find(t => !t.matches("[nol-link-reference-chip]"));
     title?.click();
 
-    expect([title === undefined, row.opened, row.context.callsOf("openLinkAsync"), row.rowClicks, chip.isShown]).toEqual([false, [`${FOLDER} ${ISSUE}`], [], 0, false]);
+    expect([Object.isUndefined(title), row.opened, row.context.callsOf("openLinkAsync"), row.rowClicks, chip.isShown]).toEqual([false, [`${FOLDER} ${ISSUE}`], [], 0, false]);
   });
 
   it("opens a clicked chip in the app when a host claims it, and the row it sits in doesn't take the click", async () => {
@@ -138,7 +146,7 @@ describe("GitReferenceTextComponent", () => {
     await row.fixture.whenStable();
 
     row.links[1]?.click();
-    (row.fixture.nativeElement as HTMLElement).querySelector<HTMLElement>("span")?.click();
+    row.element.querySelector<HTMLElement>("span")?.click();
 
     expect([row.context.callsOf("openLinkAsync"), row.rowClicks]).toEqual([[[OTHER, { gesture: LinkGesture.Plain }]], 1]);
   });
@@ -170,7 +178,7 @@ describe("GitReferenceTextComponent", () => {
     async (_case, link, reference, shown) => {
       const row = new Row(() => false, { text: "!12", link, title: "Fix the sign-in page" }, reference);
       await row.fixture.whenStable();
-      const words: Element | null = (row.fixture.nativeElement as HTMLElement).querySelector("nol-git-reference-text > span[title]");
+      const words: Element | null = row.element.querySelector("nol-git-reference-text > span[title]");
 
       expect([words?.textContent ?? null, words?.getAttribute("title") ?? null]).toEqual([shown, shown]);
     });

@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { JsonReader } from "@noldova/context.json";
 import { CommandContribution, ContentPadding, DockSide, DocumentContribution, type IWindowPart, type IWindowPartContext, SettingsPageContribution, SettingsRow,
   StatusBarItemContribution, StatusBarSide, ViewContribution } from "@noldova/desktop.window";
@@ -41,7 +42,7 @@ export class GitWindowPart implements IWindowPart {
   public readonly padding: ContentPadding = ContentPadding.None;
 
   public get isActive(): boolean {
-    return this.context !== null;
+    return !Object.isNull(this.context);
   }
 
   public async activateAsync(context: IWindowPartContext): Promise<void> {
@@ -111,7 +112,7 @@ export class GitWindowPart implements IWindowPart {
       () => import("../components/git-workspace/git-workspace.component.ts").then(t => t.GitWorkspaceComponent), ContentPadding.None));
     context.registerCommand(new CommandContribution(Resources.openWorkspaceCommand, Resources.openDashboardTitle, Resources.dashboardIcon, null,
       async (commandArguments: JsonValue) => {
-        GitWorkspacePages.open(context, commandArguments === null ? null : JsonReader.fromValue(commandArguments).readNullableString("id"));
+        GitWorkspacePages.open(context, Object.isNull(commandArguments) ? null : JsonReader.fromValue(commandArguments).readNullableString("id"));
         return null;
       }));
     context.registerSettingsPage(new SettingsPageContribution(Resources.accountsPage,
@@ -127,7 +128,7 @@ export class GitWindowPart implements IWindowPart {
   }
 
   public async reconnectAsync(): Promise<boolean> {
-    return this.context !== null;
+    return !Object.isNull(this.context);
   }
 
   public async deactivateAsync(): Promise<void> {

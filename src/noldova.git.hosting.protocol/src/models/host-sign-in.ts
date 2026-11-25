@@ -27,8 +27,8 @@ export class HostSignIn {
   public readonly account: HostAccount | null;
   public readonly failure: SignInFailure | null;
 
-  public constructor(state: SignInState, deviceCode: DeviceCode | null, address: string | null, account: HostAccount | null, failure: SignInFailure | null,
-    reader?: JsonReader) {
+  public constructor(state: SignInState, deviceCode: DeviceCode | null, account: HostAccount | null, failure: SignInFailure | null, reader?: JsonReader,
+    address: string | null = null) {
     if ((state === SignInState.Waiting) !== (deviceCode !== null || address !== null))
       FieldCheck.fail(deviceCode === null && address !== null ? Resources.addressField : Resources.deviceCodeField, Resources.deviceCodeExpected, reader);
     if (deviceCode !== null && address !== null)
@@ -48,19 +48,19 @@ export class HostSignIn {
   }
 
   public static signedOut(failure?: SignInFailure): HostSignIn {
-    return new HostSignIn(SignInState.SignedOut, null, null, null, failure ?? null);
+    return new HostSignIn(SignInState.SignedOut, null, null, failure ?? null);
   }
 
   public static waiting(deviceCode: DeviceCode): HostSignIn {
-    return new HostSignIn(SignInState.Waiting, deviceCode, null, null, null);
+    return new HostSignIn(SignInState.Waiting, deviceCode, null, null);
   }
 
   public static waitingInBrowser(address: string): HostSignIn {
-    return new HostSignIn(SignInState.Waiting, null, address, null, null);
+    return new HostSignIn(SignInState.Waiting, null, null, null, undefined, address);
   }
 
   public static signedIn(account: HostAccount): HostSignIn {
-    return new HostSignIn(SignInState.SignedIn, null, null, account, null);
+    return new HostSignIn(SignInState.SignedIn, null, account, null);
   }
 
   public static fromJson(value: unknown, path?: string): HostSignIn {
@@ -69,19 +69,20 @@ export class HostSignIn {
     return new HostSignIn(
       reader.readOneOf(Resources.stateField, HostSignIn.STATES),
       FieldCheck.readNullableModel(reader, Resources.deviceCodeField, DeviceCode.fromJson),
-      reader.readNullableString(Resources.addressField),
       FieldCheck.readNullableModel(reader, Resources.accountField, HostAccount.fromJson),
       FieldCheck.readNullableMember(reader, Resources.failureField, HostSignIn.FAILURES),
-      reader);
+      reader,
+      reader.hasField(Resources.addressField) ? reader.readNullableString(Resources.addressField) : null);
   }
 
+  /** The JSON, with `address` only while a sign-in waits in the browser, so every other sign-in writes the fields it always has. */
   public toJson(): JsonObject {
     return {
       [Resources.stateField]: this.state,
       [Resources.deviceCodeField]: this.deviceCode?.toJson() ?? null,
-      [Resources.addressField]: this.address,
       [Resources.accountField]: this.account?.toJson() ?? null,
-      [Resources.failureField]: this.failure
+      [Resources.failureField]: this.failure,
+      ...this.address === null ? {} : { [Resources.addressField]: this.address }
     };
   }
 }

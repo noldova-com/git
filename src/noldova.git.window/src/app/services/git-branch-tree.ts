@@ -6,6 +6,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
+
 import { GitBranchRow } from "../models/git-branch-row.ts";
 
 /** Lays branches out as trees, in folders split at `/`, showing only what the open rows hold. */
@@ -43,12 +45,12 @@ export class GitBranchTree {
         folders.set(name.slice(0, at), [...folders.get(name.slice(0, at)) ?? [], name.slice(at + 1)]);
     }
     const entries: (readonly [string, readonly string[] | null])[] = [...folders, ...branches.map(t => [t, null] as const)]
-      .sort(([a, aNames], [b, bNames]) => Number(bNames !== null) - Number(aNames !== null) || a.localeCompare(b, undefined, { sensitivity: "base" }));
+      .sort(([a, aNames], [b, bNames]) => Number(!Object.isNull(bNames)) - Number(!Object.isNull(aNames)) || a.localeCompare(b, undefined, { sensitivity: "base" }));
     for (const [name, children] of entries) {
-      const isFolder: boolean = children !== null;
+      const isFolder: boolean = !Object.isNull(children);
       const folder: string = isFolder ? GitBranchTree.SEPARATOR : "";
       rows.push(new GitBranchRow(key + name + folder, name, depth, isFolder, 0, isFolder ? "" : branch + name));
-      if (children !== null && opened.has(key + name + folder))
+      if (!Object.isNull(children) && opened.has(key + name + folder))
         GitBranchTree.addLevel(rows, key + name + folder, branch + name + folder, children, depth + 1, opened);
     }
   }

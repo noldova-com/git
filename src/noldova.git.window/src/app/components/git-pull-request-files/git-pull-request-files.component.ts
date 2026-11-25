@@ -9,6 +9,7 @@
 import {
   afterRenderEffect, Component, computed, effect, inject, input, type InputSignal, output, type OutputEmitterRef, PendingTasks, type Signal, signal, untracked, viewChild, type WritableSignal
 } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { type HostPullRequestFile, HostPullRequestFiles, type HostReference } from "@noldova/git.hosting.protocol";
 import { DiffScope, DiffScopeKind, DiffTotals, GitCommitDetailParams, GitDiffParams, GitFetchParams, GitFolderParams, GitNames, GitStatus }
@@ -108,13 +109,13 @@ export class GitPullRequestFilesComponent {
     });
     afterRenderEffect(() => {
       const line: GitFileLine | null = this.reveal();
-      if (line === null || line === this.revealed || this.isReading())
+      if (Object.isNull(line) || line === this.revealed || this.isReading())
         return;
       const files: GitDiffFilesComponent | undefined = this.diffFiles();
-      if (files !== undefined && !files.isRead())
+      if (!Object.isUndefined(files) && !files.isRead())
         return;
       this.revealed = line;
-      if (files !== undefined && files.holds(line.path))
+      if (!Object.isUndefined(files) && files.holds(line.path))
         untracked(() => files.reveal(line.path, line.line));
       else
         untracked(() => this.unrevealed.emit(line));
@@ -176,16 +177,16 @@ export class GitPullRequestFilesComponent {
     const done = this.tasks.add();
     try {
       const [list, folder] = await Promise.all([given ?? this.readListAsync(reference), this.host().localFolderAsync(this.url())]);
-      const scope: DiffScope | null = folder === null || list.sourceCommit === null || list.commonCommit === null ? null
+      const scope: DiffScope | null = Object.isNull(folder) || Object.isNull(list.sourceCommit) || Object.isNull(list.commonCommit) ? null
         : await this.scopeAsync(folder, list.commonCommit, list.sourceCommit);
-      const totals: DiffTotals | null = folder === null || scope === null ? null : await this.totalsAsync(folder, scope);
+      const totals: DiffTotals | null = Object.isNull(folder) || Object.isNull(scope) ? null : await this.totalsAsync(folder, scope);
       if (!isCurrent())
         return;
       this.list.set(list);
       this.files.set(list.files);
       this.folder.set(folder);
       this.scope.set(scope);
-      this.counted.emit(totals === null ? `${list.files.length}${list.hasMore ? Resources.pullRequestMoreMark : ""}` : String(totals.files));
+      this.counted.emit(Object.isNull(totals) ? `${list.files.length}${list.hasMore ? Resources.pullRequestMoreMark : ""}` : String(totals.files));
     }
     catch (error) {
       if (!(error instanceof WindowException))

@@ -7,6 +7,7 @@
  */
 
 import { Component, computed, DestroyRef, effect, ErrorHandler, inject, signal, type Signal, untracked, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, WindowPartTokens } from "@noldova/desktop.window";
 import { ContextMenuTriggerDirective, DialogService, MenuComponent, MenuItemComponent, MenuSeparatorComponent, SpinnerComponent, TextFieldComponent } from "@noldova/ui.components.angular";
 import { FormsModule } from "@angular/forms";
@@ -58,19 +59,19 @@ export class GitRepositoryComponent {
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly busy: WritableSignal<boolean> = signal(false);
   /** Whether the first read of the branches is still under way, with no failure to show instead. */
-  protected readonly isReading: Signal<boolean> = computed(() => this.branches() === null && this.failure() === null);
+  protected readonly isReading: Signal<boolean> = computed(() => Object.isNull(this.branches()) && Object.isNull(this.failure()));
   /** The reading row's start inset in rem: a top-level branch row's, so the spinner sits in its icon's place. */
   protected readonly readingIndent: number = Resources.rowInsetRem + Resources.treeStepRem;
   protected readonly changes: Signal<number> = computed(() => this.status()?.entries.length ?? 0);
   /** The host modules' rows for the repository's remote, under Changes and History; none without a remote. */
   protected readonly links: Signal<readonly GitRepositoryLink[]> = computed(() => {
     const remote: GitRemote | null = this.status()?.remote ?? null;
-    return remote === null ? [] : GitRepositoryLinks.of(remote);
+    return Object.isNull(remote) ? [] : GitRepositoryLinks.of(remote);
   });
   /** Whether a host row's page is the active document, which selects that row in place of Changes or History. */
   protected readonly showsLink: Signal<boolean> = computed(() => this.links().some(t => t.isActive()));
   /** Whether the history selected a commit, which the Commit view shows, rather than the changes. */
-  protected readonly showsCommit: Signal<boolean> = computed(() => GitViewing.commitOf(this.folder()) !== null);
+  protected readonly showsCommit: Signal<boolean> = computed(() => !Object.isNull(GitViewing.commitOf(this.folder())));
   protected readonly switching: Signal<string | null> = computed(() => GitPendingSwitch.branchOf(this.folder()));
   protected readonly current: Signal<string | null> = computed(() => this.switching() ?? this.branches()?.current ?? null);
   /** The status a switch is based on, or null while there is none or a switch runs. */
@@ -96,7 +97,7 @@ export class GitRepositoryComponent {
       this.worktrees.set(null);
       this.items.set(null);
       this.failure.set(null);
-      if (folder === null)
+      if (Object.isNull(folder))
         return;
       untracked(() => {
         void this.readAsync(folder);
@@ -108,9 +109,9 @@ export class GitRepositoryComponent {
       const folder: string | null = this.folder();
       const branches: GitBranches | null = this.branches();
       const reading: number = ++this.remoteReading;
-      if (branches === null)
+      if (Object.isNull(branches))
         this.remoteTracks.set(new Map());
-      if (folder === null || branches === null || !this.remotesOpen())
+      if (Object.isNull(folder) || Object.isNull(branches) || !this.remotesOpen())
         return;
       untracked(() => void this.readRemoteTracksAsync(folder, reading));
     });
@@ -125,13 +126,13 @@ export class GitRepositoryComponent {
     if (isCurrent)
       return [this.ahead(), this.behind()];
     const track: GitBranchTrack | undefined = this.tracks().get(branch);
-    return track === undefined ? [0, 0] : [track.ahead, track.behind];
+    return Object.isUndefined(track) ? [0, 0] : [track.ahead, track.behind];
   }
 
   /** A remote branch's commits ahead of and behind HEAD. */
   protected remoteCountsOf(branch: string): readonly [number, number] {
     const track: GitBranchTrack | undefined = this.remoteTracks().get(branch);
-    return track === undefined ? [0, 0] : [track.ahead, track.behind];
+    return Object.isUndefined(track) ? [0, 0] : [track.ahead, track.behind];
   }
 
   /** A branch tree row's start inset in rem: the row's own, then a step per level. */
@@ -142,7 +143,7 @@ export class GitRepositoryComponent {
   /** Whether the side panel shows this branch in the history. */
   protected isViewed(branch: string, isRemote: boolean): boolean {
     const view: GitBranchView | null = GitViewing.branchOf(this.folder());
-    return view !== null && view.branch === branch && view.isRemote === isRemote;
+    return !Object.isNull(view) && view.branch === branch && view.isRemote === isRemote;
   }
 
   /** Shows a branch in the history, at its newest commit, without switching to it. */
@@ -164,7 +165,7 @@ export class GitRepositoryComponent {
 
   /** Selects the changes in place of a commit the history selected, which leaves the Commit view without one, and brings the Git view forward. */
   protected showChanges(): void {
-    GitViewing.commit.set(null);
+    GitViewing.showChanges(this.folder());
     this.context.showView(Resources.viewName);
   }
 
@@ -175,9 +176,9 @@ export class GitRepositoryComponent {
   protected showHistory(folder: string): void {
     const viewed: GitBranchView | null = GitViewing.branchOf(folder);
     const head: string | null = this.status()?.head ?? null;
-    if (viewed !== null && viewed.branch !== "")
+    if (!Object.isNull(viewed) && viewed.branch !== "")
       GitViewing.branch.set(new GitBranchView(folder, viewed.branch, viewed.isRemote));
-    else if (head !== null)
+    else if (!Object.isNull(head))
       GitViewing.branch.set(new GitBranchView(folder, "", false, head));
     GitCommitDetails.of(this.context).bringForward();
     this.history(folder);
@@ -189,7 +190,7 @@ export class GitRepositoryComponent {
 
   protected switchTo(folder: string, name: string): void {
     const status: GitStatus | null = this.switchable();
-    if (status === null || name === this.current())
+    if (Object.isNull(status) || name === this.current())
       return;
     void this.switchAsync(folder, name, status.fingerprint);
   }
@@ -212,7 +213,7 @@ export class GitRepositoryComponent {
   protected async renameAsync(folder: string, branch: string, newName: string): Promise<void> {
     const status: GitStatus | null = this.switchable();
     const name: string = newName.trim();
-    if (status === null || name.length === 0)
+    if (Object.isNull(status) || name.length === 0)
       return;
     if (name === branch) {
       this.renaming.set(null);
@@ -225,7 +226,7 @@ export class GitRepositoryComponent {
   /** Asks for the name and creates the branch at the current commit on the status read before the ask, switching to it. */
   protected async newBranchAsync(folder: string, status: GitStatus): Promise<void> {
     const name: string | null = await GitNewBranch.askAsync(this.dialogs, Resources.formatHistoryTitle(folder));
-    if (name !== null)
+    if (!Object.isNull(name))
       await this.writeAsync(folder, () => this.client.createBranchAsync(folder, name, status.fingerprint));
   }
 
@@ -243,7 +244,10 @@ export class GitRepositoryComponent {
     void this.writeAsync(folder, () => this.client.deleteTagAsync(folder, tag, status.fingerprint));
   }
 
-  /** Runs a write for the person's click, showing Git's refusal under the panel, then reads the panel again; answers whether it was done. */
+  /**
+   * Runs a write for the person's click, showing Git's refusal under the panel, then reads the panel again while it still shows the folder written to;
+   * answers whether it was done.
+   */
   private async writeAsync(folder: string, write: () => Promise<void>): Promise<boolean> {
     this.busy.set(true);
     this.failure.set(null);
@@ -259,7 +263,8 @@ export class GitRepositoryComponent {
     }
     finally {
       this.busy.set(false);
-      await this.readAsync(folder);
+      if (folder === this.folder())
+        await this.readAsync(folder);
     }
     return done;
   }

@@ -52,7 +52,7 @@ export class AzureDevOpsWindowPart implements IWindowPart {
   public readonly padding: ContentPadding = ContentPadding.None;
 
   public get isActive(): boolean {
-    return this.context !== null;
+    return !Object.isNull(this.context);
   }
 
   public async activateAsync(context: IWindowPartContext): Promise<void> {
@@ -114,7 +114,7 @@ export class AzureDevOpsWindowPart implements IWindowPart {
   }
 
   public async reconnectAsync(): Promise<boolean> {
-    return this.context !== null;
+    return !Object.isNull(this.context);
   }
 
   public async deactivateAsync(): Promise<void> {
@@ -139,9 +139,9 @@ export class AzureDevOpsWindowPart implements IWindowPart {
 
   private static cardsFor(signIn: HostSignIn | null): GitHostCard[] {
     const account = signIn?.account ?? null;
-    if (account !== null)
+    if (!Object.isNull(account))
       return [new GitHostCard(Resources.formatAccountTitle(account.login), Resources.formatAccountNote(account.login), GitHostCardState.SignedIn, Resources.signedInChip)];
-    if (signIn?.address !== null && signIn?.address !== undefined)
+    if (!Object.isNullOrUndefined(signIn?.address))
       return [new GitHostCard(Resources.hostName, Resources.browserNote, GitHostCardState.Waiting, Resources.waiting)];
     return [new GitHostCard(Resources.hostName, Resources.signedOutNote, GitHostCardState.SignedOut, Resources.signInAction)];
   }
@@ -180,9 +180,9 @@ export class AzureDevOpsWindowPart implements IWindowPart {
   private static openCommand(context: IWindowPartContext, name: string, title: string, icon: string, document: string, documentTitle: string,
     missing: string): CommandContribution {
     return new CommandContribution(name, title, icon, null, async (commandArguments: JsonValue) => {
-      const instance: string | null = commandArguments === null ? await AzureDevOpsWindowPart.openProjectAsync(context)
+      const instance: string | null = Object.isNull(commandArguments) ? await AzureDevOpsWindowPart.openProjectAsync(context)
         : AzureDevOpsWindowPart.instanceOf(commandArguments);
-      if (instance === null)
+      if (Object.isNull(instance))
         await context.postNotificationAsync(new NotificationPost(QualifiedName.parse(Resources.noProjectNotification), name, missing, null, NotificationSeverity.Info,
           null, [], null));
       else
@@ -194,12 +194,12 @@ export class AzureDevOpsWindowPart implements IWindowPart {
   /** The open repository's project as a document instance; `null` with no repository open, a remote off Azure DevOps, or a status it can't read, which it logs. */
   private static async openProjectAsync(context: IWindowPartContext): Promise<string | null> {
     const folder: string | null = GitFolder.folder();
-    if (folder === null)
+    if (Object.isNull(folder))
       return null;
     try {
       const place: WorkItemsPlace | null = WorkItemsPlace.ofRemote(GitStatus.fromJson(await context.requestAsync(GitNames.statusMethod,
         new GitFolderParams(folder).toJson())).remote);
-      return place === null ? null : Resources.formatWorkItemsInstance(place.organization, place.project, null);
+      return Object.isNull(place) ? null : Resources.formatWorkItemsInstance(place.organization, place.project, null);
     }
     catch (error) {
       if (!(error instanceof WindowException))
@@ -211,7 +211,7 @@ export class AzureDevOpsWindowPart implements IWindowPart {
 
   private static instanceOf(commandArguments: JsonValue): string {
     const place: WorkItemsPlace | null = WorkItemsPlace.ofInstance(JsonReader.fromValue(commandArguments).readString(Resources.instanceArgument));
-    if (place === null || place.id !== null)
+    if (Object.isNull(place) || !Object.isNull(place.id))
       throw new ArgumentException(Resources.projectInstanceExpected, Resources.instanceArgument);
     return Resources.formatWorkItemsInstance(place.organization, place.project, null);
   }

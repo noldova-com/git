@@ -7,6 +7,8 @@
  */
 
 /** Finds what a screen clips, pushes out of its host, scrolls sideways or draws over other text, as the geometry measures it. */
+import "@noldova/context.core";
+
 export class GitLayout {
   /** How far, in CSS pixels, a box may pass another before it counts, for sub-pixel rounding. */
   private static readonly SLACK: number = 1;
@@ -46,7 +48,7 @@ export class GitLayout {
   /** The element's line boxes cut to every ancestor below the root that clips or scrolls its overflow, so what a scroll hides isn't counted. */
   private static visibleRectsOf(element: HTMLElement, root: HTMLElement): readonly DOMRect[] {
     let rects: DOMRect[] = [...element.getClientRects()];
-    for (let parent: HTMLElement | null = element.parentElement; parent !== null && parent !== root; parent = parent.parentElement) {
+    for (let parent: HTMLElement | null = element.parentElement; !Object.isNull(parent) && parent !== root; parent = parent.parentElement) {
       if (getComputedStyle(parent).overflow === "visible")
         continue;
       const clip: DOMRect = parent.getBoundingClientRect();

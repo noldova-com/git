@@ -30,12 +30,27 @@ describe("GitViewing", () => {
   });
 
   it("gives the selected commit only to the folder whose history selected it", () => {
-    onTestFinished(() => GitViewing.commit.set(null));
+    onTestFinished(() => GitViewing.showChanges(folder));
     const view: GitCommitView = new GitCommitView(folder, new GitGraphCommit(new GitCommit("c".repeat(40), ["d".repeat(40)], "Sample Author", "2026-11-20T14:02:00Z",
       "Follow renames"), "author@example.com", []));
 
-    GitViewing.commit.set(view);
+    GitViewing.show(view);
 
     expect([GitViewing.commitOf(folder), GitViewing.commitOf("/work/other"), GitViewing.commitOf(null)]).toEqual([view, null, null]);
+  });
+
+  it("shows the changes again for one folder only, and leaves every choice alone for no folder or a folder with none", () => {
+    const other: string = "/work/other";
+    onTestFinished(() => [folder, other].forEach(t => GitViewing.showChanges(t)));
+    const commit: GitGraphCommit = new GitGraphCommit(new GitCommit("c".repeat(40), [], "Sample Author", "2026-11-20T14:02:00Z", "Follow renames"), "author@example.com", []);
+    const kept: GitCommitView = new GitCommitView(other, commit);
+    GitViewing.show(new GitCommitView(folder, commit));
+    GitViewing.show(kept);
+
+    GitViewing.showChanges(folder);
+    GitViewing.showChanges(null);
+    GitViewing.showChanges("/work/none");
+
+    expect([GitViewing.commitOf(folder), GitViewing.commitOf(other)]).toEqual([null, kept]);
   });
 });

@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { GitCommit, GitGraphCommit, GitRef, RefKind } from "@noldova/git.protocol";
 
 import { GitHistoryRow } from "../models/git-history-row.ts";
@@ -18,7 +19,7 @@ import { Resources } from "../../resources.ts";
 export class GitHistoryRows {
   /** Moves HEAD to the commit of the branch a switch is moving to, so the graph shows it at the click; the commits stay as they are when no switch runs or the branch isn't among them. */
   public static switchedTo(commits: readonly GitGraphCommit[], branch: string | null): readonly GitGraphCommit[] {
-    if (branch === null || !commits.some(t => t.refs.some(r => r.kind === RefKind.Branch && r.name === branch)))
+    if (Object.isNull(branch) || !commits.some(t => t.refs.some(r => r.kind === RefKind.Branch && r.name === branch)))
       return commits;
     return commits.map(commit => {
       const isTarget: boolean = commit.refs.some(r => r.kind === RefKind.Branch && r.name === branch);
@@ -33,12 +34,12 @@ export class GitHistoryRows {
   public static rowsOf(commits: readonly GitGraphCommit[], changedFiles: number, filter: string, now: Date): GitHistoryRow[] {
     const headCommit: GitCommit | null = commits.find(t => t.refs.some(r => r.kind === RefKind.Head))?.commit ?? null;
     const head: string | null = headCommit?.id ?? null;
-    const changes: GitGraphCommit | null = changedFiles > 0 && headCommit !== null
+    const changes: GitGraphCommit | null = changedFiles > 0 && !Object.isNull(headCommit)
       ? new GitGraphCommit(new GitCommit(Resources.changesId, [headCommit.id], "", headCommit.authoredAt, Resources.formatChangedFiles(changedFiles)), "", [])
       : null;
-    const graph = GitGraphLayout.layout([...(changes === null ? [] : [changes]), ...commits]);
+    const graph = GitGraphLayout.layout([...(Object.isNull(changes) ? [] : [changes]), ...commits]);
     const query: string = filter.trim().toLocaleLowerCase(Resources.dateLocale);
-    const offset: number = changes === null ? 0 : 1;
+    const offset: number = Object.isNull(changes) ? 0 : 1;
     return graph.map((row, index) => {
       if (index < offset)
         return new GitHistoryRow(row, [], true, false, row.commit.subject, "", "", "", Resources.ageNow, query.length === 0);

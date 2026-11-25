@@ -14,8 +14,9 @@ import { RuntimeRequestException } from "@noldova/desktop.window";
 import { DeviceCode, HostAccount, HostItem, HostPerson, HostReference, HostSignIn, ReferenceKind, ReferenceState } from "@noldova/git.hosting.protocol";
 import { GitFolderParams, GitRemote, GitStatus, RemoteTransport } from "@noldova/git.protocol";
 import type { LinkReference } from "@noldova/ui.components.angular";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
+import { GitHubReferenceRead } from "../../../src/app/models/github-reference-read.ts";
 import { GitHubReferenceSource } from "../../../src/app/services/github-reference-source.ts";
 import { DeferredResponse } from "../../fixtures/deferred-response.fixture.ts";
 import { PartReadError } from "../../fixtures/part-read-error.fixture.ts";
@@ -284,6 +285,8 @@ describe("GitHubReferenceSource", () => {
   });
 
   it("turns every chip into a plain link when the person signs out, and drops the reads under way, answered or failed, without a log", async () => {
+    const shows = vi.spyOn(GitHubReferenceRead.prototype, "show");
+    onTestFinished(() => shows.mockRestore());
     const items = [1, 2, 3, 4].map(t => find(urlOf(t)));
     const waitingRead = find(urlOf(5));
     await Wait.until(() => expect(reads()).toEqual([1, 2, 3, 4]));
@@ -294,7 +297,8 @@ describe("GitHubReferenceSource", () => {
     const later = [6, 7].map(t => find(urlOf(t)));
     held.get(1)?.resolve(itemOf(1));
     held.get(2)?.reject(new Error("GitHub answered 401."));
-    expect([later.map(t => t()), reads()]).toEqual([[null, null], [1, 2, 3, 4]]);
+    await Wait.until(() => expect(shows).toHaveBeenCalledTimes(2));
+    expect([[...items, ...later].map(t => t()), reads(), context.lines]).toEqual([[null, null, null, null, null, null], [1, 2, 3, 4], []]);
 
     context.emitModule(signInEvent, signedIn);
 

@@ -9,6 +9,7 @@
 import { type DebugElement, ErrorHandler, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import { By } from "@angular/platform-browser";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { MergeEditorComponent, ShikiLineTokenizer } from "@noldova/editor.angular";
@@ -106,7 +107,7 @@ describe("GitConflictsComponent", () => {
 
     public find<T extends HTMLElement = HTMLElement>(selector: string): T {
       const found: T | null = this.element.querySelector<T>(selector);
-      if (found === null)
+      if (Object.isNull(found))
         throw new Error(`Nothing matches ${selector}.`);
       return found;
     }
@@ -128,12 +129,12 @@ describe("GitConflictsComponent", () => {
 
     public editor(): MergeEditorComponent | null {
       const found: DebugElement | null = this.fixture.debugElement.query(By.directive(MergeEditorComponent));
-      return found === null ? null : found.injector.get(MergeEditorComponent);
+      return Object.isNull(found) ? null : found.injector.get(MergeEditorComponent);
     }
 
     public sides(): readonly (string | null)[] {
       const editor: MergeEditorComponent | null = this.editor();
-      return editor === null ? [] : [editor.ours(), editor.theirs()];
+      return Object.isNull(editor) ? [] : [editor.ours(), editor.theirs()];
     }
 
     public requested(method: string): readonly unknown[] {
@@ -185,7 +186,7 @@ describe("GitConflictsComponent", () => {
         return null;
       }, "git.continueOperation": null, "git.abortOperation": null
     });
-    await screen.untilAsync(() => screen.element.querySelector(".take-theirs") !== null);
+    await screen.untilAsync(() => !Object.isNull(screen.element.querySelector(".take-theirs")));
 
     screen.find<HTMLButtonElement>(".take-theirs").click();
     await screen.untilAsync(() => screen.texts(".group").includes("Resolved 1"));
@@ -211,7 +212,7 @@ describe("GitConflictsComponent", () => {
       "git.status": GitFixtures.status([conflictEntry("c.ts")], null, { operation: merge, fingerprint: "f1", branch: null }).toJson(),
       "git.conflict": bothC.toJson()
     });
-    await screen.untilAsync(() => screen.element.querySelector(".operation-text") !== null);
+    await screen.untilAsync(() => !Object.isNull(screen.element.querySelector(".operation-text")));
 
     expect(screen.texts(".operation-text")).toEqual(["Merging feature into this branch · 0 of 1 file resolved"]);
   });
@@ -322,7 +323,7 @@ describe("GitConflictsComponent", () => {
       "git.status": statusOf([conflictEntry("a.ts")], "f1").toJson(),
       "git.conflict": new GitConflict("a.ts", ConflictKind.BothModified, OperationKind.Merge, "b\n", "ours\n", "theirs\n", "<<<<<<< ours\nours\n", "main", "feature", null, null, false, false).toJson()
     });
-    await screen.untilAsync(() => screen.element.querySelector(".nol-merge-editor-failure") !== null);
+    await screen.untilAsync(() => !Object.isNull(screen.element.querySelector(".nol-merge-editor-failure")));
 
     expect([screen.texts(".nol-merge-editor-failure").length, screen.find<HTMLButtonElement>(".mark-resolved").disabled, screen.texts(".progress")]).toEqual([1, true, []]);
     expect([screen.texts(".merge-actions .take-ours"), screen.texts(".merge-actions .take-theirs"), screen.element.querySelectorAll(".pane-head").length])
@@ -344,7 +345,7 @@ describe("GitConflictsComponent", () => {
     const before: readonly string[] = note();
 
     screen.find<HTMLButtonElement>(".next").click();
-    await screen.untilAsync(() => title() !== undefined);
+    await screen.untilAsync(() => !Object.isUndefined(title()));
     const first: string | undefined = title();
     screen.find<HTMLButtonElement>(".next").click();
     await screen.untilAsync(() => title() !== first);
@@ -371,11 +372,11 @@ describe("GitConflictsComponent", () => {
     const before: readonly (string | null)[] = [show.getAttribute("aria-pressed"), show.textContent.trim(), screen.element.querySelector(".nol-merge-editor-base")?.tagName ?? null];
 
     show.click();
-    await screen.untilAsync(() => screen.element.querySelector(".nol-merge-editor-base > .pane-head") !== null);
+    await screen.untilAsync(() => !Object.isNull(screen.element.querySelector(".nol-merge-editor-base > .pane-head")));
     const shown: readonly (readonly string[] | string | null)[] = [show.getAttribute("aria-pressed"), screen.texts(".nol-merge-editor-base > .pane-head .strong, .nol-merge-editor-base > .pane-head .label"),
       [...screen.element.querySelectorAll(".nol-merge-editor-side")].map(t => t.querySelector(".pane-head .strong")?.textContent ?? "").join()];
     show.click();
-    await screen.untilAsync(() => screen.element.querySelector(".nol-merge-editor-base") === null);
+    await screen.untilAsync(() => Object.isNull(screen.element.querySelector(".nol-merge-editor-base")));
 
     expect([before, shown, show.getAttribute("aria-pressed")]).toEqual([["false", "Show base", null], ["true", ["Base", "where both sides started"], "Ours,Base,Theirs"], "false"]);
   });
@@ -557,11 +558,11 @@ describe("GitConflictsComponent", () => {
         false).toJson(),
       "git.resolveConflict": null
     });
-    await screen.untilAsync(() => screen.element.querySelector(".delete") !== null);
+    await screen.untilAsync(() => !Object.isNull(screen.element.querySelector(".delete")));
 
     expect([screen.texts(".pane.ours .pane-head .label"), screen.texts(".pane.theirs .pane-head .label")]).toEqual([["main · 3b9f001"], ["feature"]]);
 
-    expect([screen.element.querySelector(".take-ours") !== null, screen.element.querySelector(".take-theirs")]).toEqual([true, null]);
+    expect([!Object.isNull(screen.element.querySelector(".take-ours")), screen.element.querySelector(".take-theirs")]).toEqual([true, null]);
     expect(screen.texts(".theirs .pane-note")).toEqual(["This side deleted the file."]);
     screen.find<HTMLButtonElement>(".delete").click();
     await GitFixtures.untilAsync(() => !screen.state.busy() && screen.requested("git.resolveConflict").length === 1);
@@ -574,10 +575,10 @@ describe("GitConflictsComponent", () => {
       "git.status": statusOf([conflictEntry("a.png"), conflictEntry("b.ts")], "f1").toJson(),
       "git.conflict": () => new GitConflict("a.png", ConflictKind.BothModified, OperationKind.Merge, null, null, null, null, "main", "feature", null, null, true, false).toJson()
     });
-    await screen.untilAsync(() => screen.element.querySelector(".note-line") !== null);
+    await screen.untilAsync(() => !Object.isNull(screen.element.querySelector(".note-line")));
 
     expect(screen.texts(".note-line")).toEqual(["This file is binary: keep one side's whole file."]);
-    expect([screen.element.querySelector(".code"), screen.element.querySelector(".take-ours") !== null, screen.element.querySelector(".delete")]).toEqual([null, true, null]);
+    expect([screen.element.querySelector(".code"), !Object.isNull(screen.element.querySelector(".take-ours")), screen.element.querySelector(".delete")]).toEqual([null, true, null]);
   });
 
   it("notes a reused resolution beside the file's sides", async () => {
@@ -585,7 +586,7 @@ describe("GitConflictsComponent", () => {
       "git.status": statusOf([conflictEntry("a.ts")], "f1").toJson(),
       "git.conflict": new GitConflict("a.ts", ConflictKind.BothModified, OperationKind.Merge, "b\n", "o\n", "t\n", "r\n", "main", "feature", null, null, false, true).toJson()
     });
-    await screen.untilAsync(() => screen.element.querySelector(".note-line") !== null);
+    await screen.untilAsync(() => !Object.isNull(screen.element.querySelector(".note-line")));
 
     expect(screen.texts(".note-line")).toEqual(["Git reused a recorded resolution of this conflict. Check it before you keep it."]);
   });
@@ -597,14 +598,14 @@ describe("GitConflictsComponent", () => {
       "git.conflict": () => refuse ? GitFixtures.failure(FailureCode.Git, null, "Git couldn't read the file.") : both.toJson(),
       "git.resolveConflict": GitFixtures.failure(FailureCode.Git, null, "Git refused the resolution.")
     });
-    await screen.untilAsync(() => screen.element.querySelector(".sides .failure") !== null);
+    await screen.untilAsync(() => !Object.isNull(screen.element.querySelector(".sides .failure")));
 
     expect(screen.texts(".sides .failure")).toEqual(["Git couldn't read the file."]);
     refuse = false;
     screen.find<HTMLButtonElement>(".file.conflicted").click();
-    await screen.untilAsync(() => screen.element.querySelector(".take-ours") !== null);
+    await screen.untilAsync(() => !Object.isNull(screen.element.querySelector(".take-ours")));
     screen.find<HTMLButtonElement>(".take-ours").click();
-    await screen.untilAsync(() => screen.element.querySelector(":scope > .failure") !== null);
+    await screen.untilAsync(() => !Object.isNull(screen.element.querySelector(":scope > .failure")));
 
     expect([screen.texts(":scope > .failure"), screen.texts(".group")]).toEqual([["Git refused the resolution."], ["Conflicts 1"]]);
     expect(GitResolving.resolutionsOf(GitFixtures.folder).size).toBe(0);
@@ -718,7 +719,7 @@ describe("GitConflictsComponent", () => {
       "git.abortOperation": broken
     });
     vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.push(error));
-    await screen.untilAsync(() => screen.element.querySelector(".take-ours") !== null);
+    await screen.untilAsync(() => !Object.isNull(screen.element.querySelector(".take-ours")));
 
     screen.find<HTMLButtonElement>(".take-ours").click();
     await vi.waitUntil(() => handled.length === 1);
@@ -758,7 +759,7 @@ describe("GitConflictsComponent", () => {
   it("says no operation is in progress, and forgets the folder's resolutions once it ends", async () => {
     GitResolving.record(GitFixtures.folder, "a.ts", GitResolvedBy.Ours);
     const screen: Screen = Screen.render({ "git.status": statusOf([], "f1", null).toJson() });
-    await screen.untilAsync(() => screen.element.querySelector(".quiet") !== null);
+    await screen.untilAsync(() => !Object.isNull(screen.element.querySelector(".quiet")));
 
     expect(screen.texts(".quiet")).toEqual(["No merge, rebase, cherry-pick or revert is in progress."]);
     expect(GitResolving.resolutionsOf(GitFixtures.folder).size).toBe(0);
@@ -767,14 +768,14 @@ describe("GitConflictsComponent", () => {
   it("offers nothing for a folder the Git panel doesn't follow while it's behind, and points the panel at its folder once it's the tab in front", async () => {
     const active: WritableSignal<boolean> = signal(false);
     const screen: Screen = Screen.render({ "git.status": statusOf([conflictEntry("a.ts")], "f1").toJson() }, "/work/other", [], active);
-    await screen.untilAsync(() => screen.element.querySelector(".quiet") !== null);
+    await screen.untilAsync(() => !Object.isNull(screen.element.querySelector(".quiet")));
 
     expect([screen.texts(".quiet"), screen.element.querySelector("button"), screen.state.folder()])
       .toEqual([["Open this folder in the Git panel to resolve its conflicts."], null, GitFixtures.folder]);
     expect(screen.requested("git.conflict")).toEqual([]);
 
     active.set(true);
-    await screen.untilAsync(() => screen.element.querySelector(".quiet") === null);
+    await screen.untilAsync(() => Object.isNull(screen.element.querySelector(".quiet")));
     expect([screen.state.folder(), screen.texts(".quiet")]).toEqual(["/work/other", []]);
 
     const state: GitViewStateService = screen.state;

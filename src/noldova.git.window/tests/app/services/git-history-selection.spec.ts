@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { describe, expect, it } from "vitest";
 
@@ -20,10 +21,10 @@ describe("GitHistorySelection", () => {
     await GitHistorySelection.selectAsync(context, "/work/site", "a".repeat(40));
     const older = GitHistoryAsks.askedOf("/work/site");
     await GitHistorySelection.selectAsync(context, "/work/site", "b".repeat(40));
-    if (older !== null)
+    if (!Object.isNull(older))
       GitHistoryAsks.take(older);
     const newer = GitHistoryAsks.askedOf("/work/site");
-    if (newer !== null)
+    if (!Object.isNull(newer))
       GitHistoryAsks.take(newer);
 
     expect([older?.commitId, newer?.commitId, GitHistoryAsks.askedOf("/work/site")]).toEqual(["a".repeat(40), "b".repeat(40), null]);
@@ -35,7 +36,7 @@ describe("GitHistorySelection", () => {
 
     const failure: unknown = await GitHistorySelection.selectAsync(context, "/work/site", "c".repeat(40)).then(() => null, (t: unknown) => t);
     const asked = GitHistoryAsks.askedOf("/work/site");
-    if (asked !== null)
+    if (!Object.isNull(asked))
       GitHistoryAsks.take(asked);
 
     expect([failure instanceof Error ? failure.message : null, asked?.commitId]).toEqual(["The Git module isn't active.", "c".repeat(40)]);

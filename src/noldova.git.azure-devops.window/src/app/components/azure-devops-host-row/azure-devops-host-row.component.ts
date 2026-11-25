@@ -8,12 +8,14 @@
 
 import { Component, computed, DestroyRef, effect, inject, input, type InputSignal, type OnInit, PendingTasks, type Signal,
   signal, untracked, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
 import { BranchPullRequest, BranchQuery, CheckState, type HostCheck, HostSignIn, SignInState } from "@noldova/git.hosting.protocol";
 import type { GitRemote } from "@noldova/git.protocol";
 import { ButtonComponent, ButtonVariant, IconButtonComponent, SpinnerComponent, TooltipDirective } from "@noldova/ui.components.angular";
 
+import { AzureDevOpsRemote } from "../../models/azure-devops-remote.ts";
 import { ShownPullRequest } from "../../models/shown-pull-request.ts";
 import { WorkItemsPlace } from "../../models/work-items-place.ts";
 import { Resources } from "../../../resources.ts";
@@ -50,7 +52,7 @@ export class AzureDevOpsHostRowComponent implements OnInit {
   protected readonly shown: Signal<ShownPullRequest | null> = computed(() => {
     const answer: BranchPullRequest | null = this.answer();
     const pullRequest = answer?.pullRequest ?? null;
-    return answer === null || pullRequest === null ? null : new ShownPullRequest(pullRequest, [...answer.checks]
+    return Object.isNull(answer) || Object.isNull(pullRequest) ? null : new ShownPullRequest(pullRequest, [...answer.checks]
       .sort((a, b) => AzureDevOpsHostRowComponent.WORST_FIRST.indexOf(a.state) - AzureDevOpsHostRowComponent.WORST_FIRST.indexOf(b.state)));
   });
 
@@ -73,8 +75,8 @@ export class AzureDevOpsHostRowComponent implements OnInit {
         if (!AzureDevOpsHostRowComponent.isSameBranch(query, this.shownQuery))
           this.answer.set(null);
         this.shownQuery = query;
-        this.isReading.set(query !== null);
-        if (query !== null)
+        this.isReading.set(!Object.isNull(query));
+        if (!Object.isNull(query))
           void this.readAsync(query, () => isCurrent);
       });
     });
@@ -103,7 +105,7 @@ export class AzureDevOpsHostRowComponent implements OnInit {
 
   protected retry(): void {
     this.failure.set(null);
-    if (this.signIn() === null)
+    if (Object.isNull(this.signIn()))
       void this.readSignInAsync();
     else
       this.attempt.update(t => t + 1);
@@ -181,7 +183,8 @@ export class AzureDevOpsHostRowComponent implements OnInit {
   }
 
   private static queryOf(remote: GitRemote, branch: string | null, head: string | null): BranchQuery | null {
-    return branch === null || remote.host === null || remote.path === null ? null : new BranchQuery(remote.host, remote.path, branch, head);
+    const path: string | null = AzureDevOpsRemote.pathOf(remote);
+    return Object.isNull(branch) || Object.isNull(remote.host) || Object.isNull(path) ? null : new BranchQuery(remote.host, path, branch, head);
   }
 
   private static isSameQuery(a: BranchQuery | null, b: BranchQuery | null): boolean {
@@ -189,6 +192,6 @@ export class AzureDevOpsHostRowComponent implements OnInit {
   }
 
   private static isSameBranch(a: BranchQuery | null, b: BranchQuery | null): boolean {
-    return a === null || b === null ? a === b : a.host === b.host && a.path === b.path && a.branch === b.branch;
+    return Object.isNull(a) || Object.isNull(b) ? a === b : a.host === b.host && a.path === b.path && a.branch === b.branch;
   }
 }

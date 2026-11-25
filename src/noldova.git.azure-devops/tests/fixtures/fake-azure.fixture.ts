@@ -172,6 +172,7 @@ export class KeptSecrets {
 
 export class FakeToken extends Fake<IAzureToken> implements IAzureToken {
   public readonly refusedAsync: IAzureToken["refusedAsync"] = (...args) => this.respondAsync("refusedAsync", args, this.answers.refusedAsync);
+  public readonly readyAsync: IAzureToken["readyAsync"] = (...args) => this.respondAsync("readyAsync", args, this.answers.readyAsync);
 
   private readonly credential: AzureCredential | null;
   private readonly raw: string | null;
@@ -183,6 +184,7 @@ export class FakeToken extends Fake<IAzureToken> implements IAzureToken {
     this.answer("token", this.credential);
     this.answer("organization", token === null ? null : organization);
     this.answer("refusedAsync", () => Promise.resolve());
+    this.answer("readyAsync", () => Promise.resolve());
   }
 
   public get token(): AzureCredential | null {

@@ -7,6 +7,7 @@
  */
 
 import { ErrorHandler } from "@angular/core";
+import "@noldova/context.core";
 import { JsonReader, type JsonValue } from "@noldova/context.json";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { FailureCode, GitBranches, GitRemote, RemoteTransport, StatusUpstream } from "@noldova/git.protocol";
@@ -32,7 +33,7 @@ describe("GitWorkspaceBulk", () => {
       const reader: JsonReader = JsonReader.fromValue(params);
       const folder: string = reader.readString("folder");
       const answer: JsonValue | Error | null | undefined = method === "git.status" ? statuses[folder] : writes[folder];
-      if (answer === undefined)
+      if (Object.isUndefined(answer))
         throw new Error(`No ${method} for ${folder}.`);
       if (answer instanceof Error)
         throw answer;
@@ -120,7 +121,7 @@ describe("GitWorkspaceBulk", () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     context.answer("requestAsync", async (method, params) => {
       const answer: JsonValue | Error | undefined = answers[`${method} ${JsonReader.fromValue(params).readString("folder")}`];
-      if (answer === undefined || answer instanceof Error)
+      if (Object.isUndefined(answer) || answer instanceof Error)
         throw answer ?? new Error(`No ${method}.`);
       return answer;
     });

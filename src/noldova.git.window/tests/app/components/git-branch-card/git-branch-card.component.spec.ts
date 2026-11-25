@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { GitHooks, StatusUpstream } from "@noldova/git.protocol";
 import { DefaultTheme, ThemeMode } from "@noldova/ui.components.angular";
 import { AppearanceFixture, PointerFixture, TooltipFixture } from "@noldova/ui.components.angular/testing";
@@ -21,7 +22,7 @@ describe("GitBranchCardComponent", () => {
   const typeAsync = async (view: GitViewFixture, text: string): Promise<void> => {
     const field: HTMLInputElement | null = view.element.querySelector<HTMLInputElement>(".filter");
     expect(field).not.toBeNull();
-    if (field !== null) {
+    if (!Object.isNull(field)) {
       field.value = text;
       field.dispatchEvent(new Event("input"));
     }
@@ -109,7 +110,7 @@ describe("GitBranchCardComponent", () => {
 
     const before: string = description();
     reach(pull);
-    await GitFixtures.untilAsync(() => view.state.pullHooks() !== null);
+    await GitFixtures.untilAsync(() => !Object.isNull(view.state.pullHooks()));
     await view.fixture.whenStable();
     const loaded: string = description();
     pull.blur();
@@ -281,7 +282,7 @@ describe("GitBranchCardComponent", () => {
     await view.fixture.whenStable();
     const before: readonly [number, number, string | null] = [view.all(".menu [role=option]").length, view.all(".menu").length, view.find(".filter").getAttribute("aria-activedescendant")];
     await held.answerAsync("git.branches", branches);
-    await GitFixtures.untilAsync(() => view.state.branches() !== null);
+    await GitFixtures.untilAsync(() => !Object.isNull(view.state.branches()));
     await view.fixture.whenStable();
 
     expect(before).toEqual([0, 1, null]);

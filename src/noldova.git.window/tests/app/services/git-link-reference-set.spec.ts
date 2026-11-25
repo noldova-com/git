@@ -7,6 +7,7 @@
  */
 
 import { signal } from "@angular/core";
+import "@noldova/context.core";
 import { type ILinkReferenceSource, LinkReference, LinkReferenceImage, LinkReferenceMatch } from "@noldova/ui.components.angular";
 import { describe, expect, it } from "vitest";
 
@@ -28,7 +29,7 @@ describe("GitLinkReferenceSet", () => {
   it("draws a link with the first source that knows it, and none when no source does", () => {
     const set = new GitLinkReferenceSet([gitHub, other, plain]);
 
-    expect([set.find("https://github.com/a/b/issues/5", "#5"), set.find("https://host.example/1", "#1") === null, set.find("docs/readme.md", "readme")])
+    expect([set.find("https://github.com/a/b/issues/5", "#5"), Object.isNull(set.find("https://host.example/1", "#1")), set.find("docs/readme.md", "readme")])
       .toEqual([issue, false, null]);
   });
 

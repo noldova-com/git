@@ -23,8 +23,6 @@ export class GitCommitSignature {
 
   public constructor(id: string, state: SignatureState, signer: string | null, key: string | null, reader?: JsonReader) {
     FieldCheck.requireObjectId(id, Resources.idField, reader);
-    if (!Object.values(SignatureState).includes(state))
-      FieldCheck.fail(Resources.stateField, Resources.signatureStateExpected, reader);
     GitCommitSignature.requireSigned(signer, Resources.signerField, state, reader);
     GitCommitSignature.requireSigned(key, Resources.keyField, state, reader);
 

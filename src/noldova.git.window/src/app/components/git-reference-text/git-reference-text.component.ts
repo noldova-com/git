@@ -7,6 +7,7 @@
  */
 
 import { Component, computed, ErrorHandler, inject, Injector, input, type InputSignal, type Signal } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, WindowPartTokens } from "@noldova/desktop.window";
 import { LinkOpenEvent, type LinkReference, LinkReferenceChipComponent, LinkReferenceWorkItemStateComponent } from "@noldova/ui.components.angular";
 
@@ -48,7 +49,7 @@ export class GitReferenceTextComponent {
   protected readonly parts: Signal<readonly GitReferencePart[]> = computed(() => {
     const source = GitLinkReferences.of(this.folder());
     const link = this.link();
-    return link === null ? GitReferencePart.of(this.text(), source) : GitReferencePart.linked(this.text(), link, source);
+    return Object.isNull(link) ? GitReferencePart.of(this.text(), source) : GitReferencePart.linked(this.text(), link, source);
   });
 
   /** The look a part's chip draws: its host's, once it has one; null for a plain link. */
@@ -58,7 +59,7 @@ export class GitReferenceTextComponent {
 
   protected activate(event: MouseEvent, url: string): void {
     event.preventDefault();
-    if (this.link() !== null)
+    if (!Object.isNull(this.link()))
       return;
     event.stopPropagation();
     this.open(new LinkOpenEvent(url, event));

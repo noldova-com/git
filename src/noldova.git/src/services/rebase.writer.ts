@@ -11,6 +11,7 @@ import { FileState, GitNames, type GitStatus, RebaseAction, type RebaseStep, Und
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
 import { PickDuringOperationException } from "../exceptions/pick-during-operation.exception.ts";
+import { RebasePlanMovedException } from "../exceptions/rebase-plan-moved.exception.ts";
 import { RebaseChangesInTheWayException } from "../exceptions/rebase-changes-in-the-way.exception.ts";
 import { RebaseStoppedException } from "../exceptions/rebase-stopped.exception.ts";
 import type { IGitWrite } from "../interfaces/i-git-write.ts";
@@ -19,6 +20,7 @@ import { ProgramLimits } from "../models/program-limits.ts";
 import { ProgramRun } from "../models/program-run.ts";
 import type { ProgramResult } from "../models/program-result.ts";
 import type { RepositoryFolders } from "../models/repository-folders.ts";
+import { TodoGroup } from "../models/todo-group.ts";
 import { WritePermission } from "../models/write-permission.ts";
 import { Resources } from "../resources.ts";
 import type { HooksReader } from "./hooks.reader.ts";
@@ -83,6 +85,7 @@ export class RebaseWriter implements IGitWrite {
   }
 
   public async runAsync(folders: RepositoryFolders, status: GitStatus, signal?: AbortSignal): Promise<void> {
+    await this.requireRangeAsync(folders.top, signal);
     const todo = await this.todoAsync(folders, status.branch, signal);
     const options = [...Resources.rebaseArguments, ...this.updateRefs ? [Resources.rebaseUpdateRefsOption] : []];
     const gitArguments = new GitArguments(options, [this.onto]).withSettings([...Resources.sequenceEditorSettings, ...Resources.acceptEditorSettings]);
@@ -98,11 +101,25 @@ export class RebaseWriter implements IGitWrite {
     throw new GitFailedException(Resources.rebaseCommand, output);
   }
 
+  /**
+   * Refuses steps that aren't exactly the commits from the merge base with the target up to HEAD, as when the branch moved, or another was
+   * checked out, after the plan was read: git's todo is replaced with the steps, so a commit missing from them would be dropped.
+   */
+  private async requireRangeAsync(top: string, signal?: AbortSignal): Promise<void> {
+    const gitArguments = new GitArguments(Resources.rebaseRangeArguments, [Resources.formatSymmetricRange(this.onto, Resources.headRevision)]);
+    const result = await this.runner.runAsync(ProgramRun.readGit(gitArguments, top, RebaseWriter.READ_LIMITS, signal));
+    RebaseWriter.requireSuccess(Resources.revListCommand, result);
+    const range = result.output.toString(Resources.utf8Encoding).split(Resources.lineEnd).filter(t => t.length > 0).toSorted();
+    const steps = this.steps.map(t => t.id).toSorted();
+    if (range.length !== steps.length || range.some((id, index) => id !== steps[index]))
+      throw new RebasePlanMovedException();
+  }
+
   /** The todo git runs: each group, a kept step and the folds after it, then its message's `fixup -C` and the `update-ref` of the branches on its commits. */
   private async todoAsync(folders: RepositoryFolders, branch: string | null, signal?: AbortSignal): Promise<string> {
     const stacked = this.updateRefs ? await this.readStackedAsync(folders.top, branch, signal) : new Map<string, string[]>();
     const lines: string[] = [];
-    let group: { last: string; message: string | null; ids: string[] } | null = null;
+    let group: TodoGroup | null = null;
     const close = async (): Promise<void> => {
       if (group === null)
         return;
@@ -118,14 +135,12 @@ export class RebaseWriter implements IGitWrite {
       }
       if (group !== null && (step.action === RebaseAction.Squash || step.action === RebaseAction.Fixup)) {
         lines.push(Resources.formatTodoLine(Resources.fixupCommand, step.id));
-        group.last = step.id;
-        group.message = step.message ?? group.message;
-        group.ids.push(step.id);
+        group.fold(step.id, step.message);
         continue;
       }
       await close();
       lines.push(Resources.formatTodoLine(step.action === RebaseAction.Edit ? Resources.editCommand : Resources.pickCommand, step.id));
-      group = { last: step.id, message: step.message, ids: [step.id] };
+      group = new TodoGroup(step.id, step.message);
     }
     await close();
     return `${lines.join(Resources.lineEnd)}${Resources.lineEnd}`;

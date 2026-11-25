@@ -29,7 +29,6 @@ describe("GitCommitSigning", () => {
   it("refuses a signs that isn't a boolean, an unknown format and an unknown field, naming its path", () => {
     assert.throws(() => GitCommitSigning.fromJson({ ...json, signs: "true" }), { name: "JsonException", path: "$.signs" });
     assert.throws(() => GitCommitSigning.fromJson({ ...json, format: "ssh" }), { name: "JsonException", path: "$.format" });
-    assert.throws(() => new GitCommitSigning(true, "ssh" as SigningFormat), { name: "ProtocolFieldException", field: "format" });
     assert.throws(() => GitCommitSigning.fromJson({ ...json, extra: 1 }), { name: "ProtocolFieldException" });
   });
 });

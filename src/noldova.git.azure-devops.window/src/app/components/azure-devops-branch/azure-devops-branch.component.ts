@@ -16,6 +16,7 @@ import { HostSignIn, HostWorkItem, type HostWorkItemDetail, HostWorkItemList, Wo
 import { GitBranchAtParams, GitBranches, GitBranchParams, type GitBranchTip, GitFolderParams, GitNames, GitPushParams, type GitRemote, GitStatus } from "@noldova/git.protocol";
 import { ButtonComponent, ButtonVariant, CheckboxComponent, DialogComponent, SelectComponent, SelectOption, TextFieldComponent } from "@noldova/ui.components.angular";
 
+import { AzureDevOpsRemote } from "../../models/azure-devops-remote.ts";
 import { BranchRequest } from "../../models/branch-request.ts";
 import { Resources } from "../../../resources.ts";
 import { AzureDevOpsCommitPrefixes } from "../../services/azure-devops-commit-prefixes.ts";
@@ -139,7 +140,7 @@ export class AzureDevOpsBranchComponent implements OnInit {
         }
         else {
           const tip = this.tips().find(t => t.branch === base);
-          if (tip === undefined) {
+          if (Object.isUndefined(tip)) {
             this.failure.set(Resources.baseNotFound);
             return;
           }
@@ -169,7 +170,7 @@ export class AzureDevOpsBranchComponent implements OnInit {
       const remote = this.wantsLink() ? this.linkRemote() : null;
       if (!Object.isNull(remote) && !this.finished.has(AzureDevOpsNames.linkBranchMethod)) {
         step = AzureDevOpsNames.linkBranchMethod;
-        const link: JsonValue = { host: remote.host, path: remote.path, id, branch: name };
+        const link: JsonValue = { host: remote.host, path: AzureDevOpsRemote.pathOf(remote), id, branch: name };
         await this.context().requestAsync(AzureDevOpsNames.linkBranchMethod, link);
         this.finished.add(AzureDevOpsNames.linkBranchMethod);
       }

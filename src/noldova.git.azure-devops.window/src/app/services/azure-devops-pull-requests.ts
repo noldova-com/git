@@ -7,6 +7,7 @@
  */
 
 import { type Signal, signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, RuntimeRequestException, WindowException } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
 import { BranchPullRequest, BranchQuery, CheckState, CommitQuery, HostCommitComments, type HostItem, type HostPullRequestHead, HostPullRequestHeads,
@@ -15,6 +16,7 @@ import { BranchPullRequest, BranchQuery, CheckState, CommitQuery, HostCommitComm
 import type { GitRemote } from "@noldova/git.protocol";
 import { GitBranchPullRequest, GitCommitComments, GitPullRequestList, GitPullRequestRow, GitPullRequestState, type IGitPullRequests } from "@noldova/git.window";
 
+import type { IRemotePlace } from "../interfaces/i-remote-place.ts";
 import { AzureDevOpsRemote } from "../models/azure-devops-remote.ts";
 import { PullRequestClone } from "../models/pull-request-clone.ts";
 import { PullRequestDocument } from "../models/pull-request-document.ts";
@@ -56,7 +58,7 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
   public newPullRequestUrl(remote: GitRemote, source: string, target: string): string | null {
     const place: WorkItemsPlace | null = WorkItemsPlace.ofRemote(remote);
     const repository: string | null = PullRequestClone.repositoryOf(remote);
-    return place === null || repository === null ? null : Resources.formatNewPullRequestAddress(place.organization, place.project, repository, source, target);
+    return Object.isNull(place) || Object.isNull(repository) ? null : Resources.formatNewPullRequestAddress(place.organization, place.project, repository, source, target);
   }
 
   public listFor(_folder: string, remote: GitRemote): Signal<GitPullRequestList | null> {
@@ -64,8 +66,9 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
   }
 
   public refresh(_folder: string, remote: GitRemote): void {
-    if (remote.host !== null && remote.path !== null)
-      void this.readAsync(new RepositoryQuery(remote.host, remote.path));
+    const path: string | null = AzureDevOpsRemote.pathOf(remote);
+    if (!Object.isNull(remote.host) && !Object.isNull(path))
+      void this.readAsync(new RepositoryQuery(remote.host, path));
   }
 
   public branchFor(_folder: string, remote: GitRemote, branch: string, headCommit: string | null): Signal<GitBranchPullRequest | null> {
@@ -73,42 +76,46 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
   }
 
   public refreshBranch(_folder: string, remote: GitRemote, branch: string, headCommit: string | null): void {
-    if (remote.host !== null && remote.path !== null)
-      void this.readBranchAsync(new BranchQuery(remote.host, remote.path, branch, headCommit));
+    const path: string | null = AzureDevOpsRemote.pathOf(remote);
+    if (!Object.isNull(remote.host) && !Object.isNull(path))
+      void this.readBranchAsync(new BranchQuery(remote.host, path, branch, headCommit));
   }
 
   public stackListFor(_folder: string, remote: GitRemote): Signal<GitPullRequestList | null> {
     const key: string = AzureDevOpsPullRequests.keyOf(remote);
     const known: WritableSignal<GitPullRequestList | null> | undefined = this.stacks.get(key);
-    if (known !== undefined)
+    if (!Object.isUndefined(known))
       return known;
     const answer: WritableSignal<GitPullRequestList | null> = signal<GitPullRequestList | null>(null);
     this.stacks.set(key, answer);
-    if (remote.host !== null && remote.path !== null)
-      void this.readStacksAsync(new RepositoryQuery(remote.host, remote.path), key, answer);
+    const path: string | null = AzureDevOpsRemote.pathOf(remote);
+    if (!Object.isNull(remote.host) && !Object.isNull(path))
+      void this.readStacksAsync(new RepositoryQuery(remote.host, path), key, answer);
     return answer;
   }
 
   public commitFor(_folder: string, remote: GitRemote, commitId: string): Signal<GitBranchPullRequest | null> {
     const key: string = JSON.stringify([remote.host, remote.path, commitId]);
     const known: WritableSignal<GitBranchPullRequest | null> | undefined = this.commits.get(key);
-    if (known !== undefined)
+    if (!Object.isUndefined(known))
       return known;
     const answer: WritableSignal<GitBranchPullRequest | null> = AzureDevOpsPullRequests.answerOf(this.commits, key);
-    if (remote.host !== null && remote.path !== null)
-      void this.readCommitAsync(new CommitQuery(remote.host, remote.path, commitId), key, answer);
+    const path: string | null = AzureDevOpsRemote.pathOf(remote);
+    if (!Object.isNull(remote.host) && !Object.isNull(path))
+      void this.readCommitAsync(new CommitQuery(remote.host, path, commitId), key, answer);
     return answer;
   }
 
   public commentsFor(_folder: string, remote: GitRemote, commitId: string): Signal<GitCommitComments | null> {
     const key: string = JSON.stringify([remote.host, remote.path, commitId]);
     const known: WritableSignal<GitCommitComments | null> | undefined = this.comments.get(key);
-    if (known !== undefined)
+    if (!Object.isUndefined(known))
       return known;
     const answer: WritableSignal<GitCommitComments | null> = signal<GitCommitComments | null>(null);
     this.comments.set(key, answer);
-    if (remote.host !== null && remote.path !== null)
-      void this.readCommentsAsync(new CommitQuery(remote.host, remote.path, commitId), key, answer);
+    const path: string | null = AzureDevOpsRemote.pathOf(remote);
+    if (!Object.isNull(remote.host) && !Object.isNull(path))
+      void this.readCommentsAsync(new CommitQuery(remote.host, path, commitId), key, answer);
     return answer;
   }
 
@@ -117,8 +124,9 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
   }
 
   public refreshReviews(remote: GitRemote): void {
-    if (remote.host !== null && remote.path !== null)
-      void this.readReviewsAsync(new RepositoryQuery(remote.host, remote.path));
+    const path: string | null = AzureDevOpsRemote.pathOf(remote);
+    if (!Object.isNull(remote.host) && !Object.isNull(path))
+      void this.readReviewsAsync(new RepositoryQuery(remote.host, path));
   }
 
   public open(_folder: string, row: GitPullRequestRow): boolean {
@@ -157,7 +165,7 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
 
   private static listIn(lists: Map<string, WritableSignal<GitPullRequestList | null>>, key: string): WritableSignal<GitPullRequestList | null> {
     let list = lists.get(key);
-    if (list === undefined) {
+    if (Object.isUndefined(list)) {
       list = signal<GitPullRequestList | null>(null);
       lists.set(key, list);
     }
@@ -257,7 +265,7 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
 
   private branchAnswerOf(found: BranchPullRequest, headBranch: string): GitBranchPullRequest {
     const item: HostItem | null = found.pullRequest;
-    if (item === null || item.changes === null)
+    if (Object.isNull(item) || Object.isNull(item.changes))
       return GitBranchPullRequest.none(0, 0, 0);
     this.remember(item.url, item.reference);
     const count = (...states: readonly CheckState[]): number => found.checks.filter(t => states.includes(t.state)).length;
@@ -270,14 +278,14 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
 
   private static answerOf(answers: Map<string, WritableSignal<GitBranchPullRequest | null>>, key: string): WritableSignal<GitBranchPullRequest | null> {
     let answer = answers.get(key);
-    if (answer === undefined) {
+    if (Object.isUndefined(answer)) {
       answer = signal<GitBranchPullRequest | null>(null);
       answers.set(key, answer);
     }
     return answer;
   }
 
-  private static branchKeyOf(remote: { readonly host: string | null; readonly path: string | null }, branch: string, headCommit: string | null): string {
+  private static branchKeyOf(remote: IRemotePlace, branch: string, headCommit: string | null): string {
     return JSON.stringify([remote.host, remote.path, branch, headCommit]);
   }
 
@@ -294,7 +302,7 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
       head.url, false, 0, 0, 0, 0, head.headBranch, head.baseBranch);
   }
 
-  private static keyOf(remote: { readonly host: string | null; readonly path: string | null }): string {
+  private static keyOf(remote: IRemotePlace): string {
     return Resources.formatRemoteKey(remote.host ?? "", remote.path ?? "");
   }
 }

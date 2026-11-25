@@ -9,6 +9,7 @@
 import { Component, computed, DestroyRef, effect, ElementRef, ErrorHandler, inject, Injector, input, type InputSignal, signal, type Signal, untracked, viewChild,
   type WritableSignal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import "@noldova/context.core";
 import { type IWindowPartContext, LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
 import { ButtonComponent, CheckboxComponent, DialogService, IconButtonComponent, TextFieldComponent, ToolbarButtonComponent } from "@noldova/ui.components.angular";
 
@@ -96,7 +97,7 @@ export class GitWorkspaceComponent {
   protected readonly rows: Signal<readonly GitWorkspaceRow[]> = computed(() => {
     const filter: string = this.filter().trim().toLowerCase();
     const view: GitWorkspaceView | null = this.view();
-    return this.allRows().filter(t => (filter.length === 0 || t.folder.toLowerCase().includes(filter)) && (view === null || t.views().has(view)));
+    return this.allRows().filter(t => (filter.length === 0 || t.folder.toLowerCase().includes(filter)) && (Object.isNull(view) || t.views().has(view)));
   });
   /** Each view with how many of the repositories read so far it shows. */
   protected readonly views: Signal<readonly (readonly [GitWorkspaceView, number])[]> = computed(() =>
@@ -200,7 +201,7 @@ export class GitWorkspaceComponent {
     dialog.componentRef?.setInput("repositories", targets.map(t => t.repository));
     dialog.componentInstance?.answered.subscribe(name => {
       dialog.close();
-      if (name !== null)
+      if (!Object.isNull(name))
         void this.writeAsync(Resources.formatBranchedVerb(name), targets, () => this.bulk.createBranchAsync(targets, name));
     });
   }
@@ -208,9 +209,9 @@ export class GitWorkspaceComponent {
   protected async addRepositoryAsync(): Promise<void> {
     const folder: string | null = await this.context.chooseFolderAsync();
     const workspace: GitWorkspace | null = this.workspace();
-    if (folder === null)
+    if (Object.isNull(folder))
       return;
-    if (workspace === null)
+    if (Object.isNull(workspace))
       GitRecentRepositories.remember(folder);
     else
       GitWorkspaces.addFolder(workspace.id, folder);
@@ -227,7 +228,7 @@ export class GitWorkspaceComponent {
 
   protected removeChosen(): void {
     const workspace: GitWorkspace | null = this.workspace();
-    if (workspace === null)
+    if (Object.isNull(workspace))
       GitRecentRepositories.forget(this.chosen());
     else
       GitWorkspaces.removeFolders(workspace.id, this.chosen());
@@ -262,7 +263,7 @@ export class GitWorkspaceComponent {
    */
   protected chooseView(view: GitWorkspaceView | null): void {
     this.view.set(view);
-    if (view !== null)
+    if (!Object.isNull(view))
       void this.summaries.refreshAllAsync(this.folders());
   }
 
@@ -272,7 +273,7 @@ export class GitWorkspaceComponent {
    */
   protected rename(workspace: GitWorkspace): void {
     const name: string | null = this.renaming();
-    if (name === null)
+    if (Object.isNull(name))
       return;
     this.renaming.set(null);
     const trimmed: string = name.trim();

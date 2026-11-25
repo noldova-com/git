@@ -8,6 +8,7 @@
 
 import { Component, input, type InputSignal, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
@@ -22,6 +23,8 @@ import { Wait } from "./wait.fixture.ts";
 
 export const HOST: string = "git-azure-devops";
 export const PROJECT: string = "Sample Project";
+/** The time the history's commits are dated from; a spec that reads their ages fixes Date to it. */
+export const NOW: number = Date.UTC(2026, 10, 23, 12);
 export const INSTANCE: string = "fabrikam/Sample%20Project";
 const REPOSITORY: string = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
 const epic: HostWorkItemType = new HostWorkItemType("Epic", "FF7B00", "icon_crown");
@@ -100,7 +103,7 @@ export const tasks: readonly HostWorkItemDetail[] = [
 ];
 export const pullRequest: HostPullRequest = new HostPullRequest(new HostItem(pr482, ReferenceKind.PullRequest, ReferenceState.Open, "Export notes",
   "https://dev.azure.com/fabrikam/Sample%20Project/_git/garden-web/pullrequest/752", null, Date.UTC(2026, 10, 20), null, 0, 
-  new HostChanges(null, null, null, "users/kim/7521-export-notes-markdown", "main", "0123456789abcdef0123456789abcdef01234567")), [], [
+  HostChanges.uncounted("users/kim/7521-export-notes-markdown", "main", "0123456789abcdef0123456789abcdef01234567")), [], [
   new HostPolicy("Minimum number of reviewers", PolicyState.Approved, true, null),
   new HostPolicy("Build", PolicyState.Approved, true, null),
   new HostPolicy("Work item linking", PolicyState.Approved, true, null),
@@ -113,7 +116,7 @@ export const azureStatus: GitStatus = new GitStatus("main", "a".repeat(40), null
 export const githubStatus: GitStatus = new GitStatus("main", null, null, [], false, "f1", null, new GitRemote("origin", "github.com", "fabrikam/site", RemoteTransport.Https));
 
 function commitOf(id: string, subject: string, minutesAgo: number): GitGraphCommit {
-  const authoredAt: string = new Date(Date.now() - minutesAgo * 60_000).toISOString().replace(/\.\d{3}Z$/u, "Z");
+  const authoredAt: string = new Date(NOW - minutesAgo * 60_000).toISOString().replace(/\.\d{3}Z$/u, "Z");
   return new GitGraphCommit(new GitCommit(id.repeat(40), [], "Mona Lisa", authoredAt, subject), "kim@fabrikam.com", []);
 }
 
@@ -133,7 +136,7 @@ export function childrenQuery(ids: readonly number[]): WorkItemsQuery {
 function wordsOf(node: Node): string {
   const words: string[] = [];
   const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-  for (let text = walker.nextNode(); text !== null; text = walker.nextNode())
+  for (let text = walker.nextNode(); !Object.isNull(text); text = walker.nextNode())
     words.push((text.textContent ?? "").trim());
   return words.filter(t => t.length > 0).join(" ").replace(/\s+/g, " ");
 }
@@ -230,7 +233,7 @@ export class Page {
       return found;
     });
     const chosen: HTMLElement | undefined = items().find(t => labelOf(t) === choice);
-    if (chosen === undefined)
+    if (Object.isUndefined(chosen))
       throw new Error(`The menu has no ${choice}.`);
     chosen.click();
     await this.settleAsync();

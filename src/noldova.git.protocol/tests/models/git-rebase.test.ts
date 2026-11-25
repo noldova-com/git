@@ -34,7 +34,6 @@ describe("RebaseStep", () => {
     assert.deepEqual([RebaseStep.fromJson(pick.toJson()), RebaseStep.fromJson(reword.toJson())], [pick, reword]);
     assert.throws(() => RebaseStep.fromJson({ id: "main", action: "Pick", message: null }), { name: "ProtocolFieldException", field: "$.id" });
     assert.throws(() => RebaseStep.fromJson({ id: a, action: "Rebase", message: null }), { name: "JsonException", path: "$.action" });
-    assert.throws(() => new RebaseStep(a, "Rebase" as RebaseAction, null), { name: "ProtocolFieldException", field: "action" });
     assert.throws(() => RebaseStep.fromJson({ id: a, action: "Pick", message: "x" }), { name: "ProtocolFieldException", field: "$.message" });
     assert.throws(() => RebaseStep.fromJson({ id: a, action: "Squash", message: null }), { name: "ProtocolFieldException", field: "$.message" });
     assert.throws(() => RebaseStep.fromJson({ id: a, action: "Reword", message: " \n" }), { name: "ProtocolFieldException", field: "$.message" });
@@ -145,7 +144,6 @@ describe("GitRebaseStepCheck and GitRebaseCheck", () => {
     assert.deepEqual(check.toJson(), { steps: [{ outcome: "Conflicts", paths: ["src/a.ts"] }, { outcome: "Folded", paths: [] }] });
     assert.deepEqual(GitRebaseCheck.fromJson(check.toJson()), check);
     assert.throws(() => GitRebaseStepCheck.fromJson({ outcome: "Maybe", paths: [] }), { name: "JsonException", path: "$.outcome" });
-    assert.throws(() => new GitRebaseStepCheck("Maybe" as RebaseCheckOutcome, []), { name: "ProtocolFieldException", field: "outcome" });
     assert.throws(() => GitRebaseStepCheck.fromJson({ outcome: "Clean", paths: ["a"] }), { name: "ProtocolFieldException", field: "$.paths" });
     assert.throws(() => GitRebaseStepCheck.fromJson({ outcome: "Conflicts", paths: ["../a"] }), { name: "ProtocolFieldException", field: "$.paths.0" });
     assert.throws(() => GitRebaseStepCheck.fromJson({ outcome: "Clean", paths: [], more: 1 }), { name: "ProtocolFieldException" });

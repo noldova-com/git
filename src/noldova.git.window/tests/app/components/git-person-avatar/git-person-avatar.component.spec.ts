@@ -8,6 +8,7 @@
 
 import { Component } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { HostReference } from "@noldova/git.hosting.protocol";
 import { AvatarSize, DefaultTheme, ThemeMode } from "@noldova/ui.components.angular";
 import { AppearanceFixture } from "@noldova/ui.components.angular/testing";
@@ -74,7 +75,7 @@ describe("GitPersonAvatarComponent", () => {
   it("asks the host for the picture of each person in view, for the pull request they're on, and none for a picture the page already has", async () => {
     const root: HTMLElement = (await openAsync()).nativeElement;
 
-    await untilAsync(() => imageOf(root, ".mona") !== null);
+    await untilAsync(() => !Object.isNull(imageOf(root, ".mona")));
 
     expect([imageOf(root, ".mona"), imageOf(root, ".given"), imageOf(root, ".below"), [...new Set(PeopleComponent.host.askedPeople)]])
       .toEqual([picture, given, null, ["fabrikam/monalisa@fabrikam.com"]]);
@@ -82,12 +83,12 @@ describe("GitPersonAvatarComponent", () => {
 
   it("asks for a person's picture once they're scrolled into view, showing their initials until then", async () => {
     const root: HTMLElement = (await openAsync()).nativeElement;
-    await untilAsync(() => imageOf(root, ".mona") !== null);
-    const initials: boolean = root.querySelector(".below .nol-avatar-initials") !== null;
+    await untilAsync(() => !Object.isNull(imageOf(root, ".mona")));
+    const initials: boolean = !Object.isNull(root.querySelector(".below .nol-avatar-initials"));
 
     root.querySelector(".below")?.scrollIntoView();
 
-    await untilAsync(() => imageOf(root, ".below") !== null);
+    await untilAsync(() => !Object.isNull(imageOf(root, ".below")));
     expect([initials, imageOf(root, ".below"), [...new Set(PeopleComponent.host.askedPeople)]])
       .toEqual([true, picture, ["fabrikam/monalisa@fabrikam.com", "fabrikam/octocat@fabrikam.com"]]);
   });

@@ -33,7 +33,7 @@ export class AzureDevOpsReferenceLooks {
     const tone = Resources.categoryTones[item.category];
     const image: string | null = Resources.workItemImageOf(type);
     return new LinkReference(Resources.formatWorkItemReference(type.name, item.id), type.name,
-      image === null ? AzureDevOpsReferenceLooks.imageOf(Resources.workItemSymbols.get(type.icon) ?? Resources.descriptionSymbol) : new LinkReferenceImage(image, false), {
+      Object.isNull(image) ? AzureDevOpsReferenceLooks.imageOf(Resources.workItemSymbols.get(type.icon) ?? Resources.descriptionSymbol) : new LinkReferenceImage(image, false), {
         state: new LinkReferenceState(type.name, color, color),
         workItemState: new LinkReferenceWorkItemState(item.state, new LinkReferenceTone(tone, tone)),
         title: item.title,
@@ -63,12 +63,12 @@ export class AzureDevOpsReferenceLooks {
         diff,
         itemHref: item.url,
         locationHref: Resources.formatOrganizationAddress(reference.owner),
-        diffHref: diff === null ? null : Resources.formatPullRequestFilesAddress(item.url)
+        diffHref: Object.isNull(diff) ? null : Resources.formatPullRequestFilesAddress(item.url)
       });
   }
 
-  private static diffOf({ additions, deletions, changedFiles }: HostChanges): LinkReferenceDiff | null {
-    return additions === null || deletions === null || changedFiles === null ? null : new LinkReferenceDiff(additions, deletions, changedFiles);
+  private static diffOf(changes: HostChanges): LinkReferenceDiff | null {
+    return changes.isCounted ? new LinkReferenceDiff(changes.additions, changes.deletions, changes.changedFiles) : null;
   }
 
   private static colorOf(color: string): LinkReferenceColor {

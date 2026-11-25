@@ -8,6 +8,7 @@
 
 import { signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitBranchTrack, GitCommit, GitGraph, GitGraphCommit, GitRef, GitRemote, GitRepositoryItems, GitWorktrees, RefKind, RemoteTransport } from "@noldova/git.protocol";
@@ -75,7 +76,7 @@ describe("GitRepositoryComponent in the kit's look", () => {
     fixture.autoDetectChanges();
     const element: HTMLElement = fixture.nativeElement;
     element.style.width = "20rem";
-    await untilAsync(() => element.querySelector(".pull-request") !== null && element.querySelector("button[title=feature]") !== null);
+    await untilAsync(() => !Object.isNull(element.querySelector(".pull-request")) && !Object.isNull(element.querySelector("button[title=feature]")));
     return element;
   }
 
@@ -100,7 +101,7 @@ describe("GitRepositoryComponent in the kit's look", () => {
     fixture.autoDetectChanges();
     const element: HTMLElement = fixture.nativeElement;
     element.style.width = "20rem";
-    await untilAsync(() => element.querySelector(".row.reading nol-spinner:not(.nol-reveal-pending)") !== null);
+    await untilAsync(() => !Object.isNull(element.querySelector(".row.reading nol-spinner:not(.nol-reveal-pending)")));
     await page.screenshot({ element, path: `${screenshots}/git-repository-reading-${mode}.png` });
     const header = (): DOMRect => box([...element.querySelectorAll(".toggle")].find(t => t.textContent?.includes("Branches") === true)?.closest(".row") ?? null);
     const reading: DOMRect = box(element.querySelector(".row.reading"));
@@ -108,7 +109,7 @@ describe("GitRepositoryComponent in the kit's look", () => {
     const below: number = reading.top - header().bottom;
 
     await held.answerAsync("git.branches", answers["git.branches"] ?? null);
-    await untilAsync(() => element.querySelector("button[title=feature] .octicon") !== null);
+    await untilAsync(() => !Object.isNull(element.querySelector("button[title=feature] .octicon")));
     const row: DOMRect = box(element.querySelector("button[title=feature]"));
     const icon: DOMRect = box(element.querySelector("button[title=feature] .octicon"));
 
@@ -137,12 +138,12 @@ describe("GitRepositoryComponent in the kit's look", () => {
     const names = (): string[] => headers().map(t => t.querySelector(".caps")?.textContent?.trim() ?? "");
     headerOf("Branches")?.querySelector<HTMLElement>(".toggle")?.click();
     headerOf("Pull requests")?.querySelector<HTMLElement>(".toggle")?.click();
-    await untilAsync(() => element.querySelector("button[title=feature]") === null && element.querySelector(".pull-request") === null);
+    await untilAsync(() => Object.isNull(element.querySelector("button[title=feature]")) && Object.isNull(element.querySelector(".pull-request")));
     const shown: HTMLElement[] = headers().slice(names().indexOf("Branches"));
     const collapsed: number[] = shown.slice(1).map((t, i) => rem(box(t).top - box(shown[i] ?? t).bottom));
 
     headerOf("Pull requests")?.querySelector<HTMLElement>(".toggle")?.click();
-    await untilAsync(() => element.querySelector(".pull-request") !== null);
+    await untilAsync(() => !Object.isNull(element.querySelector(".pull-request")));
     const rows: HTMLElement[] = [...element.querySelectorAll<HTMLElement>(".pull-request")];
     const expanded: number = rem(box(headerOf("Remotes") ?? null).top - box(rows.at(-1) ?? null).bottom);
 
@@ -153,7 +154,7 @@ describe("GitRepositoryComponent in the kit's look", () => {
   it.each(AppearanceFixture.modes)("lays a host's row out as History: the same height, icon and text edges, under it by the gap History keeps under Changes, in %s mode", async mode => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
     const element: HTMLElement = await renderAsync();
-    await untilAsync(() => element.querySelector(".row.link") !== null);
+    await untilAsync(() => !Object.isNull(element.querySelector(".row.link")));
     const history: HTMLElement | null = element.querySelector(".row.history");
     const link: HTMLElement | null = element.querySelector(".row.link");
     const changes: HTMLElement | null = element.querySelector(".row.changes");
@@ -170,9 +171,9 @@ describe("GitRepositoryComponent in the kit's look", () => {
       "git.remoteTracks": { tracks: [{ branch: "origin/main", ahead: 2, behind: 0 }] }
     });
     [...element.querySelectorAll<HTMLElement>("button.toggle")].find(t => t.textContent?.includes("Remotes"))?.click();
-    await untilAsync(() => element.querySelector("[title='origin/']") !== null);
+    await untilAsync(() => !Object.isNull(element.querySelector("[title='origin/']")));
     element.querySelector<HTMLElement>("[title='origin/']")?.click();
-    await untilAsync(() => element.querySelector("[title='origin/main'] .small") !== null);
+    await untilAsync(() => !Object.isNull(element.querySelector("[title='origin/main'] .small")));
     const localRow: HTMLElement | null = element.querySelector("button[title=feature]");
     const remoteRow: HTMLElement | null = element.querySelector("[title='origin/main']");
     const local: Element | null = localRow?.querySelector(".small") ?? null;
@@ -187,7 +188,7 @@ describe("GitRepositoryComponent in the kit's look", () => {
   it.each(AppearanceFixture.modes)("marks History across the panel's row, in the kit's selected fill, once a click on it selects the newest commit, in %s mode", async mode => {
     onTestFinished(() => {
       GitViewing.branch.set(null);
-      GitViewing.commit.set(null);
+      GitViewing.showChanges(GitFixtures.folder);
     });
     AppearanceFixture.apply(DefaultTheme.theme, mode);
     const element: HTMLElement = await renderAsync();
@@ -201,7 +202,7 @@ describe("GitRepositoryComponent in the kit's look", () => {
     onTestFinished(() => element.remove());
     const row: HTMLElement | null = element.querySelector<HTMLElement>("button.row.history");
     const changes: HTMLElement | null = element.querySelector<HTMLElement>("button.row.changes");
-    await vi.waitUntil(() => GitViewing.branch() === null && historyElement.querySelector("[role=option]") !== null, { timeout: 5000 });
+    await vi.waitUntil(() => Object.isNull(GitViewing.branch()) && !Object.isNull(historyElement.querySelector("[role=option]")), { timeout: 5000 });
     const probe: HTMLElement = document.createElement("div");
     probe.style.background = "var(--nol-selected)";
     element.append(probe);

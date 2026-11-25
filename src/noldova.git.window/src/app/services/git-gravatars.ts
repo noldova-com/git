@@ -7,6 +7,7 @@
  */
 
 import { signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 
 import type { IGitAvatars } from "../interfaces/i-git-avatars.ts";
 import type { GitRuntimeClient } from "./git-runtime-client.ts";
@@ -23,7 +24,7 @@ export class GitGravatars implements IGitAvatars {
   public avatarOf(_folder: string, email: string, _commitId: string): string | null | undefined {
     const key: string = email.trim().toLowerCase();
     let image: WritableSignal<string | null | undefined> | undefined = this.kept.get(key);
-    if (image === undefined) {
+    if (Object.isUndefined(image)) {
       const reading: WritableSignal<string | null | undefined> = signal(key.length === 0 ? null : undefined);
       image = reading;
       this.kept.set(key, reading);

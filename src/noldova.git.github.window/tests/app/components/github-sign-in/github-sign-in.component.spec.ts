@@ -7,6 +7,7 @@
  */
 
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitHubNames } from "@noldova/git.github.protocol";
@@ -54,7 +55,7 @@ class Page {
   public get places(): readonly unknown[] {
     return this.context.callsOf("openLinkAsync").map(t => {
       const options = t[1];
-      return typeof options === "object" && options !== null && "place" in options ? options.place : this.browser.placeFor();
+      return Object.isObject(options) && "place" in options ? options.place : this.browser.placeFor();
     });
   }
 
@@ -69,7 +70,7 @@ class Page {
   }
 
   public async openAsync(first: HostSignIn | null): Promise<this> {
-    if (first !== null)
+    if (!Object.isNull(first))
       this.requests.answer(GitHubNames.readSignInMethod, first.toJson());
     TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: this.context }] });
     this.fixture = TestBed.createComponent(GitHubSignInComponent);
@@ -93,7 +94,7 @@ class Page {
 
   public button(label: string): HTMLButtonElement {
     const found = [...this.element.querySelectorAll("button")].find(t => (t.textContent ?? "").includes(label));
-    if (found === undefined)
+    if (Object.isUndefined(found))
       throw new Error(`No button reads ${label}.`);
     return found;
   }
@@ -160,7 +161,7 @@ describe("GitHubSignInComponent", () => {
     const shown: (string | boolean)[][] = [];
     for (const failure of Object.values(SignInFailure)) {
       const page = await new Page().openAsync(HostSignIn.signedOut(failure));
-      shown.push([...page.texts("[role=alert] span span"), page.element.querySelector("p") === null]);
+      shown.push([...page.texts("[role=alert] span span"), Object.isNull(page.element.querySelector("p"))]);
       TestBed.resetTestingModule();
     }
 

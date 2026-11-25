@@ -7,6 +7,7 @@
  */
 
 import { Component, computed, input, type InputSignal, output, type OutputEmitterRef, type Signal } from "@angular/core";
+import "@noldova/context.core";
 import { ButtonComponent, ButtonVariant, DialogComponent } from "@noldova/ui.components.angular";
 
 import { Resources } from "../../../resources.ts";
@@ -32,6 +33,6 @@ export class GitBulkPushDialogComponent {
   protected readonly secondary: ButtonVariant = ButtonVariant.Secondary;
   protected readonly title: Signal<string> = computed(() => Resources.formatPushAllTitle(this.branch()));
   /** What each repository will push, or that it is skipped, in the order the card lists them. */
-  protected readonly lines: Signal<readonly string[]> = computed(() => this.targets().map(t => t.upstream === null ? Resources.formatPushSkipped(t.repository, t.branch)
+  protected readonly lines: Signal<readonly string[]> = computed(() => this.targets().map(t => Object.isNull(t.upstream) ? Resources.formatPushSkipped(t.repository, t.branch)
     : Resources.formatPushTarget(t.repository, t.branch, t.upstream, GitWorkspaceOverview.placeOf(t.remote))));
 }

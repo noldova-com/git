@@ -14,6 +14,7 @@ import { FileState, StatusEntry, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
 import { GitArguments } from "../models/git-arguments.ts";
+import { HashBudget } from "../models/hash-budget.ts";
 import { IndexBlob } from "../models/index-blob.ts";
 import { LfsCheck } from "../models/lfs-check.ts";
 import { LfsPointer } from "../models/lfs-pointer.ts";
@@ -58,7 +59,7 @@ export class LfsPointerReader {
     const blobs = await this.blobsAsync(top, named, signal);
     const unread = new Set([...blobs.values()].filter(t => t.size <= Resources.lfsPointerBytes && !this.pointers.has(t.id)).map(t => t.id));
     await this.readPointersAsync(top, [...unread], signal);
-    const budget = { remainingBytes: Resources.lfsHashBytes };
+    const budget = new HashBudget(Resources.lfsHashBytes);
     const unchanged = new Set<string>();
     let unchecked = tracked.length - named.length;
     for (const [file, blob] of blobs) {
@@ -123,7 +124,7 @@ export class LfsPointerReader {
   }
 
   /** Whether the file is the pointer's content, or `null` when the hash budget can't cover it. */
-  private async matchesAsync(file: string, blob: string, pointer: LfsPointer, budget: { remainingBytes: number }, signal?: AbortSignal): Promise<boolean | null> {
+  private async matchesAsync(file: string, blob: string, pointer: LfsPointer, budget: HashBudget, signal?: AbortSignal): Promise<boolean | null> {
     let stats: BigIntStats;
     try {
       stats = await lstat(file, { bigint: true });
@@ -141,9 +142,8 @@ export class LfsPointerReader {
     const size = Number(stats.size);
     if (size !== pointer.size)
       return false;
-    if (size > budget.remainingBytes)
+    if (!budget.take(size))
       return null;
-    budget.remainingBytes -= size;
     const matches = await LfsPointerReader.hashAsync(file, signal) === pointer.oid;
     LfsPointerReader.remember(this.answers, key, matches);
     return matches;
@@ -151,8 +151,9 @@ export class LfsPointerReader {
 
   private static async hashAsync(file: string, signal?: AbortSignal): Promise<string> {
     const hash = createHash(Resources.digestAlgorithm);
-    for await (const part of createReadStream(file, { signal }))
-      hash.update(part as Buffer);
+    const parts: AsyncIterable<Buffer> = createReadStream(file, { signal });
+    for await (const part of parts)
+      hash.update(part);
     return hash.digest(Resources.hexEncoding);
   }
 

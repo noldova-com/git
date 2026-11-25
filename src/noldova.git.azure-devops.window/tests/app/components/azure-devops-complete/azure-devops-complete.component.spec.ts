@@ -8,6 +8,7 @@
 
 import { Component, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { FailureCode } from "@noldova/desktop.protocol";
 import { RuntimeRequestException, WindowPartTokens } from "@noldova/desktop.window";
@@ -29,7 +30,7 @@ const REPOSITORY: string = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
 const URL: string = "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/752";
 const COMMIT: string = "0123456789abcdef0123456789abcdef01234567";
 const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752);
-const changes: HostChanges = new HostChanges(null, null, null, "users/monalisa/7521-export-notes", "main", COMMIT);
+const changes: HostChanges = HostChanges.uncounted("users/monalisa/7521-export-notes", "main", COMMIT);
 const story: HostWorkItemType = new HostWorkItemType("User Story", "009CCC", "icon_book");
 const ALL: JsonValue = ["noFastForward", "squash", "rebase", "rebaseMerge"];
 
@@ -47,7 +48,7 @@ function statusOf(branch: string, path: string, upstream: StatusUpstream | null 
 function wordsOf(node: Node): string {
   const words: string[] = [];
   const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-  for (let text = walker.nextNode(); text !== null; text = walker.nextNode())
+  for (let text = walker.nextNode(); !Object.isNull(text); text = walker.nextNode())
     words.push((text.textContent ?? "").trim());
   return words.filter(t => t.length > 0).join(" ").replace(/\s+/g, " ");
 }
@@ -76,7 +77,7 @@ class Panel {
 
   public get host(): HostComponent {
     const host = this.fixture?.componentInstance;
-    if (host === undefined)
+    if (Object.isUndefined(host))
       throw new Error("The panel isn't open.");
     return host;
   }
@@ -159,7 +160,7 @@ class Panel {
 
   public async chooseAsync(label: string): Promise<void> {
     const radio = [...this.element.querySelectorAll<HTMLElement>("nol-radio")].find(t => wordsOf(t).startsWith(label))?.querySelector("input");
-    if (radio === undefined || radio === null)
+    if (Object.isNullOrUndefined(radio))
       throw new Error(`No merge type reads ${label}.`);
     radio.click();
     await this.settleAsync();
@@ -363,10 +364,10 @@ describe("AzureDevOpsCompleteComponent", () => {
 
     await panel.clickAsync(".abandon");
     panel.find(".confirm-action").click();
-    await panel.untilAsync(() => panel.element.querySelector(".abandon[disabled]") !== null);
+    await panel.untilAsync(() => !Object.isNull(panel.element.querySelector(".abandon[disabled]")));
     const held: boolean[] = [panel.isDisabled(".complete-merge"), panel.isDisabled(".set-auto-complete")];
     fail(new RuntimeRequestException(FailureCode.Conflict, "The pull request isn't active any more; read it again."));
-    await panel.untilAsync(() => panel.element.querySelector(".failure") !== null);
+    await panel.untilAsync(() => !Object.isNull(panel.element.querySelector(".failure")));
 
     expect([held, panel.texts(".failure"), panel.isDisabled(".abandon"), panel.host.completions()]).toEqual([[true, true],
       ["error The pull request isn't active any more; read it again."], false, 0]);
@@ -388,7 +389,7 @@ describe("AzureDevOpsCompleteComponent", () => {
     for (const other of ["/work/feature", "/work/api", "/work/detached", "/work/release"]) {
       folder.set(other);
       await panel.settleAsync();
-      shown.push(panel.element.querySelector(".pull-after") !== null);
+      shown.push(!Object.isNull(panel.element.querySelector(".pull-after")));
     }
     folder.set("/work/Site");
     await panel.settleAsync();
@@ -435,7 +436,7 @@ describe("AzureDevOpsCompleteComponent", () => {
     await panel.typeAsync("m".repeat(4000));
     await panel.clickAsync(".complete-merge");
     await panel.clickAsync(".cancel");
-    const cancelled: boolean = panel.element.querySelector(".confirm") === null;
+    const cancelled: boolean = Object.isNull(panel.element.querySelector(".confirm"));
     await panel.clickAsync(".complete-merge");
     await panel.chooseAsync("Squash commit");
 
@@ -467,7 +468,7 @@ describe("AzureDevOpsCompleteComponent", () => {
     await panel.openAsync();
 
     await panel.completeAsync();
-    await panel.untilAsync(() => panel.element.querySelector(".failure") !== null);
+    await panel.untilAsync(() => !Object.isNull(panel.element.querySelector(".failure")));
     const refused: string[] = panel.texts(".failure");
     await panel.completeAsync();
     await panel.untilAsync(() => panel.texts(".failure")[0] !== refused[0]);
@@ -510,7 +511,7 @@ describe("AzureDevOpsCompleteComponent", () => {
 
     await panel.startAsync();
     panel.host.pullRequest.set(pullRequestOf(7));
-    await panel.untilAsync(() => panel.element.querySelector(".choice.on") !== null && !panel.isDisabled(".message"));
+    await panel.untilAsync(() => !Object.isNull(panel.element.querySelector(".choice.on")) && !panel.isDisabled(".message"));
     finish();
     await panel.settleAsync();
 
@@ -524,7 +525,7 @@ describe("AzureDevOpsCompleteComponent", () => {
     const panel = new Panel();
     const release = panel.requests.hold(AzureDevOpsNames.readMergeTypesMethod);
     panel.create();
-    await panel.untilAsync(() => panel.element.querySelector(".reading") !== null);
+    await panel.untilAsync(() => !Object.isNull(panel.element.querySelector(".reading")));
     const reading: string[] = panel.texts(".reading");
     const held: boolean = panel.isDisabled(".complete-merge");
 
@@ -566,7 +567,7 @@ describe("AzureDevOpsCompleteComponent", () => {
     panel.host.pullRequest.set(pullRequestOf(7));
     await panel.requests.askedAsync(2);
     panel.host.pullRequest.set(pullRequestOf(9));
-    await panel.untilAsync(() => panel.element.querySelector(".choice.on") !== null);
+    await panel.untilAsync(() => !Object.isNull(panel.element.querySelector(".choice.on")));
     release(ALL);
     fail(new WindowFailure("The runtime stopped."));
     await panel.settleAsync();

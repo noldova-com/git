@@ -8,6 +8,7 @@
 
 import { Component, computed, effect, ElementRef, inject, input, type InputSignal, output, type OutputEmitterRef, PendingTasks, type Signal, signal, untracked,
   viewChildren, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { JsonReader, type JsonValue } from "@noldova/context.json";
 import { type IWindowPartContext, RuntimeRequestException, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
@@ -75,7 +76,7 @@ export class AzureDevOpsCompleteComponent {
   /** Whether a write runs, so nothing else can be sent. */
   protected readonly isWriting: Signal<boolean> = this.writing.asReadonly();
   /** Whether the choices make a merge Azure DevOps takes, so auto-complete can be set; completing also needs no blocking policy. */
-  protected readonly canAutoComplete: Signal<boolean> = computed(() => this.mergeType() !== null && !this.writing()
+  protected readonly canAutoComplete: Signal<boolean> = computed(() => !Object.isNull(this.mergeType()) && !this.writing()
     && (!this.takesMessage() || (this.message().trim().length > 0 && this.message().length <= Resources.maximumMergeMessageLength)));
 
   public constructor() {
@@ -105,7 +106,7 @@ export class AzureDevOpsCompleteComponent {
       untracked(() => {
         this.clone.set(null);
         this.pullAfter.set(false);
-        if (folder !== null)
+        if (!Object.isNull(folder))
           void this.readCloneAsync(folder, () => isCurrent);
       });
     });
@@ -192,7 +193,7 @@ export class AzureDevOpsCompleteComponent {
     switch (pending.action) {
       case CompleteAction.Complete: {
         const clone: string | null = this.clone();
-        const pull: PullAfter | null = clone !== null && this.pullAfter() ? { folder: clone, branch: this.changes().baseBranch } : null;
+        const pull: PullAfter | null = !Object.isNull(clone) && this.pullAfter() ? { folder: clone, branch: this.changes().baseBranch } : null;
         void this.writeAsync(AzureDevOpsNames.completePullRequestMethod, this.completionOf(reference, sourceCommit, pending.mergeType.type), pull);
         return;
       }
@@ -222,10 +223,10 @@ export class AzureDevOpsCompleteComponent {
     const done = this.tasks.add();
     try {
       const answer = await this.context.requestAsync(AzureDevOpsNames.readMergeTypesMethod, this.pullRequest().item.reference.toJson());
-      const types: readonly string[] | null = answer === null ? null : JsonReader.fromValue({ types: answer }).readStringArray("types");
+      const types: readonly string[] | null = Object.isNull(answer) ? null : JsonReader.fromValue({ types: answer }).readStringArray("types");
       if (isCurrent()) {
         this.allowed.set(types ?? []);
-        this.typesFailure.set(types === null ? Resources.mergeTypesUnanswered : null);
+        this.typesFailure.set(Object.isNull(types) ? Resources.mergeTypesUnanswered : null);
       }
     }
     catch (error) {

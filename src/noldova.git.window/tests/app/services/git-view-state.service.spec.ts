@@ -8,6 +8,7 @@
 
 import { computed, ErrorHandler, signal, type WritableSignal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import type { JsonValue } from "@noldova/context.json";
@@ -47,7 +48,7 @@ describe("GitViewStateService", () => {
     await GitFixtures.untilAsync(() => state.phase() === GitViewPhase.Ready);
     chosen.set("/work/other");
     TestBed.tick();
-    await GitFixtures.untilAsync(() => state.status() !== null);
+    await GitFixtures.untilAsync(() => !Object.isNull(state.status()));
     chosen.set(null);
     TestBed.tick();
     await GitFixtures.untilAsync(() => state.phase() === GitViewPhase.NoFolder);
@@ -67,7 +68,7 @@ describe("GitViewStateService", () => {
     const logged: Promise<void> = GitFixtures.loggedAsync(context, 2);
     const { state, chosen } = start(context);
 
-    await GitFixtures.untilAsync(() => state.watchFailure() !== null && state.phase() === GitViewPhase.Ready);
+    await GitFixtures.untilAsync(() => !Object.isNull(state.watchFailure()) && state.phase() === GitViewPhase.Ready);
     const shown: string | null = state.watchFailure();
     chosen.set(null);
     TestBed.tick();
@@ -122,7 +123,7 @@ describe("GitViewStateService", () => {
     let fails: boolean = true;
     GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.watch": () => fails ? GitFixtures.lost("no watch") : null, "git.status": GitFixtures.status().toJson() });
     const { state } = start(context);
-    await GitFixtures.untilAsync(() => state.watchFailure() !== null);
+    await GitFixtures.untilAsync(() => !Object.isNull(state.watchFailure()));
     fails = false;
     const reads: number = methods(context).filter(t => t === "git.status").length;
 
@@ -267,12 +268,12 @@ describe("GitViewStateService", () => {
     let answer: JsonValue | Error = GitFixtures.lost("The runtime stopped.");
     GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": () => answer });
     const { state } = start(context);
-    await GitFixtures.untilAsync(() => state.failure() !== null);
+    await GitFixtures.untilAsync(() => !Object.isNull(state.failure()));
     const lost: string | null = state.failure();
 
     answer = "lost";
     await state.refreshAsync();
-    const unreadable: readonly [GitViewPhase, boolean] = [state.phase(), state.failure() !== null];
+    const unreadable: readonly [GitViewPhase, boolean] = [state.phase(), !Object.isNull(state.failure())];
     answer = GitFixtures.status().toJson();
     await state.refreshAsync();
 
@@ -454,7 +455,7 @@ describe("GitViewStateService", () => {
     await GitFixtures.untilAsync(() => state.phase() === GitViewPhase.Ready);
     const beforeAnswer: GitCommitSigning | null = state.commitSigning();
     await held.answerAsync("git.commitSigning", ssh.toJson());
-    await GitFixtures.untilAsync(() => state.commitSigning() !== null);
+    await GitFixtures.untilAsync(() => !Object.isNull(state.commitSigning()));
     const first: GitCommitSigning | null = state.commitSigning();
 
     const refreshed: Promise<void> = state.refreshAsync();
@@ -494,7 +495,7 @@ describe("GitViewStateService", () => {
     let breaking: boolean = false;
     GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.commitSigning": () => breaking ? broken : off.toJson() });
     const { state } = start(context);
-    await GitFixtures.untilAsync(() => state.commitSigning() !== null);
+    await GitFixtures.untilAsync(() => !Object.isNull(state.commitSigning()));
     breaking = true;
 
     await expect(state.loadSigningAsync()).rejects.toBe(broken);
@@ -645,7 +646,7 @@ describe("GitViewStateService", () => {
       "git.commitDetail": new GitCommitDetail("0123456789abcdef0123456789abcdef01234567", "", "A Person", "a@example.com", "2026-11-20T14:02:00Z", false).toJson()
     });
     const { state } = start(context);
-    await GitFixtures.untilAsync(() => state.status() !== null);
+    await GitFixtures.untilAsync(() => !Object.isNull(state.status()));
     const handled: WritableSignal<string[]> = signal<string[]>([]);
     vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.update(t => [...t, String(error)]));
     const log: JsonValue = new GitLog([new GitCommit("0123456789abcdef0123456789abcdef01234567", [], "A Person", "2026-11-20T14:02:00Z", "Start")], false).toJson();
@@ -687,7 +688,7 @@ describe("GitViewStateService", () => {
       TestBed.tick();
       return state.message();
     };
-    await GitFixtures.untilAsync(() => state.status() !== null);
+    await GitFixtures.untilAsync(() => !Object.isNull(state.status()));
     TestBed.tick();
 
     const filled: string = state.message();
@@ -711,7 +712,7 @@ describe("GitViewStateService", () => {
     });
     onTestFinished(GitCommitPrefixes.provide(context, { prefixFor: (_folder, name) => `${name}: ` }));
     const { state } = start(context);
-    await GitFixtures.untilAsync(() => state.status() !== null);
+    await GitFixtures.untilAsync(() => !Object.isNull(state.status()));
     TestBed.tick();
 
     state.message.set("");
@@ -747,7 +748,7 @@ describe("GitViewStateService", () => {
     const { state } = start(context);
 
     const before: readonly number[] = [state.conflicts(), state.staged()];
-    await GitFixtures.untilAsync(() => state.status() !== null);
+    await GitFixtures.untilAsync(() => !Object.isNull(state.status()));
 
     expect([before, [state.conflicts(), state.staged()]]).toEqual([[0, 0], [1, 1]]);
   });
@@ -820,14 +821,14 @@ describe("GitViewStateService", () => {
     const push: Promise<void> = state.pushAsync();
     await held.answerAsync("git.push", behind);
     await push;
-    const offered: boolean = state.forcePushOffer() !== null;
+    const offered: boolean = !Object.isNull(state.forcePushOffer());
     chosen.set(folder);
     TestBed.tick();
 
     expect([afterLeaving, offered, state.forcePushOffer()]).toEqual([null, true, null]);
   });
 
-  it("lists the last writes newest first, keeps the list when the journal can't be read, drops it for another folder, and undoes one by its id", async () => {
+  it("lists every write the journal keeps newest first, keeps the list when the journal can't be read, drops it for another folder, and undoes one by its id", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const tree: string = "0123456789abcdef0123456789abcdef01234567";
     const entryOf = (id: string): GitJournalEntry => new GitJournalEntry(id, "git.stage", "2026-11-22T20:15:00Z", "main", "main", [], UndoMode.Index, tree, tree);
@@ -850,8 +851,8 @@ describe("GitViewStateService", () => {
     TestBed.tick();
     await state.readRecentActionsAsync();
 
-    expect(listed).toEqual(["22", "21", "20", "19", "18", "17", "16", "15", "14", "13", "12", "11", "10", "9", "8", "7", "6", "5", "4", "3"]);
-    expect([kept, dropped, state.recentActions()]).toEqual([20, 0, []]);
+    expect(listed).toEqual(["22", "21", "20", "19", "18", "17", "16", "15", "14", "13", "12", "11", "10", "9", "8", "7", "6", "5", "4", "3", "2", "1"]);
+    expect([kept, dropped, state.recentActions()]).toEqual([22, 0, []]);
     expect(context.callsOf("requestAsync").filter(t => t[0] === "git.undo")).toEqual([["git.undo", { folder, id: "5", basedOn: "f9" }]]);
     expect(methods(context).filter(t => t === "git.journal")).toHaveLength(2);
   });

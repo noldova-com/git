@@ -7,6 +7,7 @@
  */
 
 import { type Signal, type WritableSignal, signal } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, WindowException } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
 import { type HostWorkItem, HostWorkItemList, WorkItemScope, WorkItemsQuery } from "@noldova/git.hosting.protocol";
@@ -30,7 +31,7 @@ export class AzureDevOpsChipItems {
   public itemOf(organization: string, project: string, id: number): Signal<HostWorkItem | null> {
     const key: string = Resources.formatWorkItemKey(organization, id);
     const known: WritableSignal<HostWorkItem | null> | undefined = this.items.get(key);
-    if (known !== undefined)
+    if (!Object.isUndefined(known))
       return known;
     const item: WritableSignal<HostWorkItem | null> = signal<HostWorkItem | null>(null);
     this.items.set(key, item);

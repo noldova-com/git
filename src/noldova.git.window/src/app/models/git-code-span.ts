@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { ILineTokenizer } from "@noldova/editor.angular";
 
 import { GitDiffRowKind } from "../enums/git-diff-row-kind.ts";
@@ -31,7 +32,7 @@ export class GitCodeSpan {
    * tokenizer each row is one plain run.
    */
   public static rowsOf(rows: readonly GitDiffRow[], tokenizer: ILineTokenizer | null): readonly (readonly GitCodeSpan[])[] {
-    if (tokenizer === null)
+    if (Object.isNull(tokenizer))
       return rows.map(t => [new GitCodeSpan(t.text)]);
     let older: TokenizerState = tokenizer.initialState;
     let newer: TokenizerState = tokenizer.initialState;

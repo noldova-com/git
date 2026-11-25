@@ -16,9 +16,9 @@ import { GitHubNames } from "@noldova/git.github.protocol";
 import type { IGitHubToken } from "../interfaces/i-github-token.ts";
 import { GitHubRepository } from "../models/github-repository.ts";
 import { NewestItems } from "../models/newest-items.ts";
+import { ReviewSearchAnswer } from "../models/review-search-answer.ts";
 import { ReviewSearch } from "../models/review-search.ts";
 import { Resources } from "../resources.ts";
-import type { ReviewSearchAnswer } from "../types/review-search-answer.ts";
 import { GitHubApi } from "./github-api.ts";
 import type { GitHubAvatars } from "./github-avatars.ts";
 
@@ -101,7 +101,7 @@ export class GitHubReads {
       return HostReviewRequestList.signedOut();
     if (query.host !== Resources.host || repository === null)
       return new HostReviewRequestList([], false);
-    const [rows, isCut] = await this.searchReviewRequestsAsync(token);
+    const { rows, isCut } = await this.searchReviewRequestsAsync(token);
     signal.throwIfAborted();
     if (this.signIn.token !== token)
       return HostReviewRequestList.signedOut();
@@ -337,7 +337,7 @@ export class GitHubReads {
       return held.answer;
     const answer: Promise<ReviewSearchAnswer> = this.askAsync<ReviewSearchAnswer>(token, async () => {
       const found: JsonReader | null = await this.api.getAsync(Resources.reviewRequestsPath, token, new AbortController().signal);
-      return found === null ? [[], false] : GitHubApi.read(() => GitHubReads.reviewSearchOf(found));
+      return found === null ? new ReviewSearchAnswer([], false) : GitHubApi.read(() => GitHubReads.reviewSearchOf(found));
     });
     this.reviewSearch = new ReviewSearch(token, now, answer);
     return answer;
@@ -366,7 +366,7 @@ export class GitHubReads {
           item.readString(Resources.titleField), item.readString(Resources.htmlUrlField), item.hasField(Resources.draftField) && item.readBoolean(Resources.draftField),
           Date.parse(item.readString(Resources.createdAtField))));
     }
-    return [rows, found.readInteger(Resources.totalCountField) > items.length || found.readBoolean(Resources.incompleteResultsField)];
+    return new ReviewSearchAnswer(rows, found.readInteger(Resources.totalCountField) > items.length || found.readBoolean(Resources.incompleteResultsField));
   }
 
   private static commitCommentsOf(commit: string, commitComments: readonly JsonReader[], reviewComments: readonly JsonReader[]): HostCommitComments {

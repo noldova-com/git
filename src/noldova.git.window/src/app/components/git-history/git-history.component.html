@@ -63,9 +63,10 @@ LICENSE file in the root directory of this source tree.
   <p class="note">{{ resources.historyEmpty }}</p>
 } @else {
   <cdk-virtual-scroll-viewport class="list" [itemSize]="resources.graphRowPixels" [minBufferPx]="resources.graphBufferPixels"
-    [maxBufferPx]="resources.graphBufferPixels * 2" role="listbox" tabindex="0" [attr.aria-label]="resources.historyListLabel"
+    [maxBufferPx]="resources.graphBufferPixels * 2" role="listbox" tabindex="0" [attr.aria-label]="resources.historyListLabel" [attr.aria-activedescendant]="activeOption()"
     (keydown)="move($event)" (scrolledIndexChange)="scrolled($event)">
-    <div *cdkVirtualFor="let row of rows(); trackBy: trackRow" class="grow-row" role="option"
+    <div *cdkVirtualFor="let row of rows(); let index = index; let count = count; trackBy: trackRow" class="grow-row" role="option"
+      [id]="resources.formatHistoryOptionId(list, index)" [attr.aria-posinset]="index + 1" [attr.aria-setsize]="hasMore() ? -1 : count"
       [class.sel]="row.id === selectedId()" [class.dim]="!row.matches" [attr.aria-selected]="row.id === selectedId()" (click)="select(row)">
       <div class="cell">
         @let split = row.chipsWithin(chipLimit());

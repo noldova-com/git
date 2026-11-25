@@ -12,14 +12,16 @@ import { HostReference, HostReviewRequest } from "@noldova/git.hosting.protocol"
 import { describe, it } from "vitest";
 
 import { ReviewSearch } from "../../src/models/review-search.ts";
+import { ReviewSearchAnswer } from "../../src/models/review-search-answer.ts";
 
 describe("ReviewSearch", () => {
   it("keeps the token it searched with, when it started and the search's answer as it settles", async () => {
     const request: HostReviewRequest = new HostReviewRequest(new HostReference("git-github", "octocat", "hello-world", 7), "Fix the build",
       "https://github.com/octocat/hello-world/pull/7", false, 1_700_000_000_000);
-    const search: ReviewSearch = new ReviewSearch("gho_token", 1_700_000_000_000, Promise.resolve([[request], true]));
+    const answer: ReviewSearchAnswer = new ReviewSearchAnswer([request], true);
+    const search: ReviewSearch = new ReviewSearch("gho_token", 1_700_000_000_000, Promise.resolve(answer));
 
-    assert.deepEqual([search.token, search.startedAt, await search.answer], ["gho_token", 1_700_000_000_000, [[request], true]]);
+    assert.deepEqual([search.token, search.startedAt, await search.answer], ["gho_token", 1_700_000_000_000, answer]);
   });
 
   it("keeps a search that failed, so its failure reaches whoever waits on it", async () => {

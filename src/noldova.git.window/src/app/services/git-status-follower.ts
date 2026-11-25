@@ -7,6 +7,7 @@
  */
 
 import { createWatch, untracked, type Watch } from "@angular/core/primitives/signals";
+import "@noldova/context.core";
 import type { IWindowPartContext } from "@noldova/desktop.window";
 import type { GitCommandLog, GitStatus } from "@noldova/git.protocol";
 
@@ -57,9 +58,9 @@ export class GitStatusFollower {
     this.reads++;
     GitStatusBar.show(null, null);
     GitStatusBar.showCommand(null, null);
-    if (previous !== null)
+    if (!Object.isNull(previous))
       void this.client.unwatchAsync(previous).catch((error: unknown) => this.context.log(Resources.formatStatusBarUnwatchFailed(previous, String(error))));
-    if (folder === null)
+    if (Object.isNull(folder))
       return;
     void this.client.watchAsync(folder).catch((error: unknown) => this.context.log(Resources.formatStatusBarWatchFailed(folder, String(error))));
     void this.readAsync(folder);

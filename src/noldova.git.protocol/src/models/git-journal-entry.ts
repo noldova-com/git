@@ -58,8 +58,6 @@ export class GitJournalEntry {
       FieldCheck.requireBranchName(branch, Resources.branchField, reader);
     if (branchAfter !== null)
       FieldCheck.requireBranchName(branchAfter, Resources.branchAfterField, reader);
-    if (!Object.values(UndoMode).includes(undo))
-      FieldCheck.fail(Resources.undoField, Resources.undoModeExpected, reader);
     if (indexBefore !== null)
       FieldCheck.requireObjectId(indexBefore, Resources.indexBeforeField, reader);
     if (indexAfter !== null)

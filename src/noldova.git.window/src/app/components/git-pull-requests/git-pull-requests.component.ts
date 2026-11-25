@@ -7,6 +7,7 @@
  */
 
 import { Component, computed, effect, ErrorHandler, inject, input, type InputSignal, output, type OutputEmitterRef, signal, type Signal, untracked, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
 import type { GitRemote } from "@noldova/git.protocol";
 import { ContextMenuTriggerDirective, MenuComponent, MenuItemComponent, MenuSeparatorComponent } from "@noldova/ui.components.angular";
@@ -65,7 +66,7 @@ export class GitPullRequestsComponent {
   /** Asks the host to read the pull requests again: on Try again, and when the window takes the focus. */
   protected refresh(): void {
     const host: IGitPullRequests | null = this.host();
-    if (host !== null)
+    if (!Object.isNull(host))
       this.attempt(() => host.refresh(this.folder(), this.shown()), undefined);
   }
 
@@ -89,7 +90,7 @@ export class GitPullRequestsComponent {
   /** Opens the pull request in the host's own page when it has one, else its page in the browser. */
   protected open(row: GitPullRequestRow): void {
     const host: IGitPullRequests | null = this.host();
-    if (host !== null && this.attempt(() => host.open?.(this.folder(), row) === true, false))
+    if (!Object.isNull(host) && this.attempt(() => host.open?.(this.folder(), row) === true, false))
       return;
     this.openInBrowser(row);
   }

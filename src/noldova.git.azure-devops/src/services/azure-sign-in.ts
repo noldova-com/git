@@ -15,6 +15,7 @@ import { SignInKind } from "../enums/sign-in-kind.ts";
 import type { IAzureToken } from "../interfaces/i-azure-token.ts";
 import { AzureCredential } from "../models/azure-credential.ts";
 import type { EntraGrant } from "../models/entra-grant.ts";
+import { HeldSignIn } from "../models/held-sign-in.ts";
 import { KeptSignIn } from "../models/kept-sign-in.ts";
 import type { RedirectAnswer } from "../models/redirect-answer.ts";
 import { Resources } from "../resources.ts";
@@ -33,7 +34,7 @@ export class AzureSignIn implements IAzureToken {
   private signIn: HostSignIn = HostSignIn.signedOut();
   private unfollowWindows: (() => void) | null = null;
   private generation: number = 0;
-  private held: readonly [AzureCredential, string] | null = null;
+  private held: HeldSignIn | null = null;
   private kept: KeptSignIn | null = null;
   private waiting: AbortController | null = null;
   private renewal: ReturnType<typeof setTimeout> | undefined = undefined;
@@ -54,11 +55,11 @@ export class AzureSignIn implements IAzureToken {
   }
 
   public get token(): AzureCredential | null {
-    return this.held?.[0] ?? null;
+    return this.held?.token ?? null;
   }
 
   public get organization(): string | null {
-    return this.held?.[1] ?? null;
+    return this.held?.organization ?? null;
   }
 
   public async restoreAsync(): Promise<void> {
@@ -94,7 +95,7 @@ export class AzureSignIn implements IAzureToken {
     if (this.signIn.state !== SignInState.SignedOut || this.stopped.signal.aborted)
       return;
     const credential = restored.kind === SignInKind.Microsoft ? AzureCredential.ofAccess(Resources.emptyText) : AzureCredential.ofToken(restored.token);
-    this.held = [credential, restored.organization];
+    this.held = new HeldSignIn(credential, restored.organization);
     this.kept = restored;
     this.set(HostSignIn.signedIn(restored.account));
     this.background(restored.kind === SignInKind.Microsoft ? this.recheckOnceAsync(credential, restored.organization, restored)
@@ -156,9 +157,13 @@ export class AzureSignIn implements IAzureToken {
   public async refusedAsync(token: AzureCredential): Promise<void> {
     const held = this.held;
     const kept = this.kept;
-    if (held?.[0] !== token || kept === null)
+    if (held?.token !== token || kept === null)
       return;
-    await this.recheckOnceAsync(token, held[1], kept);
+    await this.recheckOnceAsync(token, held.organization, kept);
+  }
+
+  public async readyAsync(): Promise<void> {
+    await this.checking?.catch(() => undefined);
   }
 
   public dispose(): void {
@@ -246,7 +251,7 @@ export class AzureSignIn implements IAzureToken {
   }
 
   private signedIn(credential: AzureCredential, kept: KeptSignIn): void {
-    this.held = [credential, kept.organization];
+    this.held = new HeldSignIn(credential, kept.organization);
     this.kept = kept;
     this.log.write(Resources.formatSignedIn(kept.account.login));
     this.set(HostSignIn.signedIn(kept.account));

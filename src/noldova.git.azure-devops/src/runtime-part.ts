@@ -10,7 +10,7 @@ import { JsonException, JsonReader } from "@noldova/context.json";
 import { Failure, FailureCode, ShellClients } from "@noldova/desktop.protocol";
 import { type EventChannel, type IRuntimePart, type IRuntimePartContext, MethodFailureException, type RequestContext } from "@noldova/desktop.runtime";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
-import { AuthorQuery, BranchQuery, CommitQuery, HostAvatar, HostingProtocolException, HostPullRequestThreads, HostReference, type HostSignIn, PersonQuery,
+import { AuthorQuery, BranchQuery, CommitQuery, HostAvatar, HostingProtocolException, HostPullRequestThreads, HostReference, PersonQuery,
   RepositoryQuery, WorkItemQuery, WorkItemsQuery, WorkItemUpdate } from "@noldova/git.hosting.protocol";
 
 import { BranchLink } from "./models/branch-link.ts";
@@ -21,6 +21,7 @@ import { PullRequestVote } from "./models/pull-request-vote.ts";
 import { ReviewerAddition } from "./models/reviewer-addition.ts";
 import { ThreadChange } from "./models/thread-change.ts";
 import { ThreadReply } from "./models/thread-reply.ts";
+import { TokenSignIn } from "./models/token-sign-in.ts";
 import { Resources } from "./resources.ts";
 import { AzureApi } from "./services/azure-api.ts";
 import { AzureAvatars } from "./services/azure-avatars.ts";
@@ -28,6 +29,7 @@ import { AzureReads } from "./services/azure-reads.ts";
 import { AzureSignIn } from "./services/azure-sign-in.ts";
 import { AzureWrites } from "./services/azure-writes.ts";
 import { EntraFlow } from "./services/entra-flow.ts";
+import type { SignInMethod } from "./types/sign-in-method.ts";
 
 export class RuntimePart implements IRuntimePart {
   private context: IRuntimePartContext | null = null;
@@ -45,13 +47,16 @@ export class RuntimePart implements IRuntimePart {
     const reads = new AzureReads(api, signIn, context.log);
     const writes = new AzureWrites(api, signIn, reads);
     const avatars = new AzureAvatars(api, signIn, context.log);
-    const methods: readonly (readonly [string, (request: RequestContext) => HostSignIn | Promise<HostSignIn>])[] = [
+    const methods: ReadonlyMap<string, SignInMethod> = new Map<string, SignInMethod>([
       [AzureDevOpsNames.readSignInMethod, () => signIn.current],
       [AzureDevOpsNames.startSignInMethod, request => signIn.startSignInAsync(RuntimePart.organizationOf(RuntimePart.fromWindow(request)))],
       [AzureDevOpsNames.cancelSignInMethod, () => signIn.cancelSignIn()],
-      [AzureDevOpsNames.signInWithTokenMethod, request => signIn.signInWithTokenAsync(...RuntimePart.tokenOf(RuntimePart.fromWindow(request)), request.signal)],
+      [AzureDevOpsNames.signInWithTokenMethod, request => {
+        const token: TokenSignIn = RuntimePart.tokenOf(RuntimePart.fromWindow(request));
+        return signIn.signInWithTokenAsync(token.token, token.organization, request.signal);
+      }],
       [AzureDevOpsNames.signOutMethod, () => signIn.signOutAsync()]
-    ];
+    ]);
     for (const [name, run] of methods)
       context.registerMethod(name, { handleAsync: async request => (await run(request)).toJson() });
     context.registerMethod(AzureDevOpsNames.readReferenceMethod, {
@@ -187,16 +192,16 @@ export class RuntimePart implements IRuntimePart {
     return request;
   }
 
-  private static tokenOf(request: RequestContext): readonly [string, string] {
-    let token: readonly [string, string];
+  private static tokenOf(request: RequestContext): TokenSignIn {
+    let token: TokenSignIn;
     try {
       const reader: JsonReader = JsonReader.fromValue(request.payload);
-      token = [reader.readNonBlankString(Resources.tokenField), reader.readString(Resources.organizationField)];
+      token = new TokenSignIn(reader.readNonBlankString(Resources.tokenField), reader.readString(Resources.organizationField));
     }
     catch {
       throw AzureApi.failure(FailureCode.InvalidParams, Resources.tokenExpectedMessage);
     }
-    if (!Resources.organizationPattern.test(token[1]))
+    if (!Resources.organizationPattern.test(token.organization))
       throw AzureApi.failure(FailureCode.InvalidParams, Resources.tokenExpectedMessage);
     return token;
   }

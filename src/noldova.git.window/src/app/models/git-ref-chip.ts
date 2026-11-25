@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type GitRef, RefKind } from "@noldova/git.protocol";
 
 import { Resources } from "../../resources.ts";
@@ -35,7 +36,7 @@ export class GitRefChip {
 
   /** Whether the label is a local branch, which a switch can make current. */
   public get isLocalBranch(): boolean {
-    return this.branch !== null && this.icon === Resources.localBranchIcon;
+    return !Object.isNull(this.branch) && this.icon === Resources.localBranchIcon;
   }
 
   /**
@@ -91,7 +92,7 @@ export class GitRefChip {
   /** A remote branch's name on `remote`, without the remote's name; `null` for any other label. */
   private nameOn(remote: string): string | null {
     const prefix: string = remote + Resources.slash;
-    return this.branch !== null && this.branch.startsWith(prefix) && this.branch.length > prefix.length ? this.branch.slice(prefix.length) : null;
+    return !Object.isNull(this.branch) && this.branch.startsWith(prefix) && this.branch.length > prefix.length ? this.branch.slice(prefix.length) : null;
   }
 
   /** Splits a row's labels into those it shows and those its `+N` label lists, so that a row shows at most `limit` and the `+N` one. */

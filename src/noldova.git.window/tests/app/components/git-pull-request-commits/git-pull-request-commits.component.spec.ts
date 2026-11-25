@@ -7,6 +7,7 @@
  */
 
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { HostPullRequestCommit, HostPullRequestCommits, HostReference } from "@noldova/git.hosting.protocol";
@@ -43,7 +44,7 @@ function commitsOf(count: number): HostPullRequestCommits {
 function wordsOf(node: Node): string {
   const words: string[] = [];
   const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-  for (let text = walker.nextNode(); text !== null; text = walker.nextNode())
+  for (let text = walker.nextNode(); !Object.isNull(text); text = walker.nextNode())
     words.push((text.textContent ?? "").trim());
   return words.filter(t => t.length > 0).join(" ").replace(/\s+/g, " ");
 }
@@ -94,7 +95,7 @@ class Tab {
 
   public async clickAsync(selector: string, index: number = 0): Promise<void> {
     const found = this.element.querySelectorAll<HTMLElement>(selector)[index];
-    if (found === undefined)
+    if (Object.isUndefined(found))
       throw new Error(`Nothing matches ${selector}.`);
     found.click();
     await this.settleAsync();

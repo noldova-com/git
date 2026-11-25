@@ -9,6 +9,7 @@
 import type {} from "@vitest/browser-playwright";
 import { Component } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { HostComment, HostPerson, HostPullRequestThreads, HostReference, HostThread, ThreadStatus } from "@noldova/git.hosting.protocol";
@@ -113,7 +114,7 @@ describe("GitPullRequestThreadsComponent in the kit's look", () => {
     + " at the head's end for a thread on a line only, in %s mode", async mode => {
     const root: HTMLElement = (await openAsync(mode)).nativeElement;
     const [card] = all(root, ".thread");
-    if (card === undefined)
+    if (Object.isUndefined(card))
       throw new Error("No thread is shown.");
     const box = card.getBoundingClientRect();
     const inset: number = px(0.75) + Number.parseFloat(getComputedStyle(card).borderLeftWidth);
@@ -142,7 +143,7 @@ describe("GitPullRequestThreadsComponent in the kit's look", () => {
   it.each(AppearanceFixture.modes)("shows each comment author's picture from the host at the 1.5rem avatar's size, in its place, in %s mode", async mode => {
     const root: HTMLElement = (await openAsync(mode, hostWith(TestPullRequestHost.replyMethod, TestPullRequestHost.changeMethod, picture))).nativeElement;
     const [card] = all(root, ".thread");
-    if (card === undefined)
+    if (Object.isUndefined(card))
       throw new Error("No thread is shown.");
     await untilAsync(() => all(card, ".comment img").length === 2);
     const images: HTMLElement[] = all(card, ".comment img");
@@ -160,7 +161,7 @@ describe("GitPullRequestThreadsComponent in the kit's look", () => {
   it.each(AppearanceFixture.modes)("ends an open thread with Reply after Resolve at the card's end inset, with no reply field until Reply opens it, in %s mode", async mode => {
     const root: HTMLElement = (await openAsync(mode)).nativeElement;
     const [card] = all(root, ".thread");
-    if (card === undefined)
+    if (Object.isUndefined(card))
       throw new Error("No thread is shown.");
     const box = card.getBoundingClientRect();
     const inset: number = px(0.75) + Number.parseFloat(getComputedStyle(card).borderLeftWidth);
@@ -180,7 +181,7 @@ describe("GitPullRequestThreadsComponent in the kit's look", () => {
     const fixture = await openAsync(mode);
     const root: HTMLElement = fixture.nativeElement;
     const [card] = all(root, ".thread");
-    if (card === undefined)
+    if (Object.isUndefined(card))
       throw new Error("No thread is shown.");
     find(card, ".start-reply").click();
     await fixture.whenStable();
@@ -202,7 +203,7 @@ describe("GitPullRequestThreadsComponent in the kit's look", () => {
     const fixture = await openAsync(mode);
     const root: HTMLElement = fixture.nativeElement;
     const [card] = all(root, ".thread");
-    if (card === undefined)
+    if (Object.isUndefined(card))
       throw new Error("No thread is shown.");
     find(card, ".start-reply").click();
     await fixture.whenStable();
@@ -227,7 +228,7 @@ describe("GitPullRequestThreadsComponent in the kit's look", () => {
   it.each(AppearanceFixture.modes)("folds a finished thread to one line inside its card, cutting a long comment short, in %s mode", async mode => {
     const root: HTMLElement = (await openAsync(mode)).nativeElement;
     const [, card] = all(root, ".thread");
-    if (card === undefined)
+    if (Object.isUndefined(card))
       throw new Error("No finished thread is shown.");
     const box = card.getBoundingClientRect();
     const inset: number = px(0.75) + Number.parseFloat(getComputedStyle(card).borderLeftWidth);
@@ -243,7 +244,7 @@ describe("GitPullRequestThreadsComponent in the kit's look", () => {
   it.each(AppearanceFixture.modes)("ends an open thread with Resolve alone at the card's end inset for a host that can't reply, in %s mode", async mode => {
     const root: HTMLElement = (await openAsync(mode, hostWith(null, TestPullRequestHost.changeMethod))).nativeElement;
     const [card] = all(root, ".thread");
-    if (card === undefined)
+    if (Object.isUndefined(card))
       throw new Error("No thread is shown.");
     const box = card.getBoundingClientRect();
     const inset: number = px(0.75) + Number.parseFloat(getComputedStyle(card).borderLeftWidth);
@@ -259,7 +260,7 @@ describe("GitPullRequestThreadsComponent in the kit's look", () => {
   it.each(AppearanceFixture.modes)("ends an open thread with Reply alone at the card's end inset for a host that keeps no thread state, in %s mode", async mode => {
     const root: HTMLElement = (await openAsync(mode, hostWith(TestPullRequestHost.replyMethod, null))).nativeElement;
     const [card] = all(root, ".thread");
-    if (card === undefined)
+    if (Object.isUndefined(card))
       throw new Error("No thread is shown.");
     const box = card.getBoundingClientRect();
     const inset: number = px(0.75) + Number.parseFloat(getComputedStyle(card).borderLeftWidth);
@@ -275,7 +276,7 @@ describe("GitPullRequestThreadsComponent in the kit's look", () => {
   it.each(AppearanceFixture.modes)("ends a thread at its last comment, inside the card's inset, for a host that writes neither replies nor states, in %s mode", async mode => {
     const root: HTMLElement = (await openAsync(mode, hostWith(null, null))).nativeElement;
     const [card] = all(root, ".thread");
-    if (card === undefined)
+    if (Object.isUndefined(card))
       throw new Error("No thread is shown.");
     const box = card.getBoundingClientRect();
     const inset: number = px(0.75) + Number.parseFloat(getComputedStyle(card).borderLeftWidth);

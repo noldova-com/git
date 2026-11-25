@@ -16,9 +16,9 @@ LICENSE file in the root directory of this source tree.
   <ng-template #moreActions>
     <nol-menu>
       <button nol-menu-item data-action="copy-id" [label]="resources.copyIdLabel" [icon]="resources.copyIcon" (triggered)="copyId()"></button>
-      <button nol-menu-item data-action="branch-here" [label]="resources.createBranchHereLabel" [icon]="resources.branchMenuIcon" [disabled]="state.busy()"
+      <button nol-menu-item data-action="branch-here" [label]="resources.createBranchHereLabel" [icon]="resources.branchMenuIcon" [disabled]="!writable()"
         (triggered)="startBranch(false)"></button>
-      <button nol-menu-item data-action="tag-here" [label]="resources.createTagHereLabel" [icon]="resources.tagIcon" [disabled]="state.busy()"
+      <button nol-menu-item data-action="tag-here" [label]="resources.createTagHereLabel" [icon]="resources.tagIcon" [disabled]="!writable()"
         (triggered)="startBranch(true)"></button>
     </nol-menu>
   </ng-template>
@@ -63,18 +63,18 @@ LICENSE file in the root directory of this source tree.
   </div>
   <div class="actions">
     @if (mergeable()) {
-      <button nol-button type="button" class="merge" [variant]="secondary" [disabled]="state.busy()" [title]="resources.mergeTitle" (click)="mergeAsync()">
+      <button nol-button type="button" class="merge" [variant]="secondary" [disabled]="!writable()" [title]="resources.mergeTitle" (click)="mergeAsync()">
         <span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.mergeIcon }}</span>{{ resources.mergeLabel }}</button>
     }
-    <button nol-button type="button" class="cherry-pick" [variant]="secondary" [disabled]="state.busy()" [title]="resources.cherryPickTitle" (click)="pickAsync(false)">
+    <button nol-button type="button" class="cherry-pick" [variant]="secondary" [disabled]="!writable()" [title]="resources.cherryPickTitle" (click)="pickAsync(false)">
       <span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.cherryPickIcon }}</span>{{ resources.cherryPickLabel }}</button>
-    <button nol-button type="button" class="revert" [variant]="secondary" [disabled]="state.busy()" [title]="resources.revertTitle" (click)="pickAsync(true)">
+    <button nol-button type="button" class="revert" [variant]="secondary" [disabled]="!writable()" [title]="resources.revertTitle" (click)="pickAsync(true)">
       <span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.revertIcon }}</span>{{ resources.revertLabel }}</button>
     <button nol-button type="button" class="rebase-here" [variant]="secondary" [disabled]="state.busy()" [title]="resources.rebaseHereTitle" (click)="startRebase()">
       <span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.rebaseIcon }}</span>{{ resources.rebaseHereLabel }}</button>
-    <button nol-button type="button" class="branch-here" [variant]="secondary" [disabled]="state.busy()" [title]="resources.branchHereTitle" (click)="startBranch(false)">
+    <button nol-button type="button" class="branch-here" [variant]="secondary" [disabled]="!writable()" [title]="resources.branchHereTitle" (click)="startBranch(false)">
       <svg nolButtonIcon class="octicon" viewBox="0 0 16 16" aria-hidden="true"><path [attr.d]="resources.branchIconPath" /></svg>{{ resources.branchHereLabel }}</button>
-    <button nol-button type="button" class="tag-here" [variant]="secondary" [disabled]="state.busy()" [title]="resources.tagHereTitle" (click)="startBranch(true)">
+    <button nol-button type="button" class="tag-here" [variant]="secondary" [disabled]="!writable()" [title]="resources.tagHereTitle" (click)="startBranch(true)">
       <span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.tagIcon }}</span>{{ resources.tagHereLabel }}</button>
     @if (showsAiFeatures()) {
       <button nol-button type="button" class="explain" [variant]="secondary" disabled [title]="resources.notBuiltYet">
@@ -109,7 +109,7 @@ LICENSE file in the root directory of this source tree.
       @let nameLabel = tagging() ? resources.tagNameLabel : resources.branchNameLabel;
       <input nol-text-field class="branch-name" type="text" autofocus [attr.aria-label]="nameLabel" [placeholder]="nameLabel"
         [ngModel]="branchName()" (ngModelChange)="branchName.set($event)" name="branch" (keydown.escape)="cancelBranch()" />
-      <button nol-button type="submit" class="create" [disabled]="state.busy() || (branchName() ?? '').trim().length === 0">{{ resources.createLabel }}</button>
+      <button nol-button type="submit" class="create" [disabled]="!writable() || (branchName() ?? '').trim().length === 0">{{ resources.createLabel }}</button>
       <button nol-button type="button" class="cancel" [variant]="secondary" (click)="cancelBranch()">{{ resources.cancelLabel }}</button>
     </form>
   }

@@ -7,6 +7,7 @@
  */
 
 import { signal } from "@angular/core";
+import "@noldova/context.core";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitNames, GitRemote, GitStatus, RemoteTransport } from "@noldova/git.protocol";
 import { GitFolder } from "@noldova/git.window";
@@ -19,7 +20,7 @@ import { WindowFailure } from "../../fixtures/window-failure.fixture.ts";
 const URL: string = "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/752";
 const FOLDER: string = "/work/site";
 const statusOf = (path: string | null): GitStatus => new GitStatus("main", "a".repeat(40), null, [], false, "f1", null,
-  path === null ? null : new GitRemote("origin", "dev.azure.com", path, RemoteTransport.Https));
+  Object.isNull(path) ? null : new GitRemote("origin", "dev.azure.com", path, RemoteTransport.Https));
 
 describe("AzureDevOpsLocalFolder", () => {
   it("finds the open repository when its remote is the pull request's, ignoring case and the address's escapes", async () => {

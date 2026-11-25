@@ -6,8 +6,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { ApplicationRef, type EnvironmentProviders, type Provider, signal } from "@angular/core";
+import { ApplicationRef, type EnvironmentProviders, ErrorHandler, type Provider, signal, type WritableSignal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import {
   FailureCode, GitCommit, GitCommitDetail, GitCommitSignature, GitGraphCommit, GitPrediction, GitRef, type JsonValue, LineKind, PredictionAction, PredictionOutcome, RefKind,
   SignatureState
@@ -36,8 +37,8 @@ describe("GitCommitDetailComponent", () => {
   const showAsync = async (commit: GitGraphCommit, diff: ReturnType<typeof GitFixtures.diff> | ReturnType<typeof GitFixtures.failure>,
     more: GitCommitDetail | Error = new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false),
     providers: readonly (Provider | EnvironmentProviders)[] = [], answers: Readonly<Record<string, JsonValue | Error>> = {}): Promise<GitViewFixture> => {
-    onTestFinished(() => GitViewing.commit.set(null));
-    GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commit));
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
     return GitViewFixture.renderCommitAsync({
       ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": diff instanceof Error ? diff : diff.toJson(),
       "git.commitDetail": more instanceof Error ? more : more.toJson(),
@@ -64,7 +65,7 @@ describe("GitCommitDetailComponent", () => {
 
     expect(view.panel.querySelectorAll(".body")).toHaveLength(1);
 
-    GitViewing.commit.set(null);
+    GitViewing.showChanges(GitFixtures.folder);
     await view.waitForAsync(".empty-view");
     expect([view.all(".detail").length, view.texts(".empty-view"), view.panel.querySelectorAll(".body").length])
       .toEqual([0, ["Choose a commit in History to see it here"], 1]);
@@ -150,6 +151,22 @@ describe("GitCommitDetailComponent", () => {
 
     expect([view.texts(".message a[nol-link-reference-chip]")[0]?.includes("#5"), [...new Set(folders)]]).toEqual([true, [GitFixtures.folder]]);
     expect(view.context.callsOf("openLinkAsync")).toEqual([[issue, { gesture: LinkGesture.Plain }]]);
+  });
+
+  it("reports a message link the window fails to open", async () => {
+    const issue: string = "https://github.com/example-owner/example-repository/issues/5";
+    onTestFinished(GitLinkReferences.provide({ referencesFor: () => ({ find: () => null, findText: t => [new LinkReferenceMatch(t.indexOf("#5"), 2, issue)] }) }));
+    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", [LineKind.Added, "one"]),
+      new GitCommitDetail("c".repeat(40), "Fixes #5.", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false), [provideMarkdown()]);
+    const handled: string[] = [];
+    vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.push(String(error)));
+    view.context.answer("openLinkAsync", () => Promise.reject(new Error("open refused")));
+    await view.waitForAsync(".message a");
+
+    await view.clickAsync(".message a");
+    await GitFixtures.untilAsync(() => handled.length > 0);
+
+    expect(handled).toEqual(["Error: open refused"]);
   });
 
   it("shows a reference a host finds in the subject as a link named as the host reads it, and opens it through the window", async () => {
@@ -262,7 +279,7 @@ describe("GitCommitDetailComponent", () => {
     await view.fixture.whenStable();
     const shown: HTMLElement | null = view.element.querySelector<HTMLElement>(".signature");
 
-    expect(shown === null ? ["no row", String(view.all("[role=alert]").length)]
+    expect(Object.isNull(shown) ? ["no row", String(view.all("[role=alert]").length)]
       : [shown.dataset["state"], view.texts(".signature-icon")[0], view.texts(".signature-text")[0], shown.getAttribute("title")]).toEqual(row);
     expect(view.requested("git.commitSignature")).toEqual([{ folder: GitFixtures.folder, id: signed }]);
   });
@@ -318,8 +335,8 @@ describe("GitCommitDetailComponent", () => {
   it("merges a branch's tip on the status it is based on, saying first what the merge would do, and keeps the commit shown beside the panel's changes", async () => {
     const answers: GitPrediction[] = [new GitPrediction(PredictionOutcome.Conflicts, ["a.ts"]), new GitPrediction(PredictionOutcome.Clean, []), new GitPrediction(PredictionOutcome.Clean, [])];
     const tip: GitGraphCommit = new GitGraphCommit(commitOf(["d".repeat(40)]).commit, "author@example.com", [new GitRef(RefKind.RemoteBranch, "origin/main")]);
-    onTestFinished(() => GitViewing.commit.set(null));
-    GitViewing.commit.set(new GitCommitView(GitFixtures.folder, tip));
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    GitViewing.show(new GitCommitView(GitFixtures.folder, tip));
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
       ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
       "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson(),
@@ -351,6 +368,29 @@ describe("GitCommitDetailComponent", () => {
     expect([view.all(".detail").length, view.all("[role=alert]").length]).toEqual([1, 0]);
   });
 
+  it("holds every action that writes while the Git panel follows another folder, since they write there, and offers them again once it follows the commit's", async () => {
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    const history: WritableSignal<boolean> = signal(true);
+    GitViewing.show(new GitCommitView(GitFixtures.folder, new GitGraphCommit(commitOf(["d".repeat(40)]).commit, "author@example.com", [new GitRef(RefKind.Branch, "main")])));
+    const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
+      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
+      "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson()
+    }, ".files", [], history);
+    const writes: readonly string[] = [".merge", ".cherry-pick", ".revert", ".branch-here", ".tag-here"];
+    const held = (): readonly boolean[] => [...writes, ".rebase-here"].map(t => view.find<HTMLButtonElement>(t).disabled);
+    const before: readonly boolean[] = held();
+
+    // Another repository's Conflicts document comes to the front: the Commit view keeps the commit, and the panel follows that repository.
+    history.set(false);
+    view.folder.set("/work/other");
+    await view.untilAsync(() => view.find<HTMLButtonElement>(".merge").disabled);
+    const elsewhere: readonly boolean[] = held();
+    view.folder.set(GitFixtures.folder);
+    await view.untilAsync(() => !view.find<HTMLButtonElement>(".merge").disabled);
+
+    expect([before, elsewhere, held()]).toEqual([[false, false, false, false, false, false], [true, true, true, true, true, false], [false, false, false, false, false, false]]);
+  });
+
   it.each([
     ["its local branch", [new GitRef(RefKind.Tag, "v1"), new GitRef(RefKind.RemoteBranch, "origin/main"), new GitRef(RefKind.Branch, "main")], "main"],
     ["its remote branch without a local one", [new GitRef(RefKind.RemoteBranch, "origin/main")], "origin/main"],
@@ -367,8 +407,8 @@ describe("GitCommitDetailComponent", () => {
   });
 
   it("reverts the commit, and shows Git's refusal under its actions, where the commit stays", async () => {
-    onTestFinished(() => GitViewing.commit.set(null));
-    GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commitOf(["d".repeat(40)])));
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    GitViewing.show(new GitCommitView(GitFixtures.folder, commitOf(["d".repeat(40)])));
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
       ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
       "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson(),
@@ -460,8 +500,8 @@ describe("GitCommitDetailComponent", () => {
   });
 
   it("keeps the row with Git's refusal under it when the name is taken, and closes it on Escape or Cancel", async () => {
-    onTestFinished(() => GitViewing.commit.set(null));
-    GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commitOf(["d".repeat(40)])));
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    GitViewing.show(new GitCommitView(GitFixtures.folder, commitOf(["d".repeat(40)])));
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
       ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
       "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson(),

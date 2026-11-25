@@ -11,6 +11,7 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { ConflictKind } from "../enums/conflict-kind.ts";
 import { OperationKind } from "../enums/operation-kind.ts";
 import { Resources } from "../resources.ts";
+import { ConflictSides } from "./conflict-sides.ts";
 import { FieldCheck } from "./field-check.ts";
 
 export class GitConflict {
@@ -18,14 +19,14 @@ export class GitConflict {
     Resources.oursField, Resources.theirsField, Resources.mergedField, Resources.oursLabelField, Resources.theirsLabelField,
     Resources.oursCommitField, Resources.theirsCommitField, Resources.binaryField, Resources.reusedField];
 
-  private static readonly STAGES: Readonly<Record<ConflictKind, readonly [boolean, boolean, boolean]>> = {
-    [ConflictKind.BothModified]: [true, true, true],
-    [ConflictKind.BothAdded]: [false, true, true],
-    [ConflictKind.BothDeleted]: [true, false, false],
-    [ConflictKind.AddedByUs]: [false, true, false],
-    [ConflictKind.AddedByThem]: [false, false, true],
-    [ConflictKind.DeletedByUs]: [true, false, true],
-    [ConflictKind.DeletedByThem]: [true, true, false]
+  private static readonly STAGES: Readonly<Record<ConflictKind, ConflictSides>> = {
+    [ConflictKind.BothModified]: new ConflictSides(true, true, true),
+    [ConflictKind.BothAdded]: new ConflictSides(false, true, true),
+    [ConflictKind.BothDeleted]: new ConflictSides(true, false, false),
+    [ConflictKind.AddedByUs]: new ConflictSides(false, true, false),
+    [ConflictKind.AddedByThem]: new ConflictSides(false, false, true),
+    [ConflictKind.DeletedByUs]: new ConflictSides(true, false, true),
+    [ConflictKind.DeletedByThem]: new ConflictSides(true, true, false)
   };
 
   public readonly path: string;
@@ -46,22 +47,18 @@ export class GitConflict {
     merged: string | null, oursLabel: string, theirsLabel: string, oursCommit: string | null, theirsCommit: string | null, binary: boolean, reused: boolean,
     reader?: JsonReader) {
     FieldCheck.requireRelativePath(path, Resources.pathField, reader);
-    const [hasBase, hasOurs, hasTheirs] = GitConflict.STAGES[kind];
-    for (const [value, has, field] of [[base, hasBase, Resources.baseField], [ours, hasOurs, Resources.oursField],
-      [theirs, hasTheirs, Resources.theirsField]] as const)
-      if ((value !== null) !== (has && !binary))
-        FieldCheck.fail(field, binary ? Resources.binaryTextExpected : Resources.conflictStageExpected, reader);
+    const sides = GitConflict.STAGES[kind];
+    GitConflict.requireSide(base, sides.base, binary, Resources.baseField, reader);
+    GitConflict.requireSide(ours, sides.ours, binary, Resources.oursField, reader);
+    GitConflict.requireSide(theirs, sides.theirs, binary, Resources.theirsField, reader);
     if ((merged !== null) !== (ours !== null && theirs !== null))
       FieldCheck.fail(Resources.mergedField, Resources.mergedTextExpected, reader);
     if (reused && merged === null)
       FieldCheck.fail(Resources.reusedField, Resources.reusedExpected, reader);
-    for (const [label, field] of [[oursLabel, Resources.oursLabelField], [theirsLabel, Resources.theirsLabelField]] as const) {
-      FieldCheck.requireText(label, field, reader);
-      FieldCheck.requireLine(label, field, reader);
-    }
-    for (const [commit, field] of [[oursCommit, Resources.oursCommitField], [theirsCommit, Resources.theirsCommitField]] as const)
-      if (commit !== null)
-        FieldCheck.requireObjectId(commit, field, reader);
+    GitConflict.requireLabel(oursLabel, Resources.oursLabelField, reader);
+    GitConflict.requireLabel(theirsLabel, Resources.theirsLabelField, reader);
+    GitConflict.requireCommit(oursCommit, Resources.oursCommitField, reader);
+    GitConflict.requireCommit(theirsCommit, Resources.theirsCommitField, reader);
 
     this.path = path;
     this.kind = kind;
@@ -119,5 +116,21 @@ export class GitConflict {
   /** A side's commit, or `null` when the field is `null` or absent, as it is in a conflict an older runtime read. */
   private static readCommit(reader: JsonReader, field: string): string | null {
     return reader.hasField(field) ? reader.readNullableString(field) : null;
+  }
+
+  /** Requires a side's text exactly when the kind has the side and the file isn't binary. */
+  private static requireSide(value: string | null, has: boolean, binary: boolean, field: string, reader: JsonReader | undefined): void {
+    if ((value !== null) !== (has && !binary))
+      FieldCheck.fail(field, binary ? Resources.binaryTextExpected : Resources.conflictStageExpected, reader);
+  }
+
+  private static requireLabel(label: string, field: string, reader: JsonReader | undefined): void {
+    FieldCheck.requireText(label, field, reader);
+    FieldCheck.requireLine(label, field, reader);
+  }
+
+  private static requireCommit(commit: string | null, field: string, reader: JsonReader | undefined): void {
+    if (commit !== null)
+      FieldCheck.requireObjectId(commit, field, reader);
   }
 }

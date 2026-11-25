@@ -8,6 +8,7 @@
 
 import { NgTemplateOutlet } from "@angular/common";
 import { Component, computed, DestroyRef, ElementRef, inject, type OnInit, PendingTasks, signal, type Signal, viewChild, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { type IWindowPartContext, LinkPlace, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
@@ -56,12 +57,12 @@ export class AzureDevOpsSignInComponent implements OnInit {
     this.destroyRef.onDestroy(unfollow);
     void this.askAsync(AzureDevOpsNames.readSignInMethod, null);
     const folder = GitFolder.folder();
-    if (folder !== null)
+    if (!Object.isNull(folder))
       void this.readRemoteAsync(folder);
   }
 
   protected failureOf(signIn: HostSignIn): SignInNotice | null {
-    return signIn.failure === null ? null : new SignInNotice(Resources.failureTitles[signIn.failure], Resources.failureHints[signIn.failure]);
+    return Object.isNull(signIn.failure) ? null : new SignInNotice(Resources.failureTitles[signIn.failure], Resources.failureHints[signIn.failure]);
   }
 
   protected nameOf(account: HostAccount): string {
@@ -82,7 +83,7 @@ export class AzureDevOpsSignInComponent implements OnInit {
 
   protected async startAsync(): Promise<void> {
     const address = (await this.askAsync(AzureDevOpsNames.startSignInMethod, { organization: this.organization() }))?.address ?? null;
-    if (address !== null)
+    if (!Object.isNull(address))
       await this.openAsync(address);
   }
 
@@ -165,7 +166,7 @@ export class AzureDevOpsSignInComponent implements OnInit {
     try {
       const remote = GitStatus.fromJson(await this.context.requestAsync(GitNames.statusMethod, new GitFolderParams(folder).toJson())).remote;
       const organization = AzureDevOpsReferenceLinks.homeOf(remote);
-      if (organization === null || remote === null || this.organizationText().trim() !== String.empty)
+      if (Object.isNull(organization) || Object.isNull(remote) || this.organizationText().trim() !== String.empty)
         return;
       this.visualStudioHome.set(AzureDevOpsReferenceLinks.isVisualStudio(remote) ? organization : null);
       this.organizationText.set(organization);

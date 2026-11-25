@@ -7,6 +7,7 @@
  */
 
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
@@ -27,7 +28,7 @@ const remote: GitRemote = new GitRemote("origin", "dev.azure.com", "fabrikam/web
 const signedIn: HostSignIn = HostSignIn.signedIn(new HostAccount("monalisa@example.com", "Mona Lisa", null, []));
 const pullRequest: HostItem = new HostItem(new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 7), ReferenceKind.PullRequest, ReferenceState.Open,
   "Sample pull request title", "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/7", null, 1_800_000_000_000, null, 0,
-  new HostChanges(null, null, null, "feature/readme", "main", HEAD));
+  HostChanges.uncounted("feature/readme", "main", HEAD));
 const builds: string = "https://dev.azure.com/fabrikam/web/_build/results?buildId=";
 const checks: readonly HostCheck[] = [
   new HostCheck("Linux x64", CheckState.Succeeded, `${builds}1`),
@@ -53,7 +54,7 @@ const readingText: string = "Reading this branch's pull request on Azure DevOps.
 function wordsOf(node: Node): string {
   const words: string[] = [];
   const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-  for (let text = walker.nextNode(); text !== null; text = walker.nextNode())
+  for (let text = walker.nextNode(); !Object.isNull(text); text = walker.nextNode())
     words.push((text.textContent ?? "").trim());
   return words.filter(t => t.length > 0).join(" ").replace(/\s+/g, " ");
 }
@@ -86,7 +87,7 @@ class Page {
   public get places(): readonly unknown[] {
     return this.context.callsOf("openLinkAsync").map(t => {
       const options = t[1];
-      return typeof options === "object" && options !== null && "place" in options ? options.place : this.browser.placeFor();
+      return Object.isObject(options) && "place" in options ? options.place : this.browser.placeFor();
     });
   }
 
@@ -101,7 +102,7 @@ class Page {
   }
 
   public create(first: HostSignIn | null, branch: string | null = "feature/readme", where: GitRemote = remote): void {
-    if (first !== null)
+    if (!Object.isNull(first))
       this.requests.answer(AzureDevOpsNames.readSignInMethod, first.toJson());
     TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: this.context }] });
     this.fixture = TestBed.createComponent(AzureDevOpsHostRowComponent);
@@ -150,7 +151,7 @@ class Page {
 
   public async clickAsync(label: string): Promise<void> {
     const found = [...this.element.querySelectorAll("button")].find(t => (t.textContent ?? "").includes(label) || t.getAttribute("aria-label") === label);
-    if (found === undefined)
+    if (Object.isUndefined(found))
       throw new Error(`No button reads ${label}.`);
     found.click();
     await this.settleAsync();
@@ -172,6 +173,19 @@ describe("AzureDevOpsHostRowComponent", () => {
     expect(page.requests.payloads).toEqual([null, new BranchQuery("dev.azure.com", "fabrikam/web/_git/site", "feature/readme", HEAD).toJson()]);
     expect(page.texts(".title")).toEqual(["!7 Sample pull request title"]);
     expect([page.find(".state").getAttribute("aria-label"), page.find(".state").textContent?.trim()]).toEqual(["Active", "merge"]);
+  });
+
+  it.each([
+    ["decoded", new GitRemote("origin", "dev.azure.com", "fabrikam/Sample Project/_git/site", RemoteTransport.Https), "dev.azure.com", "fabrikam/Sample%20Project/_git/site"],
+    ["encoded", new GitRemote("origin", "ssh.dev.azure.com", "v3/fabrikam/Sample%20Project/site", RemoteTransport.Ssh), "ssh.dev.azure.com",
+      "v3/fabrikam/Sample%20Project/site"]
+  ])("reads the pull request of a repository whose project's name has a space, from a remote that gives it %s", async (_kind, where, host, path) => {
+    const page = new Page();
+    page.requests.answer(AzureDevOpsNames.readBranchPullRequestMethod, answer.toJson());
+    await page.openAsync(signedIn, "feature/readme", where);
+
+    expect(page.requests.payloads).toEqual([null, new BranchQuery(host, path, "feature/readme", HEAD).toJson()]);
+    expect(page.texts(".title")).toEqual(["!7 Sample pull request title"]);
   });
 
   it.each(looks)("names a pull request in the %s state with Azure DevOps' label and its icon", async (state, label, icon, closedAt) => {

@@ -7,6 +7,7 @@
  */
 
 import { signal } from "@angular/core";
+import "@noldova/context.core";
 import { ConflictKind, FileState, type GitStatus, type StatusEntry, StatusUpstream } from "@noldova/git.protocol";
 import { describe, expect, it } from "vitest";
 
@@ -181,7 +182,7 @@ describe("GitWorkspaceRow", () => {
   it("puts a row in the views of a branch behind its upstream, uncommitted changes, an open pull request waiting for review and agents at work", () => {
     const pull: GitPullRequestRow = new GitPullRequestRow("5", "#5", "Fix", "https://github.com/example-owner/site/pull/5", false, 0, 0, 0, 0, "main");
     const views = (status: GitStatus | null, shown: GitBranchPullRequest | null | undefined, hasAgentsAtWork: boolean): readonly GitWorkspaceView[] =>
-      [...new GitWorkspaceRow(folder, signal(status === null ? null : summaryOf(status)), signal(shown), signal(hasAgentsAtWork)).views()];
+      [...new GitWorkspaceRow(folder, signal(Object.isNull(status) ? null : summaryOf(status)), signal(shown), signal(hasAgentsAtWork)).views()];
     const behind: GitStatus = GitFixtures.status([modified("a.ts")], new StatusUpstream("origin/main", 1, 2, false), { branch: "main" });
     const clean: GitStatus = GitFixtures.status([], new StatusUpstream("origin/main", 3, 0, false), { branch: "main" });
     const cut: GitStatus = GitFixtures.status([], null, { branch: "main", truncated: true });

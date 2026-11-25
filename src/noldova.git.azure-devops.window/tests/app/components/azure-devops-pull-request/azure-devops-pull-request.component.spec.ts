@@ -9,6 +9,7 @@
 import { signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed, TestComponentRenderer } from "@angular/core/testing";
 import { By } from "@angular/platform-browser";
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { FailureCode } from "@noldova/desktop.protocol";
 import { RuntimeRequestException, WindowPartTokens } from "@noldova/desktop.window";
@@ -23,7 +24,7 @@ import { DiffFile, DiffHunk, DiffLine, DiffTotals, FileChange, GitDiff, GitNames
   from "@noldova/git.protocol";
 import { GitFileLine, GitFolder, GitPullRequestFilesComponent } from "@noldova/git.window";
 import { provideMarkdown } from "@noldova/ui.components.angular/markdown";
-import { describe, expect, it, onTestFinished } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { AzureDevOpsPullRequestComponent } from "../../../../src/app/components/azure-devops-pull-request/azure-devops-pull-request.component.ts";
 import { AzureDevOpsPullRequestDetailComponent }
@@ -42,7 +43,7 @@ const MISSING: string = "key This pull request can't be shown. Sign in to its or
 const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752);
 const item: HostItem = new HostItem(reference, ReferenceKind.PullRequest, ReferenceState.Open, "Export notes as Markdown from the shared notes list", URL,
   new HostPerson("monalisa@fabrikam.com", null, null), CREATED, null, 0,
-  new HostChanges(null, null, null, "users/monalisa/7521-export-notes", "main", "0123456789abcdef0123456789abcdef01234567"));
+  HostChanges.uncounted("users/monalisa/7521-export-notes", "main", "0123456789abcdef0123456789abcdef01234567"));
 const story: HostWorkItemType = new HostWorkItemType("User Story", "009CCC", "icon_book");
 const pullRequest: HostPullRequest = new HostPullRequest(item, [
   new HostReviewer(new HostPerson("octocat@fabrikam.com", null, null), 0.5, "Approved with suggestions", true),
@@ -75,13 +76,13 @@ function otherPullRequest(state: ReferenceState): HostPullRequest {
   const other = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 7);
   return new HostPullRequest(new HostItem(other, ReferenceKind.PullRequest, state, "Another change", URL, null, CREATED,
     state === ReferenceState.Merged ? CREATED : null, 0,
-    new HostChanges(null, null, null, "another-change", "main", "0123456789abcdef0123456789abcdef01234567")), [], [], [], false, "", null, []);
+    HostChanges.uncounted("another-change", "main", "0123456789abcdef0123456789abcdef01234567")), [], [], [], false, "", null, []);
 }
 
 function wordsOf(node: Node): string {
   const words: string[] = [];
   const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-  for (let text = walker.nextNode(); text !== null; text = walker.nextNode())
+  for (let text = walker.nextNode(); !Object.isNull(text); text = walker.nextNode())
     words.push((text.textContent ?? "").trim());
   return words.filter(t => t.length > 0).join(" ").replace(/\s+/g, " ");
 }
@@ -224,7 +225,7 @@ class Page {
     await this.untilAsync(() => items().length > 0);
     const listed: string[] = items().map(wordsOf);
     const chosen = items().find(t => wordsOf(t) === choice);
-    if (chosen === undefined)
+    if (Object.isUndefined(chosen))
       throw new Error(`The vote menu has no ${choice}.`);
     chosen.click();
     return listed;
@@ -238,7 +239,7 @@ class Page {
   public async completeWithPullAsync(folder: string = "/work/site"): Promise<void> {
     onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal(folder)));
     await this.openAsync();
-    await this.untilAsync(() => this.query(".pull-after") !== null && this.query(".complete-merge:not([disabled])") !== null);
+    await this.untilAsync(() => !Object.isNull(this.query(".pull-after")) && !Object.isNull(this.query(".complete-merge:not([disabled])")));
     this.find(".pull-after input").click();
     await this.settleAsync();
     await this.clickAsync("Complete merge");
@@ -248,7 +249,7 @@ class Page {
   public async clickAsync(label: string): Promise<void> {
     const found = [...this.element.querySelectorAll("button"), ...this.detail.querySelectorAll("button")]
       .find(t => wordsOf(t).includes(label) || t.getAttribute("aria-label") === label);
-    if (found === undefined)
+    if (Object.isUndefined(found))
       throw new Error(`No button reads ${label}.`);
     found.click();
     await this.settleAsync();
@@ -272,7 +273,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     expect(page.texts(".meta")).toEqual([`M monalisa@fabrikam.com wants to merge users/monalisa/7521-export-notes into main · 5 commits · opened ${opened}`
       + " schedule Completes by itself once its policies pass"]);
     expect(page.texts(".tab")).toEqual(["Overview", "Files 0", "Updates 0", "Commits 5", "Conflicts"]);
-    await page.untilAsync(() => page.query(".description strong") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".description strong")));
     expect(page.find(".description strong").textContent).toBe("due dates");
     expect(page.texts(".card-head")).toEqual(["Policies 1 of 2 required passed · branch main"]);
     expect(page.texts(".policy")).toEqual(["check_circle Minimum number of reviewers Required", "error Comment requirements Required",
@@ -291,7 +292,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     const page = new Page();
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson());
     await page.openAsync();
-    await page.untilAsync(() => page.detail.querySelector("nol-git-azure-devops-complete") !== null);
+    await page.untilAsync(() => !Object.isNull(page.detail.querySelector("nol-git-azure-devops-complete")));
 
     expect([page.element.querySelector(".side, .reviewer, .policy, div.row, button.row, nol-git-azure-devops-complete"),
       [...page.detail.querySelectorAll(".detail > section, nol-git-azure-devops-complete")].map(t => t.getAttribute("aria-label") ?? t.tagName.toLowerCase())])
@@ -442,7 +443,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     const files = page.requests.hold(AzureDevOpsNames.readPullRequestChangesMethod);
     const updates = page.requests.hold(AzureDevOpsNames.readPullRequestUpdatesMethod);
     page.create();
-    await page.untilAsync(() => page.query(".tab") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".tab")));
     const status = (): string[] => page.texts(".pane:not([hidden]) [role=status]");
     page.queryAll<HTMLElement>(".tab")[1]?.click();
     await page.untilAsync(() => status().length > 0);
@@ -513,7 +514,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     const page = new Page();
     const other = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 7);
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson(), new HostPullRequest(new HostItem(other, ReferenceKind.PullRequest,
-      ReferenceState.Open, "Another change", URL, null, CREATED, null, 0, new HostChanges(null, null, null, "another-change", "main", COMMIT)), [], [], [], false, "", null,
+      ReferenceState.Open, "Another change", URL, null, CREATED, null, 0, HostChanges.uncounted("another-change", "main", COMMIT)), [], [], [], false, "", null,
       []).toJson());
     page.requests.answer(AzureDevOpsNames.readPullRequestCommitsMethod, new HostPullRequestCommits([], false).toJson());
     await page.openAsync();
@@ -555,7 +556,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
   it("shows a pull request with nothing to list, no commit count and no author plainly", async () => {
     const page = new Page();
     const bare = new HostItem(reference, ReferenceKind.PullRequest, ReferenceState.Draft, "Draft: new intake form", URL, null, CREATED, null, 0,
-      new HostChanges(null, null, null, "intake-form", "main", "0123456789abcdef0123456789abcdef01234567"));
+      HostChanges.uncounted("intake-form", "main", "0123456789abcdef0123456789abcdef01234567"));
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, new HostPullRequest(bare, [], [new HostPolicy("Build", PolicyState.Queued, true, null)], [], false, " ",
       null, []).toJson());
     await page.openAsync();
@@ -569,11 +570,16 @@ describe("AzureDevOpsPullRequestComponent", () => {
 
   it("times a running build from its start to when the page read it", async () => {
     const page = new Page();
-    const running = new HostPullRequest(item, [], [], [new HostBuild("site-ci", CheckState.Running, null, Date.now() - 125_000, null)], false, "", 1, []);
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(CREATED + 600_000);
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+    const running = new HostPullRequest(item, [], [], [new HostBuild("site-ci", CheckState.Running, null, CREATED + 600_000 - 125_000, null)], false, "", 1, []);
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, running.toJson());
     await page.openAsync();
 
-    expect(page.texts("div.row")[0]).toMatch(/^progress_activity site-ci · 2 min [5-9] s so far$/);
+    expect(page.texts("div.row")[0]).toBe("progress_activity site-ci · 2 min 5 s so far");
     expect(page.texts(".card p")).toEqual(["No branch policies."]);
     expect(page.texts(".meta")[0]).toContain("· 1 commit ·");
   });
@@ -673,7 +679,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     const release = page.requests.hold(AzureDevOpsNames.readPullRequestMethod);
     const other = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 7);
     const otherItem = new HostItem(other, ReferenceKind.PullRequest, ReferenceState.Open, "Another change", URL, null, CREATED, null, 0,
-      new HostChanges(null, null, null, "another-change", "main", "0123456789abcdef0123456789abcdef01234567"));
+      HostChanges.uncounted("another-change", "main", "0123456789abcdef0123456789abcdef01234567"));
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, new HostPullRequest(otherItem, [], [], [], false, "", null, []).toJson());
     page.create();
     await page.requests.askedAsync(1);
@@ -709,7 +715,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
       .toJson());
     page.context.answer("openLinkAsync", async () => undefined);
     await page.openAsync();
-    await page.untilAsync(() => page.query(".description a") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".description a")));
 
     page.find(".description a").click();
     await page.settleAsync();
@@ -723,7 +729,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson());
     page.context.answer("openLinkAsync", async () => undefined);
     await page.openAsync();
-    await page.untilAsync(() => page.query(".comment a") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".comment a")));
 
     const sections = [...page.element.querySelectorAll(".column > *")].map(t => t.getAttribute("aria-label") ?? t.tagName.toLowerCase());
     page.find(".comment a").click();
@@ -742,7 +748,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
         5, []).toJson());
       page.context.answer("openLinkAsync", async () => undefined);
       await page.openAsync();
-      await page.untilAsync(() => page.query(".comment a.nol-markdown-link") !== null);
+      await page.untilAsync(() => !Object.isNull(page.query(".comment a.nol-markdown-link")));
       const links: HTMLAnchorElement[] = [...page.queryAll<HTMLAnchorElement>(".description a.nol-markdown-link, .comment a.nol-markdown-link")];
 
       for (const link of links)
@@ -763,7 +769,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     await page.openAsync();
 
     const choices: string[] = await page.voteAsync("Approve");
-    await page.untilAsync(() => page.query(".vote-confirm") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".vote-confirm")));
     const confirm: string[] = page.texts(".vote-confirm");
     const asked: boolean = page.requests.methods.includes(AzureDevOpsNames.voteMethod);
     await page.clickAsync("Approve anyway");
@@ -826,12 +832,12 @@ describe("AzureDevOpsPullRequestComponent", () => {
       new HostPullRequest(merged, [], [], [], false, "", 5, []).toJson());
     page.requests.answer(AzureDevOpsNames.completePullRequestMethod, null);
     await page.openAsync();
-    await page.untilAsync(() => page.query(".complete-merge:not([disabled])") !== null);
-    const panel: boolean = page.detail.querySelector("nol-git-azure-devops-complete") !== null;
+    await page.untilAsync(() => !Object.isNull(page.query(".complete-merge:not([disabled])")));
+    const panel: boolean = !Object.isNull(page.detail.querySelector("nol-git-azure-devops-complete"));
 
     await page.clickAsync("Complete merge");
     page.find(".confirm-action").click();
-    await page.untilAsync(() => page.query(".page") !== null && page.query("nol-git-azure-devops-complete") === null);
+    await page.untilAsync(() => !Object.isNull(page.query(".page")) && Object.isNull(page.query("nol-git-azure-devops-complete")));
 
     expect([panel, page.payloadsOf(AzureDevOpsNames.readPullRequestMethod).length]).toEqual([true, 2]);
   });
@@ -842,16 +848,16 @@ describe("AzureDevOpsPullRequestComponent", () => {
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, opened.toJson(), new HostPullRequest(item, [], [], [], true, "", 5, []).toJson());
     page.requests.answer(AzureDevOpsNames.setAutoCompleteMethod, null);
     await page.openAsync();
-    await page.untilAsync(() => page.query(".set-auto-complete:not([disabled])") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".set-auto-complete:not([disabled])")));
 
     page.find(".set-auto-complete").click();
     await page.settleAsync();
     const confirm: string[] = page.texts(".complete-panel .confirm-text");
     page.find(".confirm-action").click();
-    await page.untilAsync(() => page.query(".cancel-auto-complete") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".cancel-auto-complete")));
     const footer: Element | null = page.element.querySelector(".set-auto-complete, .cancel-auto-complete");
 
-    expect([footer, page.detail.querySelector(".complete-panel .cancel-auto-complete") !== null]).toEqual([null, true]);
+    expect([footer, !Object.isNull(page.detail.querySelector(".complete-panel .cancel-auto-complete"))]).toEqual([null, true]);
     expect(confirm).toEqual(["Set !752 to complete by itself with Merge, no fast-forward into main once its policies pass, then deletes users/monalisa/7521-export-notes? "
       + "Azure DevOps then merges it as you, without asking again."]);
     expect([page.payloadsOf(AzureDevOpsNames.setAutoCompleteMethod).length, page.payloadsOf(AzureDevOpsNames.readPullRequestMethod).length,
@@ -863,7 +869,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, opened.toJson(), merged.toJson());
     page.requests.answer(AzureDevOpsNames.completePullRequestMethod, null);
     await page.openAsync();
-    await page.untilAsync(() => page.query(".set-auto-complete:not([disabled])") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".set-auto-complete:not([disabled])")));
 
     const message = page.find(".message");
     if (!(message instanceof HTMLTextAreaElement))
@@ -877,7 +883,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     await page.settleAsync();
     await page.clickAsync("Complete merge");
     page.find(".confirm-action").click();
-    await page.untilAsync(() => page.query(".page") !== null && page.query("nol-git-azure-devops-complete") === null);
+    await page.untilAsync(() => !Object.isNull(page.query(".page")) && Object.isNull(page.query("nol-git-azure-devops-complete")));
 
     expect([held, page.query(".set-auto-complete, .cancel-auto-complete")]).toEqual([true, null]);
   });
@@ -890,7 +896,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     page.requests.answer(GitNames.pullMethod, null);
 
     await page.completeWithPullAsync();
-    await page.untilAsync(() => page.query(".pull-note") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".pull-note")));
 
     expect([page.texts(".pull-note"), page.payloadsOf(GitNames.pullMethod), page.query(".pull-failure")]).toEqual([["Pulled main here."],
       [new GitPullParams("/work/site", "f-main").toJson()], null]);
@@ -903,7 +909,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     page.requests.answer(GitNames.statusMethod, cloneStatus(), cloneStatus());
 
     await page.completeWithPullAsync();
-    await page.untilAsync(() => page.query(".pull-note") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".pull-note")));
 
     expect([page.texts(".pull-note"), page.requests.methods.includes(GitNames.pullMethod)]).toEqual([["Azure DevOps hasn't merged it yet, so main wasn't pulled here."],
       false]);
@@ -917,7 +923,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     page.requests.answer(GitNames.statusMethod, cloneStatus(), status);
 
     await page.completeWithPullAsync();
-    await page.untilAsync(() => page.query(".pull-failure") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".pull-failure")));
 
     expect([page.texts(".pull-failure"), page.requests.methods.includes(GitNames.pullMethod)]).toEqual([["error The folder isn't on main any more, so it wasn't pulled."],
       false]);
@@ -931,16 +937,16 @@ describe("AzureDevOpsPullRequestComponent", () => {
     const release = page.requests.hold(AzureDevOpsNames.completePullRequestMethod);
     page.requests.answer(GitNames.statusMethod, cloneStatus(), cloneStatus());
     await page.openAsync();
-    await page.untilAsync(() => page.query(".pull-after") !== null && page.query(".complete-merge:not([disabled])") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".pull-after")) && !Object.isNull(page.query(".complete-merge:not([disabled])")));
 
     page.find(".pull-after input").click();
     await page.settleAsync();
     await page.clickAsync("Complete merge");
     page.find(".confirm-action").click();
-    await page.untilAsync(() => page.query(".complete-merge[disabled]") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".complete-merge[disabled]")));
     folder.set("/work/other");
     release(null);
-    await page.untilAsync(() => page.query(".pull-failure") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".pull-failure")));
 
     expect([page.texts(".pull-failure"), page.requests.methods.includes(GitNames.pullMethod)]).toEqual([
       ["error The open folder changed since Complete merge, so main wasn't pulled."], false]);
@@ -956,7 +962,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     page.requests.fail(GitNames.pullMethod, error);
 
     await page.completeWithPullAsync();
-    await page.untilAsync(() => page.query(".pull-failure") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".pull-failure")));
 
     expect([page.texts(".pull-failure"), page.payloadsOf(GitNames.pullMethod).length, page.context.callsOf("log").map(t => t[0])]).toEqual([[shown], 1,
       [`The Azure DevOps module's git.pull request failed: ${String(error)}`]]);
@@ -1028,19 +1034,19 @@ describe("AzureDevOpsPullRequestComponent", () => {
     await page.openAsync();
 
     await page.voteAsync("Approve with suggestions");
-    await page.untilAsync(() => page.query(".vote-confirm") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".vote-confirm")));
     await page.clickAsync("Cancel");
-    const cancelled: boolean = page.query(".vote-confirm") === null;
+    const cancelled: boolean = Object.isNull(page.query(".vote-confirm"));
     await page.voteAsync("Reject");
     await page.settleAsync();
-    const rejected: boolean = page.query(".vote-confirm") === null;
+    const rejected: boolean = Object.isNull(page.query(".vote-confirm"));
     await page.voteAsync("Approve");
-    await page.untilAsync(() => page.query(".vote-confirm") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".vote-confirm")));
     page.fixture?.componentRef.setInput("instance", `fabrikam/${REPOSITORY}/7`);
     await page.settleAsync();
 
     expect([cancelled, rejected, page.query(".vote-confirm")]).toEqual([true, true, null]);
-    expect(page.requests.payloads.filter(t => typeof t === "object" && t !== null && "vote" in t)).toEqual([{ reference: reference.toJson(), vote: -10 }]);
+    expect(page.requests.payloads.filter(t => Object.isObject(t) && "vote" in t)).toEqual([{ reference: reference.toJson(), vote: -10 }]);
   });
 
   it("adds the person under Reviewers when they weren't one, and holds the menu while the vote runs", async () => {
@@ -1069,13 +1075,13 @@ describe("AzureDevOpsPullRequestComponent", () => {
     await page.openAsync();
 
     await page.voteAsync("Reject");
-    await page.untilAsync(() => page.query(".vote-failure") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".vote-failure")));
     const refused: string[] = page.texts(".vote-failure");
     await page.voteAsync("Reset vote");
     await page.untilAsync(() => page.texts(".vote-failure")[0] !== refused[0]);
     const unanswered: string[] = page.texts(".vote-failure");
     await page.voteAsync("Reset vote");
-    await page.untilAsync(() => page.query(".vote-failure") === null);
+    await page.untilAsync(() => Object.isNull(page.query(".vote-failure")));
 
     expect([refused, unanswered]).toEqual([[`error ${cannotVote}`], ["error Azure DevOps didn't answer, so nothing changed. Try again."]]);
   });
@@ -1097,10 +1103,10 @@ describe("AzureDevOpsPullRequestComponent", () => {
 
     await page.voteAsync("Reject");
     page.fixture?.componentRef.setInput("instance", `fabrikam/${REPOSITORY}/7`);
-    await page.untilAsync(() => page.query("[role=status]") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query("[role=status]")));
     finish();
     read(pullRequest.toJson());
-    await page.untilAsync(() => page.query(".page") !== null);
+    await page.untilAsync(() => !Object.isNull(page.query(".page")));
 
     expect([page.texts(".reviewer").at(-1), page.query(".vote-failure"), page.find(".vote-menu").hasAttribute("disabled")])
       .toEqual(["M close monalisa@fabrikam.com Rejected", null, false]);
@@ -1124,18 +1130,18 @@ describe("AzureDevOpsPullRequestComponent", () => {
     field.dispatchEvent(new Event("input"));
     await page.settleAsync();
     page.find("nol-git-azure-devops-add-reviewer .person").click();
-    await page.untilAsync(() => page.query("nol-git-azure-devops-add-reviewer") === null);
+    await page.untilAsync(() => Object.isNull(page.query("nol-git-azure-devops-add-reviewer")));
     const reviewers: string[] = page.texts(".reviewer");
     button().click();
     await page.settleAsync();
     button().click();
     await page.settleAsync();
-    const closed: boolean = page.query("nol-git-azure-devops-add-reviewer") === null;
+    const closed: boolean = Object.isNull(page.query("nol-git-azure-devops-add-reviewer"));
     button().click();
     await page.settleAsync();
     page.fixture?.componentRef.setInput("instance", `fabrikam/${REPOSITORY}/7`);
-    await page.untilAsync(() => page.query("nol-git-azure-devops-add-reviewer") === null);
-    await page.untilAsync(() => page.query(".page") !== null);
+    await page.untilAsync(() => Object.isNull(page.query("nol-git-azure-devops-add-reviewer")));
+    await page.untilAsync(() => !Object.isNull(page.query(".page")));
 
     expect([opened, reviewers, closed, page.query("nol-git-azure-devops-add-reviewer"), button().getAttribute("aria-pressed")])
       .toEqual(["true", ["M monalisa@fabrikam.com No vote yet · optional"], true, null, "false"]);
@@ -1194,10 +1200,10 @@ describe("AzureDevOpsPullRequestComponent", () => {
     it("shows the thread's line in the Files tab's changes from local Git when the open repository is the pull request's", async () => {
       const page = cloned(appDiff);
       await page.openAsync();
-      await page.untilAsync(() => page.query(".go-to-line") !== null);
+      await page.untilAsync(() => !Object.isNull(page.query(".go-to-line")));
 
       await page.clickAsync("Go to line");
-      await page.untilAsync(() => page.query(".marked-line") !== null);
+      await page.untilAsync(() => !Object.isNull(page.query(".marked-line")));
 
       expect([page.texts(".tab.on"), page.queryAll(".marked-line").map(t => t.textContent), page.links]).toEqual([["Files 1"], ["+const b = 2;"], []]);
     });
@@ -1205,7 +1211,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     it("opens the thread on Azure DevOps when the changes from local Git don't hold its file", async () => {
       const page = cloned(new GitDiff([], 0, 0, false));
       await page.openAsync();
-      await page.untilAsync(() => page.query(".go-to-line") !== null);
+      await page.untilAsync(() => !Object.isNull(page.query(".go-to-line")));
 
       await page.clickAsync("Go to line");
       await page.untilAsync(() => page.links.length > 0);
@@ -1218,7 +1224,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
       away.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson());
       away.context.answer("openLinkAsync", async () => undefined);
       await away.openAsync();
-      await away.untilAsync(() => away.query(".go-to-line") !== null);
+      await away.untilAsync(() => !Object.isNull(away.query(".go-to-line")));
 
       await away.clickAsync("Go to line");
       await away.untilAsync(() => away.links.length > 0);
@@ -1233,7 +1239,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
       page.requests.otherwise(GitNames.statusMethod, cloneStatus());
       page.context.answer("openLinkAsync", async () => undefined);
       await page.openAsync();
-      await page.untilAsync(() => page.query(".go-to-line") !== null);
+      await page.untilAsync(() => !Object.isNull(page.query(".go-to-line")));
       const checked: number = page.payloadsOf(GitNames.statusMethod).length;
       const release = page.requests.hold(GitNames.statusMethod);
       page.find(".go-to-line").click();
@@ -1252,7 +1258,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
       const page = cloned(appDiff);
       await page.openAsync();
       await page.clickAsync("Files");
-      await page.untilAsync(() => page.query("nol-git-pull-request-files") !== null);
+      await page.untilAsync(() => !Object.isNull(page.query("nol-git-pull-request-files")));
       const files: GitPullRequestFilesComponent = page.fixture?.debugElement.query(By.directive(GitPullRequestFilesComponent))?.componentInstance;
 
       files.unrevealed.emit(new GitFileLine("src/app.ts", 41));

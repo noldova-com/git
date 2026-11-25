@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { UnansweredCallException } from "@noldova/desktop.protocol/testing";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
@@ -22,7 +23,7 @@ export class ReferenceContext extends FakeWindowPartContext {
     this.answer("requestAsync", async (method: string, parameters: JsonValue) => {
       this.requests.push(new RecordedRequest(method, parameters));
       const handler = this.handlers.get(method);
-      if (handler === undefined)
+      if (Object.isUndefined(handler))
         throw new UnansweredCallException(method);
       return handler(parameters);
     });

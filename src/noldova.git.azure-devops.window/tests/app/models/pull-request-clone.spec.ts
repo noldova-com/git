@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { GitRemote, GitStatus, RemoteTransport, StatusUpstream } from "@noldova/git.protocol";
 import { describe, expect, it } from "vitest";
 
@@ -18,7 +19,7 @@ function remote(host: string | null, path: string | null, transport: RemoteTrans
 }
 
 function statusOf(branch: string | null, upstream: string | null, clone: GitRemote | null = remote("dev.azure.com", "fabrikam/Web%20Site/_git/site")): GitStatus {
-  return new GitStatus(branch, "a".repeat(40), upstream === null ? null : new StatusUpstream(upstream, 0, 1, false), [], false, "f", null, clone);
+  return new GitStatus(branch, "a".repeat(40), Object.isNull(upstream) ? null : new StatusUpstream(upstream, 0, 1, false), [], false, "f", null, clone);
 }
 
 describe("PullRequestClone", () => {

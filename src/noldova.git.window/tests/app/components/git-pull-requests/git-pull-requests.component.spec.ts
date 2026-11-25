@@ -8,6 +8,7 @@
 
 import { ErrorHandler, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
@@ -171,16 +172,16 @@ describe("GitPullRequestsComponent", () => {
     const menuOf = async (row: Element | undefined): Promise<HTMLButtonElement[]> => {
       const box: DOMRect = row?.getBoundingClientRect() ?? new DOMRect();
       row?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: box.left + 4, clientY: box.top + 4, button: 2 }));
-      await vi.waitUntil(() => document.querySelector("[nol-menu-item]") !== null);
+      await vi.waitUntil(() => !Object.isNull(document.querySelector("[nol-menu-item]")));
       return [...document.querySelectorAll<HTMLButtonElement>("[nol-menu-item]")];
     };
     const choose = async (row: Element | undefined, action: string): Promise<void> => {
       (await menuOf(row)).find(t => t.dataset["action"] === action)?.click();
-      await vi.waitUntil(() => document.querySelector("[nol-menu-item]") === null);
+      await vi.waitUntil(() => Object.isNull(document.querySelector("[nol-menu-item]")));
     };
     const close = async (): Promise<void> => {
       document.querySelector("[nol-menu-item]")?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true, cancelable: true }));
-      await vi.waitUntil(() => document.querySelector("[nol-menu-item]") === null);
+      await vi.waitUntil(() => Object.isNull(document.querySelector("[nol-menu-item]")));
     };
     const isOff = (item: HTMLButtonElement): boolean => item.disabled || item.getAttribute("aria-disabled") === "true";
 
@@ -205,7 +206,7 @@ describe("GitPullRequestsComponent", () => {
       // The window's own link menu opens only for a right-click nothing handled, so the row's menu taking it keeps that one shut.
       const linkClick = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, button: 2 });
       rows[0]?.querySelector("a")?.dispatchEvent(linkClick);
-      await vi.waitUntil(() => document.querySelector("[nol-menu-item]") !== null);
+      await vi.waitUntil(() => !Object.isNull(document.querySelector("[nol-menu-item]")));
       await close();
       await choose(rows[0], "switch");
 
@@ -251,7 +252,7 @@ describe("GitPullRequestsComponent", () => {
     row?.click();
     await mounted.fixture.whenStable();
 
-    expect([row?.tagName, row === null ? null : getComputedStyle(row).cursor, link?.getAttribute("href"), link?.textContent, linkOpened, opened]).toEqual([
+    expect([row?.tagName, Object.isNull(row) ? null : getComputedStyle(row).cursor, link?.getAttribute("href"), link?.textContent, linkOpened, opened]).toEqual([
       "DIV", "pointer", "https://github.com/example-owner/example-repository/pull/1", "#1", ["/work/site pull-1"], ["/work/site pull-1", "/work/site pull-1"]]);
   });
 

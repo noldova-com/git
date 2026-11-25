@@ -7,10 +7,11 @@
  */
 
 import "@noldova/context.core";
-import { CheckState, type HostPerson, PolicyState, ReferenceState, SignInFailure, WorkItemCategory } from "@noldova/git.hosting.protocol";
+import { CheckState, type HostPerson, type HostWorkItemType, PolicyState, ReferenceState, SignInFailure, WorkItemCategory } from "@noldova/git.hosting.protocol";
 import { GitCounts } from "@noldova/git.window";
 
 import { WorkItemFacet } from "./app/enums/work-item-facet.ts";
+import { VoteChoice } from "./app/models/vote-choice.ts";
 import type { MergeTypeChoice } from "./app/types/merge-type-choice.ts";
 
 export class Resources {
@@ -124,6 +125,9 @@ export class Resources {
   public static readonly azureSshHost: string = "ssh.dev.azure.com";
   public static readonly visualStudioSshHost: string = "vs-ssh.visualstudio.com";
   public static readonly visualStudioSuffix: string = ".visualstudio.com";
+  public static readonly remotePathSeparator: string = "/";
+  /** The characters `encodeURIComponent` leaves that a hosting path doesn't take, which a remote's path escapes too. */
+  public static readonly unescapedPattern: RegExp = /[!'()*~]/gu;
   public static readonly hostRowSignedOut: string = "Sign in in Settings → Accounts and hosts to see this branch's pull request and its checks.";
   public static readonly readingPullRequest: string = "Reading this branch's pull request on Azure DevOps.";
   public static readonly noPullRequest: string = "No pull request for this branch";
@@ -136,9 +140,9 @@ export class Resources {
   public static readonly approveAnyway: string = "Approve anyway";
   public static readonly cancelAction: string = "Cancel";
   public static readonly voteMenuLabel: string = "Your vote";
-  public static readonly voteChoices: readonly { readonly vote: number; readonly label: string }[] = [{ vote: 10, label: "Approve" },
-    { vote: 5, label: "Approve with suggestions" }, { vote: -5, label: "Wait for author" }, { vote: -10, label: "Reject" }];
-  public static readonly resetVote: { readonly vote: number; readonly label: string } = { vote: 0, label: "Reset vote" };
+  public static readonly voteChoices: readonly VoteChoice[] = [new VoteChoice(10, "Approve"), new VoteChoice(5, "Approve with suggestions"),
+    new VoteChoice(-5, "Wait for author"), new VoteChoice(-10, "Reject")];
+  public static readonly resetVote: VoteChoice = new VoteChoice(0, "Reset vote");
   public static readonly approveVote: number = 10;
   public static readonly approveAction: string = "Approve";
   public static readonly approveIcon: string = "check";
@@ -415,8 +419,8 @@ export class Resources {
   }
 
   /** A work item type's icon as Azure DevOps draws it, as a data address an image shows, or null when it gave none and the type's symbol stands in. */
-  public static workItemImageOf(type: { readonly image: string | null }): string | null {
-    return type.image === null ? null : Resources.svgImagePrefix + encodeURIComponent(type.image);
+  public static workItemImageOf(type: HostWorkItemType): string | null {
+    return Object.isNull(type.image) ? null : Resources.svgImagePrefix + encodeURIComponent(type.image);
   }
 
   public static readonly expandIcon: string = "expand_more";
@@ -472,7 +476,7 @@ export class Resources {
   /** The auto-complete line: the merge type it completes with, as the Complete panel names it, or that it completes by itself for a type it doesn't know. */
   public static formatAutoComplete(mergeType: string | null): string {
     const label: string | undefined = Resources.mergeTypeChoices.find(t => t.type === mergeType)?.label;
-    return label === undefined ? Resources.autoComplete : `Auto-complete set: ${label.toLowerCase()} when policies pass`;
+    return Object.isUndefined(label) ? Resources.autoComplete : `Auto-complete set: ${label.toLowerCase()} when policies pass`;
   }
 
   /** What a policy's row ends with: Required or Optional, and "running" after it while the policy runs. */
@@ -519,7 +523,7 @@ export class Resources {
   }
 
   public static formatSignedIn(name: string | null): string {
-    return name === null ? Resources.signedIn : `${name} · signed in on this computer`;
+    return Object.isNull(name) ? Resources.signedIn : `${name} · signed in on this computer`;
   }
 
   public static formatWorkItemReference(type: string, id: number): string {
@@ -644,9 +648,6 @@ export class Resources {
   public static readonly choiceBranchField: string = "branch";
   public static readonly choiceIdField: string = "id";
   public static readonly changesField: string = "changes";
-  public static readonly additionsField: string = "additions";
-  public static readonly deletionsField: string = "deletions";
-  public static readonly changedFilesField: string = "changedFiles";
   public static readonly emptyList: string = "[]";
 
   public static formatOwnedBranch(owner: string, name: string): string {
@@ -769,7 +770,7 @@ export class Resources {
 
   public static formatWorkItemsInstance(organization: string, project: string, id: number | null): string {
     const place = `${organization}/${encodeURIComponent(project)}`;
-    return id === null ? place : `${place}/${id}`;
+    return Object.isNull(id) ? place : `${place}/${id}`;
   }
 
   public static formatNewWorkItemAddress(organization: string, project: string): string {
@@ -878,7 +879,7 @@ export class Resources {
 
   private static thenOf(deletedBranch: string | null, workItems: number): string {
     const after: string[] = [];
-    if (deletedBranch !== null)
+    if (!Object.isNull(deletedBranch))
       after.push(`deletes ${deletedBranch}`);
     if (workItems > 0)
       after.push(workItems === 1 ? "completes 1 linked work item" : `completes ${String(workItems)} linked work items`);

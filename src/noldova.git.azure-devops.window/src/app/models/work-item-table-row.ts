@@ -6,6 +6,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
+
 import type { WorkItemRow } from "./work-item-row.ts";
 
 /** A row the work item table shows, with whether it has children under it and whether the person collapsed them. */
@@ -25,7 +27,7 @@ export class WorkItemTableRow {
     const shown: WorkItemTableRow[] = [];
     let hiddenUnder: number | null = null;
     for (const [index, row] of rows.entries()) {
-      if (hiddenUnder !== null && row.depth > hiddenUnder)
+      if (!Object.isNull(hiddenUnder) && row.depth > hiddenUnder)
         continue;
       hiddenUnder = null;
       const hasChildren: boolean = (rows[index + 1]?.depth ?? 0) > row.depth;

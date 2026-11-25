@@ -36,7 +36,7 @@ describe("GitGraph", () => {
 
     assert.throws(() => new GitGraph(Array.from({ length: 5_001 }, () => graphCommit), false), { name: "ProtocolFieldException", field: "commits" });
     assert.throws(() => GitGraphCommit.fromJson({ ...json, email: "a\nb" }), { name: "ProtocolFieldException", field: "$.email" });
-    assert.throws(() => new GitRef("Stash" as RefKind, "s"), { name: "ProtocolFieldException", field: "kind" });
+    assert.throws(() => GitRef.fromJson({ kind: "Stash", name: "s" }), { name: "JsonException", path: "$.kind" });
     assert.throws(() => GitRef.fromJson({ kind: "Branch", name: "" }), { name: "ProtocolFieldException", field: "$.name" });
     assert.throws(() => GitRef.fromJson({ kind: "Tag", name: "a\nb" }), { name: "ProtocolFieldException", field: "$.name" });
     assert.throws(() => GitRef.fromJson({ kind: "Tag", name: "v1", more: 1 }), { name: "ProtocolFieldException" });

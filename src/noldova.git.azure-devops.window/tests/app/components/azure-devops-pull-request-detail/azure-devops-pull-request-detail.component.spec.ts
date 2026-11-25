@@ -8,6 +8,7 @@
 
 import { EnvironmentInjector, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
@@ -32,7 +33,7 @@ function itemOf(number: number, changes: HostChanges): HostItem {
     ReferenceState.Merged, "Export notes as Markdown files", URL, null, CREATED, CREATED, 0, changes);
 }
 
-const changes: HostChanges = new HostChanges(null, null, null, "users/monalisa/7521-export-notes", "main", "0123456789abcdef0123456789abcdef01234567");
+const changes: HostChanges = HostChanges.uncounted("users/monalisa/7521-export-notes", "main", "0123456789abcdef0123456789abcdef01234567");
 const full: HostPullRequest = new HostPullRequest(itemOf(752, changes), [
   new HostReviewer(new HostPerson("octocat@fabrikam.com", null, null), 0.5, "Approved with suggestions", true),
   new HostReviewer(new HostPerson("hubot@fabrikam.com", null, null), -0.5, "Waiting for the author", false),
@@ -172,9 +173,9 @@ describe("AzureDevOpsPullRequestDetailComponent", () => {
     await view.settleAsync();
 
     await view.clickAsync(".add-reviewer");
-    const opened: boolean = view.element.querySelector("nol-git-azure-devops-add-reviewer") !== null;
+    const opened: boolean = !Object.isNull(view.element.querySelector("nol-git-azure-devops-add-reviewer"));
     await view.clickAsync(".add-reviewer");
-    const closed: boolean = view.element.querySelector("nol-git-azure-devops-add-reviewer") === null;
+    const closed: boolean = Object.isNull(view.element.querySelector("nol-git-azure-devops-add-reviewer"));
     await view.clickAsync(".add-reviewer");
     view.show(bare);
     await view.settleAsync();

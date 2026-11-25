@@ -9,6 +9,7 @@
 import type { DialogRef } from "@angular/cdk/dialog";
 import { ApplicationRef } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
@@ -45,11 +46,11 @@ export class BranchDialogData {
   }
 
   public static signedIn(login: string): JsonValue {
-    return new HostSignIn(SignInState.SignedIn, null, null, new HostAccount(login, null, null, []), null).toJson();
+    return new HostSignIn(SignInState.SignedIn, null, new HostAccount(login, null, null, []), null).toJson();
   }
 
   public static signedOut(): JsonValue {
-    return new HostSignIn(SignInState.SignedOut, null, null, null, null).toJson();
+    return new HostSignIn(SignInState.SignedOut, null, null, null).toJson();
   }
 
   public static itemOf(parent: number | null, category: WorkItemCategory = WorkItemCategory.Proposed, title: string = "Tag filter ignores case in note titles"): JsonValue {
@@ -84,13 +85,13 @@ export class BranchDialog {
   private host: HTMLElement | null = null;
 
   public get element(): HTMLElement {
-    if (this.host === null || !this.host.isConnected)
+    if (Object.isNull(this.host) || !this.host.isConnected)
       throw new Error("The dialog isn't open.");
     return this.host;
   }
 
   public get isOpen(): boolean {
-    return this.host !== null && this.host.isConnected;
+    return !Object.isNull(this.host) && this.host.isConnected;
   }
 
   public get field(): HTMLInputElement {
@@ -107,7 +108,7 @@ export class BranchDialog {
 
   public get base(): string | null {
     const value = this.element.querySelector(".nol-git-azure-devops-branch-base .nol-select-value");
-    return value === null ? null : (value.textContent ?? "").trim();
+    return Object.isNull(value) ? null : (value.textContent ?? "").trim();
   }
 
   public get choices(): readonly string[] {
@@ -154,7 +155,7 @@ export class BranchDialog {
   }
 
   public async openAsync(reads: BranchDialogReads | null = new BranchDialogReads(), request: BranchRequest = BranchDialogData.request): Promise<this> {
-    if (reads !== null)
+    if (!Object.isNull(reads))
       this.answerReads(reads);
     this.open(request);
     await this.settleAsync();

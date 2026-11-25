@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type StatusBarItem, StatusBarItemState } from "@noldova/desktop.window";
 import { type GitCommand, GitFolderParams, type GitStatus } from "@noldova/git.protocol";
 
@@ -51,26 +52,26 @@ export class GitStatusBar {
   }
 
   public static commandStateOf(folder: string | null, command: GitCommand | null): StatusBarItemState {
-    if (folder === null)
+    if (Object.isNull(folder))
       return GitStatusBar.HIDDEN;
-    return new StatusBarItemState(command === null ? Resources.commandLogLabel : Resources.formatCommandItem(command.line), {
+    return new StatusBarItemState(Object.isNull(command) ? Resources.commandLogLabel : Resources.formatCommandItem(command.line), {
       icon: Resources.commandLogIcon,
-      tooltip: command === null ? Resources.openCommandLogTitle : Resources.formatCommandItemTooltip(command.line, command.exitCode, command.milliseconds),
+      tooltip: Object.isNull(command) ? Resources.openCommandLogTitle : Resources.formatCommandItemTooltip(command.line, command.exitCode, command.milliseconds),
       command: Resources.openCommandLogCommand,
       commandArguments: new GitFolderParams(folder).toJson()
     });
   }
 
   public static stateOf(folder: string | null, status: GitStatus | null): StatusBarItemState {
-    if (folder === null || status === null)
+    if (Object.isNull(folder) || Object.isNull(status))
       return GitStatusBar.HIDDEN;
-    const name = status.branch ?? (status.head === null ? null : Resources.formatDetachedAt(status.head.slice(0, Resources.shortIdLength)));
-    if (name === null)
+    const name = status.branch ?? (Object.isNull(status.head) ? null : Resources.formatDetachedAt(status.head.slice(0, Resources.shortIdLength)));
+    if (Object.isNull(name))
       return GitStatusBar.HIDDEN;
     const upstream = status.upstream;
-    const text = upstream === null ? name : `${name} ${Resources.formatAhead(upstream.ahead)} ${Resources.formatBehind(upstream.behind)}`;
+    const text = Object.isNull(upstream) ? name : `${name} ${Resources.formatAhead(upstream.ahead)} ${Resources.formatBehind(upstream.behind)}`;
     return new StatusBarItemState(text, {
-      icon: status.branch === null ? Resources.detachedHeadIcon : Resources.statusBarBranchIcon,
+      icon: Object.isNull(status.branch) ? Resources.detachedHeadIcon : Resources.statusBarBranchIcon,
       tooltip: Resources.formatStatusBarTooltip(name, upstream?.name ?? null, upstream?.ahead ?? 0, upstream?.behind ?? 0),
       command: Resources.openHistoryCommand,
       commandArguments: new GitFolderParams(folder).toJson()
@@ -79,8 +80,8 @@ export class GitStatusBar {
 
   /** How long before `now` the repository last fetched, with the time itself as the tooltip; hidden while it never has. */
   public static fetchedStateOf(folder: string | null, status: GitStatus | null, now: Date): StatusBarItemState {
-    const fetchedAt = folder === null ? null : status?.fetchedAt ?? null;
-    if (fetchedAt === null)
+    const fetchedAt = Object.isNull(folder) ? null : status?.fetchedAt ?? null;
+    if (Object.isNull(fetchedAt))
       return GitStatusBar.HIDDEN;
     const time = new Date(fetchedAt);
     return new StatusBarItemState(Resources.formatFetched(Math.floor((now.getTime() - time.getTime()) / GitStatusBar.MINUTE)), {

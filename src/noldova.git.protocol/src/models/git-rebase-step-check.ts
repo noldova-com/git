@@ -20,8 +20,6 @@ export class GitRebaseStepCheck {
   public readonly paths: readonly string[];
 
   public constructor(outcome: RebaseCheckOutcome, paths: readonly string[], reader?: JsonReader) {
-    if (!Object.values(RebaseCheckOutcome).includes(outcome))
-      FieldCheck.fail(Resources.outcomeField, Resources.rebaseOutcomeExpected, reader);
     if ((outcome === RebaseCheckOutcome.Conflicts) !== (paths.length > 0))
       FieldCheck.fail(Resources.pathsField, Resources.predictionPathsExpected, reader);
     paths.forEach((path, index) => FieldCheck.requireRelativePath(path, Resources.formatItemField(Resources.pathsField, index), reader));

@@ -11,6 +11,7 @@ import {
   afterNextRender, Component, computed, DestroyRef, effect, type ElementRef, ErrorHandler, inject, Injector, input, type InputSignal, signal, type Signal, untracked,
   viewChild, type WritableSignal
 } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
 import { type GitGraph, type GitGraphCommit, type GitPrediction, type GitStatus, PredictionAction } from "@noldova/git.protocol";
 import {
@@ -21,6 +22,7 @@ import { GitHistoryAction } from "../../enums/git-history-action.ts";
 import { GitBranchDrop } from "../../models/git-branch-drop.ts";
 
 import { GitBranchView } from "../../models/git-branch-view.ts";
+import { GitChipDrag } from "../../models/git-chip-drag.ts";
 import { GitCommitView } from "../../models/git-commit-view.ts";
 import type { GitHistoryAsk } from "../../models/git-history-ask.ts";
 import { GitCommitDetails } from "../../services/git-commit-details.ts";
@@ -74,7 +76,7 @@ export class GitHistoryComponent {
   private readonly dialogs: DialogService = inject(DialogService);
   private readonly commits: WritableSignal<readonly GitGraphCommit[]> = signal<readonly GitGraphCommit[]>([]);
   private readonly loaded: WritableSignal<boolean> = signal(false);
-  private readonly hasMore: WritableSignal<boolean> = signal(false);
+  protected readonly hasMore: WritableSignal<boolean> = signal(false);
   private readonly status: WritableSignal<GitStatus | null> = signal<GitStatus | null>(null);
   private readonly held: WritableSignal<string | null> = signal<string | null>(null);
   private readonly viewport: Signal<CdkVirtualScrollViewport> = viewChild.required(CdkVirtualScrollViewport);
@@ -86,8 +88,16 @@ export class GitHistoryComponent {
   private readonly injector: Injector = inject(Injector);
   private jumped: GitBranchView | null = null;
   /** The branch chip being dragged, with its branch, its row's labels and commit; `null` while none is. */
-  private dragged: { readonly chip: GitRefChip; readonly labels: readonly GitRefChip[]; readonly branch: string; readonly id: string } | null = null;
+  private dragged: GitChipDrag | null = null;
+  private static lists = 0;
   private reading = 0;
+  /** The list's number among the History lists opened, so its rows' ids are unique in the window. */
+  protected readonly list: number = ++GitHistoryComponent.lists;
+  /** The selected row's id, the list's active descendant, so a screen reader follows the selection; `null` while no row is selected. */
+  protected readonly activeOption: Signal<string | null> = computed(() => {
+    const at: number = this.rows().findIndex(t => t.id === this.selectedId());
+    return at < 0 ? null : Resources.formatHistoryOptionId(this.list, at);
+  });
   private isPaging = false;
 
   protected readonly resources: typeof Resources = Resources;
@@ -114,7 +124,7 @@ export class GitHistoryComponent {
     Math.max(Resources.graphMinimumPixels, Resources.graphLaneOffsetPixels * 2 + (this.lanes() - 1) * Resources.graphLanePixels));
   /** The graph column's width, which the stylesheet's column templates read, so they can drop columns as the history narrows. */
   protected readonly graphWidth: Signal<string> = computed(() => `${this.graphPixels() / 16}rem`);
-  protected readonly isLoading: Signal<boolean> = computed(() => !this.loaded() && this.failure() === null);
+  protected readonly isLoading: Signal<boolean> = computed(() => !this.loaded() && Object.isNull(this.failure()));
   protected readonly ahead: Signal<number> = computed(() => this.status()?.upstream?.ahead ?? 0);
   /** The status a pull or push is based on, or null while there is none or a write runs. */
   protected readonly writable: Signal<GitStatus | null> = computed(() => this.busy() ? null : this.status());
@@ -136,9 +146,9 @@ export class GitHistoryComponent {
       const folder: string = this.instance();
       const branch: string | null = GitPendingSwitch.branchOf(folder);
       untracked(() => {
-        if (branch !== null)
+        if (!Object.isNull(branch))
           this.held.set(branch);
-        else if (this.held() !== null)
+        else if (!Object.isNull(this.held()))
           void this.readAsync(folder);
       });
     });
@@ -155,7 +165,7 @@ export class GitHistoryComponent {
     effect(() => {
       const shown: GitCommitView | null = GitViewing.commitOf(this.instance());
       untracked(() => {
-        if (shown === null && this.selectedId() !== null)
+        if (Object.isNull(shown) && !Object.isNull(this.selectedId()))
           this.selectedId.set(Resources.changesId);
       });
     });
@@ -194,7 +204,7 @@ export class GitHistoryComponent {
     GitViewing.branch.set(null);
     this.show(row.id);
     const shown: GitCommitView | null = GitViewing.commitOf(this.instance());
-    if (shown !== null)
+    if (!Object.isNull(shown))
       GitCommitDetails.of(this.context).showInFront(shown);
   }
 
@@ -203,11 +213,24 @@ export class GitHistoryComponent {
     const at: number = rows.findIndex(t => t.id === this.selectedId());
     const step: number = event.key === Resources.arrowDownKey ? 1 : event.key === Resources.arrowUpKey ? -1 : 0;
     const next: GitHistoryRow | undefined = rows[Math.min(rows.length - 1, Math.max(0, at + step))];
-    if (step === 0 || next === undefined)
+    if (step === 0 || Object.isUndefined(next))
       return;
     event.preventDefault();
     GitViewing.branch.set(null);
     this.show(next.id);
+    this.keepInView(rows.indexOf(next));
+  }
+
+  /** Scrolls the list just enough to show a row the keyboard moved to, and reads the next page once it nears the end, as scrolling there does. */
+  private keepInView(index: number): void {
+    const viewport: CdkVirtualScrollViewport = this.viewport();
+    const shown: number = Math.max(1, Math.floor(viewport.getViewportSize() / Resources.graphRowPixels));
+    const first: number = Math.ceil(viewport.measureScrollOffset() / Resources.graphRowPixels);
+    if (index < first)
+      viewport.scrollToIndex(index);
+    else if (index >= first + shown)
+      viewport.scrollToIndex(index - shown + 1);
+    this.scrolled(index);
   }
 
   protected scrolled(index: number): void {
@@ -227,7 +250,7 @@ export class GitHistoryComponent {
     if (action === GitHistoryAction.Terminal)
       return true;
     const status: GitStatus | null = this.writable();
-    return status !== null && (action !== GitHistoryAction.Stash || status.entries.length > 0);
+    return !Object.isNull(status) && (action !== GitHistoryAction.Stash || status.entries.length > 0);
   }
 
   /**
@@ -262,12 +285,12 @@ export class GitHistoryComponent {
   }
 
   protected dragBranch(chip: GitRefChip, row: GitHistoryRow): void {
-    this.dragged = chip.branch === null ? null : { chip, labels: row.chips, branch: chip.branch, id: row.id };
+    this.dragged = Object.isNull(chip.branch) ? null : new GitChipDrag(chip, row.chips, chip.branch, row.id);
   }
 
   /** Takes a dragged branch over another branch's chip. */
   protected overBranch(event: DragEvent, chip: GitRefChip): void {
-    if (this.dragged !== null && chip.branch !== null && chip.branch !== this.dragged.branch)
+    if (!Object.isNull(this.dragged) && !Object.isNull(chip.branch) && chip.branch !== this.dragged.branch)
       event.preventDefault();
   }
 
@@ -276,14 +299,14 @@ export class GitHistoryComponent {
     const dragged = this.dragged;
     this.dragged = null;
     const status = this.status();
-    if (dragged === null || chip.branch === null || chip.branch === dragged.branch || status === null)
+    if (Object.isNull(dragged) || Object.isNull(chip.branch) || chip.branch === dragged.branch || Object.isNull(status))
       return;
     event.preventDefault();
     const drop = new GitBranchDrop(dragged.branch, dragged.id, chip.branch, row.id, status.branch, chip.isLocalBranch);
     const predicted = drop.predicted;
     const request: string | null = GitPullRequests.newPullRequestUrlOf(status.remote, dragged.chip, dragged.labels, chip);
-    this.dropped.set({ drop, prediction: null, checking: predicted !== null, request, left: event.clientX, top: event.clientY });
-    if (predicted !== null)
+    this.dropped.set({ drop, prediction: null, checking: !Object.isNull(predicted), request, left: event.clientX, top: event.clientY });
+    if (!Object.isNull(predicted))
       void this.predictDropAsync(drop, predicted);
   }
 
@@ -303,7 +326,7 @@ export class GitHistoryComponent {
   protected switchMergeDropped(drop: GitBranchDrop): void {
     this.dropped.set(null);
     const status: GitStatus | null = this.writable();
-    if (status !== null && status.entries.length > 0) {
+    if (!Object.isNull(status) && status.entries.length > 0) {
       this.actionFailure.set(Resources.formatSwitchMergeChanges(drop.target));
       return;
     }
@@ -352,15 +375,18 @@ export class GitHistoryComponent {
   private show(id: string): void {
     const commit: GitGraphCommit | undefined = this.commits().find(t => t.commit.id === id);
     this.selectedId.set(id);
-    GitViewing.commit.set(commit === undefined ? null : new GitCommitView(this.instance(), commit));
+    if (Object.isUndefined(commit))
+      GitViewing.showChanges(this.instance());
+    else
+      GitViewing.show(new GitCommitView(this.instance(), commit));
   }
 
   /** Scrolls to and selects the newest commit of the branch the side panel picked, reading further pages until it shows or the history ends. */
   private jump(view: GitBranchView | null, commits: readonly GitGraphCommit[] | null): void {
-    if (view === null || view === this.jumped || commits === null)
+    if (Object.isNull(view) || view === this.jumped || Object.isNull(commits))
       return;
     const commit: GitGraphCommit | undefined = commits.find(t => view.isAt(t));
-    if (commit === undefined) {
+    if (Object.isUndefined(commit)) {
       if (!this.hasMore())
         this.jumped = view;
       else if (!this.isPaging)
@@ -373,7 +399,7 @@ export class GitHistoryComponent {
 
   /** Selects the commit another page asked for once the history has read, or says it isn't among the loaded commits. */
   private reveal(ask: GitHistoryAsk | null, commits: readonly GitGraphCommit[] | null): void {
-    if (ask === null || commits === null)
+    if (Object.isNull(ask) || Object.isNull(commits))
       return;
     GitHistoryAsks.take(ask);
     if (!commits.some(t => t.commit.id === ask.commitId)) {
@@ -412,7 +438,7 @@ export class GitHistoryComponent {
 
   private async readAsync(folder: string): Promise<void> {
     const reading: number = ++this.reading;
-    const switched: boolean = GitPendingSwitch.branchOf(folder) === null;
+    const switched: boolean = Object.isNull(GitPendingSwitch.branchOf(folder));
     const limit: number = Math.min(Math.max(Resources.graphPageSize, this.commits().length), 5000);
     const status: Promise<GitStatus> = this.client.statusAsync(folder);
     void status.catch(() => undefined);
@@ -426,7 +452,7 @@ export class GitHistoryComponent {
       this.failure.set(null);
       if (switched)
         this.held.set(null);
-      if (this.selectedId() === null)
+      if (Object.isNull(this.selectedId()))
         this.selectedId.set(this.rows()[0]?.id ?? null);
       const read: GitStatus = await status;
       if (reading !== this.reading)
@@ -465,13 +491,13 @@ export class GitHistoryComponent {
 
   private async newBranchAsync(): Promise<void> {
     const name: string | null = await GitNewBranch.askAsync(this.dialogs, Resources.formatHistoryTitle(this.instance()));
-    if (name !== null)
+    if (!Object.isNull(name))
       await this.writeAsync((folder, basedOn) => this.client.createBranchAsync(folder, name, basedOn));
   }
 
   private async writeAsync(write: (folder: string, basedOn: string) => Promise<void>): Promise<void> {
     const status: GitStatus | null = this.writable();
-    if (status === null)
+    if (Object.isNull(status))
       return;
     this.busy.set(true);
     this.actionFailure.set(null);
@@ -517,7 +543,7 @@ export class GitHistoryComponent {
       this.report(error);
     }
     const shown = this.dropped();
-    if (shown !== null && shown.drop === drop)
+    if (!Object.isNull(shown) && shown.drop === drop)
       this.dropped.set({ ...shown, prediction, checking: false });
   }
 

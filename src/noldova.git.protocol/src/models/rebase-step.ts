@@ -25,8 +25,6 @@ export class RebaseStep {
 
   public constructor(id: string, action: RebaseAction, message: string | null, reader?: JsonReader) {
     FieldCheck.requireObjectId(id, Resources.idField, reader);
-    if (!Object.values(RebaseAction).includes(action))
-      FieldCheck.fail(Resources.actionField, Resources.rebaseActionExpected, reader);
     if ((action === RebaseAction.Reword || action === RebaseAction.Squash) !== (message !== null))
       FieldCheck.fail(Resources.messageField, Resources.rebaseMessageExpected, reader);
     if (message !== null) {

@@ -9,6 +9,7 @@
 import { signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import { By } from "@angular/platform-browser";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { MergeEditorComponent } from "@noldova/editor.angular";
@@ -81,9 +82,9 @@ describe("GitConflictDetailComponent in the kit's look", () => {
     documentElement.style.height = "30rem";
     viewElement.style.width = viewWidth;
     viewElement.style.height = "30rem";
-    await untilAsync([documentElement, viewElement], () => fixture.debugElement.query(By.directive(MergeEditorComponent)) !== null);
+    await untilAsync([documentElement, viewElement], () => !Object.isNull(fixture.debugElement.query(By.directive(MergeEditorComponent))));
     fixture.debugElement.query(By.directive(MergeEditorComponent)).injector.get(MergeEditorComponent).nextConflict();
-    await untilAsync([viewElement], () => viewElement.querySelector(".base-text .nol-code-text-line") !== null && viewElement.querySelector(".markers") !== null);
+    await untilAsync([viewElement], () => !Object.isNull(viewElement.querySelector(".base-text .nol-code-text-line")) && !Object.isNull(viewElement.querySelector(".markers")));
     await fixture.whenStable();
     return { document: documentElement, view: viewElement };
   };
@@ -112,7 +113,7 @@ describe("GitConflictDetailComponent in the kit's look", () => {
         .toEqual([0.75, 0.75, 0.75]);
       expect([view.scrollWidth <= view.clientWidth, getComputedStyle(view).backgroundColor, getComputedStyle(find(".detail-title")).color,
         getComputedStyle(find(".base-text")).borderTopColor, getComputedStyle(find(".markers .file-icon")).color])
-        .toEqual([true, resolve("var(--nol-panel)"), resolve("var(--nol-text-strong)"), resolve("var(--nol-card-border)"), resolve("var(--nol-warning)")]);
+        .toEqual([true, "rgba(0, 0, 0, 0)", resolve("var(--nol-text-strong)"), resolve("var(--nol-card-border)"), resolve("var(--nol-warning)")]);
       await page.screenshot({ element: view, path: `${screenshots}/git-conflict-detail-${mode}.png` });
       await page.screenshot({ element: screen, path: `${screenshots}/git-conflicts-without-detail-${mode}.png` });
     });

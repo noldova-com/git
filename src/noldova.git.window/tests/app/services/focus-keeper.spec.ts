@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { FocusKeeper } from "../../../src/app/services/focus-keeper.ts";
@@ -24,7 +25,7 @@ describe("FocusKeeper", () => {
     document.body.append(root);
     roots.push(root);
     const list: HTMLElement | null = root.querySelector("ul");
-    if (list === null)
+    if (Object.isNull(list))
       throw new Error("No list.");
     return { root, list, stop: FocusKeeper.keep(root) };
   };

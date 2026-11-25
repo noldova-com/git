@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type ConflictKind, type DiffScopeKind, type FileChange, type FileState, type GitPrediction, type OperationKind, PredictionOutcome, type RebaseAction, type RebaseCheckOutcome,
   RemoteTransport, SignatureState, type SigningFormat } from "@noldova/git.protocol";
 import { FileChangeKind, ThreadStatus } from "@noldova/git.hosting.protocol";
@@ -209,7 +210,7 @@ export class Resources {
   }
 
   public static formatPullHooks(hooks: readonly string[] | null): string {
-    if (hooks === null)
+    if (Object.isNull(hooks))
       return Resources.pullHooksUnread;
     return `${Resources.pullDescription}. Hooks that will run: ${hooks.length === 0 ? "None" : hooks.join(", ")}`;
   }
@@ -335,7 +336,7 @@ export class Resources {
   /** An operation in progress as the banner heads it: the branch it applies into, or "this branch" when HEAD is detached. */
   public static formatOperation(operation: string, from: string | null, into: string | null): string {
     const target: string = into ?? "this branch";
-    return from === null ? `${operation} into ${target}` : `${operation} ${from} into ${target}`;
+    return Object.isNull(from) ? `${operation} into ${target}` : `${operation} ${from} into ${target}`;
   }
 
   public static readonly resolveConflictsLabel: string = "Resolve conflicts";
@@ -348,6 +349,11 @@ export class Resources {
 
   public static formatSwitchBranch(name: string): string {
     return `${Resources.switchBranchLabel}, ${name}`;
+  }
+
+  /** The id of a History list's row, by the list's number among the open lists and the row's place, for the list's active descendant. */
+  public static formatHistoryOptionId(list: number, index: number): string {
+    return `git-history-${list}-option-${index}`;
   }
 
   public static formatBranchOptionId(index: number): string {
@@ -367,7 +373,7 @@ export class Resources {
   }
 
   public static formatGitTooOldHeading(version: string | null): string {
-    return version === null ? "Your Git is too old" : `Git ${version} is too old`;
+    return Object.isNull(version) ? "Your Git is too old" : `Git ${version} is too old`;
   }
 
   public static formatMoreFiles(count: number): string {
@@ -668,7 +674,7 @@ export class Resources {
 
   /** How a command ended: done, its exit code, or that it didn't run to its end. */
   public static formatCommandExit(exitCode: number | null): string {
-    return exitCode === null ? "Didn't finish" : exitCode === 0 ? "Done" : `Exit code ${exitCode}`;
+    return Object.isNull(exitCode) ? "Didn't finish" : exitCode === 0 ? "Done" : `Exit code ${exitCode}`;
   }
 
   public static formatCommandDuration(milliseconds: number): string {
@@ -707,7 +713,7 @@ export class Resources {
 
   /** The status-bar item's tooltip: the branch, and how far it is from its upstream when it has one. Opens the history on a click. */
   public static formatStatusBarTooltip(name: string, upstream: string | null, ahead: number, behind: number): string {
-    const tracking = upstream === null ? "no upstream" : `${ahead} ahead of and ${behind} behind ${upstream}`;
+    const tracking = Object.isNull(upstream) ? "no upstream" : `${ahead} ahead of and ${behind} behind ${upstream}`;
     return `${name}, ${tracking}. Open the history`;
   }
 
@@ -846,7 +852,7 @@ export class Resources {
 
   /** A signed commit's signature line; an unsigned commit has none. */
   public static formatSignature(state: SignatureState, signer: string | null): string {
-    const by: string = signer === null ? "" : ` by ${signer}`;
+    const by: string = Object.isNull(signer) ? "" : ` by ${signer}`;
     return state === SignatureState.Verified ? `Signed${by}, verified against the keys you trust` : `Signed${by}, but the signature isn't verified`;
   }
 
@@ -1061,7 +1067,6 @@ export class Resources {
     return `${Resources.conflictsTitle}: ${Resources.formatHistoryTitle(folder)}`;
   }
 
-  public static readonly recentActionsLimit: number = 20;
   public static readonly recentActionsLabel: string = "Recent actions";
   public static readonly noRecentActions: string = "No actions yet";
   public static readonly forcePushOfferLabel: string = "Force push\u2026";
@@ -1087,7 +1092,7 @@ export class Resources {
 
   public static formatRecentAction(method: string, branch: string | null): string {
     const name: string = Resources.recentActionNames[method] ?? method;
-    return branch === null ? name : `${name} on ${branch}`;
+    return Object.isNull(branch) ? name : `${name} on ${branch}`;
   }
 
   public static readonly rebaseDocumentName: string = "git.interactiveRebase";
@@ -1246,7 +1251,7 @@ export class Resources {
 
   /** Where to drop the conflicting row to clear its conflict: below the row named, or to the top when `above` is `null`. */
   public static formatDropAdvice(id: string, above: string | null, paths: readonly string[]): string {
-    return `dropping ${id} ${above === null ? "to the top" : `below ${above}`} clears the conflict in ${paths.join(", ")}`;
+    return `dropping ${id} ${Object.isNull(above) ? "to the top" : `below ${above}`} clears the conflict in ${paths.join(", ")}`;
   }
 
   /** How the advice names a fold the conflicting row would drop below, by its action's title, such as "the fixup". */
@@ -1499,7 +1504,7 @@ export class Resources {
 
   /** A repository a bulk push will push, such as "git: feature/kit to origin/feature/kit on github.com/example-owner/git". */
   public static formatPushTarget(repository: string, branch: string, upstream: string, remote: string | null): string {
-    return `${repository}: ${branch} to ${upstream}${remote === null ? "" : ` on ${remote}`}`;
+    return `${repository}: ${branch} to ${upstream}${Object.isNull(remote) ? "" : ` on ${remote}`}`;
   }
 
   public static formatPushSkipped(repository: string, branch: string): string {
@@ -1644,10 +1649,10 @@ export class Resources {
   /** The thread head's words after its state, or the whole head for a thread without one: the file's name and line it comments on, when it has them. */
   public static formatThreadPlace(afterState: boolean, path: string | null, line: number | null): string {
     const comment: string = afterState ? " comment" : "Comment";
-    if (path === null)
+    if (Object.isNull(path))
       return comment;
     const name: string = path.slice(path.lastIndexOf("/") + 1);
-    return line === null ? `${comment} on ${name}` : `${comment} on ${name}, line ${line}`;
+    return Object.isNull(line) ? `${comment} on ${name}` : `${comment} on ${name}, line ${line}`;
   }
 
   public static formatPullRequestFilesCapped(count: number): string {

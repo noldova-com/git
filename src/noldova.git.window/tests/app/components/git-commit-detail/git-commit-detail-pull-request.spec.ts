@@ -43,8 +43,8 @@ describe("GitCommitDetailComponent's pull request", () => {
     }));
   };
   const showAsync = async (shown: GitRemote | null): Promise<GitViewFixture> => {
-    onTestFinished(() => GitViewing.commit.set(null));
-    GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commit));
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
     return await GitViewFixture.renderCommitAsync(answersOf(shown), ".detail .files");
   };
   const handledBy = (): WritableSignal<string[]> => {
@@ -151,8 +151,8 @@ describe("GitCommitDetailComponent's pull request", () => {
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync(answersOf(remote), ".empty-view");
     const handled: string[] = [];
     vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.push(String(error)));
-    onTestFinished(() => GitViewing.commit.set(null));
-    GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commit));
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
     await view.waitForAsync(".detail .files");
 
     expect([handled, view.all(".pull-request").length]).toEqual([["RangeError: read broke"], 0]);
@@ -165,7 +165,8 @@ describe("GitCommitDetailComponent's pull request", () => {
     const held: GitHeldRequests = new GitHeldRequests(view.context, ["git.status"], answersOf(remote));
     const other: string = "/work/other";
 
-    GitViewing.commit.set(new GitCommitView(other, commit));
+    GitViewing.show(new GitCommitView(other, commit));
+    onTestFinished(() => GitViewing.showChanges(other));
     view.folder.set(other);
     await view.untilAsync(() => view.all(".pull-request").length === 0);
     const before: readonly string[] = [...asked];

@@ -13,9 +13,13 @@ export class Resources {
   public static readonly positiveExpected: string = "a whole number above zero";
   public static readonly countExpected: string = "a whole number, zero or more";
   public static readonly nameExpected: string = "a name of letters, digits, '.', '_' and '-', other than '.' and '..'";
-  public static readonly pathExpected: string = "names of letters, digits, '.', '_' and '-' joined by '/', none of them '.' or '..'";
+  public static readonly pathExpected: string = "names of letters, digits, '.', '_', '-' and percent escapes such as '%20' but not of '/' or '\\' joined by '/', none of them '.' or '..', '%2e' counting as a dot";
   public static readonly namePattern: RegExp = /^(?!\.\.?$)[A-Za-z0-9._-]+$/;
-  public static readonly pathPattern: RegExp = /^(?!\.\.?(?:\/|$))[A-Za-z0-9._-]+(?:\/(?!\.\.?(?:\/|$))[A-Za-z0-9._-]+)*$/;
+  /**
+   * Names joined by '/', each of letters, digits, '.', '_', '-' and percent escapes, so a name with a space or another character comes encoded; never an
+   * escaped '/' or '\', which would decode to another name.
+   */
+  public static readonly pathPattern: RegExp = /^(?!(?:\.|%2[Ee]){1,2}(?:\/|$))(?:[A-Za-z0-9._-]|%(?!2[Ff]|5[Cc])[0-9A-Fa-f]{2})+(?:\/(?!(?:\.|%2[Ee]){1,2}(?:\/|$))(?:[A-Za-z0-9._-]|%(?!2[Ff]|5[Cc])[0-9A-Fa-f]{2})+)*$/;
   public static readonly commitExpected: string = "a full commit hash, 40 or 64 lowercase hexadecimal digits";
   public static readonly pullRequestStateExpected: string = "Open, Draft, Merged or Closed, the states of a pull request";
   public static readonly issueStateExpected: string = "Open, ClosedDone or ClosedNotPlanned, the states of an issue";
@@ -76,7 +80,7 @@ export class Resources {
   public static readonly commitCommentsExpected: string = "at most 100 comments";
   public static readonly commitCommentsCappedExpected: string = "capped only with comments";
   public static readonly commitCommentsUrlExpected: string = "a page exactly when there are comments";
-  public static readonly countsExpected: string = "all three counts, or none when the host doesn't count them";
+  public static readonly countsExpected: string = "zero counts when the host doesn't count them";
   public static readonly commentParentExpected: string = "a parent other than the comment itself";
   public static readonly lineExpected: string = "a line only on a thread that names a file";
   public static readonly commentsExpected: string = "at least one comment";
@@ -115,6 +119,7 @@ export class Resources {
   public static readonly headBranchField: string = "headBranch";
   public static readonly baseBranchField: string = "baseBranch";
   public static readonly headCommitField: string = "headCommit";
+  public static readonly isCountedField: string = "isCounted";
   public static readonly pathField: string = "path";
   public static readonly branchField: string = "branch";
   public static readonly emailField: string = "email";

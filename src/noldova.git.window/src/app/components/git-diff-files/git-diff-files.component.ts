@@ -9,6 +9,7 @@
 import {
   afterNextRender, Component, computed, effect, ElementRef, ErrorHandler, inject, Injector, input, type InputSignal, signal, type Signal, untracked, type WritableSignal
 } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, WindowPartTokens } from "@noldova/desktop.window";
 import { type DiffFile, type DiffScope, type DiffTotals, type GitDiff, LineKind } from "@noldova/git.protocol";
 import { FileBadgeComponent } from "@noldova/ui.components.angular";
@@ -60,7 +61,7 @@ export class GitDiffFilesComponent {
   /** The header's files and lines added and removed: the whole diff's when its budget cut it and Git counted it, else its files'. */
   protected readonly totals: Signal<readonly [number, number, number]> = computed(() => {
     const whole: DiffTotals | null = this.diff()?.totals ?? null;
-    if (whole !== null)
+    if (!Object.isNull(whole))
       return [whole.files, whole.added, whole.removed];
     const [added, removed] = GitCommitFiles.totalsOf(this.files());
     return [this.files().length, added, removed];
@@ -76,14 +77,14 @@ export class GitDiffFilesComponent {
     const codes: Map<string, readonly (readonly GitCodeSpan[])[]> = new Map<string, readonly (readonly GitCodeSpan[])[]>();
     for (const row of this.rows()) {
       const rows: readonly GitDiffRow[] | undefined = lines.get(row.key);
-      if (!row.isFolder && rows !== undefined)
+      if (!row.isFolder && !Object.isUndefined(rows))
         codes.set(row.key, GitCodeSpan.rowsOf(rows, this.colors.tokenizerOf(row.key)));
     }
     return codes;
   });
 
   /** Whether the diff's read ended, with its files or a failure, so another part can tell whether it `holds` a file. */
-  public readonly isRead: Signal<boolean> = computed(() => this.diff() !== null || this.failure() !== null);
+  public readonly isRead: Signal<boolean> = computed(() => !Object.isNull(this.diff()) || !Object.isNull(this.failure()));
 
   /** The repository's folder, an absolute path. */
   public readonly folder: InputSignal<string> = input.required<string>();
@@ -141,11 +142,11 @@ export class GitDiffFilesComponent {
     this.closed.set(new Set([...this.closed()].filter(t => !folders.has(t))));
     this.open.set(new Set([...this.open(), path]));
     const file: DiffFile | undefined = this.files().find(t => t.path === path);
-    const index: number = line === null || file === undefined ? -1 : GitDiffFilesComponent.rowIndexOf(file, line);
+    const index: number = Object.isNull(line) || Object.isUndefined(file) ? -1 : GitDiffFilesComponent.rowIndexOf(file, line);
     this.marked.set(index < 0 ? null : [path, index]);
     afterNextRender(() => {
       const marked: HTMLElement | null = this.host.querySelector<HTMLElement>(".marked-line");
-      if (marked !== null) {
+      if (!Object.isNull(marked)) {
         marked.scrollIntoView({ block: "center" });
         return;
       }
@@ -158,7 +159,7 @@ export class GitDiffFilesComponent {
   /** Whether a line of an open file's diff is the one a reveal marked. */
   protected isMarked(path: string, index: number): boolean {
     const marked: readonly [string, number] | null = this.marked();
-    return marked !== null && marked[0] === path && marked[1] === index;
+    return !Object.isNull(marked) && marked[0] === path && marked[1] === index;
   }
 
   /** The row of a file's diff lines that shows a line of the file as the diff leaves it, counting each hunk's header row as the lines do; -1 when none does. */

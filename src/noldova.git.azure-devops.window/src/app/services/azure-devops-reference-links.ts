@@ -85,7 +85,7 @@ export class AzureDevOpsReferenceLinks {
   }
 
   public static isVisualStudio(remote: GitRemote): boolean {
-    return remote.host !== null && remote.host.endsWith(Resources.visualStudioSuffix);
+    return !Object.isNull(remote.host) && remote.host.endsWith(Resources.visualStudioSuffix);
   }
 
   private static decode(segment: string | undefined): string | null {

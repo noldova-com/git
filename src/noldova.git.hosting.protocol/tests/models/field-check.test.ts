@@ -63,10 +63,10 @@ describe("FieldCheck", () => {
       assert.doesNotThrow(() => FieldCheck.requireName(value, "repository"));
     for (const value of ["", ".", "..", "a/b", "a b"])
       assert.throws(() => FieldCheck.requireName(value, "repository"), argument("repository", "a name of letters, digits, '.', '_' and '-', other than '.' and '..'"));
-    for (const value of ["octocat", "group/sub/project"])
+    for (const value of ["octocat", "group/sub/project", "fabrikam/Sample%20Project/_git/site", "a/%C3%A9t%c3%a9", "a/.%2ex"])
       assert.doesNotThrow(() => FieldCheck.requirePath(value, "owner"));
-    for (const value of ["", "/a", "a/", "a//b", "a/../b", "./a", "a/."])
-      assert.throws(() => FieldCheck.requirePath(value, "owner"), argument("owner", "names of letters, digits, '.', '_' and '-' joined by '/', none of them '.' or '..'"));
+    for (const value of ["", "/a", "a/", "a//b", "a/../b", "./a", "a/.", "a b", "a/%2e", "%2E%2e/a", "a/.%2E", "a/%2", "a/%zz", "a/%", "a%2F..", "a%5c..", "a/b%2fc"])
+      assert.throws(() => FieldCheck.requirePath(value, "owner"), argument("owner", "names of letters, digits, '.', '_', '-' and percent escapes such as '%20' but not of '/' or '\\' joined by '/', none of them '.' or '..', '%2e' counting as a dot"));
   });
 
   it("requires a full commit hash, a data image avatar and an https address without a user", () => {

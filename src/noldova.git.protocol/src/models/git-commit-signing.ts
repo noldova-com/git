@@ -19,10 +19,7 @@ export class GitCommitSigning {
   public readonly signs: boolean;
   public readonly format: SigningFormat | null;
 
-  public constructor(signs: boolean, format: SigningFormat | null, reader?: JsonReader) {
-    if (format !== null && !Object.values(SigningFormat).includes(format))
-      FieldCheck.fail(Resources.formatField, Resources.signingFormatExpected, reader);
-
+  public constructor(signs: boolean, format: SigningFormat | null) {
     this.signs = signs;
     this.format = format;
   }
@@ -30,7 +27,7 @@ export class GitCommitSigning {
   public static fromJson(value: unknown, path?: string): GitCommitSigning {
     const reader = JsonReader.fromValue(value, path);
     FieldCheck.refuseUnknownFields(reader, GitCommitSigning.FIELDS);
-    return new GitCommitSigning(reader.readBoolean(Resources.signsField), FieldCheck.readNullableMember(reader, Resources.formatField, Object.values(SigningFormat)), reader);
+    return new GitCommitSigning(reader.readBoolean(Resources.signsField), FieldCheck.readNullableMember(reader, Resources.formatField, Object.values(SigningFormat)));
   }
 
   public toJson(): JsonObject {

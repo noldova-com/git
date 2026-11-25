@@ -12,11 +12,12 @@ import { createHash } from "node:crypto";
 import { JsonReader } from "@noldova/context.json";
 import { SecretFailureReason } from "@noldova/desktop.protocol";
 import { FakeAppWindows, FakeModuleLog, FakeModuleSecrets } from "@noldova/desktop.runtime/testing";
-import { HostAccount, HostSignIn, SignInFailure } from "@noldova/git.hosting.protocol";
+import { HostAccount, HostSignIn, type HostWorkItem, SignInFailure, WorkItemQuery } from "@noldova/git.hosting.protocol";
 import { afterEach, describe, it, vi } from "vitest";
 
 import { AzureCredential } from "../../src/models/azure-credential.ts";
 import { AzureApi } from "../../src/services/azure-api.ts";
+import { AzureReads } from "../../src/services/azure-reads.ts";
 import { AzureSignIn } from "../../src/services/azure-sign-in.ts";
 import { EntraFlow } from "../../src/services/entra-flow.ts";
 import { FakeAzure, KeptSecrets, linesOf } from "../fixtures/fake-azure.fixture.ts";
@@ -715,6 +716,20 @@ describe("AzureSignIn with Microsoft", () => {
       grant_type: "refresh_token", refresh_token: "refresh-1" }, "refresh-2"]);
   });
 
+  it("holds a read made while a kept Microsoft sign-in restores until its first renewal, so the read sends the renewed access token", async () => {
+    const rig = new Rig();
+    rig.keepMicrosoft("refresh-1");
+    rig.azure.answer(grant("access-1", "refresh-2"), profile(), new Response(null, { status: 404 }));
+    const reads = new AzureReads(new AzureApi(rig.azure.fetch), rig.signIn, rig.log);
+
+    await rig.signIn.restoreAsync();
+    rig.disposeLater();
+    const read: HostWorkItem | null = await reads.readWorkItemAsync(new WorkItemQuery("git-azure-devops", "fabrikam", 42), signal);
+
+    assert.deepEqual([read, rig.azure.urls(), rig.azure.requests[2]?.header("Authorization")], [null, [tokenUrl, connectionUrl,
+      "https://dev.azure.com/fabrikam/_apis/wit/workitems/42?api-version=7.1"], "Bearer access-1"]);
+  });
+
   it("signs out as Expired, asking to sign in again, when Microsoft refuses the renewal, and forgets the kept sign-in", async () => {
     const rig = new Rig();
     rig.keepMicrosoft("refresh-1");
@@ -774,6 +789,7 @@ describe("AzureSignIn with Microsoft", () => {
     broken.azure.fail(new RangeError("Unexpected."));
 
     await Promise.all([signedOut, disposed, broken].map(t => t.signIn.restoreAsync()));
+    const ready: unknown = await broken.signIn.readyAsync();
     await Promise.all([signedOut, disposed].map(t => t.azure.askedAsync(1)));
     await signedOut.signIn.signOutAsync();
     releaseSignedOut(grant("access-1", "refresh-2"));
@@ -783,6 +799,6 @@ describe("AzureSignIn with Microsoft", () => {
 
     assert.deepEqual([signedOut.states(), signedOut.kept(), signedOut.azure.requests.length], [["SignedIn", "SignedOut"], undefined, 1]);
     assert.deepEqual([disposed.states(), linesOf(disposed.log)], [["SignedIn"], []]);
-    assert.deepEqual(linesOf(broken.log), ["The Azure DevOps sign-in stopped on an unexpected failure: RangeError: Unexpected."]);
+    assert.deepEqual([ready, linesOf(broken.log)], [undefined, ["The Azure DevOps sign-in stopped on an unexpected failure: RangeError: Unexpected."]]);
   });
 });

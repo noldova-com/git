@@ -8,6 +8,7 @@
 
 import { type EffectRef, effect, type EnvironmentProviders, Injector, type Provider, signal, type WritableSignal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { UnansweredCallException } from "@noldova/desktop.protocol/testing";
 import { WindowException, WindowPartTokens } from "@noldova/desktop.window";
@@ -42,17 +43,17 @@ export class GitFixtures {
 
   public static entry(path: string, index: FileState, worktree: FileState, counts: LineCounts | null = new LineCounts(2, 1),
     conflict: ConflictKind | null = null): StatusEntry {
-    return new StatusEntry(path, undefined, null, undefined, conflict === null ? index : FileState.Unmodified, conflict === null ? worktree : FileState.Unmodified, conflict,
-      null, conflict === null && index !== FileState.Unmodified && index !== FileState.Untracked ? counts : null,
-      conflict === null && worktree !== FileState.Unmodified ? counts : null);
+    return new StatusEntry(path, undefined, null, undefined, Object.isNull(conflict) ? index : FileState.Unmodified, Object.isNull(conflict) ? worktree : FileState.Unmodified, conflict,
+      null, Object.isNull(conflict) && index !== FileState.Unmodified && index !== FileState.Untracked ? counts : null,
+      Object.isNull(conflict) && worktree !== FileState.Unmodified ? counts : null);
   }
 
   public static status(entries: readonly StatusEntry[] = [], upstream: StatusUpstream | null = null, options: {
     readonly branch?: string | null; readonly head?: string | null; readonly operation?: GitOperation | null; readonly remote?: GitRemote | null; readonly truncated?: boolean;
     readonly fingerprint?: string; readonly uncheckedLfsFiles?: number; readonly fetchedAt?: string | null;
   } = {}): GitStatus {
-    return new GitStatus(options.branch === undefined ? "main" : options.branch,
-      options.head === undefined ? "0123456789abcdef0123456789abcdef01234567" : options.head, upstream, entries,
+    return new GitStatus(Object.isUndefined(options.branch) ? "main" : options.branch,
+      Object.isUndefined(options.head) ? "0123456789abcdef0123456789abcdef01234567" : options.head, upstream, entries,
       options.truncated ?? false, options.fingerprint ?? "f1", options.operation ?? null, options.remote ?? null,
       options.uncheckedLfsFiles ?? 0, options.fetchedAt ?? null);
   }
@@ -95,9 +96,9 @@ export class GitFixtures {
 
   public static answerFor(answers: Readonly<Record<string, JsonValue | Error | (() => JsonValue | Error)>>, method: string): JsonValue {
     const found: JsonValue | Error | (() => JsonValue | Error) | undefined = answers[method];
-    if (found === undefined)
+    if (Object.isUndefined(found))
       throw new UnansweredCallException(`requestAsync ${method}`);
-    const answer: JsonValue | Error = typeof found === "function" ? found() : found;
+    const answer: JsonValue | Error = Object.isFunction(found) ? found() : found;
     if (answer instanceof Error)
       throw answer;
     return answer;

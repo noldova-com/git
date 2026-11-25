@@ -9,6 +9,7 @@
 import type {} from "@vitest/browser-playwright";
 import { Component } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
@@ -54,7 +55,7 @@ async function openAsync(mode: ThemeMode, signIn: HostSignIn | null,
   AppearanceFixture.apply(DefaultTheme.theme, mode);
   const context = new FakeWindowPartContext();
   const requests = new RequestAnswers(context);
-  if (signIn === null)
+  if (Object.isNull(signIn))
     requests.fail(AzureDevOpsNames.readSignInMethod, new WindowFailure("Not connected."));
   else
     requests.answer(AzureDevOpsNames.readSignInMethod, signIn.toJson());

@@ -40,7 +40,6 @@ describe("GitResetParams", () => {
     assert.throws(() => GitResetParams.fromJson({ folder: "repo", id, mode: "Soft", basedOn: "p" }), { name: "ProtocolFieldException", field: "$.folder" });
     assert.throws(() => GitResetParams.fromJson({ folder: "/home/a/repo", id: "HEAD~1", mode: "Soft", basedOn: "p" }), { name: "ProtocolFieldException", field: "$.id" });
     assert.throws(() => GitResetParams.fromJson({ folder: "/home/a/repo", id, mode: "Hard", basedOn: "p" }), { name: "JsonException", path: "$.mode" });
-    assert.throws(() => new GitResetParams("/home/a/repo", id, "Hard" as ResetMode, "p"), { name: "ProtocolFieldException", field: "mode" });
     assert.throws(() => GitResetParams.fromJson({ folder: "/home/a/repo", id, mode: "Soft", basedOn: "" }), { name: "ProtocolFieldException", field: "$.basedOn" });
     assert.throws(() => GitResetParams.fromJson({ folder: "/home/a/repo", id, mode: "Soft", basedOn: "p", more: 1 }), { name: "ProtocolFieldException" });
   });

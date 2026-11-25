@@ -12,4 +12,6 @@ export interface IAzureToken {
   readonly token: AzureCredential | null;
   readonly organization: string | null;
   refusedAsync(token: AzureCredential): Promise<void>;
+  /** Settles once a renewal or check of the token under way ends, so a read sends the token it renews rather than the empty one a kept sign-in starts with. */
+  readyAsync(): Promise<void>;
 }

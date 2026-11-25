@@ -9,6 +9,7 @@
 import { ErrorHandler } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { By } from "@angular/platform-browser";
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { ShikiLineTokenizer } from "@noldova/editor.angular";
 import { ConflictKind, FailureCode, FileState, GitDiff, GitJournal, LineCounts, LineKind, type StatusEntry } from "@noldova/git.protocol";
@@ -126,7 +127,7 @@ describe("GitFileGroupComponent", () => {
     };
     const answerAsync = async (selector: string): Promise<void> => {
       dialog()?.querySelector<HTMLElement>(selector)?.click();
-      await view.untilAsync(() => dialog() === null);
+      await view.untilAsync(() => Object.isNull(dialog()));
       await Promise.all(discards.mock.results.map(t => t.value));
       await view.fixture.whenStable();
     };
@@ -136,7 +137,7 @@ describe("GitFileGroupComponent", () => {
     await answerAsync(".cancel");
     await askAsync("e.png");
     await userEvent.keyboard("{Escape}");
-    await view.untilAsync(() => dialog() === null);
+    await view.untilAsync(() => Object.isNull(dialog()));
     const tracked: string = await askAsync("docs/c.md");
     await answerAsync(".discard");
 
@@ -156,7 +157,7 @@ describe("GitFileGroupComponent", () => {
       await view.untilAsync(() => (document.querySelector("nol-git-discard-dialog .text")?.textContent ?? "") !== "");
       const text: string = document.querySelector("nol-git-discard-dialog .text")?.textContent ?? "";
       document.querySelector<HTMLElement>("nol-git-discard-dialog .cancel")?.click();
-      await view.untilAsync(() => document.querySelector("nol-git-discard-dialog") === null);
+      await view.untilAsync(() => Object.isNull(document.querySelector("nol-git-discard-dialog")));
       return text;
     };
 
@@ -213,7 +214,7 @@ describe("GitFileGroupComponent", () => {
       "git.status": () => GitFixtures.status(entries).toJson() });
     const rowOf = (path: string): HTMLElement | undefined => view.all(".file").find(t => t.querySelector(".path")?.textContent === path);
     const pressAsync = async (control: HTMLElement | null | undefined, done: () => boolean): Promise<void> => {
-      if (control === null || control === undefined)
+      if (Object.isNullOrUndefined(control))
         throw new Error("No control.");
       await view.untilAsync(() => !control.matches(":disabled"));
       control.closest<HTMLElement>(".file")?.querySelector<HTMLElement>(".name")?.focus();
@@ -227,7 +228,7 @@ describe("GitFileGroupComponent", () => {
     const afterMore: boolean = document.activeElement === rowOf("e.ts")?.querySelector(".name");
     entries = paths.map(staged);
     await pressAsync(view.find(".move-all"), () => view.texts(".header .title").join() === "Staged");
-    const afterStageAll: boolean = document.activeElement?.closest("nol-git-file-group .header") !== null;
+    const afterStageAll: boolean = !Object.isNull(document.activeElement?.closest("nol-git-file-group .header"));
     entries = [changed("c.ts"), ...paths.slice(1).map(staged)];
     await pressAsync(rowOf("c.ts")?.querySelector(".move"), () => view.texts(".header .title").join() === "Staged,Changes");
     const afterUnstage: boolean = document.activeElement === rowOf("d.ts")?.querySelector(".move");
@@ -284,7 +285,7 @@ describe("GitFileGroupComponent", () => {
     };
 
     row.querySelector<HTMLElement>(".name")?.click();
-    await view.untilAsync(() => action() !== null);
+    await view.untilAsync(() => !Object.isNull(action()));
     const whole: readonly [string | null | undefined, readonly (string | null)[]] = [action()?.textContent, pressed()];
     const diff: DOMRect = row.querySelector(".diff")?.getBoundingClientRect() ?? new DOMRect();
     const hunk: DOMRect = row.querySelector(".hunk")?.getBoundingClientRect() ?? new DOMRect();

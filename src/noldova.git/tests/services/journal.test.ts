@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 
 import { describe, test } from "vitest";
 
+import type { JsonValue } from "@noldova/context.json";
 import { GitRefMove, UndoMode } from "@noldova/git.protocol";
 
 import { RefSnapshot } from "../../src/models/ref-snapshot.ts";
@@ -46,6 +47,23 @@ describe("Journal", () => {
     assert.deepEqual([unread.undo, unread.indexBefore, unread.indexAfter], [UndoMode.None, null, null]);
     assert.deepEqual([later.undo, later.indexBefore], [UndoMode.None, null]);
     assert.deepEqual([other.undo, other.indexBefore], [UndoMode.Refs, null]);
+  });
+
+  test("keeps as many writes as the setting asks, and 50 when it isn't a whole number from 1 to 500", () => {
+    let limit: JsonValue = 10;
+    const journal = new Journal(clock, () => limit);
+    const write = (): void => void journal.record("/r/.git", "git.commit", UndoMode.Refs, snapshot("main", a, {}), snapshot("main", b, {}));
+
+    for (let i = 0; i < 12; i++)
+      write();
+    assert.equal(journal.read("/r/.git").entries.length, 10);
+    assert.equal(journal.read("/r/.git").entries[0]?.id, "3");
+    for (const value of [0, -1, 501, 10.5, "20", null]) {
+      limit = value;
+      assert.equal(Journal.limitOf(limit), 50);
+    }
+    assert.equal(Journal.limitOf(500), 500);
+    assert.equal(Journal.limitOf(1), 1);
   });
 
   test("keeps each repository's last 50 writes apart, finds one by its id, and takes an undone one out", () => {

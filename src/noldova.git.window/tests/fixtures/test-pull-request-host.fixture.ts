@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { HostReference } from "@noldova/git.hosting.protocol";
 
 import type { IGitPullRequestHost } from "../../src/app/interfaces/i-git-pull-request-host.ts";
@@ -35,7 +36,7 @@ export class TestPullRequestHost implements IGitPullRequestHost {
 
   public async localFolderAsync(pullRequestUrl: string): Promise<string | null> {
     this.asked.push(pullRequestUrl);
-    if (this.failure !== null)
+    if (!Object.isNull(this.failure))
       throw this.failure;
     return this.folder;
   }

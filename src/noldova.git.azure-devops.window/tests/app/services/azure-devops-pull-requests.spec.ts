@@ -7,6 +7,7 @@
  */
 
 import type { Signal } from "@angular/core";
+import "@noldova/context.core";
 import { FailureCode } from "@noldova/desktop.protocol";
 import { RuntimeRequestException } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
@@ -205,7 +206,7 @@ const checks: readonly HostCheck[] = [new HostCheck("site-ci", CheckState.Succee
 function pullRequestOf(state: ReferenceState, decision: ReviewDecision = ReviewDecision.Waiting, approvals: number | null = 2): BranchPullRequest {
   const isOpen: boolean = state === ReferenceState.Open || state === ReferenceState.Draft;
   return new BranchPullRequest(new HostItem(new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752), ReferenceKind.PullRequest, state,
-    "Export notes as Markdown files", URL, null, 1_800_000_000_000, isOpen ? null : 1_800_000_100_000, 0, new HostChanges(null, null, null, "export-notes", "main", HEAD)),
+    "Export notes as Markdown files", URL, null, 1_800_000_000_000, isOpen ? null : 1_800_000_100_000, 0, HostChanges.uncounted("export-notes", "main", HEAD)),
   checks, decision, approvals);
 }
 
@@ -432,13 +433,13 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
     const before = comments();
 
     await Wait.until(() => {
-      if (comments() === null)
+      if (Object.isNull(comments()))
         throw new Error("The comments aren't read yet.");
     });
     const again = host.pullRequests.commentsFor(FOLDER, remote, COMMENTED);
     const otherCommit = host.pullRequests.commentsFor(FOLDER, remote, UNCOMMENTED);
     await Wait.until(() => {
-      if (otherCommit() === null)
+      if (Object.isNull(otherCommit()))
         throw new Error("The other commit's comments aren't read yet.");
     });
 
@@ -463,7 +464,7 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
       });
       const retried = host.pullRequests.commentsFor(FOLDER, remote, COMMENTED);
       await Wait.until(() => {
-        if (retried() === null)
+        if (Object.isNull(retried()))
           throw new Error("The comments aren't read again yet.");
       });
       const hostless = host.pullRequests.commentsFor(FOLDER, new GitRemote("origin", null, null, RemoteTransport.Https), COMMENTED)();
@@ -488,13 +489,13 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
     const before = stacks();
 
     await Wait.until(() => {
-      if (stacks() === null)
+      if (Object.isNull(stacks()))
         throw new Error("The heads aren't read yet.");
     });
     const again = host.pullRequests.stackListFor(FOLDER, remote);
     const otherList = host.pullRequests.stackListFor(FOLDER, other);
     await Wait.until(() => {
-      if (otherList() === null)
+      if (Object.isNull(otherList()))
         throw new Error("The other remote's heads aren't read yet.");
     });
 
@@ -521,7 +522,7 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
       });
       const retried = host.pullRequests.stackListFor(FOLDER, remote);
       await Wait.until(() => {
-        if (retried() === null)
+        if (Object.isNull(retried()))
           throw new Error("The heads aren't read again yet.");
       });
       const hostless = host.pullRequests.stackListFor(FOLDER, new GitRemote("origin", null, null, RemoteTransport.Https))();
@@ -534,6 +535,37 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
       expect(host.context.callsOf("log").map(t => String(t[0]))).toEqual([
         "The Azure DevOps module's git-azure-devops.readPullRequestHeads request failed: RuntimeRequestException: Azure DevOps refused the request (503)."]);
     });
+
+  it("reads a repository whose project's name has a space with each query, from a remote that gives it decoded or encoded", async () => {
+    const host = new Host();
+    const spaced = new GitRemote("origin", "dev.azure.com", "fabrikam/Sample Project/_git/site", RemoteTransport.Https);
+    const escaped = new GitRemote("origin", "ssh.dev.azure.com", "v3/fabrikam/Sample%20Project/site", RemoteTransport.Ssh);
+    const path: string = "fabrikam/Sample%20Project/_git/site";
+    host.requests.answer(AzureDevOpsNames.readSignInMethod, signedIn);
+    host.requests.answer(AzureDevOpsNames.readPullRequestsMethod, new HostPullRequestList([], false).toJson());
+    host.requests.answer(AzureDevOpsNames.readBranchPullRequestMethod, new BranchPullRequest(null, []).toJson());
+    host.requests.answer(AzureDevOpsNames.readPullRequestHeadsMethod, HostPullRequestHeads.signedOut().toJson());
+    host.requests.answer(AzureDevOpsNames.readCommitPullRequestMethod, new BranchPullRequest(null, []).toJson());
+    host.requests.answer(AzureDevOpsNames.readCommitCommentsMethod, HostCommitComments.none().toJson());
+    host.requests.answer(AzureDevOpsNames.readReviewRequestsMethod, new HostReviewRequestList([], false).toJson());
+
+    host.pullRequests.refresh(FOLDER, spaced);
+    host.pullRequests.refreshBranch(FOLDER, spaced, "export-notes", HEAD);
+    host.pullRequests.stackListFor(FOLDER, spaced);
+    host.pullRequests.commitFor(FOLDER, spaced, HEAD);
+    host.pullRequests.commentsFor(FOLDER, escaped, COMMENTED);
+    host.pullRequests.refreshReviews(escaped);
+    await Wait.until(() => {
+      if (host.requests.methods.length < 7)
+        throw new Error("The queries aren't all asked yet.");
+    });
+
+    expect(host.requests.payloads.filter(t => !Object.isNull(t))).toEqual(expect.arrayContaining([new RepositoryQuery("dev.azure.com", path).toJson(),
+      new BranchQuery("dev.azure.com", path, "export-notes", HEAD).toJson(), new CommitQuery("dev.azure.com", path, HEAD).toJson(),
+      new CommitQuery("ssh.dev.azure.com", "v3/fabrikam/Sample%20Project/site", COMMENTED).toJson(),
+      new RepositoryQuery("ssh.dev.azure.com", "v3/fabrikam/Sample%20Project/site").toJson()]));
+    expect(host.requests.payloads.filter(t => !Object.isNull(t)).length).toBe(6);
+  });
 
   it("reads no branch or commit, and has no answer, for a remote with no host or no path", () => {
     const host = new Host();

@@ -7,6 +7,7 @@
  */
 
 import { Component, computed, DestroyRef, effect, ErrorHandler, inject, Injector, input, type InputSignal, type Signal, signal, untracked, viewChild, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import {
   ConflictKind, ConflictResolution, FileState, type GitConflict, type GitMarkerCheck, type GitOperation, type GitPrediction, type GitStatus, OperationKind, PredictionAction
@@ -16,6 +17,7 @@ import { ButtonComponent, ButtonVariant, ToolbarButtonComponent } from "@noldova
 
 import { GitResolvedBy } from "../../enums/git-resolved-by.ts";
 import { GitConflictDetail } from "../../models/git-conflict-detail.ts";
+import { GitFirstConflictsRead } from "../../models/git-first-conflicts-read.ts";
 import { GitOperationName } from "../../models/git-operation-name.ts";
 import { Resources } from "../../../resources.ts";
 import { GitCodeColors } from "../../services/git-code-colors.ts";
@@ -65,21 +67,21 @@ export class GitConflictsComponent {
   protected readonly state: GitViewStateService = inject(GitViewStateService);
   /** The status, while the Git panel follows this document's folder; writes go to the panel's folder, so another folder's screen offers none. */
   protected readonly status: Signal<GitStatus | null> = computed(() => this.state.folder() === this.instance() ? this.state.status() : null);
-  protected readonly conflicted: Signal<readonly string[]> = computed(() => this.status()?.entries.filter(t => t.conflict !== null).map(t => t.path) ?? []);
+  protected readonly conflicted: Signal<readonly string[]> = computed(() => this.status()?.entries.filter(t => !Object.isNull(t.conflict)).map(t => t.path) ?? []);
   /** The files out of conflict that the operation conflicted on, each with how this screen resolved it, or no note when it was resolved elsewhere. */
   protected readonly resolved: Signal<readonly (readonly [string, string])[]> = computed(() => {
     const conflicted: ReadonlySet<string> = new Set(this.conflicted());
     const recorded: ReadonlyMap<string, GitResolvedBy> = GitResolving.resolutionsOf(this.instance());
     return [...new Set([...this.firstConflicts(), ...recorded.keys()])].filter(path => !conflicted.has(path)).map(path => {
       const by: GitResolvedBy | undefined = recorded.get(path);
-      return [path, by === undefined ? "" : Resources.resolutionNotes[by]];
+      return [path, Object.isUndefined(by) ? "" : Resources.resolutionNotes[by]];
     });
   });
   protected readonly selected: WritableSignal<string | null> = signal<string | null>(null);
   /** The file the screen shows: the one picked while it is still conflicted, else the first conflicted file. */
   protected readonly current: Signal<string | null> = computed(() => {
     const picked: string | null = this.selected() ?? GitResolving.pathOf(this.instance());
-    return picked !== null && this.conflicted().includes(picked) ? picked : this.conflicted()[0] ?? null;
+    return !Object.isNull(picked) && this.conflicted().includes(picked) ? picked : this.conflicted()[0] ?? null;
   });
   protected readonly conflict: WritableSignal<GitConflict | null> = signal<GitConflict | null>(null);
   protected readonly readFailure: WritableSignal<string | null> = signal<string | null>(null);
@@ -88,7 +90,7 @@ export class GitConflictsComponent {
   /** Whether the open file is text on both sides, which the merge editor resolves line by line. */
   protected readonly merges: Signal<boolean> = computed(() => {
     const conflict: GitConflict | null = this.conflict();
-    return conflict !== null && conflict.ours !== null && conflict.theirs !== null;
+    return !Object.isNull(conflict) && !Object.isNull(conflict.ours) && !Object.isNull(conflict.theirs);
   });
   /** The merge editor's open conflicts, or `null` while its markers don't parse. */
   protected readonly unresolved: WritableSignal<number | null> = signal<number | null>(null);
@@ -106,18 +108,18 @@ export class GitConflictsComponent {
   protected readonly fileProgress: Signal<string> = computed(() => {
     const unresolved: number | null = this.unresolved();
     const count: number = this.conflictCount();
-    return unresolved === null || count === 0 ? "" : Resources.formatConflictProgress(count - unresolved, count);
+    return Object.isNull(unresolved) || count === 0 ? "" : Resources.formatConflictProgress(count - unresolved, count);
   });
   private readonly editor: Signal<MergeEditorComponent | undefined> = viewChild(MergeEditorComponent);
   /** Whether the merge editor couldn't read the open file's conflict markers, so it shows no panes and none of their heads. */
-  protected readonly markersUnreadable: Signal<boolean> = computed(() => this.editor()?.result() === null);
+  protected readonly markersUnreadable: Signal<boolean> = computed(() => Object.isNull(this.editor()?.result()));
   /** The merge editor's active conflict, with its base and its lines in the result, or `null` while none is. */
   private readonly activeConflict: Signal<ActiveConflict | null> = computed(() => this.editor()?.activeConflict() ?? null);
   /** The files out of conflict that still have a conflict marker line, or `null` until the check answers or after it fails. */
   private readonly leftoverMarkers: WritableSignal<readonly string[] | null> = signal<readonly string[] | null>(null);
   private readonly markerFailure: WritableSignal<string | null> = signal<string | null>(null);
   /** What the Conflict view shows of this document while it is in front: the open file's active conflict and the check before the commit; `null` with no file open. */
-  private readonly detail: Signal<GitConflictDetail | null> = computed(() => this.current() === null ? null
+  private readonly detail: Signal<GitConflictDetail | null> = computed(() => Object.isNull(this.current()) ? null
     : new GitConflictDetail(this.activeConflict(), this.tokenizer(), this.leftoverMarkers(), this.markerFailure()));
   /** Whether Merged cleanly lists every file, rather than its first few and how many more. */
   protected readonly showsAllClean: WritableSignal<boolean> = signal(false);
@@ -135,7 +137,7 @@ export class GitConflictsComponent {
     });
     effect(() => {
       const status: GitStatus | null = this.status();
-      if (status !== null && status.operation === null)
+      if (!Object.isNull(status) && Object.isNull(status.operation))
         untracked(() => GitResolving.forget(this.instance()));
     });
     effect(() => {
@@ -145,7 +147,7 @@ export class GitConflictsComponent {
     effect(() => {
       const status: GitStatus | null = this.status();
       const conflicted: ReadonlySet<string> = new Set(this.conflicted());
-      if (status?.operation != null)
+      if (!Object.isNullOrUndefined(status?.operation))
         untracked(() => void this.checkMarkersAsync(conflicted));
     });
     const active: Signal<boolean> = inject(WindowPartTokens.activeDocument);
@@ -157,7 +159,7 @@ export class GitConflictsComponent {
   /** The staged files that merged without a conflict and weren't resolved here. */
   protected cleanOf(status: GitStatus): readonly string[] {
     const resolved: ReadonlySet<string> = new Set(this.resolved().map(([path]) => path));
-    return status.entries.filter(t => t.conflict === null && t.index !== FileState.Unmodified && t.index !== FileState.Untracked && !resolved.has(t.path))
+    return status.entries.filter(t => Object.isNull(t.conflict) && t.index !== FileState.Unmodified && t.index !== FileState.Untracked && !resolved.has(t.path))
       .map(t => t.path);
   }
 
@@ -182,7 +184,7 @@ export class GitConflictsComponent {
 
   /** Shows a conflicted file; on the file it shows, reads it again after a failed read. */
   protected pick(path: string): void {
-    if (path === this.current() && this.readFailure() !== null)
+    if (path === this.current() && !Object.isNull(this.readFailure()))
       void this.readAsync(path);
     this.selected.set(path);
   }
@@ -190,7 +192,7 @@ export class GitConflictsComponent {
   protected resolve(conflict: GitConflict, resolution: ConflictResolution, text: string | null = null): void {
     const by: GitResolvedBy = GitConflictsComponent.resolvedBy(resolution, this.conflictStates());
     void this.state.resolveConflictAsync(conflict.path, resolution, text).then(() => {
-      if (this.state.failure() === null)
+      if (Object.isNull(this.state.failure()))
         GitResolving.record(this.instance(), conflict.path, by);
     }).catch((error: unknown) => this.errors.handleError(error));
   }
@@ -213,7 +215,7 @@ export class GitConflictsComponent {
   private async readAsync(path: string | null): Promise<void> {
     const read: number = ++this.reads;
     this.readFailure.set(null);
-    if (path === null) {
+    if (Object.isNull(path)) {
       this.conflict.set(null);
       return;
     }
@@ -256,15 +258,15 @@ export class GitConflictsComponent {
    * failed read leaves Resolved to the files resolved on this screen.
    */
   private async readFirstConflictsAsync(operation: GitOperation | null): Promise<void> {
-    const action: PredictionAction | undefined = operation === null ? undefined : GitConflictsComponent.PREDICTIONS[operation.kind];
+    const action: PredictionAction | undefined = Object.isNull(operation) ? undefined : GitConflictsComponent.PREDICTIONS[operation.kind];
     const from: string = operation?.from ?? "";
-    const read: { readonly action: PredictionAction; readonly key: string } | null =
-      action !== undefined && Resources.objectIdPattern.test(from) ? { action, key: `${action} ${from}` } : null;
+    const read: GitFirstConflictsRead | null =
+      !Object.isUndefined(action) && Resources.objectIdPattern.test(from) ? new GitFirstConflictsRead(action, `${action} ${from}`) : null;
     if ((read?.key ?? null) === this.firstConflictsKey)
       return;
     this.firstConflictsKey = read?.key ?? null;
     this.firstConflicts.set([]);
-    if (read === null)
+    if (Object.isNull(read))
       return;
     try {
       const prediction: GitPrediction = await this.client.predictAsync(this.instance(), from, read.action);
@@ -277,6 +279,6 @@ export class GitConflictsComponent {
   }
 
   private static lacks(conflict: GitConflict | null, kinds: ReadonlySet<ConflictKind>): boolean {
-    return conflict === null || kinds.has(conflict.kind);
+    return Object.isNull(conflict) || kinds.has(conflict.kind);
   }
 }

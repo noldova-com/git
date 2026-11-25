@@ -7,6 +7,7 @@
  */
 
 import { Component, computed, inject, input, type InputSignal, type Signal } from "@angular/core";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 
 import type { GitWorkspaceAcross } from "../../models/git-workspace-across.ts";
@@ -31,7 +32,7 @@ export class GitWorkspaceAcrossViewComponent {
    */
   protected readonly shown: Signal<readonly GitWorkspaceAcross[]> = computed(() => {
     const across: GitWorkspaceAcross | null = this.across();
-    return across === null ? [] : [across];
+    return Object.isNull(across) ? [] : [across];
   });
 
   /** The view's one instance, which its tab opened with. */

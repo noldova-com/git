@@ -6,6 +6,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
+
 import type { GitPullRequestState } from "../enums/git-pull-request-state.ts";
 import { GitPullRequestsState } from "../enums/git-pull-requests-state.ts";
 import type { GitPullRequestRow } from "./git-pull-request-row.ts";
@@ -47,7 +49,7 @@ export class GitBranchPullRequest {
 
   /** A read that runs, keeping what the last one gave, if any, until it ends. */
   public static reading(last: GitBranchPullRequest | null = null): GitBranchPullRequest {
-    return last === null ? new GitBranchPullRequest(GitPullRequestsState.Reading, null, null, false, [0, 0, 0], null)
+    return Object.isNull(last) ? new GitBranchPullRequest(GitPullRequestsState.Reading, null, null, false, [0, 0, 0], null)
       : new GitBranchPullRequest(GitPullRequestsState.Reading, last.pullRequest, last.pullRequestState, last.isWaitingForReview, [last.passed, last.failing, last.pending], null,
         last.stateLabel);
   }

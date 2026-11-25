@@ -20,8 +20,12 @@ import { BranchPullRequest, type BranchQuery, CheckState, type CommitQuery, File
 import type { IAzureToken } from "../interfaces/i-azure-token.ts";
 import type { AzureCredential } from "../models/azure-credential.ts";
 import { AzureRepository } from "../models/azure-repository.ts";
+import { ChangeCounts } from "../models/change-counts.ts";
 import { FoundPerson } from "../models/found-person.ts";
+import { KnownReviewer } from "../models/known-reviewer.ts";
+import { LineCounts } from "../models/line-counts.ts";
 import type { PeopleQuery } from "../models/people-query.ts";
+import { WorkItemTypeStates } from "../models/work-item-type-states.ts";
 import { Resources } from "../resources.ts";
 import { AzureApi } from "./azure-api.ts";
 
@@ -29,10 +33,12 @@ export class AzureReads {
   private readonly api: AzureApi;
   private readonly signIn: IAzureToken;
   private readonly log: IModuleLog;
-  private readonly types: Map<string, readonly [HostWorkItemType, ReadonlyMap<string, WorkItemCategory>]> = new Map();
+  /** A shared read runs to its end whatever its first caller's signal does, as other callers wait on it too. */
+  private static readonly unstopped: AbortSignal = new AbortController().signal;
+  private readonly types: Map<string, Promise<WorkItemTypeStates>> = new Map();
   private typesToken: AzureCredential | null = null;
   /** The signed-in person's id in the organization, from its connectionData, with the token it was read with. */
-  private reviewer: readonly [AzureCredential, string] | null = null;
+  private reviewer: KnownReviewer | null = null;
 
   public constructor(api: AzureApi, signIn: IAzureToken, log: IModuleLog) {
     this.api = api;
@@ -54,7 +60,7 @@ export class AzureReads {
       if (pull === null)
         return null;
       const project: string = AzureApi.read(() => pull.readObject(Resources.repositoryField).readObject(Resources.projectField).readString(Resources.idField));
-      const counts: readonly [number, number, number] | null = await this.readCountsAsync(reference, project, token, signal);
+      const counts: ChangeCounts | null = await this.readCountsAsync(reference, project, token, signal);
       return AzureApi.read(() => AzureReads.itemOf(reference.owner, pull, counts));
     });
     return this.signIn.token === token ? item : null;
@@ -209,7 +215,7 @@ export class AzureReads {
    * `fileDiffsBatch` files at a time; null past 5000 files, without a common commit, or when Azure DevOps can't answer in time, which the log says why, though a sign-out still fails.
    */
   private async readCountsAsync(reference: HostReference, project: string, token: AzureCredential, signal: AbortSignal)
-    : Promise<readonly [number, number, number] | null> {
+    : Promise<ChangeCounts | null> {
     try {
       const list: HostPullRequestFiles | null = await this.readFilesAsync(reference, token, signal);
       if (list === null || list.hasMore || list.commonCommit === null || list.sourceCommit === null)
@@ -218,12 +224,13 @@ export class AzureReads {
       const batches: (readonly HostPullRequestFile[])[] = [];
       for (let i = 0; i < files.length; i += Resources.fileDiffsBatch)
         batches.push(files.slice(i, i + Resources.fileDiffsBatch));
-      const lines: readonly (readonly [number, number])[] = await Promise.all(batches.map(batch =>
+      const lines: readonly LineCounts[] = await Promise.all(batches.map(batch =>
         this.readLinesAsync(reference, project, commonCommit, sourceCommit, batch, token, signal)));
-      return [...AzureReads.sumOf(lines), files.length];
+      const sum: LineCounts = AzureReads.sumOf(lines);
+      return new ChangeCounts(sum.added, sum.removed, files.length);
     }
     catch (error) {
-      if (!(error instanceof MethodFailureException && Resources.unknownCountFailures.includes(error.failure.code)))
+      if (!(error instanceof MethodFailureException && Resources.unansweredFailures.includes(error.failure.code)))
         throw error;
       this.log.write(Resources.formatCountsUnknown(reference.number, error.failure.message));
       return null;
@@ -235,7 +242,7 @@ export class AzureReads {
    * and a single file it refuses fails the count.
    */
   private async readLinesAsync(reference: HostReference, project: string, base: string, head: string, files: readonly HostPullRequestFile[], token: AzureCredential,
-    signal: AbortSignal): Promise<readonly [number, number]> {
+    signal: AbortSignal): Promise<LineCounts> {
     try {
       const answer: JsonReader | null = await this.api.postAsync(Resources.formatFileDiffsUrl(reference.owner, project, reference.repository), token, {
         [Resources.baseVersionCommitField]: base, [Resources.targetVersionCommitField]: head, [Resources.fileDiffParamsField]: files.map(AzureReads.fileDiffParamsOf)
@@ -250,14 +257,14 @@ export class AzureReads {
       if (files.length === 1)
         throw error;
       const half: number = Math.ceil(files.length / 2);
-      const halves: readonly (readonly [number, number])[] = await Promise.all([files.slice(0, half), files.slice(half)]
+      const halves: readonly LineCounts[] = await Promise.all([files.slice(0, half), files.slice(half)]
         .map(t => this.readLinesAsync(reference, project, base, head, t, token, signal)));
       return AzureReads.sumOf(halves);
     }
   }
 
-  private static sumOf(lines: readonly (readonly [number, number])[]): readonly [number, number] {
-    return [lines.reduce((sum, t) => sum + t[0], 0), lines.reduce((sum, t) => sum + t[1], 0)];
+  private static sumOf(lines: readonly LineCounts[]): LineCounts {
+    return new LineCounts(lines.reduce((sum, t) => sum + t.added, 0), lines.reduce((sum, t) => sum + t.removed, 0));
   }
 
   /** A file as a file diffs request names it: an added file by its path alone, a deleted one by its original path alone, since the other side has none. */
@@ -271,7 +278,7 @@ export class AzureReads {
   }
 
   /** The lines added and removed across the files' blocks: an added block's lines in the head, a deleted one's in the base, and an edited one's both. */
-  private static linesOf(files: readonly JsonReader[]): readonly [number, number] {
+  private static linesOf(files: readonly JsonReader[]): LineCounts {
     let added: number = 0;
     let removed: number = 0;
     for (const block of files.flatMap(t => t.hasField(Resources.lineDiffBlocksField) ? t.readObjectArray(Resources.lineDiffBlocksField) : [])) {
@@ -281,7 +288,7 @@ export class AzureReads {
       if (change === Resources.deleteBlock || change === Resources.editBlock)
         removed += block.readInteger(Resources.originalLinesCountField);
     }
-    return [added, removed];
+    return new LineCounts(added, removed);
   }
 
   /** The paths of the files that keep the pull request from merging, at most 100; signed out, or for another host, organization or repository id, none. */
@@ -548,26 +555,50 @@ export class AzureReads {
     return AzureApi.read(() => AzureReads.detailOf(organization, answer, project, fields, type));
   }
 
+  /**
+   * The type, read once for each project and account: a read under way is shared, so it runs to its end whatever one caller's signal does, and a read that
+   * fails is dropped so the next caller asks again.
+   */
   private async readTypeAsync(organization: string, project: string, name: string, token: AzureCredential,
-    signal: AbortSignal): Promise<readonly [HostWorkItemType, ReadonlyMap<string, WorkItemCategory>]> {
+    signal: AbortSignal): Promise<WorkItemTypeStates> {
     if (this.typesToken !== token) {
       this.types.clear();
       this.typesToken = token;
     }
     const key: string = Resources.formatWorkItemTypeKey(organization, project, name);
-    const known = this.types.get(key);
-    if (known !== undefined)
-      return known;
-    const answer: JsonReader | null = await this.api.getAsync(Resources.formatWorkItemTypeUrl(organization, project, name), token, signal);
+    let reading = this.types.get(key);
+    if (reading === undefined) {
+      const read = this.readNewTypeAsync(organization, project, name, token);
+      reading = read;
+      this.types.set(key, read);
+      read.catch(() => {
+        if (this.types.get(key) === read)
+          this.types.delete(key);
+      });
+    }
+    const type = await reading;
+    signal.throwIfAborted();
+    return type;
+  }
+
+  private async readNewTypeAsync(organization: string, project: string, name: string,
+    token: AzureCredential): Promise<WorkItemTypeStates> {
+    const answer: JsonReader | null = await this.api.getAsync(Resources.formatWorkItemTypeUrl(organization, project, name), token, AzureReads.unstopped);
     if (answer === null)
       throw AzureApi.failure(FailureCode.Unavailable, Resources.unreadableAnswerMessage);
-    const [read, categories] = AzureApi.read(() => AzureReads.typeOf(answer));
-    const image: string | null = await this.api.getSvgAsync(Resources.formatWorkItemIconUrl(organization, read.icon, read.color), token, signal,
-      reason => this.log.write(Resources.formatIconDropped(read.icon, reason)));
-    const type = [new HostWorkItemType(read.name, read.color, read.icon, image), categories] as const;
-    if (this.typesToken === token)
-      this.types.set(key, type);
-    return type;
+    const { type: read, categories } = AzureApi.read(() => AzureReads.typeOf(answer));
+    const dropped = (reason: string): void => this.log.write(Resources.formatIconDropped(read.icon, reason));
+    let image: string | null;
+    try {
+      image = await this.api.getSvgAsync(Resources.formatWorkItemIconUrl(organization, read.icon, read.color), token, AzureReads.unstopped, dropped);
+    }
+    catch (error) {
+      if (!(error instanceof MethodFailureException && Resources.unansweredFailures.includes(error.failure.code)))
+        throw error;
+      dropped(Resources.iconUnanswered);
+      image = null;
+    }
+    return new WorkItemTypeStates(new HostWorkItemType(read.name, read.color, read.icon, image), categories);
   }
 
   private async readChecksAsync(item: HostItem, pull: JsonReader, token: AzureCredential, signal: AbortSignal): Promise<readonly HostCheck[]> {
@@ -589,13 +620,12 @@ export class AzureReads {
     const ids: readonly number[] = links === null ? [] : AzureApi.read(() => links.readObjectArray(Resources.valueField).map(AzureReads.workItemIdOf));
     if (ids.length === 0)
       return [];
-    const found: JsonReader | null = await this.api.getAsync(Resources.formatWorkItemsUrl(reference.owner, ids), token, signal);
-    const items: readonly JsonReader[] = found === null ? [] : AzureApi.read(() => found.readObjectArray(Resources.valueField));
+    const items: readonly JsonReader[] = await this.readBatchAsync(reference.owner, ids, token, signal);
     const read: HostWorkItemLink[] = [];
     for (const item of items) {
       const fields: JsonReader = AzureApi.read(() => item.readObject(Resources.fieldsField));
       const project: string = AzureApi.read(() => fields.readNonBlankString(Resources.teamProjectField));
-      const [type, categories] = await this.readTypeAsync(reference.owner, project, AzureApi.read(() => fields.readNonBlankString(Resources.workItemTypeField)),
+      const { type, categories } = await this.readTypeAsync(reference.owner, project, AzureApi.read(() => fields.readNonBlankString(Resources.workItemTypeField)),
         token, signal);
       read.push(AzureApi.read(() => {
         const id: number = item.readInteger(Resources.idField);
@@ -645,15 +675,15 @@ export class AzureReads {
   }
 
   private async readReviewerAsync(organization: string, token: AzureCredential, signal: AbortSignal): Promise<string> {
-    const known: readonly [AzureCredential, string] | null = this.reviewer;
-    if (known !== null && known[0] === token)
-      return known[1];
+    const known: KnownReviewer | null = this.reviewer;
+    if (known !== null && known.token === token)
+      return known.id;
     const connection: JsonReader | null = await this.api.getAsync(Resources.formatConnectionDataUrl(organization), token, signal);
     if (connection === null)
       throw AzureApi.failure(FailureCode.Unavailable, Resources.unreadableAnswerMessage);
     const id: string = AzureApi.read(() => connection.readObject(Resources.authenticatedUserField).readNonBlankString(Resources.idField));
     if (this.signIn.token === token)
-      this.reviewer = [token, id];
+      this.reviewer = new KnownReviewer(token, id);
     return id;
   }
 
@@ -663,6 +693,7 @@ export class AzureReads {
   }
 
   private async askAsync<T>(token: AzureCredential, ask: () => Promise<T>, cannotRead: string | null = null): Promise<T> {
+    await this.signIn.readyAsync();
     try {
       return await ask();
     }
@@ -686,7 +717,7 @@ export class AzureReads {
   }
 
   /** The pull request as an item, with the lines it adds and removes and the files it changes when they're given. */
-  private static itemOf(organization: string, pull: JsonReader, counts: readonly [number, number, number] | null = null): HostItem {
+  private static itemOf(organization: string, pull: JsonReader, counts: ChangeCounts | null = null): HostItem {
     const repository: JsonReader = pull.readObject(Resources.repositoryField);
     const number: number = pull.readInteger(Resources.pullRequestIdField);
     const status: string = pull.readString(Resources.statusField);
@@ -695,8 +726,10 @@ export class AzureReads {
     const closedAt: number | null = state === ReferenceState.Merged || state === ReferenceState.Closed ? Date.parse(pull.readString(Resources.closedDateField))
       : null;
     const creator: JsonReader | null = pull.hasField(Resources.createdByField) ? pull.readObject(Resources.createdByField) : null;
-    const changes: HostChanges = new HostChanges(counts?.[0] ?? null, counts?.[1] ?? null, counts?.[2] ?? null, AzureReads.branchOf(pull.readString(Resources.sourceRefNameField)),
-      AzureReads.branchOf(pull.readString(Resources.targetRefNameField)), pull.readObject(Resources.lastMergeSourceCommitField).readString(Resources.commitIdField));
+    const head: string = AzureReads.branchOf(pull.readString(Resources.sourceRefNameField));
+    const base: string = AzureReads.branchOf(pull.readString(Resources.targetRefNameField));
+    const commit: string = pull.readObject(Resources.lastMergeSourceCommitField).readString(Resources.commitIdField);
+    const changes: HostChanges = counts === null ? HostChanges.uncounted(head, base, commit) : new HostChanges(counts.added, counts.removed, counts.files, head, base, commit);
     const url: string = Resources.formatPullRequestPage(organization, repository.readObject(Resources.projectField).readString(Resources.nameField),
       repository.readString(Resources.nameField), number);
     return new HostItem(new HostReference(AzureDevOpsNames.moduleId, organization, repository.readString(Resources.idField), number), ReferenceKind.PullRequest,
@@ -715,7 +748,7 @@ export class AzureReads {
   }
 
   private static detailOf(organization: string, answer: JsonReader, project: string, fields: JsonReader,
-    type: readonly [HostWorkItemType, ReadonlyMap<string, WorkItemCategory>]): HostWorkItemDetail {
+    type: WorkItemTypeStates): HostWorkItemDetail {
     const id: number = answer.readInteger(Resources.idField);
     const relations: readonly JsonReader[] = answer.hasField(Resources.relationsField) ? answer.readObjectArray(Resources.relationsField) : [];
     const urls = (relation: string): readonly string[] => relations.filter(t => t.readString(Resources.relationField) === relation)
@@ -768,15 +801,15 @@ export class AzureReads {
     return Number(id);
   }
 
-  private static typeOf(answer: JsonReader): readonly [HostWorkItemType, ReadonlyMap<string, WorkItemCategory>] {
+  private static typeOf(answer: JsonReader): WorkItemTypeStates {
     const type: HostWorkItemType = new HostWorkItemType(answer.readNonBlankString(Resources.nameField), answer.readString(Resources.colorField),
       answer.readObject(Resources.iconField).readString(Resources.idField));
-    return [type, new Map(answer.readObjectArray(Resources.statesField).map(t => [t.readString(Resources.nameField),
-      t.readOneOf(Resources.categoryField, Resources.workItemCategories)]))];
+    return new WorkItemTypeStates(type, new Map(answer.readObjectArray(Resources.statesField).map(t => [t.readString(Resources.nameField),
+      t.readOneOf(Resources.categoryField, Resources.workItemCategories)])));
   }
 
   private static workItemOf(organization: string, id: number, project: string, fields: JsonReader,
-    [type, categories]: readonly [HostWorkItemType, ReadonlyMap<string, WorkItemCategory>]): HostWorkItem {
+    { type, categories }: WorkItemTypeStates): HostWorkItem {
     const state: string = fields.readNonBlankString(Resources.workItemStateField);
     const text = (field: string): string | null => fields.hasField(field) ? fields.readNonBlankString(field) : null;
     return new HostWorkItem(AzureDevOpsNames.moduleId, organization, project, id, type, fields.readNonBlankString(Resources.workItemTitleField),

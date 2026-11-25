@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { IWindowPartContext } from "@noldova/desktop.window";
 import type { GitRemote } from "@noldova/git.protocol";
 import { GitRepositoryLink, type IGitRepositoryLinks } from "@noldova/git.window";
@@ -27,7 +28,7 @@ export class AzureDevOpsRepositoryLinks implements IGitRepositoryLinks {
 
   public linksFor(remote: GitRemote): readonly GitRepositoryLink[] {
     const place: WorkItemsPlace | null = WorkItemsPlace.ofRemote(remote);
-    if (place === null)
+    if (Object.isNull(place))
       return [];
     const instance: string = Resources.formatWorkItemsInstance(place.organization, place.project, null);
     return [

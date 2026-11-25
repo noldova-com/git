@@ -9,6 +9,7 @@
 import { ErrorHandler, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import { By } from "@angular/platform-browser";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import {
@@ -23,6 +24,7 @@ import { GitFolder } from "../../../../src/app/services/git-folder.ts";
 import { GitLinkReferences } from "../../../../src/app/services/git-link-references.ts";
 import { GitRebaseTarget, GitRebasing } from "../../../../src/app/services/git-rebasing.ts";
 import { GitResolving } from "../../../../src/app/services/git-resolving.ts";
+import { GitRuntimeClient } from "../../../../src/app/services/git-runtime-client.ts";
 import { GitViewOptions } from "../../../../src/app/services/git-view-options.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
@@ -35,6 +37,8 @@ describe("GitRebaseComponent", () => {
   const fix: GitRebaseCommit = new GitRebaseCommit("f".repeat(40), "fixup! Read the log as a stream", a.id);
   const wip: GitRebaseCommit = new GitRebaseCommit("e".repeat(40), "WIP debug logging", null);
   const plan: GitRebasePlan = new GitRebasePlan("feature/graph", onto, base, 4, [a, c, fix, wip], ["feature/minimap"], true);
+  /** The status's branch and commit the plan was read for. */
+  const onPlan = { branch: "feature/graph", head: wip.id } as const;
   const target: GitRebaseTarget = new GitRebaseTarget(onto, "main");
   const clean: GitRebaseStepCheck = new GitRebaseStepCheck(RebaseCheckOutcome.Clean, []);
 
@@ -69,12 +73,12 @@ describe("GitRebaseComponent", () => {
     public static render(answers: Answers, opened: GitRebaseTarget | null = target, held: readonly string[] = []): Screen {
       const context: FakeWindowPartContext = new FakeWindowPartContext();
       const requests: GitHeldRequests = new GitHeldRequests(context, held, {
-        ...GitFixtures.watching, "git.status": GitFixtures.status([], null, { fingerprint: "f1" }).toJson(), ...answers
+        ...GitFixtures.watching, "git.status": GitFixtures.status([], null, { fingerprint: "f1", ...onPlan }).toJson(), ...answers
       });
       const active: WritableSignal<boolean> = signal(true);
       GitFixtures.setUp(context, [{ provide: WindowPartTokens.activeDocument, useValue: active }]);
       onTestFinished(() => GitRebasing.targets.set(new Map()));
-      if (opened !== null)
+      if (!Object.isNull(opened))
         GitRebasing.open(GitFixtures.folder, opened);
       const fixture: ComponentFixture<GitRebaseComponent> = TestBed.createComponent(GitRebaseComponent);
       fixture.componentRef.setInput("instance", GitFixtures.folder);
@@ -104,7 +108,7 @@ describe("GitRebaseComponent", () => {
 
     public find<T extends HTMLElement = HTMLElement>(selector: string): T {
       const [found] = this.all<T>(selector);
-      if (found === undefined)
+      if (Object.isUndefined(found))
         throw new Error(`Nothing matches ${selector}.`);
       return found;
     }
@@ -234,6 +238,18 @@ describe("GitRebaseComponent", () => {
     expect(screen.find(".steps .step.dropped .message").textContent).toBe("WIP debug logging");
     expect(screen.texts(".summary")).toEqual(["4 commits become 2"]);
     expect(screen.texts(".after .node.result")).toEqual(["Draw lanes on a canvas", "Read the log as a stream"]);
+  });
+
+  it("keeps the focus on a row moved with Alt+the arrows once it is drawn in its new place", async () => {
+    const screen: Screen = Screen.render({ "git.rebasePlan": plan.toJson(), "git.rebaseCheck": () => checks(clean, clean, clean, clean) });
+    await screen.readyAsync();
+    const before: readonly string[] = screen.ids();
+
+    screen.key(3, "ArrowUp", { altKey: true });
+    await screen.readyAsync();
+
+    expect(document.activeElement?.closest(".step")?.querySelector(".id")?.textContent).toBe(before[3]);
+    expect(screen.ids()[2]).toBe(before[3]);
   });
 
   it("refuses a first kept row that folds, holding Start, and checks nothing until the rows can run", async () => {
@@ -577,7 +593,7 @@ describe("GitRebaseComponent", () => {
       "git.status": () => (stopped
         ? GitFixtures.status([GitFixtures.entry("lanes.ts", FileState.Unmodified, FileState.Unmodified, null, ConflictKind.BothModified)], null,
           { fingerprint: "f2", operation: new GitOperation(OperationKind.Rebase, "main", null) })
-        : GitFixtures.status([], null, { fingerprint: "f1" })).toJson()
+        : GitFixtures.status([], null, { fingerprint: "f1", ...onPlan })).toJson()
     });
     screen.context.allow("openDocument");
     onTestFinished(() => GitResolving.opened.set(new Map()));
@@ -601,7 +617,7 @@ describe("GitRebaseComponent", () => {
       "git.rebasePlan": plan.toJson(), "git.rebaseCheck": () => checks(clean, clean, new GitRebaseStepCheck(RebaseCheckOutcome.Conflicts, ["lanes.ts"]), clean),
       "git.rebase": () => GitFixtures.failure(FailureCode.Git, null, "Git stopped at an edit."),
       "git.status": () => GitFixtures.status(conflicted ? [GitFixtures.entry("lanes.ts", FileState.Unmodified, FileState.Unmodified, null, ConflictKind.BothModified)] : [],
-        null, { fingerprint: conflicted ? "f3" : "f2", operation }).toJson()
+        null, { fingerprint: conflicted ? "f3" : "f2", operation, ...onPlan }).toJson()
     });
     await screen.readyAsync();
     const button = (): HTMLButtonElement => screen.find<HTMLButtonElement>(".show-conflict");
@@ -640,6 +656,37 @@ describe("GitRebaseComponent", () => {
     expect(select.value()).toBe("Edit");
   });
 
+  it("holds Start and reads the plan again once the branch moves under it, as after a commit, then starts with the new plan's steps", async () => {
+    const later: GitRebaseCommit = new GitRebaseCommit("9".repeat(40), "Commit made after the plan", null);
+    const moved: GitRebasePlan = new GitRebasePlan("feature/graph", onto, base, 4, [a, c, fix, wip, later], ["feature/minimap"], true);
+    let head: string = wip.id;
+    const screen: Screen = Screen.render({
+      "git.rebasePlan": () => (head === wip.id ? plan : moved).toJson(), "git.rebaseCheck": () => (head === wip.id ? checks(clean, clean, clean, clean) : checks(clean, clean, clean, clean, clean)), "git.rebase": null,
+      "git.status": () => GitFixtures.status([], null, { fingerprint: head === wip.id ? "f1" : "f2", branch: "feature/graph", head }).toJson()
+    });
+    await screen.readyAsync();
+    const start = (): HTMLButtonElement => screen.find<HTMLButtonElement>(".start");
+    const before: boolean = start().disabled;
+
+    head = later.id;
+    screen.context.raiseEvent("git.changed", { folder: GitFixtures.folder });
+    await vi.waitUntil(() => screen.requested("git.rebasePlan").length === 2 && !start().disabled, { timeout: 5000 });
+    start().click();
+    await vi.waitUntil(() => screen.requested("git.rebase").length === 1, { timeout: 5000 });
+
+    expect(before).toBe(false);
+    expect(screen.requested("git.rebase")).toEqual([expect.objectContaining({ basedOn: "f2",
+      steps: [a, fix, c, wip, later].map(t => expect.objectContaining({ id: t.id })) })]);
+  });
+
+  it("holds Start while the Git panel's status names another branch or commit than the plan was read for", async () => {
+    const screen: Screen = Screen.render({ "git.rebasePlan": plan.toJson(), "git.rebaseCheck": () => checks(clean, clean, clean, clean),
+      "git.status": GitFixtures.status([], null, { fingerprint: "f1", branch: "main", head: wip.id }).toJson() });
+    await screen.readyAsync();
+
+    expect([screen.requested("git.rebasePlan").length, screen.find<HTMLButtonElement>(".start").disabled]).toEqual([2, true]);
+  });
+
   it("keeps only the plan for the commit the screen rebases onto now", async () => {
     const screen: Screen = Screen.render({ "git.rebaseCheck": () => checks(clean) }, target, ["git.rebasePlan"]);
     const first: (answer: JsonValue | Error) => void = await screen.held.nextAsync("git.rebasePlan");
@@ -653,6 +700,23 @@ describe("GitRebaseComponent", () => {
     await vi.waitUntil(() => screen.ids().length > 0);
 
     expect([screen.ids(), screen.texts(".title")]).toEqual([["ccccccc"], ["Rebase one commit of feature/graph onto develop"]]);
+  });
+
+  it("drops Git's refusal of an older plan read that answers after the screen asked again", async () => {
+    const reads = vi.spyOn(GitRuntimeClient.prototype, "rebasePlanAsync");
+    onTestFinished(() => reads.mockRestore());
+    const screen: Screen = Screen.render({ "git.rebaseCheck": () => checks(clean) }, target, ["git.rebasePlan"]);
+    const first: (answer: JsonValue | Error) => void = await screen.held.nextAsync("git.rebasePlan");
+
+    GitRebasing.open(GitFixtures.folder, new GitRebaseTarget(base, "develop"));
+    const second: (answer: JsonValue | Error) => void = await screen.held.nextAsync("git.rebasePlan");
+    second(new GitRebasePlan("feature/graph", base, base, 0, [c], [], false).toJson());
+    await vi.waitUntil(() => screen.ids().length > 0);
+    first(GitFixtures.failure(FailureCode.Git, null, "The older read failed."));
+    await Promise.allSettled(reads.mock.results.flatMap(t => t.type === "return" ? [t.value] : []));
+    await screen.fixture.whenStable();
+
+    expect([screen.ids(), screen.element.textContent?.includes("The older read failed.")]).toEqual([["ccccccc"], false]);
   });
 
   it("reports a plan that fails other than by Git's refusal", async () => {
@@ -726,7 +790,7 @@ describe("GitRebaseComponent", () => {
       screen.find(".title-row").lastElementChild?.classList.contains("title") === true];
     GitViewOptions.showsAiFeatures.set(true);
     onTestFinished(() => GitViewOptions.showsAiFeatures.set(false));
-    await vi.waitUntil(() => screen.element.querySelector(".tidy-up") !== null);
+    await vi.waitUntil(() => !Object.isNull(screen.element.querySelector(".tidy-up")));
     const tidy: HTMLButtonElement = screen.find<HTMLButtonElement>(".tidy-up");
 
     expect([off, tidy.disabled, tidy.title, screen.find(".title-row").lastElementChild === tidy]).toEqual([[0, true], true, "Not built yet", true]);

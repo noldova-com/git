@@ -9,6 +9,7 @@
 import { NgTemplateOutlet } from "@angular/common";
 import { Component, computed, DestroyRef, effect, ElementRef, ErrorHandler, inject, input, type InputSignal, output, type OutputEmitterRef, type Signal, signal,
   untracked, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import type { DiffFile, GitDiff } from "@noldova/git.protocol";
 import { DialogService, FileBadgeComponent, IconButtonComponent, TooltipDirective } from "@noldova/ui.components.angular";
 
@@ -66,8 +67,8 @@ export class GitFileGroupComponent {
     const diffs: ReadonlyMap<string, readonly GitDiffRow[]> = this.diffs();
     const codes: Map<string, readonly (readonly GitCodeSpan[])[]> = new Map<string, readonly (readonly GitCodeSpan[])[]>();
     for (const item of this.items()) {
-      const rows: readonly GitDiffRow[] | undefined = item.row === null ? undefined : diffs.get(item.row.key);
-      if (item.row !== null && rows !== undefined && open.has(item.row.key))
+      const rows: readonly GitDiffRow[] | undefined = Object.isNull(item.row) ? undefined : diffs.get(item.row.key);
+      if (!Object.isNull(item.row) && !Object.isUndefined(rows) && open.has(item.row.key))
         codes.set(item.row.key, GitCodeSpan.rowsOf(rows, this.colors.tokenizerOf(item.row.path)));
     }
     return codes;

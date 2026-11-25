@@ -8,6 +8,7 @@
 
 import { signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitRebaseCheck, GitRebaseCommit, GitRebasePlan, GitRebaseStepCheck, RebaseCheckOutcome } from "@noldova/git.protocol";
@@ -107,7 +108,7 @@ describe("GitRebaseComponent in the kit's look", () => {
     element.style.height = height;
     viewElement.style.width = viewWidth;
     viewElement.style.height = height;
-    await untilAsync(viewElement, () => viewElement.querySelector(".after .onto-dot") !== null);
+    await untilAsync(viewElement, () => !Object.isNull(viewElement.querySelector(".after .onto-dot")));
     await fixture.whenStable();
     return { fixture, document: element, view: viewElement };
   }

@@ -8,6 +8,7 @@
 
 import { Component, computed, inject, input, type InputSignal, type Signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import "@noldova/context.core";
 import type { GitCommitSigning, GitOperation, GitStatus } from "@noldova/git.protocol";
 import { ButtonComponent, ButtonVariant, TextFieldComponent } from "@noldova/ui.components.angular";
 
@@ -31,20 +32,20 @@ export class GitCommitCardComponent {
   /** Whether the last commit can be amended: there is one, nothing is in progress, and it isn't on the upstream yet. */
   protected readonly canAmend: Signal<boolean> = computed(() => {
     const status: GitStatus = this.status();
-    return status.head !== null && status.operation === null && !(status.upstream !== null && !status.upstream.gone && status.upstream.ahead === 0);
+    return !Object.isNull(status.head) && Object.isNull(status.operation) && !(!Object.isNull(status.upstream) && !status.upstream.gone && status.upstream.ahead === 0);
   });
   protected readonly amendTitle: Signal<string> = computed(() => this.canAmend() || this.state.amending() ? Resources.amendTitle : Resources.amendPushedTitle);
   protected readonly label: Signal<string> = computed(() => {
     const operation: GitOperation | null = this.status().operation;
     if (this.state.amending())
       return Resources.amendCommitLabel;
-    if (operation !== null)
+    if (!Object.isNull(operation))
       return Resources.commitOperationLabels[operation.kind];
     return this.state.staged() > 0 ? Resources.formatCommit(this.state.staged()) : Resources.commitLabel;
   });
   protected readonly hint: Signal<string | null> = computed(() => {
     const operation: GitOperation | null = this.status().operation;
-    return operation !== null && this.state.conflicts() > 0 ? Resources.formatConflictHint(this.state.conflicts(), operation.kind) : null;
+    return !Object.isNull(operation) && this.state.conflicts() > 0 ? Resources.formatConflictHint(this.state.conflicts(), operation.kind) : null;
   });
   protected readonly message: Signal<string> = computed(() => {
     const typed: string = this.state.message().trim();
@@ -52,14 +53,14 @@ export class GitCommitCardComponent {
   });
   protected readonly canCommit: Signal<boolean> = computed(() =>
     !this.state.busy() && this.state.conflicts() === 0 && this.message().length > 0
-    && (this.state.amending() ? this.canAmend() : this.state.staged() > 0 || this.status().operation !== null));
+    && (this.state.amending() ? this.canAmend() : this.state.staged() > 0 || !Object.isNull(this.status().operation)));
 
-  protected readonly canPush: Signal<boolean> = computed(() => !this.state.amending() && this.status().operation === null && this.status().upstream !== null);
+  protected readonly canPush: Signal<boolean> = computed(() => !this.state.amending() && Object.isNull(this.status().operation) && !Object.isNull(this.status().upstream));
 
   /** The note that a new commit will be signed, in its format's words; null when git doesn't sign, signs in a format it doesn't know, or it is unread. */
   protected readonly signingNote: Signal<string | null> = computed(() => {
     const signing: GitCommitSigning | null = this.state.commitSigning();
-    return signing?.signs === true && signing.format !== null ? Resources.signingNotes[signing.format] : null;
+    return signing?.signs === true && !Object.isNull(signing.format) ? Resources.signingNotes[signing.format] : null;
   });
 
   public readonly status: InputSignal<GitStatus> = input.required<GitStatus>();

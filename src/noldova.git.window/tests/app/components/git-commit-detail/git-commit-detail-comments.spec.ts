@@ -37,8 +37,8 @@ describe("GitCommitDetailComponent's review comments", () => {
     }));
   };
   const showAsync = async (shown: GitRemote | null): Promise<GitViewFixture> => {
-    onTestFinished(() => GitViewing.commit.set(null));
-    GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commit));
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
     return await GitViewFixture.renderCommitAsync(answersOf(shown), ".detail .files");
   };
   const rowOf = (view: GitViewFixture): readonly string[] => [...view.find(".comments").children].map(t => (t.textContent ?? "").trim());
@@ -92,8 +92,8 @@ describe("GitCommitDetailComponent's review comments", () => {
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync(answersOf(remote), ".empty-view");
     const handled: string[] = [];
     vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.push(String(error)));
-    onTestFinished(() => GitViewing.commit.set(null));
-    GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commit));
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
     await view.waitForAsync(".detail .files");
 
     expect([handled, view.all(".comments").length]).toEqual([["RangeError: read broke"], 0]);

@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { GitCommit, GitGraphCommit } from "@noldova/git.protocol";
 
 import { GitGraphLine } from "../models/git-graph-line.ts";
@@ -36,7 +37,7 @@ export class GitGraphLayout {
       const after: GitLane[] = before.map(([waiting, color, side]) => [waiting === commit.id ? null : waiting, color, side]);
       const current: GitLane | undefined = before[lane];
       let color: number;
-      if (current === undefined) {
+      if (Object.isUndefined(current)) {
         color = newColor();
         after.push([null, color, false]);
       }
@@ -51,12 +52,12 @@ export class GitGraphLayout {
       const moved: Map<number, number> = new Map<number, number>();
       for (const [order, parent] of commit.parents.entries()) {
         const waiting: GitLane | undefined = after.find(t => t[0] === parent);
-        const at: number = waiting === undefined ? -1 : after.indexOf(waiting);
-        if (waiting !== undefined && (order > 0 || at < lane || !waiting[2])) {
+        const at: number = Object.isUndefined(waiting) ? -1 : after.indexOf(waiting);
+        if (!Object.isUndefined(waiting) && (order > 0 || at < lane || !waiting[2])) {
           targets.push([at, order === 0 ? color : waiting[1]]);
           continue;
         }
-        if (waiting !== undefined) {
+        if (!Object.isUndefined(waiting)) {
           after[at] = [null, waiting[1], waiting[2]];
           moved.set(at, lane);
         }
@@ -69,12 +70,12 @@ export class GitGraphLayout {
       for (const [index, [waiting, laneColor]] of before.entries()) {
         if (waiting === commit.id)
           lines.push(new GitGraphLine(index, false, lane, true, laneColor));
-        else if (waiting !== null)
+        else if (!Object.isNull(waiting))
           lines.push(new GitGraphLine(index, false, moved.get(index) ?? index, false, laneColor));
       }
       for (const [target, targetColor] of targets)
         lines.push(new GitGraphLine(lane, true, target, false, targetColor));
-      after.length = after.findLastIndex(t => t[0] !== null) + 1;
+      after.length = after.findLastIndex(t => !Object.isNull(t[0])) + 1;
       rows.push(new GitGraphRow(shown, lane, color, lines, Math.max(before.length, after.length, lane + 1)));
       lanes = after;
     }
@@ -83,7 +84,7 @@ export class GitGraphLayout {
 
   private static freeLane(lanes: readonly GitLane[], taken: number = -1): number {
     for (const [index, [waiting]] of lanes.entries())
-      if (waiting === null && index !== taken)
+      if (Object.isNull(waiting) && index !== taken)
         return index;
     return lanes.length;
   }

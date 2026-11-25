@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import {
   ConflictKind, FileState, GitCommit, GitCommitDetail, GitCommitSigning, GitLog, GitOperation, OperationKind, SigningFormat, StatusUpstream
 } from "@noldova/git.protocol";
@@ -204,7 +205,7 @@ describe("GitCommitCardComponent", () => {
 
   it("notes nothing when the repository doesn't sign, and reads how it signs again with each refresh", async () => {
     const view: GitViewFixture = await GitViewFixture.renderAsync({ ...GitFixtures.watching, "git.status": GitFixtures.status().toJson() });
-    await GitFixtures.untilAsync(() => view.state.commitSigning() !== null);
+    await GitFixtures.untilAsync(() => !Object.isNull(view.state.commitSigning()));
     await view.state.refreshAsync();
     await GitFixtures.untilAsync(() => view.requested("git.commitSigning").length === 2);
     await view.fixture.whenStable();
@@ -216,7 +217,7 @@ describe("GitCommitCardComponent", () => {
     const view: GitViewFixture = await GitViewFixture.renderAsync({
       ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.commitSigning": new GitCommitSigning(true, null).toJson()
     });
-    await GitFixtures.untilAsync(() => view.state.commitSigning() !== null);
+    await GitFixtures.untilAsync(() => !Object.isNull(view.state.commitSigning()));
     await view.fixture.whenStable();
 
     expect(view.all(".signing")).toHaveLength(0);

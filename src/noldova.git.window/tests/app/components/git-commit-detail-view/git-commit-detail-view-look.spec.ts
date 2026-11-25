@@ -60,8 +60,8 @@ describe("GitCommitDetailViewComponent in the kit's look", () => {
   it.each(AppearanceFixture.modes)("lays the chosen commit out at the dock's width with its text on one edge 0.75rem in, nothing cut, beside the panel's status, on the dock's background with none of its own, in %s mode",
     async mode => {
       AppearanceFixture.apply(DefaultTheme.theme, mode);
-      onTestFinished(() => GitViewing.commit.set(null));
-      GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commit));
+      onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+      GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
       const view: GitViewFixture = await GitViewFixture.renderCommitAsync(answers, ".detail .files");
       const host: DOMRect = await dock(view);
       const starts: readonly number[] = [".id-row", ".subject", ".author", ".actions"].map(t => rem(box(view.find(t)).left - host.left));
@@ -76,8 +76,8 @@ describe("GitCommitDetailViewComponent in the kit's look", () => {
 
   it.each(AppearanceFixture.modes)("fits a 30rem column with the chosen commit, with nothing cut, outside it or overlapping, in %s mode", async mode => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
-    onTestFinished(() => GitViewing.commit.set(null));
-    GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commit));
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync(answers, ".detail .files");
     view.element.style.width = "30rem";
     view.element.style.height = "40rem";

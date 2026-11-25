@@ -26,7 +26,7 @@ describe("The hosting protocol's Resources", () => {
     ], [
       "none, since the model doesn't define it", "a text that isn't blank", "an https address with no user name or password", "a whole number above zero",
       "a whole number, zero or more", "a name of letters, digits, '.', '_' and '-', other than '.' and '..'",
-      "names of letters, digits, '.', '_' and '-' joined by '/', none of them '.' or '..'", "a full commit hash, 40 or 64 lowercase hexadecimal digits",
+      "names of letters, digits, '.', '_', '-' and percent escapes such as '%20' but not of '/' or '\\' joined by '/', none of them '.' or '..', '%2e' counting as a dot", "a full commit hash, 40 or 64 lowercase hexadecimal digits",
       "Open, Draft, Merged or Closed, the states of a pull request", "Open, ClosedDone or ClosedNotPlanned, the states of an issue",
       "changes exactly for a pull request", "a pull request", "no checks, since there is no pull request",
       "a review decision exactly for a pull request", "a branch other than the head branch",
@@ -34,7 +34,7 @@ describe("The hosting protocol's Resources", () => {
       "either a device code or an address to open in the browser, exactly while the sign-in waits for the person", "an account exactly while signed in", "null, since only a sign-out has a failure",
       "each capability at most once", "a number from -1 to 1", "a finish time exactly when the build has finished, no earlier than its start",
       "a color of six hexadecimal digits", "a parent other than the work item itself",
-      "all three counts, or none when the host doesn't count them"
+      "zero counts when the host doesn't count them"
     ]);
     assert.equal(Resources.formatMemberExpected(["Queued", "Failed"]), "one of Queued, Failed");
   });
@@ -65,7 +65,8 @@ describe("The hosting protocol's Resources", () => {
 
   it("match a host's names and paths, a full commit hash and a data image avatar", () => {
     assert.deepEqual(["a", "a.b-c_d", ".", "..", "a/b"].map(t => Resources.namePattern.test(t)), [true, true, false, false, false]);
-    assert.deepEqual(["a/b", "a", "a//b", "a/..", "/a"].map(t => Resources.pathPattern.test(t)), [true, true, false, false, false]);
+    assert.deepEqual(["a/b", "a", "a//b", "a/..", "/a", "a/Sample%20Project", "a/%2e%2E", "a/b c"].map(t => Resources.pathPattern.test(t)),
+      [true, true, false, false, false, true, false, false]);
     assert.deepEqual(["a".repeat(40), "a".repeat(64), "a".repeat(50), "A".repeat(40)].map(t => Resources.commitPattern.test(t)), [true, true, false, false]);
     assert.equal(Resources.avatarPattern.exec("data:image/webp;base64,UklG")?.[1], "UklG");
     assert.equal(Resources.avatarPattern.exec("data:image/bmp;base64,UklG"), null);

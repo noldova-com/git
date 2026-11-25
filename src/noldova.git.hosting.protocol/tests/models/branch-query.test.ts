@@ -38,7 +38,7 @@ describe("BranchQuery", () => {
     for (const path of ["..", "../user", "octocat/..", "octocat/./hello-world", "octocat//hello-world", "octocat/hello world"])
       assert.throws(() => new BranchQuery("github.com", path, "fix-bug", null), { name: "HostingArgumentException", parameterName: "path" }, path);
     assert.throws(() => new BranchQuery("github.com", "..", "fix-bug", null),
-      { name: "HostingArgumentException", parameterName: "path", message: "The argument path is invalid: expected names of letters, digits, '.', '_' and '-' joined by '/', none of them '.' or '..'." });
+      { name: "HostingArgumentException", parameterName: "path", message: "The argument path is invalid: expected names of letters, digits, '.', '_', '-' and percent escapes such as '%20' but not of '/' or '\\' joined by '/', none of them '.' or '..', '%2e' counting as a dot." });
     assert.throws(() => BranchQuery.fromJson({ host: "github.com", path: "octocat/..", branch: "fix-bug", headCommit: null }), { name: "HostingFieldException", field: "$.path" });
     assert.equal(new BranchQuery("github.com", "octocat/hello-world.git", "fix-bug", null).path, "octocat/hello-world.git");
   });

@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { GitRemote, GitStatus } from "@noldova/git.protocol";
 
 import { Resources } from "../../resources.ts";
@@ -18,7 +19,7 @@ export class PullRequestClone {
     const page = Resources.pullRequestAddressPattern.exec(url);
     const place: WorkItemsPlace | null = WorkItemsPlace.ofRemote(remote);
     const repository: string | null = PullRequestClone.repositoryOf(remote);
-    if (page === null || place === null || repository === null)
+    if (Object.isNull(page) || Object.isNull(place) || Object.isNull(repository))
       return false;
     return PullRequestClone.isSame(page[1], place.organization) && PullRequestClone.isSame(WorkItemsPlace.decode(page[2]), place.project)
       && PullRequestClone.isSame(WorkItemsPlace.decode(page[3]), repository);
@@ -35,12 +36,12 @@ export class PullRequestClone {
    */
   public static isPullTarget(status: GitStatus, url: string, branch: string): boolean {
     const remote: GitRemote | null = status.remote;
-    return remote !== null && status.branch === branch && status.upstream?.name === Resources.formatRemoteBranch(remote.name, branch)
+    return !Object.isNull(remote) && status.branch === branch && status.upstream?.name === Resources.formatRemoteBranch(remote.name, branch)
       && PullRequestClone.isCloneOf(remote, url);
   }
 
   private static isSame(left: string | null | undefined, right: string): boolean {
-    return left !== null && left !== undefined && left.toLowerCase() === right.toLowerCase();
+    return !Object.isNullOrUndefined(left) && left.toLowerCase() === right.toLowerCase();
   }
 
   private static patternOf(host: string | null): RegExp {

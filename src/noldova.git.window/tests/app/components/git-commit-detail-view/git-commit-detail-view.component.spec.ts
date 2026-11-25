@@ -23,16 +23,16 @@ describe("GitCommitDetailViewComponent", () => {
   };
 
   it("says how to choose a commit, then shows each commit chosen in the folder, and how to choose one again once none is", async () => {
-    onTestFinished(() => GitViewing.commit.set(null));
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync(answers, ".empty-view");
     const empty: readonly string[] = view.texts(".empty-view");
 
-    GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commitOf("c", "Follow renames")));
+    GitViewing.show(new GitCommitView(GitFixtures.folder, commitOf("c", "Follow renames")));
     await view.waitForAsync(".detail .subject");
     const first: readonly string[] = view.texts(".subject");
-    GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commitOf("e", "Keep each path")));
+    GitViewing.show(new GitCommitView(GitFixtures.folder, commitOf("e", "Keep each path")));
     await view.untilAsync(() => view.texts(".subject").includes("Keep each path"));
-    GitViewing.commit.set(null);
+    GitViewing.showChanges(GitFixtures.folder);
     await view.waitForAsync(".empty-view");
 
     expect([empty, first, view.all(".detail").length, view.texts(".empty-view")])

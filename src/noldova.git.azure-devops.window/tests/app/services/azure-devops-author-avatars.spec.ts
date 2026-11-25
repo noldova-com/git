@@ -78,7 +78,7 @@ describe("AzureDevOpsAuthorAvatars", () => {
     avatars.stop();
     context.emitModule("git-azure-devops.signInChanged", HostSignIn.signedOut().toJson());
 
-    expect([reading, avatars.avatarOf("/work/site", "monalisa@fabrikam.com", commit) === undefined, asked().length]).toEqual([undefined, true, 3]);
+    expect([reading, Object.isUndefined(avatars.avatarOf("/work/site", "monalisa@fabrikam.com", commit)), asked().length]).toEqual([undefined, true, 3]);
   });
 
   it("reads a person's picture once per organization and email, whatever its case or spaces, and an author of that email shares it", async () => {

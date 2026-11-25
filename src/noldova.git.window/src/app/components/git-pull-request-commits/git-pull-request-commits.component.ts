@@ -7,6 +7,7 @@
  */
 
 import { Component, effect, inject, input, type InputSignal, output, type OutputEmitterRef, PendingTasks, signal, untracked, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { type HostPullRequestCommit, HostPullRequestCommits, type HostReference } from "@noldova/git.hosting.protocol";
 import { ButtonComponent, ButtonVariant, SpinnerComponent } from "@noldova/ui.components.angular";
@@ -84,7 +85,7 @@ export class GitPullRequestCommitsComponent {
     const folder: string | null = this.folder();
     const url: string = this.host().commitPageOf(this.url(), commit.id);
     try {
-      if (folder === null)
+      if (Object.isNull(folder))
         await this.context.openLinkAsync(url);
       else
         await GitHistorySelection.selectAsync(this.context, folder, commit.id);
@@ -92,7 +93,7 @@ export class GitPullRequestCommitsComponent {
     catch (error) {
       if (!(error instanceof WindowException))
         throw error;
-      this.context.log(folder === null ? Resources.formatHostLinkFailed(this.host().name, url, String(error))
+      this.context.log(Object.isNull(folder) ? Resources.formatHostLinkFailed(this.host().name, url, String(error))
         : Resources.formatHostRequestFailed(this.host().name, Resources.openHistoryCommand, String(error)));
     }
   }

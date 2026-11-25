@@ -13,27 +13,24 @@ import { FieldCheck } from "./field-check.ts";
 
 export class HostChanges {
   private static readonly FIELDS: readonly string[] = [Resources.additionsField, Resources.deletionsField, Resources.changedFilesField,
-    Resources.headBranchField, Resources.baseBranchField, Resources.headCommitField];
+    Resources.headBranchField, Resources.baseBranchField, Resources.headCommitField, Resources.isCountedField];
 
-  public readonly additions: number | null;
-  public readonly deletions: number | null;
-  public readonly changedFiles: number | null;
+  public readonly additions: number;
+  public readonly deletions: number;
+  public readonly changedFiles: number;
   public readonly headBranch: string;
   public readonly baseBranch: string;
   public readonly headCommit: string;
+  /** Whether the host counts the lines and files; when it doesn't, the three counts are zero and show nothing. */
+  public readonly isCounted: boolean;
 
-  public constructor(additions: number | null, deletions: number | null, changedFiles: number | null, headBranch: string, baseBranch: string,
-    headCommit: string, reader?: JsonReader) {
-    const counts: readonly (readonly [number | null, string])[] = [[additions, Resources.additionsField], [deletions, Resources.deletionsField],
-      [changedFiles, Resources.changedFilesField]];
-    for (const [count, field] of counts) {
-      if (count === null) {
-        if (additions !== null || deletions !== null || changedFiles !== null)
-          FieldCheck.fail(field, Resources.countsExpected, reader);
-      }
-      else
-        FieldCheck.requireCount(count, field, reader);
-    }
+  public constructor(additions: number, deletions: number, changedFiles: number, headBranch: string, baseBranch: string, headCommit: string,
+    reader?: JsonReader, isCounted: boolean = true) {
+    FieldCheck.requireCount(additions, Resources.additionsField, reader);
+    FieldCheck.requireCount(deletions, Resources.deletionsField, reader);
+    FieldCheck.requireCount(changedFiles, Resources.changedFilesField, reader);
+    if (!isCounted && additions + deletions + changedFiles > 0)
+      FieldCheck.fail(Resources.isCountedField, Resources.countsExpected, reader);
     FieldCheck.requireText(headBranch, Resources.headBranchField, reader);
     FieldCheck.requireText(baseBranch, Resources.baseBranchField, reader);
     FieldCheck.requireCommit(headCommit, Resources.headCommitField, reader);
@@ -44,21 +41,29 @@ export class HostChanges {
     this.headBranch = headBranch;
     this.baseBranch = baseBranch;
     this.headCommit = headCommit;
+    this.isCounted = isCounted;
+  }
+
+  /** Changes whose host doesn't count the lines and files. */
+  public static uncounted(headBranch: string, baseBranch: string, headCommit: string): HostChanges {
+    return new HostChanges(0, 0, 0, headBranch, baseBranch, headCommit, undefined, false);
   }
 
   public static fromJson(value: unknown, path?: string): HostChanges {
     const reader = JsonReader.fromValue(value, path);
     FieldCheck.refuseUnknownFields(reader, HostChanges.FIELDS);
     return new HostChanges(
-      reader.readNullableInteger(Resources.additionsField),
-      reader.readNullableInteger(Resources.deletionsField),
-      reader.readNullableInteger(Resources.changedFilesField),
+      reader.readInteger(Resources.additionsField),
+      reader.readInteger(Resources.deletionsField),
+      reader.readInteger(Resources.changedFilesField),
       reader.readString(Resources.headBranchField),
       reader.readString(Resources.baseBranchField),
       reader.readString(Resources.headCommitField),
-      reader);
+      reader,
+      reader.hasField(Resources.isCountedField) ? reader.readBoolean(Resources.isCountedField) : true);
   }
 
+  /** The JSON, with `isCounted` only for changes the host doesn't count, so counted changes write the fields they always have. */
   public toJson(): JsonObject {
     return {
       [Resources.additionsField]: this.additions,
@@ -66,7 +71,8 @@ export class HostChanges {
       [Resources.changedFilesField]: this.changedFiles,
       [Resources.headBranchField]: this.headBranch,
       [Resources.baseBranchField]: this.baseBranch,
-      [Resources.headCommitField]: this.headCommit
+      [Resources.headCommitField]: this.headCommit,
+      ...this.isCounted ? {} : { [Resources.isCountedField]: false }
     };
   }
 }

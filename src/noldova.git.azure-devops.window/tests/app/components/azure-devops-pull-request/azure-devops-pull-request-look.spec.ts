@@ -9,6 +9,7 @@
 import type {} from "@vitest/browser-playwright";
 import { Component, input, type InputSignal, signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
@@ -49,7 +50,7 @@ const URL: string = "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/75
 const item: HostItem = new HostItem(new HostReference("git-azure-devops", "fabrikam", "site", 752), ReferenceKind.PullRequest, ReferenceState.Open,
   "Export notes as Markdown from the shared notes list, with a title long enough to run past the header's width so the header cuts it short", URL,
   new HostPerson("monalisa@fabrikam.com", null, null), 1_800_000_000_000, null, 0,
-  new HostChanges(null, null, null, "users/monalisa/7521-export-notes", "main", "0123456789abcdef0123456789abcdef01234567"));
+  HostChanges.uncounted("users/monalisa/7521-export-notes", "main", "0123456789abcdef0123456789abcdef01234567"));
 const pullRequestWith = (reviewers: readonly HostReviewer[]): HostPullRequest => new HostPullRequest(item, reviewers,
   [new HostPolicy("Minimum number of reviewers", PolicyState.Approved, true, null), new HostPolicy("Comment requirements", PolicyState.Rejected, true, null)],
   [new HostBuild("site-ci", CheckState.Succeeded, "https://dev.azure.com/fabrikam/web/_build/results?buildId=7", 1_800_000_000_000, 1_800_000_372_000)],
@@ -139,7 +140,7 @@ describe("AzureDevOpsPullRequestComponent in the kit's look", () => {
       AppearanceFixture.expectPixels(open.left - title.getBoundingClientRect().right, px(0.5));
       AppearanceFixture.expectPixels(tabs.left - page.left, px(0.75));
       AppearanceFixture.expectPixels(page.right - tabs.right, px(0.75));
-      const counted = [...root.querySelectorAll<HTMLElement>(".tab")].filter(t => t.querySelector(".badge") !== null);
+      const counted = [...root.querySelectorAll<HTMLElement>(".tab")].filter(t => !Object.isNull(t.querySelector(".badge")));
       expect(counted.map(t => t.textContent)).toEqual(["Files12", "Updates3", "Commits5"]);
       for (const tab of counted) {
         const box = tab.getBoundingClientRect();
@@ -180,9 +181,9 @@ describe("AzureDevOpsPullRequestComponent in the kit's look", () => {
     const root: HTMLElement = fixture.nativeElement;
     const approve = (): HTMLElement | undefined => [...document.querySelectorAll<HTMLElement>("button[nol-menu-item]")].find(t => t.innerText.trim() === "Approve");
     find(root, ".vote-menu").click();
-    await untilAsync(() => approve() !== undefined);
+    await untilAsync(() => !Object.isUndefined(approve()));
     approve()?.click();
-    await untilAsync(() => root.querySelector(".vote-confirm") !== null);
+    await untilAsync(() => !Object.isNull(root.querySelector(".vote-confirm")));
     const main = boxOf(root, ".main");
     const vote = boxOf(root, ".vote-line");
     const line = boxOf(root, ".vote-confirm");
@@ -264,13 +265,13 @@ describe("AzureDevOpsPullRequestComponent in the kit's look", () => {
     const fixture = await openAsync(mode);
     const root: HTMLElement = fixture.nativeElement;
     find(root, ".add-reviewer").click();
-    await untilAsync(() => root.querySelector("nol-git-azure-devops-add-reviewer input") !== null);
+    await untilAsync(() => !Object.isNull(root.querySelector("nol-git-azure-devops-add-reviewer input")));
     const field = find(root, "nol-git-azure-devops-add-reviewer input");
     if (!(field instanceof HTMLInputElement))
       throw new Error("No search field is shown.");
     field.value = "mon";
     field.dispatchEvent(new Event("input"));
-    await untilAsync(() => root.querySelector("nol-git-azure-devops-add-reviewer .person") !== null);
+    await untilAsync(() => !Object.isNull(root.querySelector("nol-git-azure-devops-add-reviewer .person")));
     const side = boxOf(root, ".detail .list");
     const head = boxOf(root, ".detail .section-head");
     const title = boxOf(root, ".detail .section-head .section-title");
@@ -401,7 +402,7 @@ describe("AzureDevOpsPullRequestComponent in the kit's look", () => {
       expect(name.getBoundingClientRect().right).toBeLessThanOrEqual(boxOf(root, ".detail .list").right);
     });
 
-  it.each(AppearanceFixture.modes)("marks a reviewer's vote at the avatar's corner, ringed in the view's color, in %s mode", async mode => {
+  it.each(AppearanceFixture.modes)("marks a reviewer's vote at the avatar's corner, ringed in the window color the dock draws the view on, in %s mode", async mode => {
     const fixture = await openAsync(mode);
     const root: HTMLElement = fixture.nativeElement;
     const avatar = boxOf(root, ".reviewer nol-avatar");
@@ -412,7 +413,12 @@ describe("AzureDevOpsPullRequestComponent in the kit's look", () => {
     AppearanceFixture.expectPixels(voteBox.right - avatar.right, px(0.25));
     AppearanceFixture.expectPixels(voteBox.bottom - avatar.bottom, px(0.25));
     AppearanceFixture.expectPixels(voteBox.width, px(0.875));
-    expect(style.borderTopColor).toBe(getComputedStyle(find(root, "nol-git-azure-devops-pull-request-detail")).backgroundColor);
+    const backdrop = document.createElement("span");
+    backdrop.style.backgroundColor = "var(--nol-window)";
+    root.append(backdrop);
+    expect([style.borderTopColor, getComputedStyle(find(root, "nol-git-azure-devops-pull-request-detail")).backgroundColor])
+      .toEqual([getComputedStyle(backdrop).backgroundColor, "rgba(0, 0, 0, 0)"]);
+    backdrop.remove();
   });
 
   it.each(AppearanceFixture.modes)("draws reviewers as the board does: 1.5rem avatars, a group's as a groups icon, each vote's badge in its state's color with a white mark, none without a vote, and Required at the row's end, in %s mode",
@@ -439,7 +445,7 @@ describe("AzureDevOpsPullRequestComponent in the kit's look", () => {
       expect(badges.map(t => getComputedStyle(t).backgroundColor))
         .toEqual([colorOf("--nol-status-ok"), colorOf("--nol-warning"), colorOf("--nol-status-failed")]);
       expect(badges.map(t => getComputedStyle(find(t, ".material-symbols-rounded")).color)).toEqual(Array(3).fill("rgb(255, 255, 255)"));
-      expect([rows[3]?.querySelector(".vote") ?? null, group.textContent.trim(), getComputedStyle(group).backgroundColor, rows.map(t => t.querySelector(".required") !== null)])
+      expect([rows[3]?.querySelector(".vote") ?? null, group.textContent.trim(), getComputedStyle(group).backgroundColor, rows.map(t => !Object.isNull(t.querySelector(".required")))])
         .toEqual([null, "groups", colorOf("--nol-avatar-violet"), [true, false, false, false]]);
       for (const avatar of [...rows.slice(0, 3).map(t => find(t, "nol-avatar")), group]) {
         AppearanceFixture.expectPixels(avatar.getBoundingClientRect().width, px(1.5));
@@ -466,7 +472,7 @@ describe("AzureDevOpsPullRequestComponent in the kit's look", () => {
   it.each(AppearanceFixture.modes)("puts a 0.5rem dot before each work item's state, a quarter rem from its text and centred on its line, in %s mode", async mode => {
     const fixture = await openAsync(mode);
     const root: HTMLElement = fixture.nativeElement;
-    await untilAsync(() => root.querySelector(".description strong") !== null);
+    await untilAsync(() => !Object.isNull(root.querySelector(".description strong")));
     const state = find(root, ".work-state");
     const dot = boxOf(root, ".work-state .dot");
     const text = state.lastChild;

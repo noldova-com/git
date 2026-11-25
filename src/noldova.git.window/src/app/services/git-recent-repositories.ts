@@ -7,6 +7,7 @@
  */
 
 import { type Signal, signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 
 import { Resources } from "../../resources.ts";
 import { GitWindowStorage } from "./git-window-storage.ts";
@@ -24,7 +25,7 @@ export class GitRecentRepositories {
 
   /** Reads the list kept in the window's storage again, keeping only its folders. */
   public static restore(): void {
-    GitRecentRepositories.folders.set(GitWindowStorage.readArray(GitRecentRepositories.KEY).filter(t => typeof t === "string"));
+    GitRecentRepositories.folders.set(GitWindowStorage.readArray(GitRecentRepositories.KEY).filter(t => Object.isString(t)));
   }
 
   /** Puts a folder first, and drops the oldest past twenty. */

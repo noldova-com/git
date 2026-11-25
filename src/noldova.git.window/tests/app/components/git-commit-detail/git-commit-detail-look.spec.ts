@@ -57,8 +57,8 @@ describe("GitCommitDetailComponent in the kit's look", () => {
 
   it.each(AppearanceFixture.modes)("sets the message at 1.6 lines, says who authored and committed it on one line, mutes the predictions, and marks a verified signature in the status colour, in %s mode", async mode => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
-    onTestFinished(() => GitViewing.commit.set(null));
-    GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commit));
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
       ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
       "git.commitDetail": new GitCommitDetail("c".repeat(40), body, "Other Person", "other@example.com", "2026-11-21T09:30:00Z", false).toJson(),
@@ -95,8 +95,8 @@ describe("GitCommitDetailComponent in the kit's look", () => {
 
   it.each(AppearanceFixture.modes)("draws no signature line for an unsigned commit, the parents one people gap under the author, in %s mode", async mode => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
-    onTestFinished(() => GitViewing.commit.set(null));
-    GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commit));
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
       ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
       "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson(),
@@ -114,8 +114,8 @@ describe("GitCommitDetailComponent in the kit's look", () => {
 
   it.each(AppearanceFixture.modes)("ends a renamed file's row with its letter and similarity on one line, at the same end as a plain letter, at the dock's width, in %s mode", async mode => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
-    onTestFinished(() => GitViewing.commit.set(null));
-    GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commit));
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
     const renamed: DiffFile = new DiffFile("b.ts", undefined, "a.ts", undefined, FileChange.Renamed, "100644", "100644", false, null, [], false, 92);
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
       ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": new GitDiff([renamed, ...GitFixtures.diff("c.ts", [LineKind.Added, "one"]).files], 0, 0, false).toJson(),
@@ -139,8 +139,8 @@ describe("GitCommitDetailComponent in the kit's look", () => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
     const paths: readonly string[] = ["Sample/src/Services/NoteExports/NoteExportsService.cs", "src/a.ts", "Sample/src/Services/NoteExports/NoteExportsRepository.cs", "README.md", "docs/guide.md"];
     const answers: GitPrediction[] = [new GitPrediction(PredictionOutcome.Conflicts, paths), new GitPrediction(PredictionOutcome.Clean, [])];
-    onTestFinished(() => GitViewing.commit.set(null));
-    GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commit));
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
       ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(),
       "git.diff": new GitDiff([...GitFixtures.diff("docs/notes.md", [LineKind.Added, "one"]).files, ...GitFixtures.diff("src/a.ts", [LineKind.Added, "one"]).files], 0, 0,
@@ -200,8 +200,8 @@ describe("GitCommitDetailComponent in the kit's look", () => {
       claims: () => true, hostName: "GitHub", signInPage: "git-github.account", listFor: () => signal(null), refresh: () => undefined,
       commitFor: () => signal(GitBranchPullRequest.of(row, GitPullRequestState.Merged, false))
     }));
-    onTestFinished(() => GitViewing.commit.set(null));
-    GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commit));
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
       ...GitFixtures.watching, "git.status": GitFixtures.status([], null, { remote: new GitRemote("origin", "github.com", "example-owner/example-repository", RemoteTransport.Https) }).toJson(),
       "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
@@ -241,8 +241,8 @@ describe("GitCommitDetailComponent in the kit's look", () => {
         commitFor: () => signal(GitBranchPullRequest.of(row, GitPullRequestState.Merged, false)),
         commentsFor: () => signal(new GitCommitComments(3, false, "https://example.invalid/pull/212#discussion_r7"))
       }));
-      onTestFinished(() => GitViewing.commit.set(null));
-      GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commit));
+      onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+      GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
       const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
         ...GitFixtures.watching, "git.status": GitFixtures.status([], null, { remote: new GitRemote("origin", "github.com", "example-owner/example-repository", RemoteTransport.Https) }).toJson(),
         "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
@@ -275,8 +275,8 @@ describe("GitCommitDetailComponent in the kit's look", () => {
         claims: () => true, hostName: "GitHub", signInPage: "git-github.account", listFor: () => signal(null), refresh: () => undefined,
         commitFor: () => signal(GitBranchPullRequest.of(row, GitPullRequestState.Merged, false))
       }));
-      onTestFinished(() => GitViewing.commit.set(null));
-      GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commit));
+      onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+      GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
       const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
         ...GitFixtures.watching,
         "git.status": GitFixtures.status([], null, { remote: new GitRemote("origin", "github.com", "example-owner/example-repository", RemoteTransport.Https) }).toJson(),
@@ -300,8 +300,8 @@ describe("GitCommitDetailComponent in the kit's look", () => {
   it.each(AppearanceFixture.modes)("ends the commit's actions with Tag here, a gap apart on each line and nothing after it, while the app leaves AI features off, in %s mode",
     async mode => {
       AppearanceFixture.apply(DefaultTheme.theme, mode);
-      onTestFinished(() => GitViewing.commit.set(null));
-      GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commit));
+      onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+      GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
       const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
         ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff("a.ts", [LineKind.Added, "one"]).toJson(),
         "git.commitDetail": new GitCommitDetail("c".repeat(40), "", "Sample Author", "author@example.com", "2026-11-20T14:02:00Z", false).toJson()

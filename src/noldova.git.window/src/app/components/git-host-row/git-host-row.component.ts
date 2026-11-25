@@ -8,6 +8,7 @@
 
 import { NgComponentOutlet } from "@angular/common";
 import { Component, computed, inject, Injector, input, type InputSignal, type Signal } from "@angular/core";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { type GitRemote, type GitStatus, RemoteTransport } from "@noldova/git.protocol";
 
@@ -29,7 +30,7 @@ export class GitHostRowComponent {
   protected readonly resources: typeof Resources = Resources;
   protected readonly row: Signal<GitHostRowView | null> = computed(() => {
     const provided: IProvidedGitHostRow | null = this.provided();
-    return provided === null ? null : new GitHostRowView(
+    return Object.isNull(provided) ? null : new GitHostRowView(
       provided.row.component,
       Injector.create({ providers: [{ provide: WindowPartTokens.context, useValue: provided.context }], parent: this.injector }));
   });

@@ -7,6 +7,7 @@
  */
 
 import { type Signal, signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, RuntimeRequestException, WindowException } from "@noldova/desktop.window";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { CommitQuery, HostCommitComments, HostPullRequestList, type HostPullRequestRow, type HostReviewRequest, HostReviewRequestList,
@@ -14,6 +15,7 @@ import { CommitQuery, HostCommitComments, HostPullRequestList, type HostPullRequ
 import type { GitRemote } from "@noldova/git.protocol";
 import { GitCommitComments, GitPullRequestList, GitPullRequestRow, type IGitPullRequests } from "@noldova/git.window";
 
+import type { IRemotePlace } from "../interfaces/i-remote-place.ts";
 import { Resources } from "../../resources.ts";
 
 export class GitHubPullRequests implements IGitPullRequests {
@@ -37,7 +39,7 @@ export class GitHubPullRequests implements IGitPullRequests {
   }
 
   public newPullRequestUrl(remote: GitRemote, source: string, target: string): string | null {
-    return remote.path === null ? null : Resources.formatGitHubNewPullRequestAddress(remote.path, source, target);
+    return Object.isNull(remote.path) ? null : Resources.formatGitHubNewPullRequestAddress(remote.path, source, target);
   }
 
   public listFor(_folder: string, remote: GitRemote): Signal<GitPullRequestList | null> {
@@ -45,18 +47,18 @@ export class GitHubPullRequests implements IGitPullRequests {
   }
 
   public refresh(_folder: string, remote: GitRemote): void {
-    if (remote.host !== null && remote.path !== null)
+    if (!Object.isNull(remote.host) && !Object.isNull(remote.path))
       void this.readAsync(new RepositoryQuery(remote.host, remote.path));
   }
 
   public commentsFor(_folder: string, remote: GitRemote, commitId: string): Signal<GitCommitComments | null> {
     const key: string = JSON.stringify([remote.host, remote.path, commitId]);
     const known: WritableSignal<GitCommitComments | null> | undefined = this.comments.get(key);
-    if (known !== undefined)
+    if (!Object.isUndefined(known))
       return known;
     const answer: WritableSignal<GitCommitComments | null> = signal<GitCommitComments | null>(null);
     this.comments.set(key, answer);
-    if (remote.host !== null && remote.path !== null)
+    if (!Object.isNull(remote.host) && !Object.isNull(remote.path))
       void this.readCommentsAsync(new CommitQuery(remote.host, remote.path, commitId), key, answer);
     return answer;
   }
@@ -66,7 +68,7 @@ export class GitHubPullRequests implements IGitPullRequests {
   }
 
   public refreshReviews(remote: GitRemote): void {
-    if (remote.host !== null && remote.path !== null)
+    if (!Object.isNull(remote.host) && !Object.isNull(remote.path))
       void this.readReviewsAsync(new RepositoryQuery(remote.host, remote.path));
   }
 
@@ -112,7 +114,7 @@ export class GitHubPullRequests implements IGitPullRequests {
 
   private static listIn(lists: Map<string, WritableSignal<GitPullRequestList | null>>, key: string): WritableSignal<GitPullRequestList | null> {
     let list = lists.get(key);
-    if (list === undefined) {
+    if (Object.isUndefined(list)) {
       list = signal<GitPullRequestList | null>(null);
       lists.set(key, list);
     }
@@ -149,7 +151,7 @@ export class GitHubPullRequests implements IGitPullRequests {
       row.passed, row.failing, row.pending, row.headBranch, row.baseBranch);
   }
 
-  private static keyOf(remote: { readonly host: string | null; readonly path: string | null }): string {
+  private static keyOf(remote: IRemotePlace): string {
     return Resources.formatRemoteKey(remote.host ?? "", remote.path ?? "");
   }
 }

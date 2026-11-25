@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { GitRemote, GitStatus } from "@noldova/git.protocol";
 
 import { GitFileGroupKind } from "../enums/git-file-group-kind.ts";
@@ -57,7 +58,7 @@ export class GitRepositorySummary {
 
   /** Whether no read of the repository has succeeded yet, so its branch, upstream and changes are unknown. */
   public get isUnread(): boolean {
-    return this.status === null;
+    return Object.isNull(this.status);
   }
 
   public asFetching(): GitRepositorySummary {

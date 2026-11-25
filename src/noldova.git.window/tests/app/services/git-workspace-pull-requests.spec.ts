@@ -7,6 +7,7 @@
  */
 
 import { ErrorHandler, signal, type Signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
@@ -34,7 +35,7 @@ describe("GitWorkspacePullRequests", () => {
   const row: GitPullRequestRow = new GitPullRequestRow("214", "#214", "Draw lanes", "https://github.com/example-owner/site/pull/214", false, 0, 0, 0, 0, "main");
   /** A branch's pull request as text: where the read stands, its pull request's label and state, whether it waits for reviews, and its counts. */
   const textOf = (shown: GitBranchPullRequest | null | undefined): string =>
-    shown === undefined || shown === null ? String(shown)
+    Object.isNullOrUndefined(shown) ? String(shown)
       : `${shown.state} ${shown.pullRequest?.label ?? "-"} ${shown.pullRequestState ?? "-"} ${shown.isWaitingForReview} ${shown.passed}/${shown.failing}/${shown.pending}`;
 
   /** Provides a GitHub host whose members answer from the given parts, and a handler that collects what the service reports. */
@@ -51,7 +52,7 @@ describe("GitWorkspacePullRequests", () => {
   /** The host the test provided, which claims the GitHub remotes. */
   const hostOf = (): IGitPullRequests => {
     const found: IGitPullRequests | null = GitPullRequests.of(remoteOf());
-    if (found === null)
+    if (Object.isNull(found))
       throw new Error("No host claims the remote.");
     return found;
   };

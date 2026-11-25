@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { FileState } from "@noldova/git.protocol";
 import { describe, expect, it } from "vitest";
 
@@ -20,7 +21,7 @@ describe("GitFileTree", () => {
   const rows: readonly GitFileRow[] = ["README.md", "src/app/b.ts", "Docs/c.md", "src/a.ts"]
     .map(t => new GitFileRow(GitFileGroupKind.Changes, GitFixtures.entry(t, FileState.Unmodified, FileState.Modified)));
   const shown = (items: readonly GitFileItem[]): readonly string[] =>
-    items.map(t => `${"  ".repeat(t.depth)}${t.row === null ? `+${t.name} ${t.key}` : `${t.name} ${t.key}`}`);
+    items.map(t => `${"  ".repeat(t.depth)}${Object.isNull(t.row) ? `+${t.name} ${t.key}` : `${t.name} ${t.key}`}`);
 
   it("lists whole paths, each by its row's key", () => {
     expect(shown(GitFileTree.itemsOf(rows, GitFileLayout.List, new Set()))).toEqual(rows.map(t => `${t.path} ${t.key}`));

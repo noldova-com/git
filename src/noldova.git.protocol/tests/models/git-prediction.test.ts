@@ -25,7 +25,6 @@ describe("GitPredictParams", () => {
     assert.throws(() => GitPredictParams.fromJson({ folder: "repo", id, action: "Merge" }), { name: "ProtocolFieldException", field: "$.folder" });
     assert.throws(() => GitPredictParams.fromJson({ folder: "/home/a/repo", id: "main", action: "Merge" }), { name: "ProtocolFieldException", field: "$.id" });
     assert.throws(() => GitPredictParams.fromJson({ folder: "/home/a/repo", id, action: "Rebase" }), { name: "JsonException", path: "$.action" });
-    assert.throws(() => new GitPredictParams("/home/a/repo", id, "Rebase" as PredictionAction), { name: "ProtocolFieldException", field: "action" });
     assert.throws(() => GitPredictParams.fromJson({ folder: "/home/a/repo", id, action: "Merge", more: 1 }), { name: "ProtocolFieldException" });
   });
 });
@@ -42,7 +41,6 @@ describe("GitPrediction", () => {
 
   it("refuses an unknown outcome, paths that don't match the outcome, a path that isn't relative and an unknown field", () => {
     assert.throws(() => GitPrediction.fromJson({ outcome: "Maybe", paths: [] }), { name: "JsonException", path: "$.outcome" });
-    assert.throws(() => new GitPrediction("Maybe" as PredictionOutcome, []), { name: "ProtocolFieldException", field: "outcome" });
     assert.throws(() => GitPrediction.fromJson({ outcome: "Conflicts", paths: [] }), { name: "ProtocolFieldException", field: "$.paths" });
     assert.throws(() => GitPrediction.fromJson({ outcome: "Clean", paths: ["a.txt"] }), { name: "ProtocolFieldException", field: "$.paths" });
     assert.throws(() => GitPrediction.fromJson({ outcome: "Conflicts", paths: ["a.txt", "../b.txt"] }), { name: "ProtocolFieldException", field: "$.paths.1" });

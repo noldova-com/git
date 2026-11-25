@@ -7,6 +7,7 @@
  */
 
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitCommit, GitGraph, GitGraphCommit, GitRef, RefKind } from "@noldova/git.protocol";
 import { DefaultTheme } from "@noldova/ui.components.angular";
@@ -101,7 +102,7 @@ describe("GitHistoryComponent ref chips", () => {
     const fits = (row: Element | undefined): readonly unknown[] => {
       const cell: DOMRect = box(row?.querySelector(".cell") ?? null);
       const [chip, more] = [...row?.querySelectorAll<HTMLElement>(".chip") ?? []];
-      return [rem(box(chip ?? null).width) >= 8 || (chip?.scrollWidth ?? 1) <= (chip?.clientWidth ?? 0), more === undefined || (box(more).right <= cell.right && more.scrollWidth === more.clientWidth)];
+      return [rem(box(chip ?? null).width) >= 8 || (chip?.scrollWidth ?? 1) <= (chip?.clientWidth ?? 0), Object.isUndefined(more) || (box(more).right <= cell.right && more.scrollWidth === more.clientWidth)];
     };
 
     expect(rows.map(chipsOf)).toEqual([

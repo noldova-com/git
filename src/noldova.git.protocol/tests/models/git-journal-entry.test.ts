@@ -45,7 +45,6 @@ describe("GitJournalEntry", () => {
       assert.throws(() => GitJournalEntry.fromJson({ ...valid, ...change }), { name: "ProtocolFieldException", field });
     assert.throws(() => GitJournalEntry.fromJson({ ...valid, undo: "Hard" }), { name: "JsonException", path: "$.undo" });
     assert.throws(() => GitJournalEntry.fromJson({ ...valid, more: 1 }), { name: "ProtocolFieldException" });
-    assert.throws(() => new GitJournalEntry("1", "git.commit", at, null, null, [], "Hard" as UndoMode, null, null), { name: "ProtocolFieldException", field: "undo" });
   });
 
   it("holds trees exactly when the index undoes it, both or neither, each a full id", () => {

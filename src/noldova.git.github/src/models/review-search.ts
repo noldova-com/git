@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import type { ReviewSearchAnswer } from "../types/review-search-answer.ts";
+import type { ReviewSearchAnswer } from "./review-search-answer.ts";
 
 /** One search of the account's review requests: the token it ran with, when it started, and its answer, which callers share while it is held. */
 export class ReviewSearch {

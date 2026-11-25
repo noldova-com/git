@@ -7,6 +7,7 @@
  */
 
 import type { ErrorHandler } from "@angular/core";
+import "@noldova/context.core";
 import { type GitBranches, GitBranchParams, type GitStatus } from "@noldova/git.protocol";
 
 import { Resources } from "../../resources.ts";
@@ -40,7 +41,7 @@ export class GitWorkspaceBulk {
    */
   public pushAsync(targets: readonly GitBulkTarget[]): Promise<GitBulkResult> {
     return this.runAsync(targets, async target => {
-      if (target.upstream === null)
+      if (Object.isNull(target.upstream))
         return Resources.bulkNoUpstream;
       const status: GitStatus = await this.client.statusAsync(target.folder);
       if (status.branch !== target.branch || GitWorkspaceOverview.pushUpstreamOf(status.upstream?.name ?? null, status.remote) !== target.upstream
@@ -87,7 +88,7 @@ export class GitWorkspaceBulk {
     await GitRepositorySummaries.eachAsync(targets, async target => {
       try {
         const reason: string | null = await work(target);
-        if (reason !== null)
+        if (!Object.isNull(reason))
           skipped.set(target, reason);
       }
       catch (error) {
@@ -98,7 +99,7 @@ export class GitWorkspaceBulk {
     });
     const outcomesOf = (reasons: ReadonlyMap<GitBulkTarget, string>): readonly GitBulkOutcome[] => targets.flatMap(t => {
       const reason: string | undefined = reasons.get(t);
-      return reason === undefined ? [] : [new GitBulkOutcome(t.repository, reason)];
+      return Object.isUndefined(reason) ? [] : [new GitBulkOutcome(t.repository, reason)];
     });
     return new GitBulkResult(targets.filter(t => !skipped.has(t) && !failed.has(t)).map(t => t.repository), outcomesOf(skipped), outcomesOf(failed));
   }

@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { describe, expect, it } from "vitest";
 
 import { GitFileLayout } from "../../../src/app/enums/git-file-layout.ts";
@@ -14,7 +15,7 @@ import { GitPathLayout } from "../../../src/app/services/git-path-layout.ts";
 describe("GitPathLayout", () => {
   const paths: readonly string[] = ["README.md", "src/app/b.ts", "Docs/c.md", "src/app/a.ts", "src/main.ts", "src/app/models/m.ts", "deep/one/two/x.ts", "a.ts"];
   const shown = (entries: readonly GitPathEntry<string>[]): readonly string[] =>
-    entries.map(t => `${"  ".repeat(t.depth)}${t.item === null ? `+${t.name} (${t.folder})` : `${t.name} = ${t.item}`}`);
+    entries.map(t => `${"  ".repeat(t.depth)}${Object.isNull(t.item) ? `+${t.name} (${t.folder})` : `${t.name} = ${t.item}`}`);
   const layout = (kind: GitFileLayout, closed: readonly string[] = []): readonly string[] => shown(GitPathLayout.layout(paths, t => t, kind, new Set(closed)));
 
   it("lists whole paths in their order without folders", () => {

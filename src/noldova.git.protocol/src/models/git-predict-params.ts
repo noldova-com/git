@@ -23,8 +23,6 @@ export class GitPredictParams {
   public constructor(folder: string, id: string, action: PredictionAction, reader?: JsonReader) {
     FieldCheck.requireFolder(folder, Resources.folderField, reader);
     FieldCheck.requireObjectId(id, Resources.idField, reader);
-    if (!Object.values(PredictionAction).includes(action))
-      FieldCheck.fail(Resources.actionField, Resources.predictionActionExpected, reader);
 
     this.folder = folder;
     this.id = id;

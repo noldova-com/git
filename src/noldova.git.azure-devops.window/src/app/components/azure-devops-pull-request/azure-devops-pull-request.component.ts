@@ -7,6 +7,7 @@
  */
 
 import { Component, computed, effect, inject, Injector, input, type InputSignal, PendingTasks, type Signal, signal, untracked, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, RuntimeRequestException, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
 import type { JsonValue } from "@noldova/context.json";
@@ -90,7 +91,7 @@ export class AzureDevOpsPullRequestComponent {
   /** The pull request as the Pull request view shows it, with the reviewers as the person's votes have them, while the page shows one. */
   private readonly choice: Signal<PullRequestChoice | null> = computed(() => {
     const pullRequest: HostPullRequest | null = this.pullRequest();
-    return pullRequest === null ? null : new PullRequestChoice(pullRequest, this.reviewersOf(pullRequest), this.readAt(), {
+    return Object.isNull(pullRequest) ? null : new PullRequestChoice(pullRequest, this.reviewersOf(pullRequest), this.readAt(), {
       changed: pull => this.changed(pullRequest.item.reference, pull),
       added: reviewer => this.addReviewer(reviewer)
     });
@@ -125,9 +126,9 @@ export class AzureDevOpsPullRequestComponent {
         this.revealing = null;
         this.pullRequest.set(null);
         this.failure.set(null);
-        this.isMissing.set(reference === null);
-        this.isReading.set(reference !== null);
-        if (reference !== null)
+        this.isMissing.set(Object.isNull(reference));
+        this.isReading.set(!Object.isNull(reference));
+        if (!Object.isNull(reference))
           void this.readAsync(reference, () => isCurrent);
       });
     });
@@ -139,7 +140,7 @@ export class AzureDevOpsPullRequestComponent {
   }
 
   private changed(reference: HostReference, pull: PullAfter | null): void {
-    this.pullAfter = pull === null ? null : { key: JSON.stringify(reference.toJson()), pull };
+    this.pullAfter = Object.isNull(pull) ? null : { key: JSON.stringify(reference.toJson()), pull };
     this.retry();
   }
 
@@ -163,7 +164,7 @@ export class AzureDevOpsPullRequestComponent {
       const folder: string | null = await this.host.localFolderAsync(pullRequest.item.url);
       if (generation !== this.generation)
         return;
-      if (folder === null) {
+      if (Object.isNull(folder)) {
         await this.openThreadAsync(pullRequest, target);
         return;
       }
@@ -179,7 +180,7 @@ export class AzureDevOpsPullRequestComponent {
   /** Shows on Azure DevOps the comment thread whose line the Files tab couldn't show, the only line the page gives the tab. */
   protected unrevealed(pullRequest: HostPullRequest): void {
     const target: ThreadLine | null = this.revealing;
-    if (target !== null)
+    if (!Object.isNull(target))
       void this.openThreadAsync(pullRequest, target);
   }
 
@@ -193,7 +194,7 @@ export class AzureDevOpsPullRequestComponent {
 
   /** The Commits tab's count: the one it read, else the pull request's own, which Azure DevOps leaves out past 100. */
   protected commitBadgeOf(pullRequest: HostPullRequest): string | null {
-    return this.counts().get(PullRequestTab.Commits) ?? (pullRequest.commitCount === null ? null : String(pullRequest.commitCount));
+    return this.counts().get(PullRequestTab.Commits) ?? (Object.isNull(pullRequest.commitCount) ? null : String(pullRequest.commitCount));
   }
 
   protected openedOf(pullRequest: HostPullRequest): string {
@@ -208,10 +209,10 @@ export class AzureDevOpsPullRequestComponent {
 
   protected voteNoteOf(pullRequest: HostPullRequest): string {
     const login: string | null = this.login();
-    if (login === null)
+    if (Object.isNull(login))
       return Resources.votesGoAsYou;
     const own: HostReviewer | undefined = this.reviewersOf(pullRequest).find(t => t.person.login.toLowerCase() === login.toLowerCase());
-    return Resources.formatYourVote(own === undefined || own.vote === 0 ? Resources.ownVoteNone : own.voteLabel);
+    return Resources.formatYourVote(Object.isUndefined(own) || own.vote === 0 ? Resources.ownVoteNone : own.voteLabel);
   }
 
   private addReviewer(reviewer: HostReviewer): void {
@@ -271,7 +272,7 @@ export class AzureDevOpsPullRequestComponent {
 
   protected async openAsync(url: string, gesture?: LinkOpenEvent["gesture"]): Promise<void> {
     try {
-      await this.context.openLinkAsync(url, gesture === undefined ? undefined : { gesture });
+      await this.context.openLinkAsync(url, Object.isUndefined(gesture) ? undefined : { gesture });
     }
     catch (error) {
       if (!(error instanceof WindowException))
@@ -299,13 +300,13 @@ export class AzureDevOpsPullRequestComponent {
     const done = this.tasks.add();
     try {
       const answer = await this.context.requestAsync(AzureDevOpsNames.readPullRequestMethod, reference.toJson());
-      const pullRequest: HostPullRequest | null = answer === null ? null : HostPullRequest.fromJson(answer);
+      const pullRequest: HostPullRequest | null = Object.isNull(answer) ? null : HostPullRequest.fromJson(answer);
       if (isCurrent()) {
         this.readAt.set(Date.now());
         this.pullRequest.set(pullRequest);
-        this.isMissing.set(pullRequest === null);
+        this.isMissing.set(Object.isNull(pullRequest));
         this.pullIfMerged(reference, pullRequest);
-        if (pullRequest !== null)
+        if (!Object.isNull(pullRequest))
           this.readTabsEarly(reference, isCurrent);
       }
     }
@@ -357,7 +358,7 @@ export class AzureDevOpsPullRequestComponent {
 
   private pullIfMerged(reference: HostReference, pullRequest: HostPullRequest | null): void {
     const pending = this.pullAfter;
-    if (pending === null || pending.key !== JSON.stringify(reference.toJson()))
+    if (Object.isNull(pending) || pending.key !== JSON.stringify(reference.toJson()))
       return;
     this.pullAfter = null;
     if (pullRequest?.item.state === ReferenceState.Merged)

@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { HostWorkItem, HostWorkItemDetail } from "@noldova/git.hosting.protocol";
 
 import { WorkItemFacet } from "../enums/work-item-facet.ts";
@@ -31,7 +32,7 @@ export class WorkItemFilter {
   /** This filter with a facet's value chosen, or with every value for null. */
   public with(facet: WorkItemFacet, value: string | null): WorkItemFilter {
     const chosen: Map<WorkItemFacet, string> = new Map(this.chosen);
-    if (value === null)
+    if (Object.isNull(value))
       chosen.delete(facet);
     else
       chosen.set(facet, value);

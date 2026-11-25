@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type IWindowPartContext, WindowException } from "@noldova/desktop.window";
 import { GitFolderParams, GitNames, type GitRemote, GitStatus } from "@noldova/git.protocol";
 import { GitFolder } from "@noldova/git.window";
@@ -22,7 +23,7 @@ export class AzureDevOpsLocalFolder {
   public static async readAsync(context: IWindowPartContext, pullRequestUrl: string): Promise<string | null> {
     const folder: string | null = GitFolder.folder();
     const repository: string | null = AzureDevOpsLocalFolder.pageRepositoryOf(pullRequestUrl);
-    if (folder === null || repository === null)
+    if (Object.isNull(folder) || Object.isNull(repository))
       return null;
     try {
       const status: GitStatus = GitStatus.fromJson(await context.requestAsync(GitNames.statusMethod, new GitFolderParams(folder).toJson()));
@@ -39,14 +40,14 @@ export class AzureDevOpsLocalFolder {
   /** The pull request page's `organization/project/repository`, lowercase, or `null` for an address that isn't a pull request's page. */
   private static pageRepositoryOf(url: string): string | null {
     const found: RegExpExecArray | null = Resources.pullRequestPageRepositoryPattern.exec(url);
-    return found === null ? null : AzureDevOpsLocalFolder.keyOf(found.slice(1));
+    return Object.isNull(found) ? null : AzureDevOpsLocalFolder.keyOf(found.slice(1));
   }
 
   /** The remote's `organization/project/repository`, lowercase, or `null` for a remote that isn't an Azure DevOps repository. */
   private static remoteRepositoryOf(remote: GitRemote | null): string | null {
     const place: WorkItemsPlace | null = WorkItemsPlace.ofRemote(remote);
     const path: string = remote?.path ?? "";
-    return place === null ? null : AzureDevOpsLocalFolder.keyOf([place.organization, encodeURIComponent(place.project), path.slice(path.lastIndexOf("/") + 1)]);
+    return Object.isNull(place) ? null : AzureDevOpsLocalFolder.keyOf([place.organization, encodeURIComponent(place.project), path.slice(path.lastIndexOf("/") + 1)]);
   }
 
   /** The parts joined, each decoded from its address form and lowercase, so `Web%20Site` and `web site` match; `null` when a part is missing or can't be decoded. */

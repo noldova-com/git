@@ -14,8 +14,10 @@ import { GitConflict, type GitOperation, OperationKind, UntrustedSource } from "
 
 import { ConflictGoneException } from "../exceptions/conflict-gone.exception.ts";
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
+import { ConflictLabels } from "../models/conflict-labels.ts";
 import { ConflictMarkers } from "../models/conflict-markers.ts";
 import { GitArguments } from "../models/git-arguments.ts";
+import { HeadCommit } from "../models/head-commit.ts";
 import { ProgramLimits } from "../models/program-limits.ts";
 import type { ProgramResult } from "../models/program-result.ts";
 import { ProgramRun } from "../models/program-run.ts";
@@ -36,6 +38,9 @@ interface IStage {
  * It only reads: the merge runs over copies in a private temporary folder, never over the worktree or the index.
  */
 export class ConflictReader {
+  private static readonly BASE: number = 1;
+  private static readonly OURS: number = 2;
+  private static readonly THEIRS: number = 3;
   private static readonly LIST_LIMITS: ProgramLimits = new ProgramLimits(Resources.lineOutputBytes, Resources.gitReadMilliseconds);
   private static readonly BLOB_LIMITS: ProgramLimits = new ProgramLimits(Resources.conflictTextBytes, Resources.gitReadMilliseconds);
   private static readonly MERGE_LIMITS: ProgramLimits = new ProgramLimits(Resources.mergedTextBytes, Resources.gitReadMilliseconds);
@@ -50,42 +55,46 @@ export class ConflictReader {
 
   public async readAsync(folders: RepositoryFolders, file: string, signal?: AbortSignal): Promise<GitConflict> {
     const stages = await this.stagesAsync(folders.top, file, signal);
-    const kind = Resources.stageKinds.get(stages.flatMap((stage, index) => stage === null ? [] : [String(index + 1)]).join(""));
+    const kind = Resources.stageKinds.get([...stages.keys()].toSorted((a, b) => a - b).join(""));
     if (kind === undefined)
       throw new ConflictGoneException();
     const operation = await OperationReader.readAsync(folders.gitFolder);
     // Each git run costs a process start, which a busy machine stretches, so the reads that don't need each other run together.
-    const [baseText, oursText, theirsText, [oursLabel, theirsLabel, oursCommit, theirsCommit]] = await Promise.all([this.textAsync(folders.top, stages[0], signal),
-      this.textAsync(folders.top, stages[1], signal), this.textAsync(folders.top, stages[2], signal), this.labelsAsync(folders, operation, signal)]);
-    const texts: readonly [string | null, string | null, string | null] = [baseText, oursText, theirsText];
-    const binary = stages.some((stage, index) => stage !== null && texts[index] === null);
-    const [base, ours, theirs] = binary ? [null, null, null] : texts;
+    const [baseText, oursText, theirsText, labels] = await Promise.all([this.textAsync(folders.top, stages.get(ConflictReader.BASE), signal),
+      this.textAsync(folders.top, stages.get(ConflictReader.OURS), signal), this.textAsync(folders.top, stages.get(ConflictReader.THEIRS), signal),
+      this.labelsAsync(folders, operation, signal)]);
+    const texts: ReadonlyMap<number, string | null> = new Map([[ConflictReader.BASE, baseText], [ConflictReader.OURS, oursText], [ConflictReader.THEIRS, theirsText]]);
+    const binary = [...stages.keys()].some(t => texts.get(t) === null);
+    const base = binary ? null : baseText;
+    const ours = binary ? null : oursText;
+    const theirs = binary ? null : theirsText;
     let merged: string | null = null;
     let reused = false;
     if (ours !== null && theirs !== null) {
       const worktree = await ConflictReader.worktreeTextAsync(path.join(folders.top, file));
       reused = worktree !== null && !ConflictMarkers.has(worktree);
-      merged = worktree !== null && reused ? worktree : await this.mergeAsync(folders.top, [base, ours, theirs], [oursLabel, theirsLabel], signal);
+      merged = worktree !== null && reused ? worktree : await this.mergeAsync(folders.top, base, ours, theirs, labels, signal);
     }
-    return new GitConflict(file, kind, operation?.kind ?? null, base, ours, theirs, merged, oursLabel, theirsLabel, oursCommit, theirsCommit, binary,
-      reused);
+    return new GitConflict(file, kind, operation?.kind ?? null, base, ours, theirs, merged, labels.ours, labels.theirs, labels.oursCommit, labels.theirsCommit,
+      binary, reused);
   }
 
-  private async stagesAsync(top: string, file: string, signal?: AbortSignal): Promise<[IStage | null, IStage | null, IStage | null]> {
+  /** The file's unmerged stages by their number: 1 for the base, 2 for ours and 3 for theirs; a side the conflict lacks is missing. */
+  private async stagesAsync(top: string, file: string, signal?: AbortSignal): Promise<Map<number, IStage>> {
     const result = await this.runGitAsync(top, new GitArguments(Resources.unmergedArguments).withPaths([file]), ConflictReader.LIST_LIMITS,
       Resources.lsFilesCommand, signal);
-    const stages: [IStage | null, IStage | null, IStage | null] = [null, null, null];
+    const stages: Map<number, IStage> = new Map();
     for (const record of result.output.toString(Resources.utf8Encoding).split(Resources.nulCharacter)) {
       const match = Resources.unmergedRecordPattern.exec(record);
       if (match?.[1] !== undefined && match[2] !== undefined && match[3] !== undefined && match[4] === file)
-        stages[Number(match[3]) - 1] = { mode: match[1], id: match[2] };
+        stages.set(Number(match[3]), { mode: match[1], id: match[2] });
     }
     return stages;
   }
 
   /** The stage's text, or `null` when it is missing, isn't a regular file, is too large, holds a NUL byte or isn't UTF-8. */
-  private async textAsync(top: string, stage: IStage | null, signal?: AbortSignal): Promise<string | null> {
-    if (stage === null || !Resources.textModes.includes(stage.mode))
+  private async textAsync(top: string, stage: IStage | undefined, signal?: AbortSignal): Promise<string | null> {
+    if (stage === undefined || !Resources.textModes.includes(stage.mode))
       return null;
     const result = await this.runner.runAsync(ProgramRun.readGit(new GitArguments(Resources.blobArguments).withRevisions([stage.id]), top,
       ConflictReader.BLOB_LIMITS, signal));
@@ -94,14 +103,16 @@ export class ConflictReader {
     return result.isTruncated ? null : ConflictReader.decode(result.output);
   }
 
-  private async mergeAsync(top: string, texts: readonly [string | null, string, string], labels: readonly [string, string], signal?: AbortSignal): Promise<string> {
+  private async mergeAsync(top: string, base: string | null, ours: string, theirs: string, labels: ConflictLabels, signal?: AbortSignal): Promise<string> {
     const folder = await mkdtemp(path.join(tmpdir(), Resources.conflictTemporaryPrefix));
     try {
-      const [base, ours, theirs] = [path.join(folder, Resources.baseFileName), path.join(folder, Resources.oursFileName), path.join(folder, Resources.theirsFileName)];
-      await Promise.all([writeFile(base, texts[0] ?? "", Resources.utf8Encoding), writeFile(ours, texts[1], Resources.utf8Encoding),
-        writeFile(theirs, texts[2], Resources.utf8Encoding)]);
-      const gitArguments = new GitArguments([...Resources.mergeFileArguments, Resources.labelOption, labels[0], Resources.labelOption, Resources.conflictBaseLabel,
-        Resources.labelOption, labels[1]], [], [ours, base, theirs]);
+      const baseFile = path.join(folder, Resources.baseFileName);
+      const oursFile = path.join(folder, Resources.oursFileName);
+      const theirsFile = path.join(folder, Resources.theirsFileName);
+      await Promise.all([writeFile(baseFile, base ?? "", Resources.utf8Encoding), writeFile(oursFile, ours, Resources.utf8Encoding),
+        writeFile(theirsFile, theirs, Resources.utf8Encoding)]);
+      const gitArguments = new GitArguments([...Resources.mergeFileArguments, Resources.labelOption, labels.ours, Resources.labelOption, Resources.conflictBaseLabel,
+        Resources.labelOption, labels.theirs], [], [oursFile, baseFile, theirsFile]);
       const result = await this.runner.runAsync(ProgramRun.readGit(gitArguments, top, ConflictReader.MERGE_LIMITS, signal));
       if (result.exit.code === null || result.exit.code >= Resources.gitFatalExitCode || result.isTruncated)
         throw new GitFailedException(Resources.mergeFileCommand, { text: result.errors.toString(Resources.utf8Encoding), source: UntrustedSource.Repository });
@@ -115,44 +126,42 @@ export class ConflictReader {
    * The names shown over ours and theirs, then their commits; a rebase replays your commits onto another branch, so its ours is that branch
    * and its theirs your commit. Ours is always the commit at `HEAD`; theirs is the operation's head file's.
    */
-  private async labelsAsync(folders: RepositoryFolders, operation: GitOperation | null, signal?: AbortSignal):
-    Promise<[string, string, string | null, string | null]> {
+  private async labelsAsync(folders: RepositoryFolders, operation: GitOperation | null, signal?: AbortSignal): Promise<ConflictLabels> {
     if (operation?.kind === OperationKind.Rebase) {
       let onto: string | null = null;
       for (const folder of Resources.rebaseFolders)
         onto ??= await OperationReader.readLineAsync(path.join(folders.gitFolder, folder, Resources.ontoFile));
       const replayed = await OperationReader.readLineAsync(path.join(folders.gitFolder, Resources.rebaseHeadFile));
-      const [ontoName, [, head]] = await Promise.all([onto === null ? null : this.nameAsync(folders.top, onto, signal), this.headAsync(folders.top, signal)]);
-      return [
+      const [ontoName, head] = await Promise.all([onto === null ? null : this.nameAsync(folders.top, onto, signal), this.headAsync(folders.top, signal)]);
+      return new ConflictLabels(
         ontoName === null ? Resources.currentLabel : Resources.formatOntoLabel(ontoName),
         replayed === null ? Resources.incomingLabel : Resources.formatYourCommitLabel(replayed.slice(0, Resources.shortIdLength)),
-        head,
-        ConflictReader.commitOf(replayed)
-      ];
+        head.commit,
+        ConflictReader.commitOf(replayed));
     }
     const from = operation?.from ?? null;
     if (operation === null || from === null) {
-      const [branch, head] = await this.headAsync(folders.top, signal);
-      return [branch, Resources.incomingLabel, head, null];
+      const head = await this.headAsync(folders.top, signal);
+      return new ConflictLabels(head.branch, Resources.incomingLabel, head.commit, null);
     }
     if (operation.kind === OperationKind.Merge) {
-      const [[branch, head], name] = await Promise.all([this.headAsync(folders.top, signal), this.nameAsync(folders.top, from, signal)]);
-      return [branch, name, head, ConflictReader.commitOf(from)];
+      const [head, name] = await Promise.all([this.headAsync(folders.top, signal), this.nameAsync(folders.top, from, signal)]);
+      return new ConflictLabels(head.branch, name, head.commit, ConflictReader.commitOf(from));
     }
     const shortId = from.slice(0, Resources.shortIdLength);
-    const [branch, head] = await this.headAsync(folders.top, signal);
-    return [branch, operation.kind === OperationKind.Revert ? Resources.formatRevertedLabel(shortId) : Resources.formatPickedLabel(shortId), head,
-      ConflictReader.commitOf(from)];
+    const head = await this.headAsync(folders.top, signal);
+    return new ConflictLabels(head.branch, operation.kind === OperationKind.Revert ? Resources.formatRevertedLabel(shortId) : Resources.formatPickedLabel(shortId),
+      head.commit, ConflictReader.commitOf(from));
   }
 
   /**
    * The branch at `HEAD`, or `HEAD` when it is detached, and the commit at `HEAD`: one run, since each run costs a process start. When `HEAD`'s branch
    * has no commit yet that run fails, so only then a second run reads the branch's name, and the commit is `null`.
    */
-  private async headAsync(top: string, signal?: AbortSignal): Promise<[string, string | null]> {
+  private async headAsync(top: string, signal?: AbortSignal): Promise<HeadCommit> {
     const result = await this.runner.runAsync(ProgramRun.readGit(ConflictReader.HEAD, top, ConflictReader.LIST_LIMITS, signal));
     const lines: readonly string[] = result.exit.code === 0 ? result.output.toString(Resources.utf8Encoding).trim().split(Resources.linePattern) : [];
-    return [lines.at(1) ?? await this.branchAsync(top, signal), ConflictReader.commitOf(lines.at(0) ?? null)];
+    return new HeadCommit(lines.at(1) ?? await this.branchAsync(top, signal), ConflictReader.commitOf(lines.at(0) ?? null));
   }
 
   /** The branch `HEAD` names, or `HEAD` when it is detached. */

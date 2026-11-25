@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
 import { HostingProtocolException, HostReference } from "@noldova/git.hosting.protocol";
 
@@ -21,7 +22,7 @@ export class PullRequestDocument {
     const owner: string | undefined = parts?.[Resources.ownerGroup];
     const repository: string | undefined = parts?.[Resources.repositoryGroup];
     const number: string | undefined = parts?.[Resources.numberGroup];
-    if (owner === undefined || repository === undefined || number === undefined)
+    if (Object.isUndefined(owner) || Object.isUndefined(repository) || Object.isUndefined(number))
       return null;
     try {
       return new HostReference(AzureDevOpsNames.moduleId, owner, repository, Number(number));

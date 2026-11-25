@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { IWindowPartContext } from "@noldova/desktop.window";
 
 import type { GitWorkspaceAcross } from "../models/git-workspace-across.ts";
@@ -18,7 +19,7 @@ export class GitWorkspaceAcrossViews {
 
   public static of(context: IWindowPartContext): GitDetailView<GitWorkspaceAcross> {
     const known: GitDetailView<GitWorkspaceAcross> | undefined = GitWorkspaceAcrossViews.windows.get(context);
-    if (known !== undefined)
+    if (!Object.isUndefined(known))
       return known;
     const view: GitDetailView<GitWorkspaceAcross> = new GitDetailView<GitWorkspaceAcross>(context, Resources.workspaceAcrossViewName,
       Resources.workspaceAcrossViewInstance, () => Resources.acrossHeading);

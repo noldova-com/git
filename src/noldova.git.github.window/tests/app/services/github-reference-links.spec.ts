@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { ReferenceKind } from "@noldova/git.hosting.protocol";
 import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
 import { describe, expect, it } from "vitest";
@@ -15,7 +16,7 @@ import { GitHubReferenceLinks } from "../../../src/app/services/github-reference
 describe("GitHubReferenceLinks", () => {
   const read = (url: string): readonly (string | number)[] | null => {
     const link = GitHubReferenceLinks.of(url);
-    return link === null ? null : [link.reference.host, link.reference.owner, link.reference.repository, link.reference.number, link.kind, link.reference.text, link.key];
+    return Object.isNull(link) ? null : [link.reference.host, link.reference.owner, link.reference.repository, link.reference.number, link.kind, link.reference.text, link.key];
   };
 
   it("reads an issue's and a pull request's address, with a trailing slash, a query or a fragment, and the host in any case", () => {

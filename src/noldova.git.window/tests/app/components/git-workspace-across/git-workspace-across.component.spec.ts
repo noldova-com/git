@@ -8,6 +8,7 @@
 
 import { ErrorHandler, signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { JsonReader } from "@noldova/context.json";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { ConflictKind, FailureCode, FileState, GitRemote, type GitStatus, RemoteTransport, StatusUpstream } from "@noldova/git.protocol";
@@ -72,11 +73,11 @@ describe("GitWorkspaceAcrossComponent", () => {
       context.answer("requestAsync", async (method, params) => {
         const folder: string = JsonReader.fromValue(params).readString("folder");
         const answer: GitStatus | Error | null | undefined = method === "git.status" ? statuses[folder] : writes[folder];
-        if (answer === undefined)
+        if (Object.isUndefined(answer))
           throw new Error(`No ${method} for ${folder}.`);
         if (answer instanceof Error)
           throw answer;
-        return answer === null ? null : answer.toJson();
+        return Object.isNull(answer) ? null : answer.toJson();
       });
       const errors: ErrorHandler = new ErrorHandler();
       GitFixtures.setUp(context, [{ provide: ErrorHandler, useValue: errors }]);
@@ -99,7 +100,7 @@ describe("GitWorkspaceAcrossComponent", () => {
     public static textOf(element: Element): string {
       const walker: TreeWalker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
       const pieces: string[] = [];
-      for (let node: Node | null = walker.nextNode(); node !== null; node = walker.nextNode())
+      for (let node: Node | null = walker.nextNode(); !Object.isNull(node); node = walker.nextNode())
         pieces.push((node.textContent ?? "").replace(/\s+/gu, " ").trim());
       return pieces.filter(t => t.length > 0).join(" ");
     }
@@ -110,19 +111,19 @@ describe("GitWorkspaceAcrossComponent", () => {
 
     public find<T extends HTMLElement = HTMLElement>(selector: string): T {
       const found: T | null = this.element.querySelector<T>(selector);
-      if (found === null)
+      if (Object.isNull(found))
         throw new Error(`Nothing matches ${selector}.`);
       return found;
     }
 
     public has(selector: string): boolean {
-      return this.element.querySelector(selector) !== null;
+      return !Object.isNull(this.element.querySelector(selector));
     }
 
     /** Clicks the element the selector matches, or the one at an index among several. */
     public click(selector: string, index: number = 0): void {
       const found: HTMLElement | undefined = [...this.element.querySelectorAll<HTMLElement>(selector)][index];
-      if (found === undefined)
+      if (Object.isUndefined(found))
         throw new Error(`Nothing matches ${selector} at ${index}.`);
       found.click();
       this.fixture.detectChanges();

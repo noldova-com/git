@@ -7,6 +7,7 @@
  */
 
 import { Component, signal } from "@angular/core";
+import "@noldova/context.core";
 import { type CommandContribution, ContentPadding, DockSide, type DocumentContribution, type SettingsPageContribution, SettingsRow, StatusBarItem, StatusBarSide, type ViewContribution } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { describe, expect, it, onTestFinished } from "vitest";
@@ -111,7 +112,7 @@ describe("GitWindowPart", () => {
 
     await part.activateAsync(context);
     GitAvatars.imageOf("/repository", "kim@example.com", "a1");
-    await GitFixtures.untilAsync(() => GitAvatars.imageOf("/repository", "kim@example.com", "a1") !== null);
+    await GitFixtures.untilAsync(() => !Object.isNull(GitAvatars.imageOf("/repository", "kim@example.com", "a1")));
     const shown = GitAvatars.imageOf("/repository", "kim@example.com", "a1");
     await part.deactivateAsync();
 

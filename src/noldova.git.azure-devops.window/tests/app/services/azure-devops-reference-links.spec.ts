@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { WorkItemQuery } from "@noldova/git.hosting.protocol";
 import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
 import { describe, expect, it } from "vitest";
@@ -16,7 +17,7 @@ describe("AzureDevOpsReferenceLinks", () => {
   const repository = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
   const read = (url: string): readonly (string | number)[] | null => {
     const link = AzureDevOpsReferenceLinks.of(url);
-    if (link === null)
+    if (Object.isNull(link))
       return null;
     const { query } = link;
     return query instanceof WorkItemQuery ? [query.host, query.organization, query.id, link.key] : [query.host, query.owner, query.repository, query.number, link.key];

@@ -8,8 +8,8 @@
 
 import type { KeyQueue } from "./key-queue.ts";
 
-interface IWaitingRead {
-  readonly promise: Promise<unknown>;
+interface IWaitingRead<T> {
+  readonly promise: Promise<T>;
   readonly controller: AbortController;
   users: number;
 }
@@ -20,18 +20,18 @@ interface IWaitingRead {
  * identical requests after a change runs once; a read that has started is never shared, since it may miss the change that prompted the later
  * request. A shared read is cancelled only once every caller that waits on it has cancelled.
  */
-export class SharedReads {
+export class SharedReads<T> {
   private readonly queue: KeyQueue;
-  private readonly waiting: Map<string, IWaitingRead> = new Map();
+  private readonly waiting: Map<string, IWaitingRead<T>> = new Map();
 
   public constructor(queue: KeyQueue) {
     this.queue = queue;
   }
 
-  public async runAsync<T>(lane: string, key: string, signal: AbortSignal, read: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  public async runAsync(lane: string, key: string, signal: AbortSignal, read: (signal: AbortSignal) => Promise<T>): Promise<T> {
     signal.throwIfAborted();
     const shared: string = `${lane}\u0000${key}`;
-    let waiting: IWaitingRead | undefined = this.waiting.get(shared);
+    let waiting: IWaitingRead<T> | undefined = this.waiting.get(shared);
     if (waiting === undefined) {
       const controller: AbortController = new AbortController();
       const promise: Promise<T> = this.queue.runAsync(lane, () => {
@@ -44,7 +44,7 @@ export class SharedReads {
       this.waiting.set(shared, waiting);
       promise.catch(() => undefined);
     }
-    const joined: IWaitingRead = waiting;
+    const joined: IWaitingRead<T> = waiting;
     joined.users += 1;
     const { promise: aborted, reject } = Promise.withResolvers<never>();
     const leave = (): void => {
@@ -58,7 +58,7 @@ export class SharedReads {
     };
     signal.addEventListener("abort", leave, { once: true });
     try {
-      return await Promise.race([joined.promise as Promise<T>, aborted]);
+      return await Promise.race([joined.promise, aborted]);
     } finally {
       signal.removeEventListener("abort", leave);
     }

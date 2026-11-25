@@ -7,6 +7,7 @@
  */
 
 import { signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 
 import { GitHistoryAsk } from "../models/git-history-ask.ts";
 
@@ -21,7 +22,7 @@ export class GitHistoryAsks {
   /** The commit asked of a folder's history, or null when none waits for it. */
   public static askedOf(folder: string): GitHistoryAsk | null {
     const asked: GitHistoryAsk | null = GitHistoryAsks.asked();
-    return asked !== null && asked.folder === folder ? asked : null;
+    return !Object.isNull(asked) && asked.folder === folder ? asked : null;
   }
 
   /** Marks an ask as taken, unless a newer one replaced it. */

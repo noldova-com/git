@@ -20,8 +20,6 @@ export class GitPrediction {
   public readonly paths: readonly string[];
 
   public constructor(outcome: PredictionOutcome, paths: readonly string[], reader?: JsonReader) {
-    if (!Object.values(PredictionOutcome).includes(outcome))
-      FieldCheck.fail(Resources.outcomeField, Resources.predictionOutcomeExpected, reader);
     if ((outcome === PredictionOutcome.Conflicts) !== (paths.length > 0))
       FieldCheck.fail(Resources.pathsField, Resources.predictionPathsExpected, reader);
     paths.forEach((path, index) => FieldCheck.requireRelativePath(path, Resources.formatItemField(Resources.pathsField, index), reader));

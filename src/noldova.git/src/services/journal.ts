@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import type { JsonValue } from "@noldova/context.json";
 import { GitJournal, GitJournalEntry, UndoMode } from "@noldova/git.protocol";
 
 import type { IWriteCheckpoint } from "../interfaces/i-write-checkpoint.ts";
@@ -13,15 +14,25 @@ import { Resources } from "../resources.ts";
 
 /**
  * Each repository's recent writes, by its common Git folder, so worktrees share one journal: the refs each write moved, from snapshots taken
- * before and after it, and how it is undone. It lives while the module runs and keeps the last 50 writes.
+ * before and after it, and how it is undone. It lives while the module runs and keeps the last writes, 50 unless the person's
+ * `git.undoHistory` setting asks for another number from 1 to 500.
  */
 export class Journal {
   private readonly entries: Map<string, GitJournalEntry[]> = new Map();
   private readonly now: () => Date;
+  private readonly limit: () => JsonValue;
   private next: number = 1;
 
-  public constructor(now: () => Date = () => new Date()) {
+  public constructor(now: () => Date = () => new Date(), limit: () => JsonValue = () => Resources.journalLimit) {
     this.now = now;
+    this.limit = limit;
+  }
+
+  /** The number of writes kept: the setting's whole number from 1 to 500, or 50 for anything else. */
+  public static limitOf(value: JsonValue): number {
+    return typeof value === "number" && Number.isInteger(value) && value >= Resources.journalLimitMinimum && value <= Resources.journalLimitMaximum
+      ? value
+      : Resources.journalLimit;
   }
 
   public record(commonGitFolder: string, method: string, undo: UndoMode, before: RefSnapshot, after: RefSnapshot, checkpoint: IWriteCheckpoint | null = null): GitJournalEntry {
@@ -40,7 +51,7 @@ export class Journal {
       checkpoint?.paths ?? []);
     const list = this.entries.get(commonGitFolder) ?? [];
     list.push(entry);
-    list.splice(0, Math.max(0, list.length - Resources.journalLimit));
+    list.splice(0, Math.max(0, list.length - Journal.limitOf(this.limit())));
     this.entries.set(commonGitFolder, list);
     return entry;
   }

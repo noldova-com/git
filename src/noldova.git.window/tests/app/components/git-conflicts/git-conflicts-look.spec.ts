@@ -8,6 +8,7 @@
 
 import { signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { ConflictKind, FileState, GitConflict, GitMarkerCheck, GitOperation, OperationKind } from "@noldova/git.protocol";
@@ -80,7 +81,7 @@ describe("GitConflictsComponent in the kit's look", () => {
       const element: HTMLElement = fixture.nativeElement;
       element.style.width = "60rem";
       element.style.height = "30rem";
-      await untilAsync(element, () => element.querySelector(".take-ours") !== null);
+      await untilAsync(element, () => !Object.isNull(element.querySelector(".take-ours")));
       await fixture.whenStable();
 
       const find = (selector: string): HTMLElement => element.querySelector<HTMLElement>(selector) ?? element;
@@ -127,7 +128,7 @@ describe("GitConflictsComponent in the kit's look", () => {
       const element: HTMLElement = fixture.nativeElement;
       element.style.width = "80rem";
       element.style.height = "40rem";
-      await untilAsync(element, () => element.querySelector(".nol-merge-editor-output .pane-head") !== null);
+      await untilAsync(element, () => !Object.isNull(element.querySelector(".nol-merge-editor-output .pane-head")));
       await fixture.whenStable();
 
       const find = (selector: string): HTMLElement => element.querySelector<HTMLElement>(selector) ?? element;
@@ -153,7 +154,7 @@ describe("GitConflictsComponent in the kit's look", () => {
       expect([rem(next.height), label.width > 0, element.querySelector(".nol-merge-editor-bar")]).toEqual([1.5, true, null]);
 
       find(".show-base").click();
-      await untilAsync(element, () => element.querySelector(".nol-merge-editor-base > .pane-head") !== null);
+      await untilAsync(element, () => !Object.isNull(element.querySelector(".nol-merge-editor-base > .pane-head")));
       await fixture.whenStable();
       const columns: readonly DOMRect[] = [...element.querySelectorAll(".nol-merge-editor-side")].map(box);
       const baseCard: HTMLElement = find(".nol-merge-editor-base");
@@ -191,7 +192,7 @@ describe("GitConflictsComponent in the kit's look", () => {
     const element: HTMLElement = fixture.nativeElement;
     element.style.width = "39.5rem";
     element.style.height = "27rem";
-    await untilAsync(element, () => element.querySelector(".nol-merge-editor-output .pane-head") !== null);
+    await untilAsync(element, () => !Object.isNull(element.querySelector(".nol-merge-editor-output .pane-head")));
     await fixture.whenStable();
 
     await page.screenshot({ element, path: `${screenshots}/git-conflicts-narrow-${mode}.png` });
@@ -220,7 +221,7 @@ describe("GitConflictsComponent in the kit's look", () => {
       const element: HTMLElement = fixture.nativeElement;
       element.style.width = "30rem";
       element.style.height = "40rem";
-      await untilAsync(element, () => element.querySelector(".nol-merge-editor-output .pane-head") !== null);
+      await untilAsync(element, () => !Object.isNull(element.querySelector(".nol-merge-editor-output .pane-head")));
       await fixture.whenStable();
       const banner: DOMRect = box(element.querySelector(".operation"));
       const text: DOMRect = box(element.querySelector(".operation-text"));

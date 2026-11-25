@@ -16,7 +16,7 @@ describe("PullRequestChoice", () => {
     const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", "site", 752);
     const pullRequest: HostPullRequest = new HostPullRequest(new HostItem(reference, ReferenceKind.PullRequest, ReferenceState.Open, "Export notes",
       "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/752", null, 1, null, 0,
-      new HostChanges(null, null, null, "users/kim/export-notes", "main", "0123456789abcdef0123456789abcdef01234567")), [], [], [], false, "", null, []);
+      HostChanges.uncounted("users/kim/export-notes", "main", "0123456789abcdef0123456789abcdef01234567")), [], [], [], false, "", null, []);
     const reviewer: HostReviewer = new HostReviewer(new HostPerson("octocat@fabrikam.com", null, null), 1, "Approved", true);
     const calls: unknown[] = [];
     const choice: PullRequestChoice = new PullRequestChoice(pullRequest, [reviewer], 1_700_000_000_000,

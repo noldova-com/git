@@ -7,6 +7,7 @@
  */
 
 import { signal } from "@angular/core";
+import "@noldova/context.core";
 import { describe, expect, it } from "vitest";
 
 import { GitPullRequestState } from "../../../src/app/enums/git-pull-request-state.ts";
@@ -23,7 +24,7 @@ describe("GitCommitPullRequest", () => {
     const merged: GitBranchPullRequest = GitBranchPullRequest.of(row, GitPullRequestState.Merged, false);
     const card = (answer: GitBranchPullRequest | null): readonly unknown[] | null => {
       const shown: GitCommitPullRequest | null = GitCommitPullRequest.of(host, answer);
-      return shown === null ? null : [shown.host === host, shown.row.key, shown.state, shown.stateLabel, shown.note];
+      return Object.isNull(shown) ? null : [shown.host === host, shown.row.key, shown.state, shown.stateLabel, shown.note];
     };
 
     const completed: GitBranchPullRequest = GitBranchPullRequest.of(row, GitPullRequestState.Merged, false, "Completed");

@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { IWindowPartContext } from "@noldova/desktop.window";
 
 import type { GitWorkspaceSide } from "../models/git-workspace-side.ts";
@@ -26,7 +27,7 @@ export class GitWorkspaceSides {
    */
   public static of(context: IWindowPartContext): GitDetailView<GitWorkspaceSide> {
     const known: GitDetailView<GitWorkspaceSide> | undefined = GitWorkspaceSides.windows.get(context);
-    if (known !== undefined)
+    if (!Object.isUndefined(known))
       return known;
     const sides: GitDetailView<GitWorkspaceSide> = new GitDetailView<GitWorkspaceSide>(context, Resources.workspacesViewName, Resources.workspacesViewName,
       () => Resources.workspacesHeading, false);

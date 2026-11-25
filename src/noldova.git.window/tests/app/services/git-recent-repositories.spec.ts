@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { describe, expect, it, onTestFinished } from "vitest";
 
 import { GitRecentRepositories } from "../../../src/app/services/git-recent-repositories.ts";
@@ -17,7 +18,7 @@ describe("GitRecentRepositories", () => {
       localStorage.removeItem(key);
       GitRecentRepositories.restore();
     });
-    if (kept === null)
+    if (Object.isNull(kept))
       localStorage.removeItem(key);
     else
       localStorage.setItem(key, kept);

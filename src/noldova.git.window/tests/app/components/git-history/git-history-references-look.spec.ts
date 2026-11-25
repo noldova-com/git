@@ -8,6 +8,7 @@
 
 import { signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitCommit, GitGraph, GitGraphCommit } from "@noldova/git.protocol";
 import { DefaultTheme, LinkReference, LinkReferenceColor, LinkReferenceImage, LinkReferenceMatch, LinkReferenceState, LinkReferenceTone,
@@ -80,7 +81,7 @@ describe("GitHistoryComponent references in the kit's look", () => {
     const element: HTMLElement = fixture.nativeElement;
     element.style.width = "60rem";
     element.style.height = "20rem";
-    await until(() => element.querySelector("a[nol-link-reference-chip]") !== null);
+    await until(() => !Object.isNull(element.querySelector("a[nol-link-reference-chip]")));
     await fixture.whenStable();
     const [row, plainRow] = [...element.querySelectorAll<HTMLElement>("[role=option]")];
     const chip: HTMLElement = row?.querySelector<HTMLElement>("a[nol-link-reference-chip]") ?? element;
@@ -122,7 +123,7 @@ describe("GitHistoryComponent references in the kit's look", () => {
     const element: HTMLElement = fixture.nativeElement;
     element.style.width = "40rem";
     element.style.height = "20rem";
-    await until(() => element.querySelector("a[nol-link-reference-chip]") !== null);
+    await until(() => !Object.isNull(element.querySelector("a[nol-link-reference-chip]")));
     await fixture.whenStable();
     const message: HTMLElement = element.querySelector<HTMLElement>(".message") ?? element;
     const chip: HTMLElement = message.querySelector<HTMLElement>("a[nol-link-reference-chip]") ?? element;

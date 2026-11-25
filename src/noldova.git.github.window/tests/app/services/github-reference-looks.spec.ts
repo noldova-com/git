@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { HostChanges, HostItem, HostPerson, HostReference, ReferenceKind, ReferenceState } from "@noldova/git.hosting.protocol";
 import type { LinkReference } from "@noldova/ui.components.angular";
 import { describe, expect, it } from "vitest";
@@ -25,7 +26,7 @@ describe("GitHubReferenceLooks", () => {
       openedAt, state === ReferenceState.Open || state === ReferenceState.Draft ? null : closedAt, 3, kind === ReferenceKind.Issue ? null : changes);
   const lookOf = (item: HostItem): LinkReference => {
     const look = GitHubLooks.of(item.kind, item.state);
-    if (look === null)
+    if (Object.isNull(look))
       throw new Error(`GitHub has no look for ${item.kind} ${item.state}.`);
     return GitHubReferenceLooks.of(item, look);
   };
@@ -66,7 +67,7 @@ describe("GitHubReferenceLooks", () => {
 
   it("leaves the lines and files out of a pull request's card when the host doesn't count them", () => {
     const uncounted = new HostItem(reference, ReferenceKind.PullRequest, ReferenceState.Open, "Fix the greeting", "https://github.com/octocat/hello-world/pull/42",
-      null, openedAt, null, 3, new HostChanges(null, null, null, "monalisa/fix-greeting", "main", "7fd1a60b01f91b314f59955a4e4d4e80d8edf11d"));
+      null, openedAt, null, 3, HostChanges.uncounted("monalisa/fix-greeting", "main", "7fd1a60b01f91b314f59955a4e4d4e80d8edf11d"));
     const chip = lookOf(uncounted);
 
     expect([chip.diff, chip.comments]).toEqual([null, null]);
@@ -122,7 +123,7 @@ describe("GitHubReferenceLooks", () => {
 
   it("draws an item still being read with its reference, its kind's icon, GitHub's mark and no state, title or card parts", () => {
     const look = GitHubLooks.of(ReferenceKind.PullRequest, ReferenceState.Open);
-    if (look === null)
+    if (Object.isNull(look))
       throw new Error("GitHub has no look for an open pull request.");
 
     const pending = GitHubReferenceLooks.pendingOf(new GitHubReferenceLink(reference, ReferenceKind.PullRequest), look);

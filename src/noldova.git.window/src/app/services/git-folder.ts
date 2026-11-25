@@ -7,6 +7,7 @@
  */
 
 import { computed, linkedSignal, signal, type Signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import type { IWindowPartContext } from "@noldova/desktop.window";
 
 import { GitFolderProvidedException } from "../exceptions/git-folder-provided.exception.ts";
@@ -30,7 +31,7 @@ export class GitFolder {
   private static readonly provided: Signal<GitFolderRead> = computed(() => GitFolder.read());
 
   public static provide(context: IWindowPartContext, folder: Signal<string | null>): () => void {
-    if (GitFolder.provider() !== null)
+    if (!Object.isNull(GitFolder.provider()))
       throw new GitFolderProvidedException();
     const provider: IGitFolderProvider = { context, folder };
     GitFolder.provider.set(provider);
@@ -67,9 +68,9 @@ export class GitFolder {
     const provider: IGitFolderProvider | null = GitFolder.provider();
     const page: readonly [Signal<string>, Signal<boolean>] | undefined = GitFolder.active();
     const last: readonly [Signal<string>, Signal<boolean>] | undefined = GitFolder.lastActive();
-    const kept: string | null = last !== undefined && GitFolder.pages().includes(last) ? last[0]() : null;
+    const kept: string | null = !Object.isUndefined(last) && GitFolder.pages().includes(last) ? last[0]() : null;
     const shown: string | null = page?.[0]() ?? GitFolder.shown() ?? kept;
-    if (provider === null)
+    if (Object.isNull(provider))
       return new GitFolderRead(null, null);
     let folder: string | null;
     try {
@@ -79,9 +80,9 @@ export class GitFolder {
       provider.context.log(Resources.formatFolderFailed(String(error)));
       return new GitFolderRead(null, error instanceof Error ? error.message : String(error));
     }
-    if (folder !== null) {
+    if (!Object.isNull(folder)) {
       const refusal: string | null = GitFolder.refuse(folder);
-      if (refusal !== null) {
+      if (!Object.isNull(refusal)) {
         provider.context.log(Resources.formatFolderFailed(refusal));
         return new GitFolderRead(null, null);
       }

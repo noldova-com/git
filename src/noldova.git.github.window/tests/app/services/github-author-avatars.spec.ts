@@ -76,6 +76,6 @@ describe("GitHubAuthorAvatars", () => {
     avatars.stop();
     context.emitModule("git-github.signInChanged", HostSignIn.signedOut().toJson());
 
-    expect([reading, avatars.avatarOf("/work/teamrun", "kim@example.com", commit) === undefined, asked().length]).toEqual([undefined, true, 3]);
+    expect([reading, Object.isUndefined(avatars.avatarOf("/work/teamrun", "kim@example.com", commit)), asked().length]).toEqual([undefined, true, 3]);
   });
 });

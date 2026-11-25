@@ -20,8 +20,6 @@ export class GitRef {
   public readonly name: string;
 
   public constructor(kind: RefKind, name: string, reader?: JsonReader) {
-    if (!Object.values(RefKind).includes(kind))
-      FieldCheck.fail(Resources.kindField, Resources.refKindExpected, reader);
     FieldCheck.requireLine(name, Resources.nameField, reader);
     if (kind !== RefKind.Head && name.length === 0)
       FieldCheck.fail(Resources.nameField, Resources.refNameExpected, reader);

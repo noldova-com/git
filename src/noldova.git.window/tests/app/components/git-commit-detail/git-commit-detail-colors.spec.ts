@@ -25,8 +25,8 @@ describe("GitCommitDetailComponent's diff colors", () => {
   const email: string = "user-1@host-1.example";
 
   const showAsync = async (path: string, lines: readonly [LineKind, string][]): Promise<GitViewFixture> => {
-    onTestFinished(() => GitViewing.commit.set(null));
-    GitViewing.commit.set(new GitCommitView(GitFixtures.folder, new GitGraphCommit(
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    GitViewing.show(new GitCommitView(GitFixtures.folder, new GitGraphCommit(
       new GitCommit("c".repeat(40), ["d".repeat(40)], "Sample Author", "2026-11-20T14:02:00Z", "Follow renames"), email, [])));
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync({
       ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.diff": GitFixtures.diff(path, ...lines).toJson(),

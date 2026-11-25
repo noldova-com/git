@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { IWindowPartContext } from "@noldova/desktop.window";
 
 import type { GitRebasePreview } from "../models/git-rebase-preview.ts";
@@ -18,7 +19,7 @@ export class GitRebasePreviews {
 
   public static of(context: IWindowPartContext): GitDetailView<GitRebasePreview> {
     const known: GitDetailView<GitRebasePreview> | undefined = GitRebasePreviews.windows.get(context);
-    if (known !== undefined)
+    if (!Object.isUndefined(known))
       return known;
     const view: GitDetailView<GitRebasePreview> = new GitDetailView<GitRebasePreview>(context, Resources.rebasePreviewViewName,
       Resources.rebasePreviewViewInstance, () => Resources.rebasePreviewLabel);

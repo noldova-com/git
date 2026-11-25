@@ -11,7 +11,7 @@ import { type Signal, type WritableSignal, signal } from "@angular/core";
 import "@noldova/context.core";
 import { type IWindowPartContext, WindowException } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
-import { HostAvatar, type HostPerson, type HostReference, HostItem, HostPullRequestFiles, HostSignIn, HostWorkItem, PersonQuery, SignInState, WorkItemQuery }
+import { HostAvatar, HostChanges, type HostPerson, type HostReference, HostItem, HostPullRequestFiles, HostSignIn, HostWorkItem, PersonQuery, SignInState, WorkItemQuery }
   from "@noldova/git.hosting.protocol";
 import { DiffScope, DiffScopeKind, DiffTotals, GitDiffParams, GitFolderParams, GitNames, type GitRemote, GitStatus } from "@noldova/git.protocol";
 import type { ILinkReferenceSource, LinkReference, LinkReferenceMatch } from "@noldova/ui.components.angular";
@@ -251,8 +251,8 @@ export class AzureDevOpsReferenceSource implements ILinkReferenceSource {
       method = GitNames.diffTotalsMethod;
       const totals = DiffTotals.fromJson(await this.context.requestAsync(method,
         new GitDiffParams(folder, new DiffScope(DiffScopeKind.Range, files.commonCommit, files.sourceCommit)).toJson()));
-      return HostItem.fromJson({ ...item.toJson(), [Resources.changesField]: { ...changes.toJson(), [Resources.additionsField]: totals.added,
-        [Resources.deletionsField]: totals.removed, [Resources.changedFilesField]: totals.files } });
+      return HostItem.fromJson({ ...item.toJson(),
+        [Resources.changesField]: new HostChanges(totals.added, totals.removed, totals.files, changes.headBranch, changes.baseBranch, changes.headCommit).toJson() });
     }
     catch (error) {
       if (!(error instanceof WindowException))

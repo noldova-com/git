@@ -7,6 +7,7 @@
  */
 
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { FailureCode } from "@noldova/desktop.protocol";
 import { RuntimeRequestException, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
@@ -43,7 +44,7 @@ const pending: HostThread = new HostThread(4, ThreadStatus.Pending, null, null, 
 function wordsOf(node: Node): string {
   const words: string[] = [];
   const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-  for (let text = walker.nextNode(); text !== null; text = walker.nextNode())
+  for (let text = walker.nextNode(); !Object.isNull(text); text = walker.nextNode())
     words.push((text.textContent ?? "").trim());
   return words.filter(t => t.length > 0).join(" ").replace(/\s+/g, " ");
 }
@@ -127,7 +128,7 @@ class Threads {
   }
 
   public async typeAsync(text: string): Promise<void> {
-    if (this.element.querySelector("textarea") === null) {
+    if (Object.isNull(this.element.querySelector("textarea"))) {
       this.button(".start-reply").click();
       await this.settleAsync();
     }
@@ -148,7 +149,7 @@ class Threads {
 describe("GitPullRequestThreadsComponent", () => {
   it("reads the pull request's threads and shows each one's file, line, state and comments, counting the open ones", async () => {
     const threads = await new Threads().answer(onLine, general, pending).openAsync();
-    await threads.untilAsync(() => threads.element.querySelector(".comment strong") !== null);
+    await threads.untilAsync(() => !Object.isNull(threads.element.querySelector(".comment strong")));
 
     const date = (time: number): string => new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
       .format(time);
@@ -284,7 +285,7 @@ describe("GitPullRequestThreadsComponent", () => {
   it("passes on a link a comment opens, with the gesture that opened it", async () => {
     const threads = await new Threads().answer(new HostThread(1, ThreadStatus.Active, null, null,
       [new HostComment(1, null, octocat, PUBLISHED, "See [the spec](https://example.com/spec).")])).openAsync();
-    await threads.untilAsync(() => threads.element.querySelector(".comment a") !== null);
+    await threads.untilAsync(() => !Object.isNull(threads.element.querySelector(".comment a")));
 
     threads.find(".comment a").click();
     await threads.settleAsync();
@@ -344,14 +345,14 @@ describe("GitPullRequestThreadsComponent", () => {
 
     changes()[0]?.click();
     await threads.settleAsync();
-    const first: boolean = threads.element.querySelector(".change-confirm") === null;
+    const first: boolean = Object.isNull(threads.element.querySelector(".change-confirm"));
     changes()[1]?.click();
     await threads.settleAsync();
     const confirm: string[] = threads.texts(".change-confirm");
     const asked: number = threads.requests.payloads.length;
     threads.button(".change-confirm .cancel").click();
     await threads.settleAsync();
-    const cancelled: boolean = threads.element.querySelector(".change-confirm") === null;
+    const cancelled: boolean = Object.isNull(threads.element.querySelector(".change-confirm"));
     changes()[1]?.click();
     await threads.settleAsync();
     threads.button(".change-confirm .confirm").click();
@@ -371,7 +372,7 @@ describe("GitPullRequestThreadsComponent", () => {
     threads.answer(onLine);
     threads.button(".change").click();
     await threads.settleAsync();
-    const shown: boolean = threads.element.querySelector(".change-confirm") !== null;
+    const shown: boolean = !Object.isNull(threads.element.querySelector(".change-confirm"));
 
     threads.fixture?.componentRef.setInput("reference", other);
     await threads.settleAsync();
@@ -487,7 +488,7 @@ describe("GitPullRequestThreadsComponent", () => {
     threads.host.avatar = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
     await threads.answer(general).openAsync();
 
-    await threads.untilAsync(() => threads.element.querySelector(".comment nol-avatar img") !== null);
+    await threads.untilAsync(() => !Object.isNull(threads.element.querySelector(".comment nol-avatar img")));
 
     expect([...new Set(threads.host.askedPeople)]).toEqual(["fabrikam/monalisa@fabrikam.com"]);
   });

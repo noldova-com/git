@@ -7,6 +7,7 @@
  */
 
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { FileChangeKind, HostPullRequestFile, HostPullRequestFiles, HostReference } from "@noldova/git.hosting.protocol";
@@ -42,7 +43,7 @@ const appDiff: GitDiff = new GitDiff([new DiffFile("src/app.ts", undefined, "src
 function wordsOf(node: Node): string {
   const words: string[] = [];
   const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-  for (let text = walker.nextNode(); text !== null; text = walker.nextNode())
+  for (let text = walker.nextNode(); !Object.isNull(text); text = walker.nextNode())
     words.push((text.textContent ?? "").trim());
   return words.filter(t => t.length > 0).join(" ").replace(/\s+/g, " ");
 }
@@ -108,7 +109,7 @@ class Tab {
     this.create();
     this.reveal(line);
     await this.requests.askedAsync(5);
-    await vi.waitUntil(() => this.unrevealed.length > 0 || this.element.querySelector(".marked-line") !== null);
+    await vi.waitUntil(() => this.unrevealed.length > 0 || !Object.isNull(this.element.querySelector(".marked-line")));
     return this;
   }
 
@@ -123,7 +124,7 @@ class Tab {
 
   public async clickAsync(selector: string): Promise<void> {
     const found = this.element.querySelector<HTMLElement>(selector);
-    if (found === null)
+    if (Object.isNull(found))
       throw new Error(`Nothing matches ${selector}.`);
     found.click();
     await this.settleAsync();
@@ -155,9 +156,9 @@ describe("GitPullRequestFilesComponent", () => {
     await tab.openAsync();
     const choose = async (label: string): Promise<string[]> => {
       await tab.clickAsync("button.layout");
-      await vi.waitUntil(() => document.querySelector("button[nol-menu-item]") !== null);
+      await vi.waitUntil(() => !Object.isNull(document.querySelector("button[nol-menu-item]")));
       [...document.querySelectorAll<HTMLElement>("button[nol-menu-item]")].find(t => t.textContent.includes(label))?.click();
-      await vi.waitUntil(() => document.querySelector("button[nol-menu-item]") === null);
+      await vi.waitUntil(() => Object.isNull(document.querySelector("button[nol-menu-item]")));
       await tab.settleAsync();
       return tab.texts(".row .path");
     };
@@ -199,7 +200,7 @@ describe("GitPullRequestFilesComponent", () => {
     tab.requests.fail(GitNames.diffMethod, new WindowFailure("Not now."));
     await tab.openAsync();
 
-    expect([tab.element.querySelector("nol-git-diff-files") !== null, tab.texts(".row:not(.folder)"), tab.counts, tab.host.asked]).toEqual([true, [], ["5"], [URL]]);
+    expect([!Object.isNull(tab.element.querySelector("nol-git-diff-files")), tab.texts(".row:not(.folder)"), tab.counts, tab.host.asked]).toEqual([true, [], ["5"], [URL]]);
     expect(tab.requests.methods.slice(1)).toEqual([GitNames.commitDetailMethod, GitNames.commitDetailMethod, GitNames.diffTotalsMethod, GitNames.diffMethod]);
     expect(tab.requests.payloads.slice(1)).toEqual([new GitCommitDetailParams(FOLDER, COMMON).toJson(), new GitCommitDetailParams(FOLDER, SOURCE).toJson(),
       new GitDiffParams(FOLDER, scope).toJson(), new GitDiffParams(FOLDER, scope).toJson()]);
@@ -214,7 +215,7 @@ describe("GitPullRequestFilesComponent", () => {
     tab.requests.fail(GitNames.diffMethod, new WindowFailure("Not now."));
     await tab.openAsync();
 
-    expect([tab.element.querySelector("nol-git-diff-files") !== null, tab.counts, tab.logs.filter(t => String(t).includes(GitNames.diffTotalsMethod)).length])
+    expect([!Object.isNull(tab.element.querySelector("nol-git-diff-files")), tab.counts, tab.logs.filter(t => String(t).includes(GitNames.diffTotalsMethod)).length])
       .toEqual([true, ["4"], 1]);
   });
 
@@ -237,7 +238,7 @@ describe("GitPullRequestFilesComponent", () => {
 
     expect(offered).toEqual([["Fetch to see each file's changes. Fetch"], 4, []]);
     expect(tab.requests.payloads[tab.requests.methods.indexOf(GitNames.fetchMethod)]).toEqual(new GitFetchParams(FOLDER, "f1").toJson());
-    expect([tab.element.querySelector("nol-git-diff-files") !== null, tab.texts(".hint"), tab.counts]).toEqual([true, [], ["4", "5"]]);
+    expect([!Object.isNull(tab.element.querySelector("nol-git-diff-files")), tab.texts(".hint"), tab.counts]).toEqual([true, [], ["4", "5"]]);
   });
 
   it("logs a fetch the window fails and says so in the hint, keeping the list", async () => {

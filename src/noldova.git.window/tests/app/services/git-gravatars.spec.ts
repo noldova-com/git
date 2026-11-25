@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { describe, expect, it } from "vitest";
 
@@ -20,7 +21,7 @@ describe("GitGravatars", () => {
     const gravatars: GitGravatars = new GitGravatars(new GitRuntimeClient(context));
 
     const reading = gravatars.avatarOf("/repository", " Kim@Example.com", "a1");
-    await GitFixtures.untilAsync(() => gravatars.avatarOf("/other", "kim@example.com", "b2") !== undefined);
+    await GitFixtures.untilAsync(() => !Object.isUndefined(gravatars.avatarOf("/other", "kim@example.com", "b2")));
 
     expect([reading, gravatars.avatarOf("/repository", "KIM@example.com", "c3")]).toEqual([undefined, "data:image/png;base64,QQ=="]);
     expect(context.callsOf("requestAsync")).toEqual([["git.avatar", { email: "kim@example.com" }]]);
@@ -33,8 +34,8 @@ describe("GitGravatars", () => {
 
     gravatars.avatarOf("/repository", "none@example.com", "a1");
     gravatars.avatarOf("/repository", "down@example.com", "a1");
-    await GitFixtures.untilAsync(() => gravatars.avatarOf("/repository", "none@example.com", "a1") !== undefined
-      && gravatars.avatarOf("/repository", "down@example.com", "a1") !== undefined);
+    await GitFixtures.untilAsync(() => !Object.isUndefined(gravatars.avatarOf("/repository", "none@example.com", "a1"))
+      && !Object.isUndefined(gravatars.avatarOf("/repository", "down@example.com", "a1")));
 
     expect([gravatars.avatarOf("/repository", "none@example.com", "a1"), gravatars.avatarOf("/repository", "down@example.com", "a1"),
       gravatars.avatarOf("/repository", " ", "a1")]).toEqual([null, null, null]);

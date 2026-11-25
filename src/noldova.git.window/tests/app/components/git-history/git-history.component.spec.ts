@@ -8,6 +8,7 @@
 
 import { signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { FileState, GitCommit, GitGraph, GitGraphCommit, GitRef, RefKind, StatusUpstream } from "@noldova/git.protocol";
@@ -80,7 +81,7 @@ describe("GitHistoryComponent", () => {
     });
   };
 
-  const ringOf = (element: HTMLElement): number => [...element.querySelectorAll("[role=option]")].findIndex(t => t.querySelector("circle.ring") !== null);
+  const ringOf = (element: HTMLElement): number => [...element.querySelectorAll("[role=option]")].findIndex(t => !Object.isNull(t.querySelector("circle.ring")));
 
   const renderAsync = async (shown: () => GitGraph): Promise<{ readonly element: HTMLElement; readonly context: FakeWindowPartContext }> => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
@@ -141,7 +142,7 @@ describe("GitHistoryComponent", () => {
     shown = graphWithHeadOn("feature", ["v1"]);
     switching.open();
     await done;
-    await untilAsync(element, () => element.querySelector(".chip.ltag") !== null);
+    await untilAsync(element, () => !Object.isNull(element.querySelector(".chip.ltag")));
 
     expect([ringOf(element), context.callsOf("requestAsync").filter(t => t[0] === "git.graph").length]).toEqual([1, 2]);
   });
@@ -162,7 +163,7 @@ describe("GitHistoryComponent", () => {
   it("reads further pages until a viewed branch's commit shows, then selects it and shows it in the Commit view; a click on the changes row shows the changes again", async () => {
     onTestFinished(() => {
       GitViewing.branch.set(null);
-      GitViewing.commit.set(null);
+      GitViewing.showChanges(GitFixtures.folder);
     });
     const commitAt = (index: number, refs: readonly GitRef[]): GitGraphCommit => new GitGraphCommit(
       new GitCommit(index.toString(16).padStart(40, "0"), [(index + 1).toString(16).padStart(40, "0")], "Sample Author", "2026-11-06T17:30:00Z", `Commit ${index}`),
@@ -170,7 +171,7 @@ describe("GitHistoryComponent", () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     context.answer("requestAsync", async (method: string, params: unknown) => {
       if (method === "git.graph")
-        return (params as { readonly skip: number }).skip === 0
+        return Object.isObject(params) && "skip" in params && params.skip === 0
           ? new GitGraph([commitAt(1, [new GitRef(RefKind.Head, "main"), new GitRef(RefKind.Branch, "main")]), commitAt(2, [])], true).toJson()
           : new GitGraph([commitAt(3, []), commitAt(4, [new GitRef(RefKind.Branch, "old")])], false).toJson();
       return GitFixtures.answerFor({ ...GitFixtures.watching, "git.status": GitFixtures.status([GitFixtures.entry("a.ts", FileState.Unmodified, FileState.Modified)]).toJson() }, method);
@@ -187,11 +188,11 @@ describe("GitHistoryComponent", () => {
     await untilAsync(element, () => selected().includes("Commit 4"));
     const shown: string | undefined = GitViewing.commitOf(GitFixtures.folder)?.commit.commit.subject;
     element.querySelector<HTMLElement>("[role=option]")?.click();
-    await untilAsync(element, () => GitViewing.commit() === null);
+    await untilAsync(element, () => Object.isNull(GitViewing.commitOf(GitFixtures.folder)));
     const options = (): readonly HTMLElement[] => [...element.querySelectorAll<HTMLElement>("[role=option]")];
     options()[2]?.click();
     await untilAsync(element, () => selected().includes("Commit 2"));
-    GitViewing.commit.set(null);
+    GitViewing.showChanges(GitFixtures.folder);
     await untilAsync(element, () => options()[0]?.getAttribute("aria-selected") === "true");
 
     expect([shown, context.callsOf("requestAsync").filter(t => t[0] === "git.graph").length, GitViewing.branch()]).toEqual(["Commit 4", 2, null]);
@@ -199,7 +200,7 @@ describe("GitHistoryComponent", () => {
 
   it("brings the Commit view to the front, through openView only, once for each commit the person clicks, and shows its choice there until it closes",
     async () => {
-    onTestFinished(() => GitViewing.commit.set(null));
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.graph": graph.toJson() });
     GitFixtures.setUp(context, [{ provide: WindowPartTokens.activeDocument, useValue: signal(true) }]);
@@ -223,6 +224,34 @@ describe("GitHistoryComponent", () => {
     expect([opened, context.callsOf("openView"), context.callsOf("showView"), first, second, details.shown()])
       .toEqual([0, [["git.commitView", "selected", "Commit"], ["git.commitView", "selected", "Commit"]], [["git.repository"]],
         "First", "Second", null]);
+  });
+
+  it("keeps each folder's chosen commit, so a commit chosen in one History leaves another folder's History on its own", async () => {
+    const other: string = "/work/other";
+    onTestFinished(() => [GitFixtures.folder, other].forEach(t => GitViewing.showChanges(t)));
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.graph": graph.toJson() });
+    GitFixtures.setUp(context, [{ provide: WindowPartTokens.activeDocument, useValue: signal(true) }]);
+    const historyOf = (folder: string): HTMLElement => {
+      const fixture: ComponentFixture<GitHistoryComponent> = TestBed.createComponent(GitHistoryComponent);
+      fixture.componentRef.setInput("instance", folder);
+      fixture.autoDetectChanges();
+      return fixture.nativeElement;
+    };
+    const first: HTMLElement = historyOf(GitFixtures.folder);
+    const second: HTMLElement = historyOf(other);
+    const options = (element: HTMLElement): readonly HTMLElement[] => [...element.querySelectorAll<HTMLElement>("[role=option]")];
+    const selected = (element: HTMLElement): string => (element.querySelector("[aria-selected=true]")?.textContent ?? "").replace(/\s+/gu, " ").trim();
+    await untilAsync(first, () => options(first).length === 2);
+    await untilAsync(second, () => options(second).length === 2);
+
+    options(first)[1]?.click();
+    await untilAsync(first, () => selected(first).includes("First"));
+    options(second)[0]?.click();
+    await untilAsync(second, () => selected(second).includes("Second"));
+
+    expect([GitViewing.commitOf(GitFixtures.folder)?.commit.commit.subject, GitViewing.commitOf(other)?.commit.commit.subject, selected(first).includes("First")])
+      .toEqual(["First", "Second", true]);
   });
 
   it("points the panels at its repository only once its tab is the window's active document, whatever tab is drawn in front of it", async () => {
@@ -326,12 +355,12 @@ describe("GitHistoryComponent", () => {
     const labeled = (): boolean => box("[data-action=UndoCommit]").width > 1.5 * box("[data-action=UndoCommit]").height;
     const layoutAsync = async (width: string, fits: (count: number) => boolean, isLabeled: boolean): Promise<readonly [readonly string[], boolean, boolean, boolean]> => {
       element.style.width = width;
-      await untilAsync(element, () => fits(groups().length) && (element.querySelector(".more") !== null) === groups().length < 4 && labeled() === isLabeled);
+      await untilAsync(element, () => fits(groups().length) && (!Object.isNull(element.querySelector(".more"))) === groups().length < 4 && labeled() === isLabeled);
       const ends: readonly DOMRect[] = [...element.querySelectorAll(".actions > *")].map(t => t.getBoundingClientRect());
       const last: DOMRect = ends[ends.length - 1] ?? new DOMRect();
       return [
         groups(),
-        element.querySelector(".more") !== null,
+        !Object.isNull(element.querySelector(".more")),
         ends.every((t, index) => index === 0 || t.left >= (ends[index - 1]?.right ?? 0)),
         rem(box(".field").left - last.right) >= 0.25 && rem(box(".toolbar").right - box(".field").right) === 0.5
       ];

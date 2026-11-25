@@ -34,6 +34,7 @@ import { HooksReader } from "../../src/services/hooks.reader.ts";
 import { Journal } from "../../src/services/journal.ts";
 import { PickWriter } from "../../src/services/pick.writer.ts";
 import { RebaseWriter } from "../../src/services/rebase.writer.ts";
+import { RefWriter } from "../../src/services/ref.writer.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
 import { RefSnapshotReader } from "../../src/services/ref-snapshot.reader.ts";
 import { RepositoryReader } from "../../src/services/repository.reader.ts";
@@ -261,6 +262,38 @@ describe("UndoWriter", () => {
     const missing = new RefSnapshot(now.branch, now.head, now.refs, "0".repeat(40));
     const staged = journal.record(folders.commonGitFolder, GitNames.stageMethod, UndoMode.Index, missing, now);
     await refusedAsync(undoAsync(staged), GitFailedException, FailureCode.Unavailable);
+  });
+
+  test("undoes a rename of the checked-out branch by renaming it back, so HEAD and its upstream follow it", async () => {
+    await repository.runGitAsync(["config", "branch.main.remote", "origin"]);
+    const renamed = await writeAsync(new RefWriter(runner, GitNames.renameBranchMethod, ["branch", "--move", "main", "trunk"], "branch", null));
+    assert.equal(await branchOf(), "trunk");
+
+    await undoAsync(renamed);
+
+    assert.equal(await branchOf(), "main");
+    assert.equal((await repository.runGitAsync(["config", "branch.main.remote"])).trim(), "origin");
+    assert.equal((await repository.runGitAsync(["branch", "--list", "trunk"])).trim(), "");
+    assert.equal(await statusOf(), "");
+  });
+
+  test("puts the refs back when a rename's entry moved no branch to rename back", async () => {
+    const before = await snapshots.readAsync(folders, true);
+    await repository.runGitAsync(["tag", "made"]);
+    const entry = journal.record(folders.commonGitFolder, GitNames.renameBranchMethod, UndoMode.Refs, before, await snapshots.readAsync(folders, true));
+
+    await undoAsync(entry);
+
+    assert.equal((await repository.runGitAsync(["tag", "--list", "made"])).trim(), "");
+  });
+
+  test("tells an agent's undo of a deleted branch that its settings don't come back", async () => {
+    await repository.runGitAsync(["branch", "spare"]);
+    const deleted = await writeAsync(new RefWriter(runner, GitNames.deleteBranchMethod, ["branch", "-d", "spare"], "branch", null));
+    const request = await new UndoWriter(runner, snapshots, journal, store, deleted.id).requestAsync(folders, await statuses.readAsync(folders), null);
+
+    assert.deepEqual(request?.details.at(-1), { label: "Note", kind: PermissionDetailKind.Text,
+      value: "The branch comes back at its commit, but its upstream and other settings were removed with it and don't come back." });
   });
 
   test("asks an agent's undo as High risk, once, naming the method and each ref it puts back", async () => {

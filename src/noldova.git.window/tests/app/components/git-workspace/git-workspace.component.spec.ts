@@ -9,6 +9,7 @@
 import { ErrorHandler, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import { By } from "@angular/platform-browser";
+import "@noldova/context.core";
 import { JsonReader, type JsonValue } from "@noldova/context.json";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
@@ -84,7 +85,7 @@ describe("GitWorkspaceComponent", () => {
         const named: JsonValue | Error | undefined = answers[`${method} ${folder}`];
         if (named instanceof Error)
           throw named;
-        if (named !== undefined)
+        if (!Object.isUndefined(named))
           return named;
         if (method === "git.fetch")
           await gate;
@@ -124,7 +125,7 @@ describe("GitWorkspaceComponent", () => {
     public static textOf(element: Element): string {
       const walker: TreeWalker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
       const pieces: string[] = [];
-      for (let node: Node | null = walker.nextNode(); node !== null; node = walker.nextNode())
+      for (let node: Node | null = walker.nextNode(); !Object.isNull(node); node = walker.nextNode())
         pieces.push((node.textContent ?? "").replace(/\s+/gu, " ").trim());
       return pieces.filter(t => t.length > 0).join(" ");
     }
@@ -135,7 +136,7 @@ describe("GitWorkspaceComponent", () => {
 
     public find<T extends HTMLElement = HTMLElement>(selector: string): T {
       const [found] = this.all<T>(selector);
-      if (found === undefined)
+      if (Object.isUndefined(found))
         throw new Error(`Nothing matches ${selector}.`);
       return found;
     }
@@ -147,7 +148,7 @@ describe("GitWorkspaceComponent", () => {
     /** Clicks the match at an index, counted from 0, or the first. */
     public click(selector: string, index: number = 0): void {
       const found: HTMLElement | undefined = this.all<HTMLElement>(selector)[index];
-      if (found === undefined)
+      if (Object.isUndefined(found))
         throw new Error(`Nothing matches ${selector} at ${index}.`);
       found.click();
       this.fixture.detectChanges();
@@ -355,7 +356,7 @@ describe("GitWorkspaceComponent", () => {
     const dialog = (): HTMLElement | null => document.querySelector("nol-git-bulk-branch-dialog");
     const part = <T extends HTMLElement>(selector: string): T => {
       const found: T | null | undefined = dialog()?.querySelector<T>(selector);
-      if (found === null || found === undefined)
+      if (Object.isNullOrUndefined(found))
         throw new Error(`The dialog has no ${selector}.`);
       return found;
     };
@@ -389,7 +390,7 @@ describe("GitWorkspaceComponent", () => {
     const refused: readonly unknown[] = refusal();
     part(".name").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
     screen.fixture.detectChanges();
-    const kept: boolean = dialog() !== null;
+    const kept: boolean = !Object.isNull(dialog());
     part(".cancel").click();
     await screen.fixture.whenStable();
     const cancelled: readonly unknown[] = [dialog(), screen.folders("git.branches"), screen.folders("git.createBranch")];

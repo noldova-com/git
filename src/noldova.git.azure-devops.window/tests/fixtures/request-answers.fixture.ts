@@ -6,14 +6,17 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { UnansweredCallException } from "@noldova/desktop.protocol/testing";
 import type { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 
+import { AnswerWaiter } from "./answer-waiter.fixture.ts";
+
 export class RequestAnswers {
   private readonly context: FakeWindowPartContext;
   private readonly queues: Map<string, (() => Promise<JsonValue>)[]> = new Map();
-  private readonly waiters: { readonly count: number; readonly resolve: () => void }[] = [];
+  private readonly waiters: AnswerWaiter[] = [];
   private readonly ignored: Set<string> = new Set();
   private readonly fallbacks: Map<string, JsonValue> = new Map();
 
@@ -25,8 +28,8 @@ export class RequestAnswers {
       if (this.ignored.has(method))
         return Promise.reject(new UnansweredCallException("requestAsync"));
       const fallback: JsonValue | undefined = this.fallbacks.get(method);
-      const next = this.queue(method).shift() ?? (fallback === undefined ? undefined : () => Promise.resolve(fallback));
-      const reply: Promise<JsonValue> = next === undefined ? Promise.reject(new UnansweredCallException("requestAsync")) : next();
+      const next = this.queue(method).shift() ?? (Object.isUndefined(fallback) ? undefined : () => Promise.resolve(fallback));
+      const reply: Promise<JsonValue> = Object.isUndefined(next) ? Promise.reject(new UnansweredCallException("requestAsync")) : next();
       this.answered.push(reply);
       for (const waiter of this.waiters.filter(t => t.count <= this.answered.length)) {
         this.waiters.splice(this.waiters.indexOf(waiter), 1);
@@ -46,7 +49,7 @@ export class RequestAnswers {
 
   public askedAsync(count: number): Promise<void> {
     return this.answered.length >= count ? Promise.resolve() : new Promise<void>(resolve => {
-      this.waiters.push({ count, resolve });
+      this.waiters.push(new AnswerWaiter(count, resolve));
     });
   }
 

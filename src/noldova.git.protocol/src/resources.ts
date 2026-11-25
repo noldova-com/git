@@ -137,12 +137,10 @@ export class Resources {
   public static readonly maximumGraphLimit: number = 5000;
   public static readonly graphLimitExpected: string = "a whole number from 1 to 5000";
   public static readonly graphCommitsExpected: string = "at most 5000 commits";
-  public static readonly messageReferenceKindExpected: string = "AzureBoards";
   public static readonly maximumReferenceNumber: number = 9_999_999_999;
   public static readonly referenceNumberExpected: string = "a whole number from 1 to 9999999999";
   public static readonly referenceNumbersExpected: string = "at least one number";
   public static readonly numbersField: string = "numbers";
-  public static readonly refKindExpected: string = "Head, Branch, RemoteBranch or Tag";
   public static readonly refNameExpected: string = "a name for a branch or tag";
   public static readonly commitField: string = "commit";
   public static readonly emailField: string = "email";
@@ -196,14 +194,12 @@ export class Resources {
   public static readonly checkpointField: string = "checkpoint";
   public static readonly modeField: string = "mode";
   public static readonly expectedField: string = "expected";
-  public static readonly maximumJournalEntries: number = 50;
+  public static readonly maximumJournalEntries: number = 500;
   public static readonly maximumLoggedCommands: number = 200;
   public static readonly fullRefPattern: RegExp = /^(?:HEAD|refs\/(?:heads|tags)\/\S+)$/u;
-  public static readonly undoModeExpected: string = "None, Index, Refs, Mixed, Keep, Switch or Checkpoint";
-  public static readonly resetModeExpected: string = "Soft, Mixed or Keep";
   public static readonly fullRefExpected: string = "HEAD, or a full branch or tag name such as refs/heads/main";
   public static readonly refMoveExpected: string = "an id that differs from the other one, which may be null when the ref was created or deleted";
-  public static readonly journalEntriesExpected: string = "at most 50 entries";
+  public static readonly journalEntriesExpected: string = "at most 500 entries";
   public static readonly loggedCommandsExpected: string = "at most 200 commands";
   public static readonly exitCodeExpected: string = "a whole number, or null when the command ended without one";
   public static readonly checkpointExpected: string = "a checkpoint and the paths it puts back exactly when the entry is undone by a checkpoint";
@@ -232,16 +228,12 @@ export class Resources {
   public static readonly resolutionTextExpected: string = "a text exactly when the resolution is Text";
   public static readonly actionField: string = "action";
   public static readonly outcomeField: string = "outcome";
-  public static readonly predictionActionExpected: string = "Merge, CherryPick or Revert";
-  public static readonly predictionOutcomeExpected: string = "UpToDate, FastForward, Clean, Conflicts or Unavailable";
   public static readonly predictionPathsExpected: string = "at least one path exactly when the outcome is Conflicts";
   public static readonly stateField: string = "state";
   public static readonly signerField: string = "signer";
-  public static readonly signatureStateExpected: string = "Verified, Unverified or None";
   public static readonly unsignedNullExpected: string = "null, since the commit carries no signature";
   public static readonly signsField: string = "signs";
   public static readonly formatField: string = "format";
-  public static readonly signingFormatExpected: string = "OpenPgp, Ssh, X509 or null";
   public static readonly ontoField: string = "onto";
   public static readonly ontoAheadField: string = "ontoAhead";
   public static readonly stepsField: string = "steps";
@@ -253,8 +245,6 @@ export class Resources {
   public static readonly includeUntrackedField: string = "includeUntracked";
   public static readonly newline: string = "\n";
   public static readonly maximumRebaseSteps: number = 500;
-  public static readonly rebaseActionExpected: string = "Pick, Reword, Edit, Squash, Fixup or Drop";
-  public static readonly rebaseOutcomeExpected: string = "Clean, Conflicts, Folded, Dropped or Unavailable";
   public static readonly rebaseMessageExpected: string = "a message exactly when the action is Reword or Squash";
   public static readonly rebaseStepsExpected: string =
     "between 1 and 500 steps, each commit once, with no Squash or Fixup before the first step it can fold into";

@@ -7,6 +7,7 @@
  */
 
 import type { Signal } from "@angular/core";
+import "@noldova/context.core";
 import type { ILinkReferenceSource, LinkReference } from "@noldova/ui.components.angular";
 
 /** A run of a text the Git view shows: plain words, or a reference it links to the reference's page. */
@@ -25,7 +26,7 @@ export class GitReferencePart {
 
   /** A text cut into its words and the references the hosts find in it, in order; of two matches that overlap, the first one written stays. */
   public static of(text: string, source: ILinkReferenceSource | null): readonly GitReferencePart[] {
-    if (source === null)
+    if (Object.isNull(source))
       return [new GitReferencePart(text)];
     const parts: GitReferencePart[] = [];
     let at = 0;

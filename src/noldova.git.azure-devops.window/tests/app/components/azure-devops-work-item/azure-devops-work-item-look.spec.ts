@@ -9,6 +9,7 @@
 import type {} from "@vitest/browser-playwright";
 import { Component, signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
@@ -69,7 +70,7 @@ const mine: readonly HostWorkItemDetail[] = [
 ];
 const pullRequest: HostPullRequest = new HostPullRequest(new HostItem(pr482, ReferenceKind.PullRequest, ReferenceState.Open, "Export notes",
   "https://dev.azure.com/fabrikam/Sample%20Project/_git/garden-web/pullrequest/752", null, 1_800_000_000_000, null, 0, 
-  new HostChanges(null, null, null, "users/kim/7521-export-notes-markdown", "main", "0123456789abcdef0123456789abcdef01234567")), [],
+  HostChanges.uncounted("users/kim/7521-export-notes-markdown", "main", "0123456789abcdef0123456789abcdef01234567")), [],
 [new HostPolicy("Build", PolicyState.Approved, true, null), new HostPolicy("Comments", PolicyState.Rejected, true, null)], [], false, "", null, []);
 
 const history: GitGraph = new GitGraph([
@@ -144,7 +145,7 @@ describe("AzureDevOpsWorkItemComponent in the kit's look", () => {
   it.each(AppearanceFixture.modes)("shows the assignee's Azure DevOps picture at the 1.5rem avatar's size before their name, in %s mode", async mode => {
     const fixture = await openAsync(mode, false, true);
     const root: HTMLElement = fixture.nativeElement;
-    await untilAsync(() => root.querySelector(".person img") !== null);
+    await untilAsync(() => !Object.isNull(root.querySelector(".person img")));
     const image: DOMRect = boxOf(root, ".person img");
 
     expect(find(root, ".person img").getAttribute("src")).toBe(picture);
@@ -221,7 +222,7 @@ describe("AzureDevOpsWorkItemComponent in the kit's look", () => {
       const box = section.getBoundingClientRect();
       const rows: readonly HTMLElement[] = [...root.querySelectorAll<HTMLElement>(".history .commit")];
       const first = rows[0];
-      if (first === undefined)
+      if (Object.isUndefined(first))
         throw new Error("The history lists no commits.");
       const row = first.getBoundingClientRect();
       const subject = find(first, ".subject");
@@ -248,7 +249,7 @@ describe("AzureDevOpsWorkItemComponent in the kit's look", () => {
     const fixture = await openAsync(mode, true);
     const root: HTMLElement = fixture.nativeElement;
     const commit = [...root.querySelectorAll<HTMLElement>(".history .commit")][1];
-    if (commit === undefined)
+    if (Object.isUndefined(commit))
       throw new Error("The history lists no second commit.");
     const chip = boxOf(commit, ".chip.ref");
     const icon = boxOf(commit, ".chip.ref .chip-icon");
@@ -270,7 +271,7 @@ describe("AzureDevOpsWorkItemComponent in the kit's look", () => {
       const chips: readonly DOMRect[] = [...root.querySelectorAll<HTMLElement>(".chip.filter")].map(t => t.getBoundingClientRect());
       const first = chips[0];
       const last = chips.at(-1);
-      if (first === undefined || last === undefined)
+      if (Object.isUndefined(first) || Object.isUndefined(last))
         throw new Error("The header has no filter chips.");
 
       expect(chips).toHaveLength(2);
@@ -292,7 +293,7 @@ describe("AzureDevOpsWorkItemComponent in the kit's look", () => {
     const cells = (row: HTMLElement): readonly DOMRect[] => [...row.children].map(t => t.getBoundingClientRect());
     const header = rows[0];
     const story = rows[3];
-    if (header === undefined || story === undefined)
+    if (Object.isUndefined(header) || Object.isUndefined(story))
       throw new Error("The rows aren't shown.");
     const headerCells = cells(header);
     const storyCells = cells(story);
@@ -307,7 +308,7 @@ describe("AzureDevOpsWorkItemComponent in the kit's look", () => {
     expect(headerCells.map(t => Math.round(t.left))).toEqual(storyCells.map(t => Math.round(t.left)));
     expect(titles.map(t => Number.parseFloat(getComputedStyle(t).paddingLeft))).toEqual([0, 1, 2, 3, 3].map(t => px(t)));
     const long = titles[3]?.querySelector<HTMLElement>(".title-text");
-    expect(long !== null && long !== undefined && long.scrollWidth > long.clientWidth).toBe(true);
+    expect(!Object.isNullOrUndefined(long) && long.scrollWidth > long.clientWidth).toBe(true);
   });
 
   it.each(AppearanceFixture.modes)("starts a selected row's pull request chip on the Links column's edge, as a row's plain links, its fill apart from the row's, in %s mode",

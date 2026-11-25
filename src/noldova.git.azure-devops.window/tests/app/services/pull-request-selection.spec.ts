@@ -17,7 +17,7 @@ describe("PullRequestSelection", () => {
   const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", "site", 752);
   const pullRequest: HostPullRequest = new HostPullRequest(new HostItem(reference, ReferenceKind.PullRequest, ReferenceState.Open, "Export notes",
     "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/752", new HostPerson("monalisa@fabrikam.com", null, null), Date.UTC(2026, 10, 20), null, 0,
-    new HostChanges(null, null, null, "export-notes", "main", "0123456789abcdef0123456789abcdef01234567")), [], [], [], false, "", 1, []);
+    HostChanges.uncounted("export-notes", "main", "0123456789abcdef0123456789abcdef01234567")), [], [], [], false, "", 1, []);
 
   it("keeps one Pull request view per window", () => {
     const context = new FakeWindowPartContext();

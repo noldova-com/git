@@ -8,6 +8,7 @@
 
 import { signal, type WritableSignal } from "@angular/core";
 
+import "@noldova/context.core";
 import type { IWindowPartContext } from "@noldova/desktop.window";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { AuthorQuery, HostAvatar } from "@noldova/git.hosting.protocol";
@@ -39,11 +40,11 @@ export class GitHubAuthorAvatars implements IGitAvatars {
   public avatarOf(folder: string, email: string, commitId: string): string | null | undefined {
     this.signIns();
     const home: string | null | undefined = this.references().knownHomeOf(folder);
-    if (home === null || home === undefined)
+    if (Object.isNullOrUndefined(home))
       return home;
     const key: string = Resources.formatAvatarKey(home, email.trim().toLowerCase());
     let avatar: WritableSignal<string | null | undefined> | undefined = this.kept.get(key);
-    if (avatar === undefined) {
+    if (Object.isUndefined(avatar)) {
       const reading: WritableSignal<string | null | undefined> = signal(undefined);
       avatar = reading;
       this.kept.set(key, reading);

@@ -7,6 +7,7 @@
  */
 
 import { Component, computed, effect, inject, input, type InputSignal, type Signal, signal, untracked, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { type HostBuild, type HostPullRequest, type HostReviewer, PolicyState, ReferenceState } from "@noldova/git.hosting.protocol";
 import { AvatarSize, IconButtonComponent } from "@noldova/ui.components.angular";
@@ -53,7 +54,7 @@ export class AzureDevOpsPullRequestDetailComponent {
       untracked(() => {
         this.isAdding.set(false);
         this.context.updateView(Resources.pullRequestView, instance,
-          { title: pullRequest === null ? Resources.pullRequestLabel : Resources.formatPullRequestViewTitle(pullRequest.item.reference.number) });
+          { title: Object.isNull(pullRequest) ? Resources.pullRequestLabel : Resources.formatPullRequestViewTitle(pullRequest.item.reference.number) });
       });
     });
   }
@@ -82,12 +83,12 @@ export class AzureDevOpsPullRequestDetailComponent {
   }
 
   protected buildTimeOf(choice: PullRequestChoice, build: HostBuild): string | null {
-    if (build.startedAt === null)
+    if (Object.isNull(build.startedAt))
       return null;
     const end: number = build.finishedAt ?? choice.readAt;
     const seconds: number = Math.max(0, Math.floor((end - build.startedAt) / AzureDevOpsPullRequestDetailComponent.SECOND));
     return Resources.formatBuildTime(Math.floor(seconds / AzureDevOpsPullRequestDetailComponent.MINUTE), seconds % AzureDevOpsPullRequestDetailComponent.MINUTE,
-      build.finishedAt === null);
+      Object.isNull(build.finishedAt));
   }
 
   protected async openAsync(url: string): Promise<void> {

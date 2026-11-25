@@ -8,6 +8,7 @@
 
 import { Component, computed, effect, inject, Injector, input, type InputSignal, PendingTasks, type Signal, signal, untracked,
   type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
@@ -67,7 +68,7 @@ export class AzureDevOpsWorkItemDetailComponent {
       const id: number | undefined = this.selected()?.item.id;
       const instance: string = this.instance();
       untracked(() => this.context.updateView(Resources.workItemView, instance,
-        { title: id === undefined ? Resources.workItemViewLabel : Resources.formatWorkItemViewTitle(id) }));
+        { title: Object.isUndefined(id) ? Resources.workItemViewLabel : Resources.formatWorkItemViewTitle(id) }));
     });
     effect(onCleanup => {
       const detail: HostWorkItemDetail | null = this.selected();
@@ -79,7 +80,7 @@ export class AzureDevOpsWorkItemDetailComponent {
       untracked(() => {
         this.children.set([]);
         this.pullRequests.set(new Map());
-        if (detail !== null && place !== null)
+        if (!Object.isNull(detail) && !Object.isNull(place))
           void this.readLinksAsync(place, detail, () => isCurrent);
       });
     });
@@ -91,7 +92,7 @@ export class AzureDevOpsWorkItemDetailComponent {
       });
       untracked(() => {
         this.linked.set(LinkedHistory.none);
-        if (folder !== null)
+        if (!Object.isNull(folder))
           void this.readHistoryAsync(folder, () => isCurrent);
       });
     });
@@ -118,7 +119,7 @@ export class AzureDevOpsWorkItemDetailComponent {
   protected chipItemOf(choice: WorkItemChoice, id: number): HostWorkItem | null {
     const shown: HostWorkItem = choice.detail.item;
     const read: HostWorkItemDetail | undefined = [...choice.known, ...this.children()].find(t => t.item.id === id && t.item.organization === shown.organization);
-    return read === undefined ? this.chipItems.itemOf(shown.organization, shown.project, id)() : read.item;
+    return Object.isUndefined(read) ? this.chipItems.itemOf(shown.organization, shown.project, id)() : read.item;
   }
 
   protected showCommit(folder: string, commit: GitCommit): void {
@@ -207,13 +208,13 @@ export class AzureDevOpsWorkItemDetailComponent {
       return;
     const query = new WorkItemsQuery(AzureDevOpsNames.moduleId, place.organization, place.project, WorkItemScope.Ids, detail.children);
     const answer: JsonValue | null = await this.askAsync(AzureDevOpsNames.readWorkItemsMethod, query.toJson());
-    if (answer !== null && isCurrent())
+    if (!Object.isNull(answer) && isCurrent())
       this.children.set(HostWorkItemList.fromJson(answer).items);
   }
 
   private async readPullRequestAsync(reference: HostReference, isCurrent: () => boolean): Promise<void> {
     const answer: JsonValue | null = await this.askAsync(AzureDevOpsNames.readPullRequestMethod, reference.toJson());
-    if (answer !== null && isCurrent())
+    if (!Object.isNull(answer) && isCurrent())
       this.pullRequests.update(t => {
         const read: Map<number, HostPullRequest> = new Map(t);
         read.set(reference.number, HostPullRequest.fromJson(answer));

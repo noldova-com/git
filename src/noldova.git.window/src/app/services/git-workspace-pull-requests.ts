@@ -7,6 +7,7 @@
  */
 
 import { computed, type ErrorHandler, type Signal } from "@angular/core";
+import "@noldova/context.core";
 import type { GitRemote } from "@noldova/git.protocol";
 
 import { GitPullRequestState } from "../enums/git-pull-request-state.ts";
@@ -50,7 +51,7 @@ export class GitWorkspacePullRequests {
     const head: Signal<string | null> = computed(() => summary()?.head ?? null);
     const host: Signal<IGitPullRequests | null> = computed(() => {
       const shown: GitRemote | null = remote();
-      return shown === null ? null : GitPullRequests.of(shown);
+      return Object.isNull(shown) ? null : GitPullRequests.of(shown);
     });
     /** The host's read of the branch, asked for only when the host, the remote, the branch or its head commit changes. */
     const read: Signal<Signal<GitBranchPullRequest | null> | null | undefined> = computed(() => {
@@ -59,14 +60,14 @@ export class GitWorkspacePullRequests {
       const name: string | null = branch();
       const commit: string | null = head();
       const branchFor: IGitPullRequests["branchFor"] = provider?.branchFor;
-      return branchFor === undefined || shown === null || name === null ? undefined : this.attempt(() => branchFor.call(provider, folder, shown, name, commit), null);
+      return Object.isUndefined(branchFor) || Object.isNull(shown) || Object.isNull(name) ? undefined : this.attempt(() => branchFor.call(provider, folder, shown, name, commit), null);
     });
     return computed(() => {
       const listed: GitPullRequestList | null | undefined = list();
-      if (listed !== undefined)
+      if (!Object.isUndefined(listed))
         return GitWorkspacePullRequests.branchIn(listed, branch());
       const answer: Signal<GitBranchPullRequest | null> | null | undefined = read();
-      return answer === undefined || answer === null ? answer : answer();
+      return Object.isNullOrUndefined(answer) ? answer : answer();
     });
   }
 
@@ -78,12 +79,12 @@ export class GitWorkspacePullRequests {
     const remote: Signal<GitRemote | null> = computed(() => summary()?.remote ?? null, { equal: GitWorkspacePullRequests.isSameRemote });
     const list: Signal<Signal<GitPullRequestList | null> | null | undefined> = computed(() => {
       const shown: GitRemote | null = remote();
-      const provider: IGitPullRequests | null = shown === null ? null : GitPullRequests.of(shown);
-      return provider === null || shown === null || provider.branchFor !== undefined ? undefined : this.attempt(() => provider.listFor(folder, shown), null);
+      const provider: IGitPullRequests | null = Object.isNull(shown) ? null : GitPullRequests.of(shown);
+      return Object.isNull(provider) || Object.isNull(shown) || !Object.isUndefined(provider.branchFor) ? undefined : this.attempt(() => provider.listFor(folder, shown), null);
     });
     return computed(() => {
       const listed: Signal<GitPullRequestList | null> | null | undefined = list();
-      return listed === undefined || listed === null ? listed : listed();
+      return Object.isNullOrUndefined(listed) ? listed : listed();
     });
   }
 
@@ -95,12 +96,12 @@ export class GitWorkspacePullRequests {
     const remote: Signal<GitRemote | null> = computed(() => summary()?.remote ?? null, { equal: GitWorkspacePullRequests.isSameRemote });
     const list: Signal<Signal<GitPullRequestList | null> | null | undefined> = computed(() => {
       const shown: GitRemote | null = remote();
-      const provider: IGitPullRequests | null = shown === null ? null : GitPullRequests.of(shown);
-      return provider === null || shown === null ? undefined : this.attempt(() => provider.listFor(folder, shown), null);
+      const provider: IGitPullRequests | null = Object.isNull(shown) ? null : GitPullRequests.of(shown);
+      return Object.isNull(provider) || Object.isNull(shown) ? undefined : this.attempt(() => provider.listFor(folder, shown), null);
     });
     return computed(() => {
       const listed: Signal<GitPullRequestList | null> | null | undefined = list();
-      return listed === undefined || listed === null ? listed : listed();
+      return Object.isNullOrUndefined(listed) ? listed : listed();
     });
   }
 
@@ -114,33 +115,33 @@ export class GitWorkspacePullRequests {
     const remote: Signal<GitRemote | null> = computed(() => summary()?.remote ?? null, { equal: GitWorkspacePullRequests.isSameRemote });
     const stacks: Signal<Signal<GitPullRequestList | null> | null | undefined> = computed(() => {
       const shown: GitRemote | null = remote();
-      const provider: IGitPullRequests | null = shown === null ? null : GitPullRequests.of(shown);
+      const provider: IGitPullRequests | null = Object.isNull(shown) ? null : GitPullRequests.of(shown);
       const stackListFor: IGitPullRequests["stackListFor"] = provider?.stackListFor;
-      return stackListFor === undefined || shown === null ? undefined : this.attempt(() => stackListFor.call(provider, folder, shown), null);
+      return Object.isUndefined(stackListFor) || Object.isNull(shown) ? undefined : this.attempt(() => stackListFor.call(provider, folder, shown), null);
     });
     return computed(() => {
       const read: Signal<GitPullRequestList | null> | null | undefined = stacks();
-      return read === undefined ? list() : read === null ? null : read();
+      return Object.isUndefined(read) ? list() : Object.isNull(read) ? null : read();
     });
   }
 
   /** Asks the repository's host to read its branch's pull request, or its list, once for each remote, branch and head commit until {@link forget}. */
   public refreshOnce(folder: string, summary: GitRepositorySummary | null): void {
     const remote: GitRemote | null = summary?.remote ?? null;
-    const host: IGitPullRequests | null = remote === null ? null : GitPullRequests.of(remote);
-    if (summary === null || remote === null || host === null)
+    const host: IGitPullRequests | null = Object.isNull(remote) ? null : GitPullRequests.of(remote);
+    if (Object.isNull(summary) || Object.isNull(remote) || Object.isNull(host))
       return;
     const refreshBranch: IGitPullRequests["refreshBranch"] = host.refreshBranch;
     const branch: string | null = summary.branch;
-    const key: string = JSON.stringify(refreshBranch === undefined ? [folder, remote.name, remote.host, remote.path, remote.transport]
+    const key: string = JSON.stringify(Object.isUndefined(refreshBranch) ? [folder, remote.name, remote.host, remote.path, remote.transport]
       : [folder, remote.name, remote.host, remote.path, remote.transport, branch, summary.head]);
     if (this.refreshed.has(key))
       return;
     this.refreshed.add(key);
-    if (refreshBranch === undefined)
+    if (Object.isUndefined(refreshBranch))
       this.attempt(() => host.refresh(folder, remote), undefined);
     else {
-      if (branch !== null)
+      if (!Object.isNull(branch))
         this.attempt(() => refreshBranch.call(host, folder, remote, branch, summary.head), undefined);
       const listKey: string = JSON.stringify([folder, remote.name, remote.host, remote.path, remote.transport]);
       if (!this.refreshed.has(listKey)) {
@@ -162,14 +163,14 @@ export class GitWorkspacePullRequests {
       const seen: Set<string> = new Set();
       for (const row of repositories()) {
         const remote: GitRemote | null = row.summary()?.remote ?? null;
-        const host: IGitPullRequests | null = remote === null ? null : GitPullRequests.of(remote);
+        const host: IGitPullRequests | null = Object.isNull(remote) ? null : GitPullRequests.of(remote);
         const reviewsFor: IGitPullRequests["reviewsFor"] = host?.reviewsFor;
         const key: string = JSON.stringify([remote?.host, remote?.path]);
-        if (remote === null || host === null || reviewsFor === undefined || seen.has(key))
+        if (Object.isNull(remote) || Object.isNull(host) || Object.isUndefined(reviewsFor) || seen.has(key))
           continue;
         seen.add(key);
         const list: Signal<GitPullRequestList | null> | null = this.attempt(() => reviewsFor.call(host, remote), null);
-        if (list !== null)
+        if (!Object.isNull(list))
           found.push([row, host, list]);
       }
       return found;
@@ -190,10 +191,10 @@ export class GitWorkspacePullRequests {
   public refreshReviewsOnce(summaries: readonly (GitRepositorySummary | null)[]): void {
     for (const summary of summaries) {
       const remote: GitRemote | null = summary?.remote ?? null;
-      const host: IGitPullRequests | null = remote === null ? null : GitPullRequests.of(remote);
+      const host: IGitPullRequests | null = Object.isNull(remote) ? null : GitPullRequests.of(remote);
       const refreshReviews: IGitPullRequests["refreshReviews"] = host?.refreshReviews;
       const key: string = JSON.stringify([GitWorkspacePullRequests.reviewsKey, remote?.host, remote?.path]);
-      if (remote === null || refreshReviews === undefined || this.refreshed.has(key))
+      if (Object.isNull(remote) || Object.isUndefined(refreshReviews) || this.refreshed.has(key))
         continue;
       this.refreshed.add(key);
       this.attempt(() => refreshReviews.call(host, remote), undefined);
@@ -213,16 +214,16 @@ export class GitWorkspacePullRequests {
   /** Opens a pull request in its host's own page when it has one; answers false when the host leaves it to the browser. */
   public open(folder: string, summary: GitRepositorySummary | null, row: GitPullRequestRow): boolean {
     const remote: GitRemote | null = summary?.remote ?? null;
-    const host: IGitPullRequests | null = remote === null ? null : GitPullRequests.of(remote);
-    return host !== null && this.attempt(() => host.open?.(folder, row) === true, false);
+    const host: IGitPullRequests | null = Object.isNull(remote) ? null : GitPullRequests.of(remote);
+    return !Object.isNull(host) && this.attempt(() => host.open?.(folder, row) === true, false);
   }
 
   /** The branch's open pull request in a host's list, or that the list has none for it, needs a sign-in, failed or still reads. */
   private static branchIn(list: GitPullRequestList | null, branch: string | null): GitBranchPullRequest | null {
-    if (list === null)
+    if (Object.isNull(list))
       return null;
     const row: GitPullRequestRow | undefined = list.rows.find(t => t.headBranch === branch);
-    if (row !== undefined)
+    if (!Object.isUndefined(row))
       return GitBranchPullRequest.of(row, row.isDraft ? GitPullRequestState.Draft : GitPullRequestState.Open, false);
     switch (list.state) {
       case GitPullRequestsState.Ready:
@@ -237,7 +238,7 @@ export class GitWorkspacePullRequests {
   }
 
   private static isSameRemote(a: GitRemote | null, b: GitRemote | null): boolean {
-    return a === b || (a !== null && b !== null && a.name === b.name && a.host === b.host && a.path === b.path && a.transport === b.transport);
+    return a === b || (!Object.isNull(a) && !Object.isNull(b) && a.name === b.name && a.host === b.host && a.path === b.path && a.transport === b.transport);
   }
 
   private attempt<T>(run: () => T, fallback: T): T {

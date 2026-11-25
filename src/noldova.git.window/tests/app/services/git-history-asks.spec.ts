@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { GitHistoryAsk } from "../../../src/app/models/git-history-ask.ts";
@@ -18,7 +19,7 @@ describe("GitHistoryAsks", () => {
   afterEach(() => {
     for (const folder of [garden, api]) {
       const left: GitHistoryAsk | null = GitHistoryAsks.askedOf(folder);
-      if (left !== null)
+      if (!Object.isNull(left))
         GitHistoryAsks.take(left);
     }
   });
@@ -42,11 +43,11 @@ describe("GitHistoryAsks", () => {
     GitHistoryAsks.ask(garden, "a91c40e");
     const first: GitHistoryAsk | null = GitHistoryAsks.askedOf(garden);
     GitHistoryAsks.ask(garden, "5f02b7d");
-    if (first !== null)
+    if (!Object.isNull(first))
       GitHistoryAsks.take(first);
     const kept: string | undefined = GitHistoryAsks.askedOf(garden)?.commitId;
     const second: GitHistoryAsk | null = GitHistoryAsks.askedOf(garden);
-    if (second !== null)
+    if (!Object.isNull(second))
       GitHistoryAsks.take(second);
 
     expect([first?.commitId, kept, GitHistoryAsks.askedOf(garden)]).toEqual(["a91c40e", "5f02b7d", null]);

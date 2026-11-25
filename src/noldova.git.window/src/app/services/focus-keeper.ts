@@ -6,7 +6,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
+
 import { Resources } from "../../resources.ts";
+import { FocusPlace } from "../models/focus-place.ts";
+import { FocusSurvivor } from "../models/focus-survivor.ts";
 
 /**
  * Keeps the focus on a control when the control that held it as the person pressed goes away, as a staged file's row or a dismissed banner does,
@@ -25,9 +29,9 @@ export class FocusKeeper {
     const pressed = (): void => {
       stop();
       const control: HTMLElement | null = root.querySelector<HTMLElement>(Resources.focusedSelector);
-      if (control === null)
+      if (Object.isNull(control))
         return;
-      const places: readonly (readonly [Element, number])[] = FocusKeeper.placesOf(root, control);
+      const places: readonly FocusPlace[] = FocusKeeper.placesOf(root, control);
       const observer: MutationObserver = new MutationObserver(() => {
         if (control.isConnected)
           return;
@@ -35,11 +39,11 @@ export class FocusKeeper {
           stop();
           return;
         }
-        const survivor: readonly [HTMLElement, readonly HTMLElement[]] | null = FocusKeeper.survivorOf(places);
-        if (survivor === null)
+        const survivor: FocusSurvivor | null = FocusKeeper.survivorOf(places);
+        if (Object.isNull(survivor))
           return;
         stop();
-        FocusKeeper.focus(...survivor);
+        FocusKeeper.focus(survivor.control, survivor.before);
       });
       watching = observer;
       observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: [Resources.disabledAttribute] });
@@ -52,10 +56,10 @@ export class FocusKeeper {
   }
 
   /** Each container from the control's up to the root, with the control's place among the controls in it. */
-  private static placesOf(root: HTMLElement, control: HTMLElement): readonly (readonly [Element, number])[] {
-    const places: (readonly [Element, number])[] = [];
-    for (let at: Element | null = control.parentElement; at !== null; at = at === root ? null : at.parentElement)
-      places.push([at, FocusKeeper.controlsOf(at).indexOf(control)]);
+  private static placesOf(root: HTMLElement, control: HTMLElement): readonly FocusPlace[] {
+    const places: FocusPlace[] = [];
+    for (let at: Element | null = control.parentElement; !Object.isNull(at); at = at === root ? null : at.parentElement)
+      places.push(new FocusPlace(at, FocusKeeper.controlsOf(at).indexOf(control)));
     return places;
   }
 
@@ -63,13 +67,13 @@ export class FocusKeeper {
    * The control at the pressed one's place, or the last one before it, in the nearest container that is still there and holds any, with the controls
    * before it there.
    */
-  private static survivorOf(places: readonly (readonly [Element, number])[]): readonly [HTMLElement, readonly HTMLElement[]] | null {
-    for (const [container, place] of places) {
-      const controls: readonly HTMLElement[] = container.isConnected ? FocusKeeper.controlsOf(container) : [];
-      const at: number = Math.min(place, controls.length - 1);
+  private static survivorOf(places: readonly FocusPlace[]): FocusSurvivor | null {
+    for (const place of places) {
+      const controls: readonly HTMLElement[] = place.container.isConnected ? FocusKeeper.controlsOf(place.container) : [];
+      const at: number = Math.min(place.place, controls.length - 1);
       const survivor: HTMLElement | undefined = controls[at];
-      if (survivor !== undefined)
-        return [survivor, controls.slice(0, at)];
+      if (!Object.isUndefined(survivor))
+        return new FocusSurvivor(survivor, controls.slice(0, at));
     }
     return null;
   }

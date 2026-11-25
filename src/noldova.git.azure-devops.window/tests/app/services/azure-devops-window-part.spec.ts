@@ -8,6 +8,7 @@
 
 import { Component, inject, Injector, input, type InputSignal, signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { NotificationPost, NotificationSeverity, QualifiedName } from "@noldova/desktop.protocol";
 import { type CommandContribution, ContentPadding, DockSide, type DocumentContribution, NotificationHandle, type ViewContribution } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
@@ -176,7 +177,7 @@ describe("AzureDevOpsWindowPart", () => {
     await part.deactivateAsync();
     await part.deactivateAsync();
 
-    expect([before, asked === null, found === null, found?.()?.reference, GitLinkReferences.of("/repository"), context.activeCallsOf("onEvent")])
+    expect([before, Object.isNull(asked), Object.isNull(found), found?.()?.reference, GitLinkReferences.of("/repository"), context.activeCallsOf("onEvent")])
       .toEqual([null, false, false, "Work item 5", null, []]);
   });
 
@@ -332,7 +333,7 @@ describe("AzureDevOpsWindowPart", () => {
     const choiceOf = (number: number): PullRequestChoice => {
       const pullRequest = new HostPullRequest(new HostItem(new HostReference("git-azure-devops", "fabrikam", "site", number), ReferenceKind.PullRequest,
         ReferenceState.Open, `Change ${number}`, `https://dev.azure.com/fabrikam/web/_git/site/pullrequest/${number}`, null, 1, null, 0,
-        new HostChanges(null, null, null, "export-notes", "main", "0123456789abcdef0123456789abcdef01234567")), [], [], [], false, "", null, []);
+        HostChanges.uncounted("export-notes", "main", "0123456789abcdef0123456789abcdef01234567")), [], [], [], false, "", null, []);
       return new PullRequestChoice(pullRequest, [], 0, { changed: () => undefined, added: () => undefined });
     };
     selection.showInFront(choiceOf(7));
@@ -609,7 +610,8 @@ describe("AzureDevOpsWindowPart", () => {
         + " https://dev.azure.com/contoso/_workitems/edit/3 and https://dev.azure.com/fabrikam/web/_build/results?buildId=9.");
       fixture.autoDetectChanges();
       await fixture.whenStable();
-      const links: HTMLAnchorElement[] = [...(fixture.nativeElement as HTMLElement).querySelectorAll<HTMLAnchorElement>("a.nol-markdown-link")];
+      const message: unknown = fixture.nativeElement;
+      const links: HTMLAnchorElement[] = message instanceof HTMLElement ? [...message.querySelectorAll<HTMLAnchorElement>("a.nol-markdown-link")] : [];
 
       for (const link of links)
         link.click();
@@ -651,7 +653,7 @@ describe("AzureDevOpsWindowPart", () => {
       const title = (document.querySelector(".nol-dialog-title")?.textContent ?? "").trim();
       dialog()?.querySelector<HTMLButtonElement>(".nol-git-azure-devops-branch-cancel")?.click();
       await Wait.until(() => {
-        if (dialog() !== null)
+        if (!Object.isNull(dialog()))
           throw new Error("The dialog is still open.");
       });
       await part.deactivateAsync();

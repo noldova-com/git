@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { IWindowPartContext } from "@noldova/desktop.window";
 
 import { Resources } from "../../resources.ts";
@@ -21,7 +22,7 @@ export class GitCommandLogs {
 
   /** Reopens the logs kept in the window's storage, and forgets each one the person closes; the window part calls it while it activates. */
   public static restore(context: IWindowPartContext): void {
-    GitCommandLogs.folders = GitWindowStorage.readArray(GitCommandLogs.KEY).filter((t): t is string => typeof t === "string" && t.trim() !== "");
+    GitCommandLogs.folders = GitWindowStorage.readArray(GitCommandLogs.KEY).filter((t): t is string => Object.isString(t) && t.trim() !== "");
     context.onViewClosed(Resources.commandLogViewName, GitCommandLogs.forget);
     for (const folder of GitCommandLogs.folders)
       context.openView(Resources.commandLogViewName, folder, Resources.formatCommandLogTitle(folder));

@@ -11,7 +11,7 @@ import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 import { GitJournalEntry } from "./git-journal-entry.ts";
 
-/** The result of `git.journal`: a repository's recent writes, oldest first, at most 50. */
+/** The result of `git.journal`: a repository's recent writes, oldest first, at most 500. */
 export class GitJournal {
   private static readonly FIELDS: readonly string[] = [Resources.entriesField, Resources.checkpointsField];
 

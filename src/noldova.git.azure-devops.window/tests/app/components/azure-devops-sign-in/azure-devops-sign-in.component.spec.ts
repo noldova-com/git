@@ -8,6 +8,7 @@
 
 import { signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
@@ -70,7 +71,7 @@ class Page {
   public get places(): readonly unknown[] {
     return this.context.callsOf("openLinkAsync").map(t => {
       const options = t[1];
-      return typeof options === "object" && options !== null && "place" in options ? options.place : this.browser.placeFor();
+      return Object.isObject(options) && "place" in options ? options.place : this.browser.placeFor();
     });
   }
 
@@ -83,7 +84,7 @@ class Page {
   }
 
   public async openAsync(first: HostSignIn | null): Promise<this> {
-    if (first !== null)
+    if (!Object.isNull(first))
       this.requests.answer(AzureDevOpsNames.readSignInMethod, first.toJson());
     TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: this.context }] });
     this.fixture = TestBed.createComponent(AzureDevOpsSignInComponent);
@@ -108,7 +109,7 @@ class Page {
   public button(label: string): HTMLButtonElement {
     const buttons = [...this.element.querySelectorAll("button")];
     const found = buttons.find(t => t.querySelector(".nol-button-label")?.textContent?.trim() === label) ?? buttons.find(t => (t.textContent ?? "").includes(label));
-    if (found === undefined)
+    if (Object.isUndefined(found))
       throw new Error(`No button reads ${label}.`);
     return found;
   }
@@ -166,7 +167,7 @@ describe("AzureDevOpsSignInComponent", () => {
 
     expect(items.map(t => t.textContent.trim())).toEqual(["Code (Read & write)", "Work Items (Read & write)", "Graph (Read)", "Build (Read)"]);
     expect([listBox?.left, ((itemBox?.left ?? 0) - (listBox?.left ?? 0)) / rem, (listBox?.top ?? 0) >= (noteBox?.bottom ?? Infinity)]).toEqual([noteBox?.left, 1.25, true]);
-    const looksOf = (element: Element | null | undefined): readonly string[] => element === null || element === undefined ? [] : [getComputedStyle(element).color,
+    const looksOf = (element: Element | null | undefined): readonly string[] => Object.isNullOrUndefined(element) ? [] : [getComputedStyle(element).color,
       getComputedStyle(element).fontSize];
     expect([looksOf(list), looksOf(note).length]).toEqual([looksOf(note), 2]);
   });

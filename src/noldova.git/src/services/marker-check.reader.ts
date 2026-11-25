@@ -30,7 +30,8 @@ export class MarkerCheckReader {
   /** Each leftover marker line as git prints it, such as `src/a.ts:3: leftover conflict marker`, in its order. */
   public async readLinesAsync(top: string, signal?: AbortSignal): Promise<readonly string[]> {
     const result = await this.runner.runAsync(ProgramRun.readGit(MarkerCheckReader.ARGUMENTS, top, MarkerCheckReader.LIMITS, signal));
-    if (result.exit.code === null || result.exit.code >= Resources.gitFatalExitCode)
+    // A cut answer may hide a marker past the cut, so it fails rather than lets a continue run.
+    if (result.exit.code === null || result.exit.code >= Resources.gitFatalExitCode || result.isTruncated)
       throw new GitFailedException(Resources.diffCommand, { text: result.errors.toString(Resources.utf8Encoding), source: UntrustedSource.Repository });
     return result.output.toString(Resources.utf8Encoding).match(Resources.leftoverMarkerPattern) ?? [];
   }

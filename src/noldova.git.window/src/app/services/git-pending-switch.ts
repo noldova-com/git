@@ -7,6 +7,7 @@
  */
 
 import { signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 
 import { GitSwitchTarget } from "../models/git-switch-target.ts";
 
@@ -17,7 +18,7 @@ export class GitPendingSwitch {
   /** The branch a folder is switching to, or `null` when it isn't switching. */
   public static branchOf(folder: string | null): string | null {
     const target: GitSwitchTarget | null = GitPendingSwitch.target();
-    return target !== null && target.folder === folder ? target.branch : null;
+    return !Object.isNull(target) && target.folder === folder ? target.branch : null;
   }
 
   /** Names the branch while the switch runs, and forgets it once the switch ends, whether it ran or failed. */

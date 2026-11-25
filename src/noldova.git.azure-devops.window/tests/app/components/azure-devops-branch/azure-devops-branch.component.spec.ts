@@ -176,7 +176,7 @@ describe("AzureDevOpsBranchComponent", () => {
       expect([dialog.requests.methods.slice(5), dialog.requests.payloads.slice(5)]).toEqual([[GitNames.createBranchAtMethod, GitNames.statusMethod,
         GitNames.switchBranchMethod, AzureDevOpsNames.linkBranchMethod, AzureDevOpsNames.updateWorkItemMethod], [
         { folder: "/repository", name, id: BranchDialogData.tipOf(2), basedOn: "f1" }, { folder: "/repository" }, { folder: "/repository", name, basedOn: "f2" },
-        { host: "dev.azure.com", path: "fabrikam/Sample Project/_git/garden-web", id: 7532, branch: name },
+        { host: "dev.azure.com", path: "fabrikam/Sample%20Project/_git/garden-web", id: 7532, branch: name },
         { host: "git-azure-devops", organization: "fabrikam", id: 7532, state: "Active", assignToMe: true }]]);
       expect([dialog.closes, dialog.isOpen, new AzureDevOpsCommitPrefixes().prefixFor("/repository", name)]).toEqual([1, false, "#7532 "]);
     });

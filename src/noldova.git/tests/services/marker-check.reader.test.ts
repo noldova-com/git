@@ -90,4 +90,11 @@ describe("MarkerCheckReader", () => {
     await assert.rejects(new MarkerCheckReader(scripted).readAsync(repository.folder), (error: unknown) =>
       error instanceof GitFailedException && error.output?.text === "scripted failure\n");
   });
+
+  test("fails when git's answer was cut, as a marker past the cut would be missed", async () => {
+    const scripted = new ScriptedRunnerFixture(supervisor.context);
+    scripted.truncating = "--check";
+
+    await assert.rejects(new MarkerCheckReader(scripted).readAsync(repository.folder), GitFailedException);
+  });
 });

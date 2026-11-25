@@ -87,7 +87,11 @@ export class UndoWriter implements IGitWrite {
     if (entry.undo === UndoMode.Checkpoint)
       await this.checkpoints.restoreAsync(folders.top, String(entry.checkpoint), entry.paths, signal);
     let rest = entry.moves;
-    if (entry.undo === UndoMode.Mixed || entry.undo === UndoMode.Keep) {
+    const rename = UndoWriter.renameBackOf(entry);
+    if (rename !== null) {
+      await this.runGitAsync(folders, rename, signal);
+      rest = [];
+    } else if (entry.undo === UndoMode.Mixed || entry.undo === UndoMode.Keep) {
       const head = UndoWriter.headMoveOf(entry);
       await this.runGitAsync(folders, [...Resources.resetArguments, Resources.resetOptionOf(entry.undo), UndoWriter.resetTargetOf(head)], signal);
       rest = rest.filter(t => t !== head);
@@ -154,7 +158,8 @@ export class UndoWriter implements IGitWrite {
       return [{ label: Resources.stashLabel, kind: PermissionDetailKind.Code, value: String(entry.checkpoint) }];
     return entry.undo === UndoMode.Checkpoint
       ? [{ label: Resources.pathsLabel, kind: PermissionDetailKind.Code, value: entry.paths.join(Resources.lineEnd) }]
-      : [{ label: Resources.refsLabel, kind: PermissionDetailKind.Code, value: entry.moves.map(t => UndoWriter.lineOf(t)).join(Resources.lineEnd) }];
+      : [{ label: Resources.refsLabel, kind: PermissionDetailKind.Code, value: entry.moves.map(t => UndoWriter.lineOf(t)).join(Resources.lineEnd) },
+        ...entry.method === GitNames.deleteBranchMethod ? [{ label: Resources.noteLabel, kind: PermissionDetailKind.Text, value: Resources.deletedBranchSettingsNote }] : []];
   }
 
   private entryOf(folders: RepositoryFolders): GitJournalEntry {
@@ -202,6 +207,20 @@ export class UndoWriter implements IGitWrite {
     if (detached === null)
       throw new UndoNotPossibleException();
     return [...Resources.switchBackArguments, Resources.detachOption, Resources.endOfOptions, detached];
+  }
+
+  /**
+   * A branch rename is undone by renaming the branch back, so HEAD follows it when it is checked out and its `branch.<name>.*` settings come
+   * back with it, which putting the refs back would lose.
+   */
+  private static renameBackOf(entry: GitJournalEntry): readonly string[] | null {
+    if (entry.method !== GitNames.renameBranchMethod)
+      return null;
+    const from = entry.moves.find(t => t.before === null && t.name.startsWith(Resources.branchRefsPrefix));
+    const to = entry.moves.find(t => t.after === null && t.name.startsWith(Resources.branchRefsPrefix));
+    if (from === undefined || to === undefined)
+      return null;
+    return [...Resources.renameBranchArguments, from.name.slice(Resources.branchRefsPrefix.length), to.name.slice(Resources.branchRefsPrefix.length)];
   }
 
   /** One `update-ref --stdin` command that puts a ref back, checking it still names what the write left. */

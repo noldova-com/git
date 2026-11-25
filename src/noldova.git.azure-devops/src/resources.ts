@@ -122,6 +122,7 @@ export class Resources {
   public static readonly svgAccept: string = "image/svg+xml, */*;q=0.8";
   public static readonly iconTooLarge: string = "it's larger than 64 KiB";
   public static readonly iconNotSvg: string = "it isn't SVG";
+  public static readonly iconUnanswered: string = "Azure DevOps couldn't be reached";
   /** The most of a work item type's icon the module reads; Azure DevOps' are under 2 KB. */
   public static readonly maximumIconBytes: number = 65_536;
   public static readonly svgPattern: RegExp = /^\s*(?:<\?xml[^>]*\?>\s*)?<svg[\s>]/u;
@@ -297,8 +298,11 @@ export class Resources {
   /** The changes a pull request's files read a page at a time, so its at most 5000 files take at most 6 pages and its counts 50 batches of line blocks. */
   public static readonly changesPage: number = 1000;
   public static readonly fileDiffsNotFoundMessage: string = "Azure DevOps found no line blocks for the pull request's files.";
-  /** The failures that leave a pull request's counts unknown rather than failing its read: an answer Azure DevOps can't give, or doesn't give in time. */
-  public static readonly unknownCountFailures: readonly FailureCode[] = [FailureCode.Unavailable, FailureCode.DeadlineExceeded];
+  /**
+   * The failures that leave a pull request's counts unknown, or a work item type's icon unshown, rather than failing the read: an answer Azure DevOps can't
+   * give, or doesn't give in time.
+   */
+  public static readonly unansweredFailures: readonly FailureCode[] = [FailureCode.Unavailable, FailureCode.DeadlineExceeded];
   /** A file diff's line blocks and their change types: none, add, delete and edit. */
   public static readonly lineDiffBlocksField: string = "lineDiffBlocks";
   public static readonly modifiedLinesCountField: string = "modifiedLinesCount";
@@ -580,11 +584,6 @@ export class Resources {
 
   public static formatPullRequestWorkItemsUrl(organization: string, repository: string, number: number): string {
     return `https://dev.azure.com/${organization}/_apis/git/repositories/${encodeURIComponent(repository)}/pullRequests/${number}/workitems?api-version=7.1`;
-  }
-
-  public static formatWorkItemsUrl(organization: string, ids: readonly number[]): string {
-    return `https://dev.azure.com/${organization}/_apis/wit/workitems?ids=${ids.join(",")}`
-      + "&fields=System.Title,System.State,System.WorkItemType,System.TeamProject&api-version=7.1";
   }
 
   public static formatWorkItemUrl(organization: string, id: number): string {

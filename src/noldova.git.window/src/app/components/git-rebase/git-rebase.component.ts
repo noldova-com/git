@@ -6,15 +6,18 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Component, computed, DestroyRef, effect, ElementRef, ErrorHandler, inject, Injector, input, type InputSignal, type Signal, signal, untracked, type WritableSignal } from "@angular/core";
+import { afterNextRender, Component, computed, DestroyRef, effect, ElementRef, ErrorHandler, inject, Injector, input, type InputSignal, type Signal, signal, untracked, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, WindowPartTokens } from "@noldova/desktop.window";
-import { type GitRebasePlan, type GitRebaseStepCheck, OperationKind, RebaseAction, RebaseCheckOutcome, type RebaseStep } from "@noldova/git.protocol";
+import { type GitRebasePlan, type GitRebaseStepCheck, type GitStatus, OperationKind, RebaseAction, RebaseCheckOutcome, type RebaseStep } from "@noldova/git.protocol";
 import { FormsModule } from "@angular/forms";
 import { ButtonComponent, ButtonVariant, CheckboxComponent, SelectComponent, SelectOption, TextFieldComponent, ToolbarButtonComponent } from "@noldova/ui.components.angular";
 
 import { Resources } from "../../../resources.ts";
+import { GitRebaseLanding } from "../../models/git-rebase-landing.ts";
 import { GitRebasePreview, type IGitRebaseStop } from "../../models/git-rebase-preview.ts";
 import { GitRebaseRow } from "../../models/git-rebase-row.ts";
+import { GitRebaseStart } from "../../models/git-rebase-start.ts";
 import type { GitDetailView } from "../../services/git-detail-view.ts";
 import { GitFolder } from "../../services/git-folder.ts";
 import { GitRebasePreviews } from "../../services/git-rebase-previews.ts";
@@ -55,8 +58,10 @@ export class GitRebaseComponent {
   private readonly host: HTMLElement = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly errors: ErrorHandler = inject(ErrorHandler);
   private checks = 0;
+  private readonly injector: Injector = inject(Injector);
   private drops = 0;
   private advices = 0;
+  private reads = 0;
   private readonly blank: HTMLImageElement = Object.assign(new Image(), { src: Resources.blankDragImage });
   /** How far below the dragged row's top the pointer took it. */
   private grab = 0;
@@ -78,20 +83,20 @@ export class GitRebaseComponent {
   /** Where the dragged row's card floats, from the top of the steps' content, once the pointer moved over them. */
   protected readonly liftTop: WritableSignal<number | null> = signal<number | null>(null);
   /** Where the dragged row would land, by index, and the rows as they would be; `null` while no row is dragged. */
-  protected readonly landing: Signal<{ readonly to: number; readonly rows: readonly GitRebaseRow[] } | null> = computed(() => {
+  protected readonly landing: Signal<GitRebaseLanding | null> = computed(() => {
     const from = this.dragged();
     const gap = this.dropAt();
-    if (from === null)
+    if (Object.isNull(from))
       return null;
-    const to = gap === null ? from : gap > from ? gap - 1 : gap;
-    return { to, rows: to === from ? this.rows() : GitRebaseRow.move(this.rows(), from, to) };
+    const to = Object.isNull(gap) ? from : gap > from ? gap - 1 : gap;
+    return new GitRebaseLanding(to, to === from ? this.rows() : GitRebaseRow.move(this.rows(), from, to));
   });
   /** Each row's check with the dragged row where it would land, while it matches; `null` while that check runs, and empty when git couldn't check. */
   protected readonly landedChecks: WritableSignal<readonly GitRebaseStepCheck[] | null> = signal<readonly GitRebaseStepCheck[] | null>(null);
   /** The dragged row with its check where it would drop, as the floating card shows it, or none before the pointer moves over the steps. */
   protected readonly lifted: Signal<readonly IRowItem[]> = computed(() => {
     const landing = this.landing();
-    if (landing === null || this.liftTop() === null)
+    if (Object.isNull(landing) || Object.isNull(this.liftTop()))
       return [];
     const items = GitRebaseRow.isValid(landing.rows)
       ? GitRebaseComponent.checksOf(landing.rows, landing.rows === this.rows() ? this.stepChecks() : this.landedChecks(), Resources.droppedClean)
@@ -113,16 +118,23 @@ export class GitRebaseComponent {
   protected readonly stop: Signal<IGitRebaseStop | null> = computed(() => {
     const checks = this.stepChecks() ?? [];
     const found = checks.find(t => t.outcome === RebaseCheckOutcome.Conflicts);
-    const index = found === undefined ? -1 : checks.indexOf(found);
+    const index = Object.isUndefined(found) ? -1 : checks.indexOf(found);
     const row = this.rows().at(index);
-    return found === undefined || row === undefined ? null : { step: index + 1, paths: found.paths, commit: GitRebaseComponent.shortOf(row.commit.id) };
+    return Object.isUndefined(found) || Object.isUndefined(row) ? null : { step: index + 1, paths: found.paths, commit: GitRebaseComponent.shortOf(row.commit.id) };
+  });
+  /** The status while the Git panel follows this folder; `null` otherwise. */
+  private readonly status: Signal<GitStatus | null> = computed(() => this.state.folder() === this.instance() ? this.state.status() : null);
+  /** The status while no operation runs, so the plan is read again once its branch or commit moves; `null` while unknown or while one runs. */
+  private readonly checkedOut: Signal<GitStatus | null> = computed(() => {
+    const status = this.status();
+    return Object.isNull(status) || !Object.isNull(status.operation) ? null : status;
   });
   /** The first conflicted file once a rebase in this folder really stopped on it; `null` while none has. */
   protected readonly stopped: Signal<string | null> = computed(() => {
-    const status = this.state.folder() === this.instance() ? this.state.status() : null;
+    const status = this.status();
     if (status?.operation?.kind !== OperationKind.Rebase)
       return null;
-    return status.entries.find(t => t.conflict !== null)?.path ?? null;
+    return status.entries.find(t => !Object.isNull(t.conflict))?.path ?? null;
   });
   protected readonly ontoName: Signal<string> = computed(() => this.target()?.name ?? "");
   protected readonly heading: Signal<string> = computed(() => Resources.formatRebaseHeading(this.rows().length, this.plan()?.branch ?? null, this.ontoName()));
@@ -131,34 +143,43 @@ export class GitRebaseComponent {
   protected readonly summary: Signal<string> = computed(() => {
     const summary = Resources.formatCommitsBecome(this.rows().length, this.planned().results.length);
     const advice = this.advice();
-    return advice === null ? summary : Resources.formatWithAdvice(summary, advice);
+    return Object.isNull(advice) ? summary : Resources.formatWithAdvice(summary, advice);
   });
   /** What the Rebase preview view shows of this screen: the branch now and after, and the step that stops; `null` until the plan reads. */
   protected readonly preview: Signal<GitRebasePreview | null> = computed(() => {
     const plan = this.plan();
-    return plan === null ? null : new GitRebasePreview(this.instance(), plan, this.ontoName(), this.rows().length, this.moveStacked() ? plan.stacked : [],
+    return Object.isNull(plan) ? null : new GitRebasePreview(this.instance(), plan, this.ontoName(), this.rows().length, this.moveStacked() ? plan.stacked : [],
       this.after().map(t => this.subjectOf(t)), this.stop(), this.stopped());
   });
   /** What Start rebases onto and with, while the rows can run and the Git panel follows this folder with its status read; `null` holds Start. */
-  protected readonly start: Signal<{ readonly target: GitRebaseTarget; readonly plan: GitRebasePlan } | null> = computed(() => {
+  protected readonly start: Signal<GitRebaseStart | null> = computed(() => {
     const target = this.target();
     const plan = this.plan();
-    const ready = this.state.status() !== null && !this.state.busy() && this.rows().length > 0 && this.valid() && this.state.folder() === this.instance();
-    return ready && target !== null && plan !== null ? { target, plan } : null;
+    const status = this.status();
+    const ready = !this.state.busy() && this.rows().length > 0 && this.valid();
+    return !Object.isNull(status) && ready && !Object.isNull(target) && !Object.isNull(plan) && this.isCurrent(plan, status) ? new GitRebaseStart(target, plan) : null;
   });
 
   /** The repository's folder; the document's instance. */
   public readonly instance: InputSignal<string> = input.required<string>();
 
   public constructor() {
+    let readFor: GitRebaseTarget | null | undefined;
     effect(() => {
       const target = this.target();
-      untracked(() => this.run(this.readAsync(target)));
+      const checkedOut = this.checkedOut();
+      untracked(() => {
+        const plan = this.plan();
+        if (target === readFor && (Object.isNull(checkedOut) || Object.isNull(plan) || this.isCurrent(plan, checkedOut)))
+          return;
+        readFor = target;
+        this.run(this.readAsync(target));
+      });
     });
     effect(() => {
       const steps = this.planned().steps;
       const target = this.target();
-      if (target !== null && steps.length > 0 && this.valid())
+      if (!Object.isNull(target) && steps.length > 0 && this.valid())
         untracked(() => this.run(this.checkAsync(target, steps)));
     });
     effect(() => {
@@ -166,22 +187,22 @@ export class GitRebaseComponent {
       const target = this.target();
       const drop = ++this.drops;
       this.landedChecks.set(null);
-      if (landing !== null && target !== null && landing.rows !== untracked(this.rows) && GitRebaseRow.isValid(landing.rows))
+      if (!Object.isNull(landing) && !Object.isNull(target) && landing.rows !== untracked(this.rows) && GitRebaseRow.isValid(landing.rows))
         untracked(() => this.run(this.checkDropAsync(drop, target, landing.rows)));
     });
     effect(() => {
       const stop = this.stop();
       const target = this.target();
-      const dragging = this.dragged() !== null;
+      const dragging = !Object.isNull(this.dragged());
       const advice = ++this.advices;
       this.advice.set(null);
-      if (stop !== null && target !== null && !dragging)
+      if (!Object.isNull(stop) && !Object.isNull(target) && !dragging)
         untracked(() => this.run(this.adviseAsync(advice, target, this.rows(), stop)));
     });
     const active: Signal<boolean> = inject(WindowPartTokens.activeDocument);
     inject(DestroyRef).onDestroy(GitFolder.follow(this.instance, active));
     const previews: GitDetailView<GitRebasePreview> = GitRebasePreviews.of(this.context);
-    previews.follow(this.preview, active, inject(Injector));
+    previews.follow(this.preview, active, this.injector);
   }
 
   protected shortOf(id: string): string {
@@ -199,7 +220,7 @@ export class GitRebaseComponent {
   /** Sets the row's action from the select's value, which is always one of the actions it lists. */
   protected setAction(index: number, action: string): void {
     const chosen = Object.values(RebaseAction).find(t => t === action);
-    if (chosen !== undefined)
+    if (!Object.isUndefined(chosen))
       this.rows.update(t => t.map((item, at) => at === index ? item.withAction(chosen) : item));
   }
 
@@ -228,7 +249,7 @@ export class GitRebaseComponent {
       this.moveRow(index, index + step);
     else if (step !== 0)
       this.focusRow(Math.min(Math.max(index + step, 0), this.rows().length - 1));
-    else if (action !== undefined)
+    else if (!Object.isUndefined(action))
       this.setAction(index, action);
     else
       return;
@@ -247,13 +268,13 @@ export class GitRebaseComponent {
   /** Moves the dragged row's card with the pointer, keeping the point it was taken by under it. */
   protected follow(event: DragEvent, steps: HTMLElement): void {
     event.preventDefault();
-    if (this.dragged() !== null)
+    if (!Object.isNull(this.dragged()))
       this.liftTop.set(event.clientY - steps.getBoundingClientRect().top + steps.scrollTop - this.grab);
   }
 
   /** Marks the gap the dragged row would drop into: before this row in its upper half, else after it. */
   protected dragOver(event: DragEvent, index: number): void {
-    if (this.dragged() === null || !(event.currentTarget instanceof HTMLElement))
+    if (Object.isNull(this.dragged()) || !(event.currentTarget instanceof HTMLElement))
       return;
     event.preventDefault();
     const box = event.currentTarget.getBoundingClientRect();
@@ -265,7 +286,7 @@ export class GitRebaseComponent {
     const gap = this.dropAt();
     event.preventDefault();
     this.dragEnd();
-    if (from !== null && gap !== null)
+    if (!Object.isNull(from) && !Object.isNull(gap))
       this.moveRow(from, gap > from ? gap - 1 : gap);
   }
 
@@ -281,7 +302,7 @@ export class GitRebaseComponent {
   }
 
   /** Starts the rebase; the screen closes once git ran it, to its end or to an edit step, and stays with the failure shown when it couldn't. */
-  protected startRebase(start: { readonly target: GitRebaseTarget; readonly plan: GitRebasePlan }): void {
+  protected startRebase(start: GitRebaseStart): void {
     const updateRefs = this.moveStacked() && start.plan.stacked.length > 0;
     void this.state.rebaseAsync(start.target.id, this.planned().steps, updateRefs).then(ran => {
       if (ran)
@@ -298,7 +319,8 @@ export class GitRebaseComponent {
 
   private focusRow(index: number): void {
     this.selected.set(index);
-    queueMicrotask(() => this.host.querySelector<HTMLElement>(`[data-row="${index}"]`)?.focus());
+    // After the next render, as the rows are tracked by commit, so a moved row's element only carries its new index once it is drawn again.
+    afterNextRender(() => this.host.querySelector<HTMLElement>(`[data-row="${index}"]`)?.focus(), { injector: this.injector });
   }
 
   private static shortOf(id: string): string {
@@ -311,13 +333,13 @@ export class GitRebaseComponent {
     return rows.map((row, index) => {
       if (!row.folds && row.action !== RebaseAction.Drop)
         leader = row.commit.id;
-      return { row, check: GitRebaseComponent.checkOf(row, checks === null ? undefined : checks[index], leader, clean) };
+      return { row, check: GitRebaseComponent.checkOf(row, Object.isNull(checks) ? undefined : checks[index], leader, clean) };
     });
   }
 
   /** How the advice names the row a dropped one would sit below: a fold by its action, any other by its short id; `null` for the top. */
   private static nameOf(row: GitRebaseRow | undefined): string | null {
-    if (row === undefined)
+    if (Object.isUndefined(row))
       return null;
     return row.folds ? Resources.formatTheFold(Resources.rebaseActionTitles[row.action]) : GitRebaseComponent.shortOf(row.commit.id);
   }
@@ -335,7 +357,7 @@ export class GitRebaseComponent {
   private static checkOf(row: GitRebaseRow, check: GitRebaseStepCheck | undefined, leader: string, clean: string): IRowCheck {
     if (row.action === RebaseAction.Drop)
       return { icon: Resources.checkIcons.Dropped, tone: Resources.mutedTone, text: Resources.leftOut };
-    if (check === undefined)
+    if (Object.isUndefined(check))
       return { icon: Resources.checkingIcon, tone: Resources.mutedTone, text: Resources.checkingLabel };
     switch (check.outcome) {
       case RebaseCheckOutcome.Conflicts:
@@ -349,15 +371,21 @@ export class GitRebaseComponent {
     }
   }
 
+  /** Whether the plan was read for the branch and commit checked out now, so its steps are still the commits a rebase would take. */
+  private isCurrent(plan: GitRebasePlan, status: GitStatus): boolean {
+    return plan.branch === status.branch && plan.commits.findLast(t => t.id === status.head) === plan.commits.at(-1);
+  }
+
   private async readAsync(target: GitRebaseTarget | null): Promise<void> {
+    const read = ++this.reads;
     this.plan.set(null);
     this.rows.set([]);
     this.readFailure.set(null);
-    if (target === null)
+    if (Object.isNull(target))
       return;
     try {
       const plan = await this.client.rebasePlanAsync(this.instance(), target.id);
-      if (this.target() !== target)
+      if (read !== this.reads)
         return;
       this.plan.set(plan);
       this.rows.set(GitRebaseRow.arrange(plan.commits, this.foldFixups()));
@@ -365,7 +393,8 @@ export class GitRebaseComponent {
     catch (error) {
       if (!GitRuntimeClient.isFailure(error))
         throw error;
-      this.readFailure.set(GitViewStateService.messageOf(error));
+      if (read === this.reads)
+        this.readFailure.set(GitViewStateService.messageOf(error));
     }
   }
 

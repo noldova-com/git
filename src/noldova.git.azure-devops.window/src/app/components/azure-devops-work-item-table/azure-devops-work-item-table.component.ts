@@ -7,6 +7,7 @@
  */
 
 import { Component, computed, inject, input, type InputSignal, output, type OutputEmitterRef, type Signal, signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, WindowPartTokens } from "@noldova/desktop.window";
 import type { HostReference, HostWorkItem, HostWorkItemDetail } from "@noldova/git.hosting.protocol";
 
@@ -75,7 +76,7 @@ export class AzureDevOpsWorkItemTableComponent {
 
   protected linkOf(detail: HostWorkItemDetail): string {
     const pullRequest: HostReference | undefined = detail.pullRequests[0];
-    if (pullRequest !== undefined)
+    if (!Object.isUndefined(pullRequest))
       return Resources.formatPullRequestReference(pullRequest.number);
     if (detail.commits > 0)
       return Resources.formatCommits(detail.commits);

@@ -8,6 +8,7 @@
 
 import { Component } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { HostAvatar, PersonQuery } from "@noldova/git.hosting.protocol";
 import { AvatarSize, DefaultTheme, ThemeMode } from "@noldova/ui.components.angular";
@@ -73,7 +74,7 @@ describe("AzureDevOpsPersonAvatarComponent", () => {
     const fixture = await openAsync();
     const root: HTMLElement = fixture.nativeElement;
     await Wait.until(() => expect(askedLogins()).toEqual(["monalisa@fabrikam.com"]));
-    const initials: boolean = root.querySelector(".below .nol-avatar-initials") !== null;
+    const initials: boolean = !Object.isNull(root.querySelector(".below .nol-avatar-initials"));
 
     root.querySelector(".below")?.scrollIntoView();
 

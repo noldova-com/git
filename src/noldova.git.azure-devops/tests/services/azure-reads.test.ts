@@ -103,7 +103,7 @@ function asking(vote: number, changes: Readonly<Record<string, unknown>> = {}): 
 
 const item: HostItem = new HostItem(reference, ReferenceKind.PullRequest, ReferenceState.Open, "Add the sign-in page", page,
   new HostPerson("monalisa@fabrikam.com", null, null, undefined, "Mona Lisa"), Date.parse("2027-01-15T09:30:00Z"), null, 0,
-  new HostChanges(null, null, null, "feature/sign-in", "main", commit));
+  HostChanges.uncounted("feature/sign-in", "main", commit));
 
 const workItemQuery: WorkItemQuery = new WorkItemQuery("git-azure-devops", "fabrikam", 42);
 const workItemUrl: string = "https://dev.azure.com/fabrikam/_apis/wit/workitems/42?api-version=7.1";
@@ -331,7 +331,7 @@ describe("AzureReads", () => {
         "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/7499")
     ], "squash"));
     assert.deepEqual(azure.urls(), [pullUrl, policiesUrl, buildsUrl, commitsUrl, linksUrl,
-      "https://dev.azure.com/fabrikam/_apis/wit/workitems?ids=7521,7499&fields=System.Title,System.State,System.WorkItemType,System.TeamProject&api-version=7.1",
+      "https://dev.azure.com/fabrikam/_apis/wit/workitemsbatch?api-version=7.1",
       typeUrl, iconUrl, "https://dev.azure.com/fabrikam/Web%20Site/_apis/wit/workitemtypes/Bug?api-version=7.1", "https://dev.azure.com/fabrikam/_apis/wit/workitemicons/icon_insect?color=CC293D&v=2&api-version=7.1"]);
   });
 
@@ -427,6 +427,32 @@ describe("AzureReads", () => {
 
     assert.deepEqual(read.map(t => [t?.commitCount, t?.workItems.map(w => w.id)]), [[null, [42, 43]], [0, []]]);
     assert.equal(azure.urls().filter(t => t === typeUrl).length, 1);
+  });
+
+  it("reads the linked work items it can, leaving out one Azure DevOps omits as deleted or unreadable", async () => {
+    const azure = new FakeAzure();
+    azure.answer(FakeAzure.json(pull()), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }),
+      FakeAzure.json({ value: [{ id: "42" }, { id: "43" }] }), FakeAzure.json({ value: [workItem(), null] }), FakeAzure.json(workItemType()), icon());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
+
+    const read: HostPullRequest | null = await reads.readPullRequestAsync(reference, signal);
+
+    assert.deepEqual([read?.workItems.map(t => t.id), azure.requests[5]?.init.method, azure.requests[5]?.body], [[42], "POST",
+      { ids: [42, 43], $expand: "Relations", errorPolicy: "Omit" }]);
+  });
+
+  it("reads over 200 linked work items in batches of 200", async () => {
+    const azure = new FakeAzure();
+    const ids: readonly number[] = Array.from({ length: 201 }, (_t, i) => i + 1);
+    azure.answer(FakeAzure.json(pull()), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }),
+      FakeAzure.json({ value: ids.map(t => ({ id: String(t) })) }), FakeAzure.json({ value: [workItem()] }),
+      FakeAzure.json({ value: [{ ...workItem(), id: 201 }] }), FakeAzure.json(workItemType()), icon());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
+
+    const read: HostPullRequest | null = await reads.readPullRequestAsync(reference, signal);
+
+    assert.deepEqual([read?.workItems.map(t => t.id), azure.requests.filter(t => t.url.includes("workitemsbatch")).map(t => JsonReader.fromValue(t.body)
+      .readNumberArray("ids").length)], [[42, 201], [200, 1]]);
   });
 
   it("fails as Unavailable for a linked work item whose id isn't a number", async () => {
@@ -1357,6 +1383,74 @@ describe("AzureReads", () => {
 
     assert.deepEqual([dropped, other, again], [null, storyItem, storyItem]);
     assert.deepEqual(azure.urls(), [workItemUrl, typeUrl, workItemUrl, typeUrl, iconUrl, iconUrl, workItemUrl]);
+  });
+
+  it("shows a type without its icon, logging why, when the icon read can't reach Azure DevOps or isn't answered in time", async () => {
+    const unreachable = new FakeAzure();
+    unreachable.answer(FakeAzure.json(workItem()), FakeAzure.json(workItemType()));
+    unreachable.fail(new TypeError("fetch failed"));
+    const late = new FakeAzure();
+    late.answer(FakeAzure.json(workItem()), FakeAzure.json(workItemType()));
+    late.fail(new DOMException("The operation timed out.", "TimeoutError"));
+    const log = new FakeModuleLog();
+
+    const read: readonly (HostWorkItem | null)[] = [await new AzureReads(new AzureApi(unreachable.fetch), new FakeToken(), log).readWorkItemAsync(workItemQuery, signal),
+      await new AzureReads(new AzureApi(late.fetch), new FakeToken(), log).readWorkItemAsync(workItemQuery, signal)];
+
+    assert.deepEqual(read.map(t => [t?.id, t?.type.name, t?.type.image]), [[42, "User Story", null], [42, "User Story", null]]);
+    assert.deepEqual(linesOf(log), ["Azure DevOps' icon_book icon isn't shown: Azure DevOps couldn't be reached.",
+      "Azure DevOps' icon_book icon isn't shown: Azure DevOps couldn't be reached."]);
+  });
+
+  it("passes on an icon read that fails in a way it doesn't know, and asks for the type again after a read that failed", async () => {
+    const azure = new FakeAzure();
+    azure.answer(FakeAzure.json(workItem()), FakeAzure.json(workItemType()));
+    azure.fail(new RangeError("Unexpected."));
+    azure.answer(FakeAzure.json(workItem()), FakeAzure.json(workItemType()), icon());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
+
+    const failed: unknown = await reads.readWorkItemAsync(workItemQuery, signal).then(() => null, (t: unknown) => t);
+    const again = await reads.readWorkItemAsync(workItemQuery, signal);
+
+    assert.ok(failed instanceof RangeError);
+    assert.deepEqual([again, azure.urls()], [storyItem, [workItemUrl, typeUrl, iconUrl, workItemUrl, typeUrl, iconUrl]]);
+  });
+
+  it("reads a type once for reads of it that run together, and runs that read to its end for the others when one caller stops", async () => {
+    const azure = new FakeAzure();
+    azure.answer(FakeAzure.json(workItem()), FakeAzure.json(workItem()));
+    const releaseType = azure.hold();
+    azure.answer(icon());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
+    const stopping = new AbortController();
+
+    const stopped = reads.readWorkItemAsync(workItemQuery, stopping.signal).then(() => null, (t: unknown) => t);
+    const reading = reads.readWorkItemAsync(workItemQuery, signal);
+    await azure.askedAsync(3);
+    stopping.abort(new Error("Stopped."));
+    releaseType(FakeAzure.json(workItemType()));
+
+    assert.deepEqual([await stopped, await reading, azure.urls()], [new Error("Stopped."), storyItem, [workItemUrl, workItemUrl, typeUrl, iconUrl]]);
+  });
+
+  it("drops a type read that fails after the token changed, keeping the type read for the new token", async () => {
+    const azure = new FakeAzure();
+    azure.answer(FakeAzure.json(workItem()));
+    const releaseType = azure.hold();
+    azure.answer(FakeAzure.json(workItem()), FakeAzure.json(workItemType()), icon(), FakeAzure.json(workItem()));
+    const token = new FakeToken();
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
+
+    const reading = reads.readWorkItemAsync(workItemQuery, signal).then(() => null, (t: unknown) => t);
+    await azure.askedAsync(2);
+    token.answer("token", AzureCredential.ofToken("other-token"));
+    const other = await reads.readWorkItemAsync(workItemQuery, signal);
+    releaseType(new Response(null, { status: 404 }));
+    const failed: unknown = await reading;
+    const again = await reads.readWorkItemAsync(workItemQuery, signal);
+
+    assert.deepEqual([failureOf(failed), other, again], [FailureCode.Unavailable, storyItem, storyItem]);
+    assert.deepEqual(azure.urls(), [workItemUrl, typeUrl, workItemUrl, typeUrl, iconUrl, workItemUrl]);
   });
 
   it("asks nothing for another organization than the token's, so its refusal never signs the token out, and reads its own in any letter case", async () => {

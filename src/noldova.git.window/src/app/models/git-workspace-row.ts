@@ -7,6 +7,7 @@
  */
 
 import { computed, type Signal, signal } from "@angular/core";
+import "@noldova/context.core";
 
 import { GitPullRequestState } from "../enums/git-pull-request-state.ts";
 import { GitPullRequestsState } from "../enums/git-pull-requests-state.ts";
@@ -84,7 +85,7 @@ export class GitWorkspaceRow {
     this.pullRequestText = computed(() => {
       const text: string = GitWorkspaceRow.pullRequestTextOf(summary(), pullRequest());
       const under: GitPullRequestRow | null = this.stackedOn();
-      return under === null ? text : Resources.formatStackedOn(text, under.label);
+      return Object.isNull(under) ? text : Resources.formatStackedOn(text, under.label);
     });
     const counted: Signal<GitBranchPullRequest | null> = computed(() => GitWorkspaceRow.countedOf(summary(), pullRequest()));
     this.checks = computed(() => GitWorkspaceRow.checksOf(counted()));
@@ -93,15 +94,15 @@ export class GitWorkspaceRow {
     this.hostState = computed(() => pullRequest()?.state ?? null);
     const ready: Signal<GitPullRequestList | null> = computed(() => {
       const listed: GitPullRequestList | null | undefined = opened();
-      return listed === undefined || listed === null || listed.state !== GitPullRequestsState.Ready ? null : listed;
+      return Object.isNullOrUndefined(listed) || listed.state !== GitPullRequestsState.Ready ? null : listed;
     });
     this.open = computed(() => {
       const listed: GitPullRequestList | null = ready();
-      return listed === null ? "" : Resources.formatOpenPullRequests(listed.rows.length, listed.hasMore, listed.rows.filter(t => t.failing > 0).length);
+      return Object.isNull(listed) ? "" : Resources.formatOpenPullRequests(listed.rows.length, listed.hasMore, listed.rows.filter(t => t.failing > 0).length);
     });
     this.openTitle = computed(() => {
       const listed: GitPullRequestList | null = ready();
-      return listed === null ? "" : Resources.formatOpenPullRequestsTitle(listed.rows.length, listed.hasMore, listed.rows.filter(t => t.failing > 0).length);
+      return Object.isNull(listed) ? "" : Resources.formatOpenPullRequestsTitle(listed.rows.length, listed.hasMore, listed.rows.filter(t => t.failing > 0).length);
     });
     this.views = computed(() => GitWorkspaceRow.viewsOf(summary(), pullRequest(), hasAgentsAtWork()));
   }
@@ -111,7 +112,7 @@ export class GitWorkspaceRow {
     const views: Set<GitWorkspaceView> = new Set();
     if (hasAgentsAtWork)
       views.add(GitWorkspaceView.AgentsAtWork);
-    if (summary === null || summary.isUnread)
+    if (Object.isNull(summary) || summary.isUnread)
       return views;
     if (summary.behind > 0)
       views.add(GitWorkspaceView.Behind);
@@ -124,7 +125,7 @@ export class GitWorkspaceRow {
 
   /** The other open pull request in the list whose head is the pull request's base, or null; a host that didn't say the base stacks nothing. */
   public static stackedOnOf(row: GitPullRequestRow | null, list: GitPullRequestList | null | undefined): GitPullRequestRow | null {
-    if (row === null || row.baseBranch === null || list === null || list === undefined)
+    if (Object.isNull(row) || Object.isNull(row.baseBranch) || Object.isNullOrUndefined(list))
       return null;
     return list.rows.find(t => t.key !== row.key && t.headBranch === row.baseBranch) ?? null;
   }
@@ -135,11 +136,11 @@ export class GitWorkspaceRow {
    * host reads.
    */
   public static pullRequestTextOf(summary: GitRepositorySummary | null, shown: GitBranchPullRequest | null | undefined): string {
-    if (summary === null || summary.isUnread)
+    if (Object.isNull(summary) || summary.isUnread)
       return "";
-    if (shown === undefined)
+    if (Object.isUndefined(shown))
       return Resources.noPullRequest;
-    if (shown !== null && shown.pullRequest !== null && shown.pullRequestState !== null)
+    if (!Object.isNull(shown) && !Object.isNull(shown.pullRequest) && !Object.isNull(shown.pullRequestState))
       return Resources.formatWorkspacePullRequest(shown.pullRequest.label, shown.pullRequestState, shown.isWaitingForReview, shown.stateLabel);
     switch (shown?.state) {
       case GitPullRequestsState.Ready:
@@ -155,16 +156,16 @@ export class GitWorkspaceRow {
 
   /** The answer whose checks the row shows: a read one, or one that still reads with a pull request or checks from the last; else null. */
   public static countedOf(summary: GitRepositorySummary | null, shown: GitBranchPullRequest | null | undefined): GitBranchPullRequest | null {
-    if (summary === null || summary.isUnread || shown === undefined || shown === null)
+    if (Object.isNull(summary) || summary.isUnread || Object.isNullOrUndefined(shown))
       return null;
     if (shown.state === GitPullRequestsState.Ready)
       return shown;
-    return shown.state === GitPullRequestsState.Reading && (shown.pullRequest !== null || shown.passed + shown.failing + shown.pending > 0) ? shown : null;
+    return shown.state === GitPullRequestsState.Reading && (!Object.isNull(shown.pullRequest) || shown.passed + shown.failing + shown.pending > 0) ? shown : null;
   }
 
   /** Failing when any check failed, else Running while one runs or waits, else Passing when one passed, else None; nothing without an answer. */
   public static checksOf(row: GitBranchPullRequest | null): string {
-    if (row === null)
+    if (Object.isNull(row))
       return "";
     if (row.failing > 0)
       return Resources.checksFailing;
@@ -174,7 +175,7 @@ export class GitWorkspaceRow {
   }
 
   public static checksToneOf(row: GitBranchPullRequest | null): string {
-    if (row === null)
+    if (Object.isNull(row))
       return "";
     if (row.failing > 0)
       return "failed";
@@ -185,32 +186,32 @@ export class GitWorkspaceRow {
 
   /** The branch's name, where a detached head points, or that the repository has no commits; nothing until a read shows it. */
   public static branchOf(summary: GitRepositorySummary | null): string {
-    if (summary === null || summary.isUnread)
+    if (Object.isNull(summary) || summary.isUnread)
       return "";
-    if (summary.branch !== null)
+    if (!Object.isNull(summary.branch))
       return summary.branch;
-    return summary.head === null ? Resources.noCommitsYet : Resources.formatDetachedAt(summary.head.slice(0, 7));
+    return Object.isNull(summary.head) ? Resources.noCommitsYet : Resources.formatDetachedAt(summary.head.slice(0, 7));
   }
 
   /** How far the branch is from its upstream, or that it has none or it's gone; nothing until a read shows it. */
   public static syncOf(summary: GitRepositorySummary | null): string {
-    if (summary === null || summary.isUnread)
+    if (Object.isNull(summary) || summary.isUnread)
       return "";
-    if (summary.upstream === null)
+    if (Object.isNull(summary.upstream))
       return Resources.noUpstreamShort;
     return summary.gone ? Resources.upstreamGone : Resources.formatSync(summary.ahead, summary.behind);
   }
 
   /** How long ago it last fetched, or that it never has; nothing until a read shows it. */
   public static fetchedOf(summary: GitRepositorySummary | null, now: Date): string {
-    if (summary === null || summary.isUnread)
+    if (Object.isNull(summary) || summary.isUnread)
       return "";
-    return summary.fetchedAt === null ? Resources.neverFetched : CommitLabels.ageOf(summary.fetchedAt, now);
+    return Object.isNull(summary.fetchedAt) ? Resources.neverFetched : CommitLabels.ageOf(summary.fetchedAt, now);
   }
 
   /** Its conflicts, else how many files changed, or that a fetch is going; nothing until a read shows it. */
   public static changesOf(summary: GitRepositorySummary | null): string {
-    if (summary === null)
+    if (Object.isNull(summary))
       return "";
     if (summary.isFetching)
       return Resources.fetching;

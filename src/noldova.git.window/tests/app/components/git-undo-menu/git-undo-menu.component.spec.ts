@@ -8,6 +8,7 @@
 
 import { ApplicationRef, ErrorHandler, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { GitJournalEntry, UndoMode } from "@noldova/git.protocol";
 import { describe, expect, it } from "vitest";
 
@@ -34,7 +35,7 @@ class Menu {
   public constructor() {
     const state = { recentActions: this.recentActions, busy: this.busy, readRecentActionsAsync: async (): Promise<void> => {
       this.reads++;
-      if (this.failure !== null)
+      if (!Object.isNull(this.failure))
         throw this.failure;
     }, undoEntryAsync: async (entry: GitJournalEntry): Promise<void> => {
       this.undone.push(entry);

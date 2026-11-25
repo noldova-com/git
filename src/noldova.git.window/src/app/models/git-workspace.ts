@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { JsonObject, JsonReader } from "@noldova/context.json";
 
 /** A named, ordered list of repository folders that the workspace page shows together. */
@@ -47,7 +48,7 @@ export class GitWorkspace {
     const moving: { folder: string; index: number }[] = this.folders.flatMap((folder, index) => folders.has(folder) ? [{ folder, index }] : []);
     for (const { folder, index } of by < 0 ? moving : moving.reverse()) {
       const neighbor: string | undefined = order[index + by];
-      if (neighbor !== undefined && !folders.has(neighbor)) {
+      if (!Object.isUndefined(neighbor) && !folders.has(neighbor)) {
         order[index + by] = folder;
         order[index] = neighbor;
       }

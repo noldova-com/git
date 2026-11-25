@@ -7,6 +7,7 @@
  */
 
 import { signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import type { IWindowPartContext } from "@noldova/desktop.window";
 
 import type { IGitCommitPrefixes } from "../interfaces/i-git-commit-prefixes.ts";
@@ -28,7 +29,7 @@ export class GitCommitPrefixes {
     for (const provided of GitCommitPrefixes.provided())
       try {
         const prefix: string | null = provided.prefixes.prefixFor(folder, branch);
-        if (prefix !== null)
+        if (!Object.isNull(prefix))
           return prefix;
       }
       catch (error) {

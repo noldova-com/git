@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import type { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 
@@ -28,7 +29,7 @@ export class GitHeldRequests {
 
   public nextAsync(method: string): Promise<(answer: JsonValue | Error) => void> {
     const settle: ((answer: JsonValue | Error) => void) | undefined = this.arrived.get(method)?.shift();
-    if (settle !== undefined)
+    if (!Object.isUndefined(settle))
       return Promise.resolve(settle);
     return new Promise(resolve => this.claims.set(method, [...this.claims.get(method) ?? [], resolve]));
   }
@@ -40,7 +41,7 @@ export class GitHeldRequests {
 
   private arrive(method: string, settle: (answer: JsonValue | Error) => void): void {
     const claim: ((settle: (answer: JsonValue | Error) => void) => void) | undefined = this.claims.get(method)?.shift();
-    if (claim === undefined)
+    if (Object.isUndefined(claim))
       this.arrived.set(method, [...this.arrived.get(method) ?? [], settle]);
     else
       claim(settle);

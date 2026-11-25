@@ -8,6 +8,7 @@
 
 import { signal, type WritableSignal } from "@angular/core";
 
+import "@noldova/context.core";
 import type { IWindowPartContext } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
 import { AuthorQuery, HostAvatar, PersonQuery } from "@noldova/git.hosting.protocol";
@@ -44,7 +45,7 @@ export class AzureDevOpsAuthorAvatars implements IGitAvatars {
   /** The context's pictures, made the first time the Git view or a page asks for them. */
   public static register(context: IWindowPartContext): AzureDevOpsAuthorAvatars {
     const known: AzureDevOpsAuthorAvatars | undefined = AzureDevOpsAuthorAvatars.shared.get(context);
-    if (known !== undefined)
+    if (!Object.isUndefined(known))
       return known;
     const avatars: AzureDevOpsAuthorAvatars = new AzureDevOpsAuthorAvatars(context, () => AzureDevOpsReferenceSource.register(context));
     AzureDevOpsAuthorAvatars.shared.set(context, avatars);
@@ -59,11 +60,11 @@ export class AzureDevOpsAuthorAvatars implements IGitAvatars {
   public avatarOf(folder: string, email: string, commitId: string): string | null | undefined {
     this.signIns();
     const organization: string | null = this.references().homeOf(folder)();
-    if (organization === null)
+    if (Object.isNull(organization))
       return null;
     const key: string = Resources.formatAvatarKey(organization.toLowerCase(), email.trim().toLowerCase());
     let avatar: WritableSignal<string | null | undefined> | undefined = this.kept.get(key);
-    if (avatar === undefined) {
+    if (Object.isUndefined(avatar)) {
       const reading: WritableSignal<string | null | undefined> = signal(undefined);
       avatar = reading;
       this.kept.set(key, reading);
@@ -80,7 +81,7 @@ export class AzureDevOpsAuthorAvatars implements IGitAvatars {
     this.signIns();
     const key: string = Resources.formatAvatarKey(organization.toLowerCase(), login.trim().toLowerCase());
     let avatar: WritableSignal<string | null | undefined> | undefined = this.kept.get(key);
-    if (avatar === undefined) {
+    if (Object.isUndefined(avatar)) {
       const reading: WritableSignal<string | null | undefined> = signal(undefined);
       avatar = reading;
       this.kept.set(key, reading);
@@ -108,7 +109,7 @@ export class AzureDevOpsAuthorAvatars implements IGitAvatars {
     await read();
     this.running--;
     const next: (() => Promise<void>) | undefined = this.waiting.shift();
-    if (next !== undefined)
+    if (!Object.isUndefined(next))
       void this.runAsync(next);
   }
 }

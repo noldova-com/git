@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { GitRemote } from "@noldova/git.protocol";
 
 import { Resources } from "../../resources.ts";
@@ -30,12 +31,12 @@ export class GitWorkspaceOverview {
     const groups: Map<string, GitWorkspaceRow[]> = new Map();
     for (const row of rows) {
       const branch: string | null = row.summary()?.branch ?? null;
-      if (branch !== null)
+      if (!Object.isNull(branch))
         groups.set(branch, [...groups.get(branch) ?? [], row]);
     }
     let shared: GitSharedBranch | null = null;
     for (const [branch, members] of groups)
-      if (members.length > (shared?.rows.length ?? 1) && members.some(t => t.pullRequest() !== null))
+      if (members.length > (shared?.rows.length ?? 1) && members.some(t => !Object.isNull(t.pullRequest())))
         shared = new GitSharedBranch(branch, members);
     return shared;
   }
@@ -49,13 +50,13 @@ export class GitWorkspaceOverview {
     const stacks: GitPullRequestStack[] = [];
     for (const row of rows) {
       const list: GitPullRequestList | null | undefined = row.openList();
-      if (list === null || list === undefined || seen.has(list))
+      if (Object.isNullOrUndefined(list) || seen.has(list))
         continue;
       seen.add(list);
       const heads: ReadonlySet<string> = new Set(list.rows.map(t => t.headBranch));
       const taken: Set<GitPullRequestRow> = new Set();
       const aboveOf = (under: GitPullRequestRow): readonly GitPullRequestRow[] => list.rows.filter(t => t !== under && t.baseBranch === under.headBranch);
-      for (const bottom of list.rows.filter(t => (t.baseBranch === null || !heads.has(t.baseBranch)) && aboveOf(t).length > 0)) {
+      for (const bottom of list.rows.filter(t => (Object.isNull(t.baseBranch) || !heads.has(t.baseBranch)) && aboveOf(t).length > 0)) {
         const run: GitPullRequestRow[] = [bottom];
         taken.add(bottom);
         for (const under of run)
@@ -86,7 +87,7 @@ export class GitWorkspaceOverview {
 
   /** Whether the branch can fast-forward to its upstream: the upstream is there, has commits the branch lacks, and lacks none of the branch's. */
   public static isOnlyBehind(summary: GitRepositorySummary | null): boolean {
-    return summary !== null && summary.upstream !== null && summary.behind > 0 && summary.ahead === 0;
+    return !Object.isNull(summary) && !Object.isNull(summary.upstream) && summary.behind > 0 && summary.ahead === 0;
   }
 
   public static waitingOf(runs: readonly GitWorkspaceRun[]): readonly GitWorkspaceRun[] {
@@ -111,19 +112,19 @@ export class GitWorkspaceOverview {
    * its own name rather than to that upstream.
    */
   public static pushUpstreamOf(upstream: string | null, remote: GitRemote | null): string | null {
-    return upstream !== null && remote !== null && upstream.startsWith(Resources.formatRemotePrefix(remote.name)) ? upstream : null;
+    return !Object.isNull(upstream) && !Object.isNull(remote) && upstream.startsWith(Resources.formatRemotePrefix(remote.name)) ? upstream : null;
   }
 
   /** Whether two reads name the same remote: the same name, host, path and transport, or none at all. */
   public static isSameRemote(read: GitRemote | null, confirmed: GitRemote | null): boolean {
-    if (read === null || confirmed === null)
+    if (Object.isNull(read) || Object.isNull(confirmed))
       return read === confirmed;
     return read.name === confirmed.name && read.host === confirmed.host && read.path === confirmed.path && read.transport === confirmed.transport;
   }
 
   /** Where a remote is, such as "github.com/example-owner/git", or null when the status names no host or path for it. */
   public static placeOf(remote: GitRemote | null): string | null {
-    return remote === null || remote.host === null || remote.path === null ? null : `${remote.host}/${remote.path}`;
+    return Object.isNull(remote) || Object.isNull(remote.host) || Object.isNull(remote.path) ? null : `${remote.host}/${remote.path}`;
   }
 
   /** What a pull of the repositories would pull, each checked again when it runs. */

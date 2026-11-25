@@ -38,7 +38,7 @@ const LONG: string = `src/${"markdown-note-exports/".repeat(8)}timeline.ts`;
 class DocumentComponent {
   protected readonly host: TestPullRequestHost = new TestPullRequestHost();
   protected readonly reference: HostReference = reference;
-  protected readonly changes: HostChanges = new HostChanges(null, null, null, "feature/export-notes", "main", HEAD);
+  protected readonly changes: HostChanges = HostChanges.uncounted("feature/export-notes", "main", HEAD);
 }
 
 async function openAsync(mode: ThemeMode): Promise<ComponentFixture<DocumentComponent>> {

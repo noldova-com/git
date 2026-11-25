@@ -16,12 +16,12 @@ import { GitJournalEntry } from "../../src/models/git-journal-entry.ts";
 describe("GitJournal", () => {
   const entryOf = (id: number): GitJournalEntry => new GitJournalEntry(String(id), "git.push", "2026-11-22T20:15:00Z", "main", "main", [], UndoMode.None, null, null);
 
-  it("keeps up to 50 entries, reads them back the same, and refuses a 51st and an unknown field", () => {
-    const journal = new GitJournal(Array.from({ length: 50 }, (_, index) => entryOf(index)));
+  it("keeps up to 500 entries, reads them back the same, and refuses a 501st and an unknown field", () => {
+    const journal = new GitJournal(Array.from({ length: 500 }, (_, index) => entryOf(index)));
 
     assert.deepEqual(GitJournal.fromJson(journal.toJson()), journal);
     assert.deepEqual([new GitJournal([]).toJson(), GitJournal.fromJson(new GitJournal([], true).toJson()).checkpoints], [{ entries: [], checkpoints: false }, true]);
-    assert.throws(() => GitJournal.fromJson({ entries: Array.from({ length: 51 }, (_, index) => entryOf(index).toJson()), checkpoints: false }), { name: "ProtocolFieldException", field: "$.entries" });
+    assert.throws(() => GitJournal.fromJson({ entries: Array.from({ length: 501 }, (_, index) => entryOf(index).toJson()), checkpoints: false }), { name: "ProtocolFieldException", field: "$.entries" });
     assert.throws(() => GitJournal.fromJson({ entries: [], checkpoints: false, more: 1 }), { name: "ProtocolFieldException" });
   });
 });

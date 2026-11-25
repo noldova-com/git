@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { IWindowPartContext } from "@noldova/desktop.window";
 
 import type { GitConflictDetail } from "../models/git-conflict-detail.ts";
@@ -18,7 +19,7 @@ export class GitConflictDetails {
 
   public static of(context: IWindowPartContext): GitDetailView<GitConflictDetail> {
     const known: GitDetailView<GitConflictDetail> | undefined = GitConflictDetails.windows.get(context);
-    if (known !== undefined)
+    if (!Object.isUndefined(known))
       return known;
     const view: GitDetailView<GitConflictDetail> = new GitDetailView<GitConflictDetail>(context, Resources.conflictDetailViewName,
       Resources.conflictDetailViewInstance, () => Resources.conflictDetailLabel);

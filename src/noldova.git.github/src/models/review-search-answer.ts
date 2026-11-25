@@ -9,4 +9,12 @@
 import type { HostReviewRequest } from "@noldova/git.hosting.protocol";
 
 /** The account's review requests a search found, and whether the search was cut. */
-export type ReviewSearchAnswer = readonly [readonly HostReviewRequest[], boolean];
+export class ReviewSearchAnswer {
+  public readonly rows: readonly HostReviewRequest[];
+  public readonly isCut: boolean;
+
+  public constructor(rows: readonly HostReviewRequest[], isCut: boolean) {
+    this.rows = rows;
+    this.isCut = isCut;
+  }
+}

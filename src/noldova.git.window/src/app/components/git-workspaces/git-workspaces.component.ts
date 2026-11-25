@@ -7,6 +7,7 @@
  */
 
 import { Component, computed, ErrorHandler, inject, type Signal } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, WindowPartTokens } from "@noldova/desktop.window";
 import { IconButtonComponent } from "@noldova/ui.components.angular";
 
@@ -42,7 +43,7 @@ export class GitWorkspacesComponent {
   /** The page whose item is chosen: the workspace's id, the Dashboard's null, or undefined while a view is chosen or no page is open. */
   protected readonly chosenPage: Signal<string | null | undefined> = computed(() => {
     const side: GitWorkspaceSide | null = this.side();
-    return side === null || side.view() !== null ? undefined : side.workspaceId;
+    return Object.isNull(side) || !Object.isNull(side.view()) ? undefined : side.workspaceId;
   });
 
   /**
@@ -51,7 +52,7 @@ export class GitWorkspacesComponent {
    */
   protected openWorkspace(id: string | null): void {
     const side: GitWorkspaceSide | null = this.side();
-    if (side !== null && side.workspaceId === id)
+    if (!Object.isNull(side) && side.workspaceId === id)
       side.chooseView(null);
     GitWorkspacePages.open(this.context, id);
   }

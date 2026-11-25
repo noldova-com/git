@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type IWindowPartContext, WindowException } from "@noldova/desktop.window";
 import {
   GitFolderParams, GitGraph, GitGraphParams, GitMessageReferenceKind, GitMessageReferences, GitMessageReferencesParams, GitNames, GitStatus
@@ -34,7 +35,7 @@ export class AzureDevOpsLinkedCommits {
     try {
       const status: GitStatus = GitStatus.fromJson(await this.context.requestAsync(method, new GitFolderParams(folder).toJson()));
       const home: string | null = AzureDevOpsReferenceLinks.homeOf(status.remote);
-      if (home === null)
+      if (Object.isNull(home))
         return LinkedHistory.none;
       const key: string = JSON.stringify([folder, status.head]);
       if (this.kept?.key === key)

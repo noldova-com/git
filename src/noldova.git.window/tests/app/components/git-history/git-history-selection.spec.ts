@@ -8,6 +8,7 @@
 
 import { ApplicationRef } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitCommit, GitGraph, GitGraphCommit, GitRef, RefKind } from "@noldova/git.protocol";
 import { LinkReferenceMatch } from "@noldova/ui.components.angular";
@@ -53,7 +54,7 @@ function openHistory(context: FakeWindowPartContext): HTMLElement {
 }
 
 describe("GitHistoryComponent selecting a commit another page asked for", () => {
-  afterEach(() => GitViewing.commit.set(null));
+  afterEach(() => GitViewing.showChanges(GitFixtures.folder));
 
   it("opens a reference in a commit's message, out of the list's tab order, without selecting the commit, while the rest of its row selects it", async () => {
     const opened: string[] = [];
@@ -62,7 +63,7 @@ describe("GitHistoryComponent selecting a commit another page asked for", () => 
       opens: (_folder, url) => opened.push(url) > 0
     }));
     const element: HTMLElement = openHistory(new FakeWindowPartContext());
-    await untilAsync(() => element.querySelector(".message a") !== null);
+    await untilAsync(() => !Object.isNull(element.querySelector(".message a")));
     const link: HTMLAnchorElement | null = element.querySelector<HTMLAnchorElement>(".message a");
     const before: string = selectedOf(element);
 
@@ -86,7 +87,7 @@ describe("GitHistoryComponent selecting a commit another page asked for", () => 
     await untilAsync(() => {
       const row: DOMRect | undefined = element.querySelector("[aria-selected=true]")?.getBoundingClientRect();
       const list: DOMRect | undefined = element.querySelector(".list")?.getBoundingClientRect();
-      return row !== undefined && list !== undefined && row.top >= list.top && row.bottom <= list.bottom;
+      return !Object.isUndefined(row) && !Object.isUndefined(list) && row.top >= list.top && row.bottom <= list.bottom;
     });
     const row: DOMRect = element.querySelector("[aria-selected=true]")?.getBoundingClientRect() ?? new DOMRect();
     const list: DOMRect = element.querySelector(".list")?.getBoundingClientRect() ?? new DOMRect();
@@ -94,6 +95,50 @@ describe("GitHistoryComponent selecting a commit another page asked for", () => 
     expect(Math.abs(row.top + row.height / 2 - (list.top + list.height / 2))).toBeLessThanOrEqual(row.height);
     expect([context.callsOf("runCommandAsync"), GitViewing.commitOf(GitFixtures.folder)?.commit.commit.subject, GitHistoryAsks.askedOf(GitFixtures.folder),
       element.querySelector(".not-loaded")]).toEqual([[["git.openHistory", { folder: GitFixtures.folder }]], "Commit 200", null, null]);
+  });
+
+  it("keeps the row the arrow keys move to in view, from HEAD past the first screen and back, names it as the list's active row with its place, and reads the next page near the end",
+    async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, {
+      ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(),
+      "git.graph": () => context.callsOf("requestAsync").filter(t => t[0] === "git.graph").length === 1
+        ? new GitGraph(graph.commits, true).toJson()
+        : new GitGraph(Array.from({ length: 50 }, (_, i) => commitAt(i + 301)), false).toJson()
+    });
+    GitFixtures.setUp(context);
+    const fixture: ComponentFixture<GitHistoryComponent> = TestBed.createComponent(GitHistoryComponent);
+    fixture.componentRef.setInput("instance", GitFixtures.folder);
+    fixture.autoDetectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    element.style.width = "60rem";
+    element.style.height = "20rem";
+    const list = (): HTMLElement => element.querySelector<HTMLElement>(".list") ?? document.createElement("div");
+    await untilAsync(() => element.querySelectorAll("[role=option]").length > 0);
+    const press = (key: string): void => void list().dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    const selected = (): HTMLElement | null => element.querySelector<HTMLElement>("[aria-selected=true]");
+    const inView = (): boolean => {
+      const row: DOMRect | undefined = selected()?.getBoundingClientRect();
+      const box: DOMRect = list().getBoundingClientRect();
+      return !Object.isUndefined(row) && row.top >= box.top - 0.5 && row.bottom <= box.bottom + 0.5;
+    };
+    const marks = (): readonly (string | null)[] => [list().getAttribute("aria-activedescendant") === selected()?.id ? "active" : "not active",
+      selected()?.getAttribute("aria-posinset") ?? null, selected()?.getAttribute("aria-setsize") ?? null];
+
+    for (let step = 0; step < 30; step++)
+      press("ArrowDown");
+    await untilAsync(() => selectedOf(element) === "Commit 31" && inView());
+    const down: readonly unknown[] = [selectedOf(element), inView(), list().scrollTop > 0, ...marks()];
+    for (let step = 0; step < 30; step++)
+      press("ArrowUp");
+    await untilAsync(() => selectedOf(element) === "Commit 1" && inView());
+    const up: readonly unknown[] = [selectedOf(element), inView(), list().scrollTop];
+    for (let step = 0; step < 100; step++)
+      press("ArrowDown");
+    await untilAsync(() => !Object.isNull(element.querySelector("[aria-setsize='350']")) && inView());
+
+    expect([down, up, [selectedOf(element), inView(), ...marks()], context.callsOf("requestAsync").filter(t => t[0] === "git.graph").length]).toEqual([
+      ["Commit 31", true, true, "active", "31", "-1"], ["Commit 1", true, 0], ["Commit 101", true, "active", "101", "350"], 2]);
   });
 
   it("selects a commit asked for in a hidden history, whose list never grows, and stops waiting to scroll it", async () => {
@@ -129,11 +174,11 @@ describe("GitHistoryComponent selecting a commit another page asked for", () => 
     await untilAsync(() => element.querySelectorAll("[role=option]").length > 0);
 
     await GitHistorySelection.selectAsync(context, GitFixtures.folder, "f".repeat(40));
-    await untilAsync(() => element.querySelector(".not-loaded") !== null);
+    await untilAsync(() => !Object.isNull(element.querySelector(".not-loaded")));
     const note: string = element.querySelector("[role=status].not-loaded")?.textContent?.trim() ?? "";
     const kept: boolean = selectedOf(element) === "Commit 1";
     element.querySelectorAll<HTMLElement>("[role=option]")[1]?.click();
-    await untilAsync(() => element.querySelector(".not-loaded") === null);
+    await untilAsync(() => Object.isNull(element.querySelector(".not-loaded")));
 
     expect([note, kept, GitHistoryAsks.askedOf(GitFixtures.folder)]).toEqual(["Commit fffffff isn't among the history's loaded commits.", true, null]);
   });
@@ -146,7 +191,7 @@ describe("GitHistoryComponent selecting a commit another page asked for", () => 
 
     await GitHistorySelection.selectAsync(context, "/work/other", idOf(3));
     const asked = GitHistoryAsks.askedOf("/work/other");
-    if (asked !== null)
+    if (!Object.isNull(asked))
       GitHistoryAsks.take(asked);
 
     expect([asked?.commitId, selectedOf(element) === "Commit 3", element.querySelector(".not-loaded")]).toEqual([idOf(3), false, null]);

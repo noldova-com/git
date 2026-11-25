@@ -29,7 +29,7 @@ describe("AzureDevOpsReferenceLooks", () => {
   const pullRequestOf = (state: ReferenceState, author: HostPerson | null = new HostPerson("octocat@example.com", null, null)): HostItem =>
     new HostItem(new HostReference("git-azure-devops", "fabrikam", repository, 7), ReferenceKind.PullRequest, state, "Fix the greeting",
       "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/7", author, openedAt,
-      state === ReferenceState.Open || state === ReferenceState.Draft ? null : closedAt, 0, new HostChanges(null, null, null, "feature/greeting", "main",
+      state === ReferenceState.Open || state === ReferenceState.Draft ? null : closedAt, 0, HostChanges.uncounted("feature/greeting", "main",
         "0123456789abcdef0123456789abcdef01234567"));
   const shown = (chip: LinkReference): readonly unknown[] => [chip.reference, chip.kind, chip.state?.label ?? null, chip.icon.isMonochrome, chip.mark, chip.title,
     chip.location];
@@ -119,7 +119,8 @@ describe("AzureDevOpsReferenceLooks", () => {
     const counted = (counts: readonly [number, number, number] | null): HostItem => {
       const item: HostItem = pullRequestOf(ReferenceState.Open);
       return new HostItem(item.reference, item.kind, item.state, item.title, item.url, item.author, item.createdAt, item.closedAt, item.comments,
-        new HostChanges(counts?.[0] ?? null, counts?.[1] ?? null, counts?.[2] ?? null, "feature/greeting", "main", "0123456789abcdef0123456789abcdef01234567"));
+        counts === null ? HostChanges.uncounted("feature/greeting", "main", "0123456789abcdef0123456789abcdef01234567")
+          : new HostChanges(counts[0], counts[1], counts[2], "feature/greeting", "main", "0123456789abcdef0123456789abcdef01234567"));
     };
     const chip = AzureDevOpsReferenceLooks.pullRequestOf(counted([12, 3, 4]), null);
     const partial = AzureDevOpsReferenceLooks.pullRequestOf(counted(null), null);

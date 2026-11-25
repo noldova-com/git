@@ -8,6 +8,7 @@
 
 import { Component, computed, DestroyRef, effect, inject, Injector, input, type InputSignal, PendingTasks, type Signal, signal, untracked,
   type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
 import { type HostWorkItemDetail, HostWorkItemList, WorkItemScope, WorkItemsQuery } from "@noldova/git.hosting.protocol";
@@ -54,7 +55,7 @@ export class AzureDevOpsWorkItemComponent {
   protected readonly choice: Signal<WorkItemChoice | null> = computed(() => {
     const place: WorkItemsPlace | null = this.place();
     const detail: HostWorkItemDetail | null = this.selected();
-    return place === null || detail === null ? null : this.choiceOf(place, detail);
+    return Object.isNull(place) || Object.isNull(detail) ? null : this.choiceOf(place, detail);
   });
   protected readonly isMissing: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
@@ -134,13 +135,13 @@ export class AzureDevOpsWorkItemComponent {
     let method: string = GitNames.statusMethod;
     try {
       let place: WorkItemsPlace | null = WorkItemsPlace.ofInstance(instance);
-      if (place === null && instance === "" && folder !== null)
+      if (Object.isNull(place) && instance === "" && !Object.isNull(folder))
         place = WorkItemsPlace.ofRemote(GitStatus.fromJson(await this.context.requestAsync(method, new GitFolderParams(folder).toJson())).remote);
       if (!isCurrent())
         return;
       this.place.set(place);
       this.chosen.set(place?.id ?? null);
-      if (place === null) {
+      if (Object.isNull(place)) {
         this.isMissing.set(true);
         return;
       }

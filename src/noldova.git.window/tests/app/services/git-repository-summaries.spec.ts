@@ -7,6 +7,7 @@
  */
 
 import type { Signal } from "@angular/core";
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { ConflictKind, FailureCode, FileState, StatusUpstream } from "@noldova/git.protocol";
@@ -28,10 +29,10 @@ describe("GitRepositorySummaries", () => {
   const shownAsync = async (summary: Signal<GitRepositorySummary | null>, done: (shown: GitRepositorySummary) => boolean): Promise<GitRepositorySummary> => {
     await GitFixtures.untilAsync(() => {
       const shown: GitRepositorySummary | null = summary();
-      return shown !== null && done(shown);
+      return !Object.isNull(shown) && done(shown);
     });
     const shown: GitRepositorySummary | null = summary();
-    if (shown === null)
+    if (Object.isNull(shown))
       throw new Error("The summary went away.");
     return shown;
   };

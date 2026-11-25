@@ -12,7 +12,6 @@
   min-width: 0;
   overflow: auto;
   color: var(--nol-text);
-  background-color: var(--nol-panel);
 }
 
 .empty-view {

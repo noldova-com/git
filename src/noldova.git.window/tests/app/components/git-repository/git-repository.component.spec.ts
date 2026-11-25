@@ -6,8 +6,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { type Signal, signal } from "@angular/core";
+import { type Signal, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { FailureCode, GitBranchTrack, GitCode, GitRemote, GitRepositoryItems, GitStash, GitSubmodule, GitTag, GitWorktrees, RemoteTransport, StatusUpstream } from "@noldova/git.protocol";
@@ -63,7 +64,7 @@ describe("GitRepositoryComponent", () => {
     const fixture: ComponentFixture<GitRepositoryComponent> = TestBed.createComponent(GitRepositoryComponent);
     fixture.autoDetectChanges();
     const element: HTMLElement = fixture.nativeElement;
-    await domAsync(() => element.querySelector("button[title=feature]") !== null);
+    await domAsync(() => !Object.isNull(element.querySelector("button[title=feature]")));
     return { element, requests, context, fixture };
   };
 
@@ -79,7 +80,7 @@ describe("GitRepositoryComponent", () => {
     const during: readonly [readonly string[], string | null] = [currentOf(element), element.querySelector(".spin")?.getAttribute("aria-label") ?? null];
     await requests.answerAsync("git.switchBranch",
       GitFixtures.failure(FailureCode.Git, GitCode.ChangesInTheWay, "Your local changes to package-lock.json would be overwritten by checkout."));
-    await domAsync(() => element.querySelector("[role=alert]") !== null && element.querySelector(".spin") === null);
+    await domAsync(() => !Object.isNull(element.querySelector("[role=alert]")) && Object.isNull(element.querySelector(".spin")));
 
     expect([before, during, currentOf(element)]).toEqual([["check", "main"], [["progress_activity", "feature"], "Switching"], ["check", "main"]]);
     expect((element.querySelector("[role=alert]")?.textContent ?? "").trim()).toBe("Your local changes to package-lock.json would be overwritten by checkout.");
@@ -90,7 +91,7 @@ describe("GitRepositoryComponent", () => {
     const { element } = await renderAsync([], GitFixtures.failure(FailureCode.Git, GitCode.HookFailed, "The post-checkout hook refused."));
 
     element.querySelector<HTMLElement>("button[title=feature]")?.dispatchEvent(new MouseEvent("dblclick"));
-    await domAsync(() => element.querySelector("[role=alert]") !== null && element.querySelector(".spin") === null);
+    await domAsync(() => !Object.isNull(element.querySelector("[role=alert]")) && Object.isNull(element.querySelector(".spin")));
 
     expect(currentOf(element)).toEqual(["check", "main"]);
     expect((element.querySelector("[role=alert]")?.textContent ?? "").trim()).toBe("The post-checkout hook refused.");
@@ -100,7 +101,7 @@ describe("GitRepositoryComponent", () => {
     const { element } = await renderAsync([], new Error("unused"), ["origin/main", "origin/team/a", "origin/team/b"]);
     const click = (selector: string): void => {
       const target: HTMLElement | null = element.querySelector<HTMLElement>(selector);
-      if (target === null)
+      if (Object.isNull(target))
         throw new Error(`Nothing matches ${selector}.`);
       target.click();
     };
@@ -183,7 +184,7 @@ describe("GitRepositoryComponent", () => {
     const fixture: ComponentFixture<GitRepositoryComponent> = TestBed.createComponent(GitRepositoryComponent);
     fixture.autoDetectChanges();
     const element: HTMLElement = fixture.nativeElement;
-    await domAsync(() => element.querySelector("button[title=main] .small") !== null);
+    await domAsync(() => !Object.isNull(element.querySelector("button[title=main] .small")));
 
     expect(["feature", "fix", "main", "old"].map(t => [...element.querySelectorAll(`button[title=${t}] .small`)].map(u => u.textContent).join(" ")))
       .toEqual(["↑3", "↓4", "↑2 ↓1", ""]);
@@ -204,7 +205,7 @@ describe("GitRepositoryComponent", () => {
     const fixture: ComponentFixture<GitRepositoryComponent> = TestBed.createComponent(GitRepositoryComponent);
     fixture.autoDetectChanges();
     const element: HTMLElement = fixture.nativeElement;
-    await domAsync(() => element.querySelector("button[title=main] .count.behind") !== null);
+    await domAsync(() => !Object.isNull(element.querySelector("button[title=main] .count.behind")));
     const resolve = (color: string): string => {
       const probe: HTMLSpanElement = document.createElement("span");
       probe.style.color = color;
@@ -215,9 +216,9 @@ describe("GitRepositoryComponent", () => {
     };
     const colorOf = (selector: string): string => getComputedStyle(element.querySelector(selector) ?? element).color;
     [...element.querySelectorAll<HTMLElement>("button.toggle")].find(t => t.textContent?.includes("Remotes"))?.click();
-    await domAsync(() => element.querySelector("[title='origin/']") !== null);
+    await domAsync(() => !Object.isNull(element.querySelector("[title='origin/']")));
     element.querySelector<HTMLElement>("[title='origin/']")?.click();
-    await domAsync(() => element.querySelector("[title='origin/main'] .count.behind") !== null);
+    await domAsync(() => !Object.isNull(element.querySelector("[title='origin/main'] .count.behind")));
     const remote: readonly (string | null)[] = [...element.querySelectorAll("[title='origin/main'] .count")].map(t => t.getAttribute("title"));
 
     expect([colorOf("button[title=main] .ahead .arrow"), colorOf("button[title=main] .behind .arrow"), colorOf("button[title=main] .ahead"), colorOf("button[title=main] .behind")])
@@ -232,7 +233,7 @@ describe("GitRepositoryComponent", () => {
     const dialog = (): HTMLElement | null => document.querySelector("nol-git-bulk-branch-dialog");
     const part = <T extends HTMLElement>(selector: string): T => {
       const found: T | null | undefined = dialog()?.querySelector<T>(selector);
-      if (found === null || found === undefined)
+      if (Object.isNullOrUndefined(found))
         throw new Error(`The dialog has no ${selector}.`);
       return found;
     };
@@ -240,12 +241,12 @@ describe("GitRepositoryComponent", () => {
     const newBranch: HTMLButtonElement = element.querySelector<HTMLButtonElement>(".new-branch") ?? document.createElement("button");
 
     newBranch.click();
-    await domAsync(() => dialog() !== null);
+    await domAsync(() => !Object.isNull(dialog()));
     part<HTMLButtonElement>(".cancel").click();
-    await domAsync(() => dialog() === null);
+    await domAsync(() => Object.isNull(dialog()));
     const cancelled: readonly unknown[] = created();
     newBranch.click();
-    await domAsync(() => dialog() !== null);
+    await domAsync(() => !Object.isNull(dialog()));
     await fixture.whenStable();
     const field: HTMLInputElement = part<HTMLInputElement>(".name");
     field.value = "feature/kit";
@@ -273,6 +274,29 @@ describe("GitRepositoryComponent", () => {
     expect(context.callsOf("requestAsync").filter(t => t[0] === "git.fetch").map(t => t[1])).toEqual([{ folder: GitFixtures.folder, basedOn: "f1", allRemotes: true }]);
   });
 
+  it("reads no folder again after a write once the panel has moved on, so the folder it moved to keeps its own read", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    const requests: GitHeldRequests = new GitHeldRequests(context, ["git.fetch"], { ...answers, "git.branches": GitFixtures.branches("main", ["feature", "main"]).toJson() });
+    const folder: WritableSignal<string | null> = GitFixtures.setUp(context);
+    const fixture: ComponentFixture<GitRepositoryComponent> = TestBed.createComponent(GitRepositoryComponent);
+    fixture.autoDetectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    await domAsync(() => !Object.isNull(element.querySelector("button[title=feature]")));
+    const statusReadsOf = (read: string): number => context.callsOf("requestAsync").filter(t => t[0] === "git.status" && JSON.stringify(t[1]) === JSON.stringify({ folder: read })).length;
+    const other: string = "/work/other";
+
+    element.querySelector<HTMLButtonElement>(".fetch-all")?.click();
+    const settle = await requests.nextAsync("git.fetch");
+    folder.set(other);
+    await domAsync(() => statusReadsOf(other) === 1);
+    const before: number = statusReadsOf(GitFixtures.folder);
+    settle(null);
+    await domAsync(() => !(element.querySelector<HTMLButtonElement>(".fetch-all")?.disabled ?? true));
+    await fixture.whenStable();
+
+    expect([statusReadsOf(GitFixtures.folder) - before, statusReadsOf(other)]).toEqual([0, 1]);
+  });
+
   it("paints no background of its own, so it shows the side panel's, as the Git panel does", async () => {
     const { element } = await renderAsync([], new Error("unused"));
 
@@ -282,7 +306,7 @@ describe("GitRepositoryComponent", () => {
   it("puts local branches a level in from their section, in folders, folders first, each level stepping in, draws the branch icon at the icons' size, and switches to a branch inside one by its whole name, keeping the current branch in its place", async () => {
     const { element } = await renderAsync(["git.switchBranch"], new Error("unused"), [], ["main", "feature", "team/a", "team/deep/x"]);
     const localRows = (): HTMLElement[] => [...element.querySelectorAll<HTMLElement>("button.row[style*='padding-left']")]
-      .filter(t => !(t.getAttribute("title") ?? "").startsWith("origin/") && t.querySelector(".current") === null);
+      .filter(t => !(t.getAttribute("title") ?? "").startsWith("origin/") && Object.isNull(t.querySelector(".current")));
     const textOf = (row: HTMLElement): string => [...row.children].map(t => (t.textContent ?? "").trim()).filter(t => t.length > 0).join(" ");
     const rem = (pixels: number): number => pixels / parseFloat(getComputedStyle(document.documentElement).fontSize);
     const titles = (): readonly (string | null)[] => [...element.querySelectorAll<HTMLElement>("button.row[style*='padding-left']")]
@@ -320,24 +344,24 @@ describe("GitRepositoryComponent", () => {
       const fixture: ComponentFixture<GitRepositoryComponent> = TestBed.createComponent(GitRepositoryComponent);
       fixture.autoDetectChanges();
       const element: HTMLElement = fixture.nativeElement;
-      await domAsync(() => element.querySelector("button[title=feature]") !== null);
+      await domAsync(() => !Object.isNull(element.querySelector("button[title=feature]")));
       return { element, context };
     };
     const menuOf = async (row: HTMLElement): Promise<readonly HTMLButtonElement[]> => {
       const box: DOMRect = row.getBoundingClientRect();
       row.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: box.left + 4, clientY: box.top + 4, button: 2 }));
-      await domAsync(() => document.querySelector("[nol-menu-item]") !== null);
+      await domAsync(() => !Object.isNull(document.querySelector("[nol-menu-item]")));
       return [...document.querySelectorAll<HTMLButtonElement>("[nol-menu-item]")];
     };
     const choose = async (row: HTMLElement, label: string): Promise<void> => {
       (await menuOf(row)).find(t => (t.textContent ?? "").includes(label))?.click();
-      await domAsync(() => document.querySelector("[nol-menu-item]") === null);
+      await domAsync(() => Object.isNull(document.querySelector("[nol-menu-item]")));
     };
     const isOff = (item: HTMLButtonElement): boolean => item.disabled || item.getAttribute("aria-disabled") === "true";
     const requested = (context: FakeWindowPartContext, method: string): readonly unknown[] =>
       context.callsOf("requestAsync").filter(t => t[0] === method).map(t => t[1]);
     const typeInto = (field: HTMLInputElement | null, text: string): void => {
-      if (field === null)
+      if (Object.isNull(field))
         return;
       field.value = text;
       field.dispatchEvent(new Event("input"));
@@ -347,7 +371,7 @@ describe("GitRepositoryComponent", () => {
       const { element, context } = await renderWithAsync({ "git.deleteBranch": null });
       const forMain: readonly boolean[] = (await menuOf(element.querySelector<HTMLElement>("button[title=main]") ?? element)).map(isOff);
       document.querySelector("[nol-menu-item]")?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true, cancelable: true }));
-      await domAsync(() => document.querySelector("[nol-menu-item]") === null);
+      await domAsync(() => Object.isNull(document.querySelector("[nol-menu-item]")));
 
       await choose(element.querySelector<HTMLElement>("button[title=feature]") ?? element, "Delete");
       await domAsync(() => requested(context, "git.deleteBranch").length === 1);
@@ -365,7 +389,7 @@ describe("GitRepositoryComponent", () => {
       const rowBox: DOMRect = row.getBoundingClientRect();
 
       await choose(row, "Rename");
-      await domAsync(() => element.querySelector(".rename input") !== null);
+      await domAsync(() => !Object.isNull(element.querySelector(".rename input")));
       const form: DOMRect = element.querySelector(".rename")?.getBoundingClientRect() ?? new DOMRect();
       const field: HTMLInputElement | null = element.querySelector<HTMLInputElement>(".rename input");
       const fieldBox: DOMRect = field?.getBoundingClientRect() ?? new DOMRect();
@@ -373,7 +397,7 @@ describe("GitRepositoryComponent", () => {
         fieldBox.left > form.left, fieldBox.right <= form.right, fieldBox.bottom <= form.bottom];
       typeInto(field, "main");
       element.querySelector<HTMLFormElement>(".rename")?.requestSubmit();
-      await domAsync(() => element.querySelector("[role=alert]") !== null);
+      await domAsync(() => !Object.isNull(element.querySelector("[role=alert]")));
 
       expect(shape).toEqual(["feature", "New name for feature", 0, 0, true, true, true]);
       expect(requested(context, "git.renameBranch")).toEqual([{ folder: GitFixtures.folder, name: "feature", newName: "main", basedOn: GitFixtures.status().fingerprint }]);
@@ -388,21 +412,21 @@ describe("GitRepositoryComponent", () => {
       const submit = (): void => element.querySelector<HTMLFormElement>(".rename")?.requestSubmit();
 
       await choose(row(), "Rename");
-      await domAsync(() => field() !== null);
+      await domAsync(() => !Object.isNull(field()));
       field()?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-      await domAsync(() => field() === null);
+      await domAsync(() => Object.isNull(field()));
       await choose(row(), "Rename");
-      await domAsync(() => field() !== null);
+      await domAsync(() => !Object.isNull(field()));
       submit();
-      await domAsync(() => field() === null);
+      await domAsync(() => Object.isNull(field()));
       await choose(row(), "Rename");
-      await domAsync(() => field() !== null);
+      await domAsync(() => !Object.isNull(field()));
       typeInto(field(), "  ");
       submit();
-      const stayed: boolean = field() !== null;
+      const stayed: boolean = !Object.isNull(field());
       typeInto(field(), " topic ");
       submit();
-      await domAsync(() => field() === null && requested(context, "git.renameBranch").length === 1);
+      await domAsync(() => Object.isNull(field()) && requested(context, "git.renameBranch").length === 1);
 
       expect(stayed).toBe(true);
       expect(requested(context, "git.renameBranch")).toEqual([{ folder: GitFixtures.folder, name: "feature", newName: "topic", basedOn: GitFixtures.status().fingerprint }]);
@@ -411,7 +435,7 @@ describe("GitRepositoryComponent", () => {
     it("deletes a tag from its row's menu", async () => {
       const { element, context } = await renderWithAsync({ "git.deleteTag": null });
       [...element.querySelectorAll<HTMLElement>(".toggle")].find(t => (t.textContent ?? "").includes("Tags"))?.click();
-      await domAsync(() => element.querySelector(".row.nested[title=v1]") !== null);
+      await domAsync(() => !Object.isNull(element.querySelector(".row.nested[title=v1]")));
 
       await choose(element.querySelector<HTMLElement>(".row.nested[title=v1]") ?? element, "Delete");
       await domAsync(() => requested(context, "git.deleteTag").length === 1);
@@ -435,11 +459,11 @@ describe("GitRepositoryComponent", () => {
       const fixture: ComponentFixture<GitRepositoryComponent> = TestBed.createComponent(GitRepositoryComponent);
       fixture.autoDetectChanges();
       const element: HTMLElement = fixture.nativeElement;
-      await domAsync(() => element.querySelectorAll(".pull-request").length === 2 && element.querySelector("button[title=main]") !== null);
+      await domAsync(() => element.querySelectorAll(".pull-request").length === 2 && !Object.isNull(element.querySelector("button[title=main]")));
       const rows: HTMLElement[] = [...element.querySelectorAll<HTMLElement>(".pull-request")];
       const forCurrent: boolean = isOff((await menuOf(rows[1] ?? element))[0] ?? document.createElement("button"));
       document.querySelector("[nol-menu-item]")?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true, cancelable: true }));
-      await domAsync(() => document.querySelector("[nol-menu-item]") === null);
+      await domAsync(() => Object.isNull(document.querySelector("[nol-menu-item]")));
 
       await choose(rows[0] ?? element, "Switch to branch");
       await domAsync(() => requested(context, "git.switchBranch").length === 1);
@@ -463,12 +487,12 @@ describe("GitRepositoryComponent", () => {
     const fixture: ComponentFixture<GitRepositoryComponent> = TestBed.createComponent(GitRepositoryComponent);
     fixture.autoDetectChanges();
     const element: HTMLElement = fixture.nativeElement;
-    await domAsync(() => element.querySelector(".pull-request") !== null);
+    await domAsync(() => !Object.isNull(element.querySelector(".pull-request")));
     const sections: string[] = [...element.querySelectorAll(".caps")].map(t => (t.textContent ?? "").trim());
 
     hasRemote = false;
     context.raiseEvent("git.changed", { folder: GitFixtures.folder });
-    await domAsync(() => element.querySelector("nol-git-pull-requests") === null);
+    await domAsync(() => Object.isNull(element.querySelector("nol-git-pull-requests")));
 
     expect(sections.slice(0, 4)).toEqual(["Branches", "Agents", "Pull requests", "Remotes"]);
   });
@@ -484,7 +508,7 @@ describe("GitRepositoryComponent", () => {
     const fixture: ComponentFixture<GitRepositoryComponent> = TestBed.createComponent(GitRepositoryComponent);
     fixture.autoDetectChanges();
     const element: HTMLElement = fixture.nativeElement;
-    await domAsync(() => element.querySelector("button[title=feature]") !== null);
+    await domAsync(() => !Object.isNull(element.querySelector("button[title=feature]")));
     await fixture.whenStable();
     return element;
   };
@@ -508,7 +532,7 @@ describe("GitRepositoryComponent", () => {
       .map(t => [t.querySelector(".grow")?.textContent ?? null, t.classList.contains("sel") ? "sel" : null, t.getAttribute("aria-current")]);
     const whileActive = selected();
     active.set(false);
-    await domAsync(() => element.querySelector(".row.changes.sel") !== null);
+    await domAsync(() => !Object.isNull(element.querySelector(".row.changes.sel")));
 
     expect([whileActive, selected()]).toEqual([
       [["Changes", null, null], ["History", null, null], ["Work items", "sel", "true"], ["Sprint", null, null]],
@@ -519,6 +543,6 @@ describe("GitRepositoryComponent", () => {
     "shows no host rows for %s", async (_, remote) => {
       const element: HTMLElement = await linkedAsync(remote, []);
 
-      expect([element.querySelectorAll(".row.link").length, element.querySelector(".row.history") !== null]).toEqual([0, true]);
+      expect([element.querySelectorAll(".row.link").length, !Object.isNull(element.querySelector(".row.history"))]).toEqual([0, true]);
     });
 });

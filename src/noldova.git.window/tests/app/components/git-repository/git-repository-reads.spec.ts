@@ -8,6 +8,7 @@
 
 import { ErrorHandler, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { FailureCode, GitCommit, GitGraph, GitGraphCommit, GitRef, GitRepositoryItems, GitWorktree, GitWorktrees, RefKind } from "@noldova/git.protocol";
@@ -17,6 +18,7 @@ import { GitHistoryComponent } from "../../../../src/app/components/git-history/
 import { GitRepositoryComponent } from "../../../../src/app/components/git-repository/git-repository.component.ts";
 import { GitBranchView } from "../../../../src/app/models/git-branch-view.ts";
 import { GitCommitView } from "../../../../src/app/models/git-commit-view.ts";
+import { GitRuntimeClient } from "../../../../src/app/services/git-runtime-client.ts";
 import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
@@ -58,7 +60,7 @@ describe("GitRepositoryComponent reads and writes", () => {
 
   const find = (element: HTMLElement, selector: string): HTMLElement => {
     const found: HTMLElement | null = element.querySelector<HTMLElement>(selector);
-    if (found === null)
+    if (Object.isNull(found))
       throw new Error(`Nothing matches ${selector}.`);
     return found;
   };
@@ -76,17 +78,17 @@ describe("GitRepositoryComponent reads and writes", () => {
     context.allow("openDocument");
     GitFixtures.answerWith(context, { ...answers, "git.worktrees": new GitWorktrees([new GitWorktree("/work/project-fix", null, "fix", false, false)]).toJson() });
     const { element } = mount(context);
-    await domAsync(element, () => element.querySelector("button[title=feature]") !== null);
+    await domAsync(element, () => !Object.isNull(element.querySelector("button[title=feature]")));
     toggle(element, "Worktrees");
-    await domAsync(element, () => element.querySelector("[title='/work/project-fix']") !== null);
+    await domAsync(element, () => !Object.isNull(element.querySelector("[title='/work/project-fix']")));
 
     find(element, "button[title=feature]").click();
     await domAsync(element, () => find(element, "button[title=feature]").classList.contains("sel"));
     const local: GitBranchView | null = GitViewing.branch();
     toggle(element, "Remotes");
-    await domAsync(element, () => element.querySelector("[title='origin/']") !== null);
+    await domAsync(element, () => !Object.isNull(element.querySelector("[title='origin/']")));
     find(element, "[title='origin/']").click();
-    await domAsync(element, () => element.querySelector("[title='origin/main']") !== null);
+    await domAsync(element, () => !Object.isNull(element.querySelector("[title='origin/main']")));
     find(element, "[title='origin/main']").click();
     await domAsync(element, () => find(element, "[title='origin/main']").classList.contains("sel"));
     [...element.querySelectorAll<HTMLElement>("button.row")].find(t => t.textContent?.includes("History"))?.click();
@@ -109,7 +111,7 @@ describe("GitRepositoryComponent reads and writes", () => {
     const mountWithHistory = (context: FakeWindowPartContext): { readonly element: HTMLElement; readonly history: HTMLElement } => {
       onTestFinished(() => {
         GitViewing.branch.set(null);
-        GitViewing.commit.set(null);
+        GitViewing.showChanges(GitFixtures.folder);
       });
       context.allow("openDocument");
       const { element } = mount(context);
@@ -128,14 +130,14 @@ describe("GitRepositoryComponent reads and writes", () => {
       const context: FakeWindowPartContext = new FakeWindowPartContext();
       GitFixtures.answerWith(context, { ...answers, "git.status": GitFixtures.status([], null, { head }).toJson(), "git.graph": graph.toJson() });
       const { element, history } = mountWithHistory(context);
-      await until(() => history.querySelectorAll("[role=option]").length >= 2 && element.querySelector("button[title=feature]") !== null);
+      await until(() => history.querySelectorAll("[role=option]").length >= 2 && !Object.isNull(element.querySelector("button[title=feature]")));
       const before: boolean = historyRow(element).classList.contains("sel");
       const opened: number = context.callsOf("openView").length;
 
       historyRow(element).click();
       await until(() => historyRow(element).classList.contains("sel"));
 
-      expect([before, GitViewing.commit()?.folder, GitViewing.commit()?.commit.commit.id, historyRow(element).getAttribute("aria-current"), selectedIn(history)?.includes("Second")])
+      expect([before, GitViewing.commitOf(GitFixtures.folder)?.folder, GitViewing.commitOf(GitFixtures.folder)?.commit.commit.id, historyRow(element).getAttribute("aria-current"), selectedIn(history)?.includes("Second")])
         .toEqual([false, GitFixtures.folder, head, "true", true]);
       expect([GitViewing.branch()?.branch, find(element, "button[title=main]").classList.contains("sel"), context.callsOf("openDocument"), opened,
       context.callsOf("openView")]).toEqual(["", false, [["git.history", GitFixtures.folder, "project"]], 0, [["git.commitView", "selected", "Commit"]]]);
@@ -145,9 +147,9 @@ describe("GitRepositoryComponent reads and writes", () => {
       const context: FakeWindowPartContext = new FakeWindowPartContext();
       GitFixtures.answerWith(context, { ...answers, "git.status": GitFixtures.status([], null, { head }).toJson(), "git.graph": graph.toJson() });
       const { element, history } = mountWithHistory(context);
-      await until(() => history.querySelectorAll("[role=option]").length >= 2 && element.querySelector("button[title=feature]") !== null);
+      await until(() => history.querySelectorAll("[role=option]").length >= 2 && !Object.isNull(element.querySelector("button[title=feature]")));
       find(element, "button[title=feature]").click();
-      await until(() => GitViewing.commit()?.commit.commit.id === feature);
+      await until(() => GitViewing.commitOf(GitFixtures.folder)?.commit.commit.id === feature);
       find(element, "button.row.changes").click();
       await until(() => !historyRow(element).classList.contains("sel"));
       const opened: number = context.callsOf("openView").length;
@@ -155,7 +157,7 @@ describe("GitRepositoryComponent reads and writes", () => {
       historyRow(element).click();
       await until(() => historyRow(element).classList.contains("sel"));
 
-      expect([GitViewing.commit()?.commit.commit.id, GitViewing.branch()?.branch, selectedIn(history)?.includes("First"), opened,
+      expect([GitViewing.commitOf(GitFixtures.folder)?.commit.commit.id, GitViewing.branch()?.branch, selectedIn(history)?.includes("First"), opened,
         context.callsOf("openView").length]).toEqual([feature, "feature", true, 1, 2]);
     });
 
@@ -163,12 +165,12 @@ describe("GitRepositoryComponent reads and writes", () => {
       const context: FakeWindowPartContext = new FakeWindowPartContext();
       GitFixtures.answerWith(context, { ...answers, "git.status": GitFixtures.status([], null, { head }).toJson(), "git.graph": graph.toJson() });
       const { element, history } = mountWithHistory(context);
-      await until(() => history.querySelectorAll("[role=option]").length >= 2 && element.querySelector("button.row.history") !== null);
+      await until(() => history.querySelectorAll("[role=option]").length >= 2 && !Object.isNull(element.querySelector("button.row.history")));
       GitViewing.branch.set(new GitBranchView(GitFixtures.folder, "", false, feature));
-      await until(() => GitViewing.commit()?.commit.commit.id === feature);
+      await until(() => GitViewing.commitOf(GitFixtures.folder)?.commit.commit.id === feature);
 
       historyRow(element).click();
-      await until(() => GitViewing.commit()?.commit.commit.id === head);
+      await until(() => GitViewing.commitOf(GitFixtures.folder)?.commit.commit.id === head);
 
       expect([GitViewing.branch(), selectedIn(history)?.includes("Second")]).toEqual([new GitBranchView(GitFixtures.folder, "", false, head), true]);
     });
@@ -180,17 +182,17 @@ describe("GitRepositoryComponent reads and writes", () => {
         "git.graph": new GitGraph([], false).toJson()
       });
       const { element, history } = mountWithHistory(context);
-      await until(() => element.querySelector("button.row.history") !== null && context.callsOf("requestAsync").some(t => t[0] === "git.graph"));
+      await until(() => !Object.isNull(element.querySelector("button.row.history")) && context.callsOf("requestAsync").some(t => t[0] === "git.graph"));
 
       historyRow(element).click();
 
-      expect([GitViewing.commit(), GitViewing.branch(), historyRow(element).classList.contains("sel"), find(element, "button.row.changes").classList.contains("sel"),
+      expect([GitViewing.commitOf(GitFixtures.folder), GitViewing.branch(), historyRow(element).classList.contains("sel"), find(element, "button.row.changes").classList.contains("sel"),
         history.querySelector("[role=option][aria-selected=true]")]).toEqual([null, null, false, true, null]);
     });
   });
 
   it("marks Changes while the Git panel shows the changes and History while it shows a commit, of this repository only, and shows the changes again from Changes, bringing the Git view forward", async () => {
-    onTestFinished(() => GitViewing.commit.set(null));
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
     const commit: GitGraphCommit = new GitGraphCommit(new GitCommit("a".repeat(40), [], "Sample Author", "2026-11-06T17:30:00Z", "Sample"), "author@example.com", []);
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     GitFixtures.answerWith(context, answers);
@@ -198,19 +200,20 @@ describe("GitRepositoryComponent reads and writes", () => {
     const row = (name: string): HTMLElement => find(element, `button.row.${name}`);
     const marks = (): readonly unknown[] => [row("changes").classList.contains("sel"), row("history").classList.contains("sel"),
       row("changes").getAttribute("aria-current"), row("history").getAttribute("aria-current")];
-    await domAsync(element, () => element.querySelector("button.row.changes") !== null);
+    await domAsync(element, () => !Object.isNull(element.querySelector("button.row.changes")));
     const changes: readonly unknown[] = marks();
 
-    GitViewing.commit.set(new GitCommitView("/work/other", commit));
+    GitViewing.show(new GitCommitView("/work/other", commit));
+    onTestFinished(() => GitViewing.showChanges("/work/other"));
     await domAsync(element, () => true);
     const other: readonly unknown[] = marks();
-    GitViewing.commit.set(new GitCommitView(GitFixtures.folder, commit));
+    GitViewing.show(new GitCommitView(GitFixtures.folder, commit));
     await domAsync(element, () => row("history").classList.contains("sel"));
     const history: readonly unknown[] = marks();
     row("changes").click();
     await domAsync(element, () => row("changes").classList.contains("sel"));
 
-    expect([changes, other, history, marks(), GitViewing.commit(), context.callsOf("openDocument"), context.callsOf("showView")]).toEqual([
+    expect([changes, other, history, marks(), GitViewing.commitOf(GitFixtures.folder), context.callsOf("openDocument"), context.callsOf("showView")]).toEqual([
       [true, false, "true", null], [true, false, "true", null], [false, true, null, "true"], [true, false, "true", null], null, [], [["git.view"]]]);
   });
 
@@ -218,7 +221,7 @@ describe("GitRepositoryComponent reads and writes", () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const held: GitHeldRequests = new GitHeldRequests(context, ["git.switchBranch"], answers);
     const { element, handled } = mount(context);
-    await domAsync(element, () => element.querySelector("button[title=feature]") !== null);
+    await domAsync(element, () => !Object.isNull(element.querySelector("button[title=feature]")));
 
     dblclick(find(element, "button[title=main]"));
     dblclick(find(element, "button[title=feature]"));
@@ -234,12 +237,12 @@ describe("GitRepositoryComponent reads and writes", () => {
     let branches: JsonValue = answers["git.branches"] ?? null;
     GitFixtures.answerWith(context, { ...answers, "git.watch": new Error("watch broke"), "git.unwatch": GitFixtures.failure(FailureCode.Git), "git.branches": () => branches });
     const { element, folder, handled } = mount(context);
-    await domAsync(element, () => element.querySelector("button[title=feature]") !== null);
+    await domAsync(element, () => !Object.isNull(element.querySelector("button[title=feature]")));
 
     branches = GitFixtures.branches("main", ["main", "next"]).toJson();
     context.raiseEvent("git.changed", { folder: "/work/other" });
     context.raiseEvent("git.changed", { folder: GitFixtures.folder });
-    await domAsync(element, () => element.querySelector("button[title=next]") !== null);
+    await domAsync(element, () => !Object.isNull(element.querySelector("button[title=next]")));
     folder.set(null);
     await domAsync(element, () => element.querySelector(".note")?.textContent?.trim() === "Open a folder to see its Git state.");
 
@@ -267,14 +270,14 @@ describe("GitRepositoryComponent reads and writes", () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const held: GitHeldRequests = new GitHeldRequests(context, ["git.branches"], answers);
     const { element } = mount(context);
-    await domAsync(element, () => element.querySelector(".row.reading nol-spinner") !== null);
+    await domAsync(element, () => !Object.isNull(element.querySelector(".row.reading nol-spinner")));
     const spinner: HTMLElement = find(element, ".row.reading nol-spinner");
     const pending: boolean = spinner.classList.contains("nol-reveal-pending");
     await domAsync(element, () => !spinner.classList.contains("nol-reveal-pending"));
     const shown: readonly (string | null)[] = [spinner.getAttribute("role"), (spinner.textContent ?? "").trim()];
 
     await held.answerAsync("git.branches", answers["git.branches"] ?? null);
-    await domAsync(element, () => element.querySelector("button[title=feature]") !== null);
+    await domAsync(element, () => !Object.isNull(element.querySelector("button[title=feature]")));
 
     expect([pending, shown, element.querySelector(".row.reading")]).toEqual([true, ["status", "Reading the branches"], null]);
   });
@@ -282,22 +285,32 @@ describe("GitRepositoryComponent reads and writes", () => {
   it("keeps only the newest read when older reads answer late, opens the remotes before any are read, and marks no branch current on a detached HEAD", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const held: GitHeldRequests = new GitHeldRequests(context, ["git.branches"], answers);
+    const reads = vi.spyOn(GitRuntimeClient.prototype, "branchesAsync");
+    onTestFinished(() => reads.mockRestore());
     const { fixture, element } = mount(context);
+    const settledAsync = async (): Promise<void> => {
+      await Promise.allSettled(reads.mock.results.flatMap(t => t.type === "return" ? [t.value] : []));
+      await fixture.whenStable();
+    };
     const first: (answer: JsonValue | Error) => void = await held.nextAsync("git.branches");
     toggle(element, "Remotes");
     await fixture.whenStable();
-    const before: boolean = element.querySelector("[title^='origin']") === null;
+    const before: boolean = Object.isNull(element.querySelector("[title^='origin']"));
     context.raiseEvent("git.changed", { folder: GitFixtures.folder });
-    first(GitFixtures.branches("main", ["late"]).toJson());
     await held.answerAsync("git.branches", GitFixtures.branches(null, ["main", "other"]).toJson());
-    await domAsync(element, () => element.querySelector("button[title=other]") !== null);
+    await domAsync(element, () => !Object.isNull(element.querySelector("button[title=other]")));
+    first(GitFixtures.branches("main", ["late"]).toJson());
+    await settledAsync();
+    const late: readonly unknown[] = [element.querySelector("button[title=late]"), !Object.isNull(element.querySelector("button[title=other]"))];
     context.raiseEvent("git.changed", { folder: GitFixtures.folder });
+    const refused: (answer: JsonValue | Error) => void = await held.nextAsync("git.branches");
     context.raiseEvent("git.changed", { folder: GitFixtures.folder });
-    await held.answerAsync("git.branches", GitFixtures.failure(FailureCode.Git, null, "Late refusal."));
     await held.answerAsync("git.branches", GitFixtures.branches(null, ["main", "newest"]).toJson());
-    await domAsync(element, () => element.querySelector("button[title=newest]") !== null);
+    await domAsync(element, () => !Object.isNull(element.querySelector("button[title=newest]")));
+    refused(GitFixtures.failure(FailureCode.Git, null, "Late refusal."));
+    await settledAsync();
 
-    expect([before, element.querySelector("button[title=late]"), element.querySelectorAll(".row .current").length, alert(element)]).toEqual([true, null, 0, ""]);
+    expect([before, late, element.querySelectorAll(".row .current").length, alert(element)]).toEqual([true, [null, true], 0, ""]);
   });
 
   const countsOf = (element: HTMLElement, branches: readonly string[]): readonly string[] =>
@@ -309,13 +322,13 @@ describe("GitRepositoryComponent reads and writes", () => {
     let tracks: JsonValue = { tracks: [{ branch: "origin/main", ahead: 2, behind: 0 }, { branch: "origin/team/a", ahead: 0, behind: 3 }, { branch: "origin/zero", ahead: 0, behind: 0 }] };
     GitFixtures.answerWith(context, { ...answers, "git.branches": () => branches, "git.remoteTracks": () => tracks });
     const { element, handled } = mount(context);
-    await domAsync(element, () => element.querySelector("button[title=feature]") !== null);
+    await domAsync(element, () => !Object.isNull(element.querySelector("button[title=feature]")));
     const closed: number = calls(context, "git.remoteTracks");
 
     toggle(element, "Remotes");
-    await domAsync(element, () => element.querySelector("[title='origin/']") !== null);
+    await domAsync(element, () => !Object.isNull(element.querySelector("[title='origin/']")));
     find(element, "[title='origin/']").click();
-    await domAsync(element, () => element.querySelector("[title='origin/team/']") !== null);
+    await domAsync(element, () => !Object.isNull(element.querySelector("[title='origin/team/']")));
     find(element, "[title='origin/team/']").click();
     await domAsync(element, () => countsOf(element, ["origin/main", "origin/team/a"]).every(t => t.length > 0));
     const drawn: readonly string[] = countsOf(element, ["origin/main", "origin/team/a", "origin/zero"]);
@@ -327,7 +340,7 @@ describe("GitRepositoryComponent reads and writes", () => {
     toggle(element, "Remotes");
     branches = GitFixtures.branches("main", ["feature", "late", "main"], ["origin/main"]).toJson();
     context.raiseEvent("git.changed", { folder: GitFixtures.folder });
-    await domAsync(element, () => element.querySelector("button[title=late]") !== null);
+    await domAsync(element, () => !Object.isNull(element.querySelector("button[title=late]")));
 
     expect([closed, drawn, opened, reread, calls(context, "git.remoteTracks"), handled()]).toEqual([0, ["↑2", "↓3", ""], 1, ["↑4 ↓1", ""], 2, []]);
   });
@@ -336,9 +349,9 @@ describe("GitRepositoryComponent reads and writes", () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const held: GitHeldRequests = new GitHeldRequests(context, ["git.remoteTracks"], answers);
     const { element, handled } = mount(context);
-    await domAsync(element, () => element.querySelector("button[title=feature]") !== null);
+    await domAsync(element, () => !Object.isNull(element.querySelector("button[title=feature]")));
     toggle(element, "Remotes");
-    await domAsync(element, () => element.querySelector("[title='origin/']") !== null);
+    await domAsync(element, () => !Object.isNull(element.querySelector("[title='origin/']")));
     find(element, "[title='origin/']").click();
     const first: (answer: JsonValue | Error) => void = await held.nextAsync("git.remoteTracks");
     context.raiseEvent("git.changed", { folder: GitFixtures.folder });

@@ -7,6 +7,7 @@
  */
 
 import { computed, signal, type Signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 
 import type { WorkItemsPlace } from "../models/work-items-place.ts";
 
@@ -26,7 +27,7 @@ export class WorkItemsPages {
   public static isActive(organization: string, project: string): Signal<boolean> {
     return computed(() => WorkItemsPages.pages().some(([place, active]) => {
       const shown: WorkItemsPlace | null = place();
-      return active() && shown !== null && shown.organization === organization && shown.project === project;
+      return active() && !Object.isNull(shown) && shown.organization === organization && shown.project === project;
     }));
   }
 }

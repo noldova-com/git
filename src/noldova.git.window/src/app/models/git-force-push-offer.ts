@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { GitStatus } from "@noldova/git.protocol";
 
 /** A force push the view offers after a push was refused as behind: the branch, its upstream, and the upstream's commit it would replace. */
@@ -26,7 +27,7 @@ export class GitForcePushOffer {
    */
   public static of(status: GitStatus | null): GitForcePushOffer | null {
     const upstream = status?.upstream ?? null;
-    if (status === null || status.branch === null || upstream === null || upstream.behind === 0 || upstream.id === null)
+    if (Object.isNull(status) || Object.isNull(status.branch) || Object.isNull(upstream) || upstream.behind === 0 || Object.isNull(upstream.id))
       return null;
     return new GitForcePushOffer(status.branch, upstream.name, upstream.id);
   }

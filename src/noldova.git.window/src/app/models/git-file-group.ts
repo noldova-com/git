@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { FileState, type StatusEntry } from "@noldova/git.protocol";
 
 import { GitFileGroupKind } from "../enums/git-file-group-kind.ts";
@@ -23,7 +24,7 @@ export class GitFileGroup {
   public static groupsOf(entries: readonly StatusEntry[]): readonly GitFileGroup[] {
     const rows: Record<GitFileGroupKind, GitFileRow[]> = { [GitFileGroupKind.Conflicts]: [], [GitFileGroupKind.Staged]: [], [GitFileGroupKind.Changes]: [] };
     for (const entry of entries)
-      if (entry.conflict !== null)
+      if (!Object.isNull(entry.conflict))
         rows[GitFileGroupKind.Conflicts].push(new GitFileRow(GitFileGroupKind.Conflicts, entry));
       else {
         if (GitFileGroup.isChange(entry.index) && entry.index !== FileState.Untracked)

@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { GitRemote, RemoteTransport } from "@noldova/git.protocol";
 
 import { GitPullRequestsState } from "../enums/git-pull-requests-state.ts";
@@ -41,11 +42,11 @@ export class GitWorkspaceHost {
     const plain: Map<RemoteTransport, Set<string>> = new Map();
     for (const row of rows) {
       const remote: GitRemote | null = row.summary()?.remote ?? null;
-      if (remote === null)
+      if (Object.isNull(remote))
         continue;
       const key: string = JSON.stringify([remote.host, remote.path]);
       const host: IGitPullRequests | null = hostOf(remote);
-      if (host === null) {
+      if (Object.isNull(host)) {
         plain.set(remote.transport, (plain.get(remote.transport) ?? new Set()).add(key));
         continue;
       }

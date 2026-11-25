@@ -7,6 +7,7 @@
  */
 
 import { signal, type Signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import type { IWindowPartContext } from "@noldova/desktop.window";
 import type { GitStatus } from "@noldova/git.protocol";
 
@@ -54,7 +55,7 @@ export class GitRepositorySummaries {
 
   public unwatch(folder: string): void {
     const count: number | undefined = this.watchers.get(folder);
-    if (count === undefined)
+    if (Object.isUndefined(count))
       return;
     if (count > 1) {
       this.watchers.set(folder, count - 1);
@@ -74,7 +75,7 @@ export class GitRepositorySummaries {
    */
   public readMissingAsync(folders: readonly string[]): Promise<void> {
     return GitRepositorySummaries.eachAsync(folders, async t => {
-      if (this.summarySignalOf(t)() !== null || this.reading.has(t))
+      if (!Object.isNull(this.summarySignalOf(t)()) || this.reading.has(t))
         return;
       await this.readAsync(t);
       if (!this.watchers.has(t))
@@ -97,7 +98,7 @@ export class GitRepositorySummaries {
   public static async eachAsync<T>(items: readonly T[], work: (item: T) => Promise<void>): Promise<void> {
     const queue: T[] = [...new Set(items)];
     const next = async (): Promise<void> => {
-      for (let item: T | undefined = queue.shift(); item !== undefined; item = queue.shift())
+      for (let item: T | undefined = queue.shift(); !Object.isUndefined(item); item = queue.shift())
         await work(item);
     };
     await Promise.all(Array.from({ length: Math.min(GitRepositorySummaries.AT_ONCE, queue.length) }, next));
@@ -113,7 +114,7 @@ export class GitRepositorySummaries {
 
   private summarySignalOf(folder: string): WritableSignal<GitRepositorySummary | null> {
     let summary: WritableSignal<GitRepositorySummary | null> | undefined = this.summaries.get(folder);
-    if (summary === undefined) {
+    if (Object.isUndefined(summary)) {
       summary = signal<GitRepositorySummary | null>(null);
       this.summaries.set(folder, summary);
     }

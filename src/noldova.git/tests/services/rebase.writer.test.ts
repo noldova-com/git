@@ -17,6 +17,7 @@ import { GitCode, type GitStatus, RebaseAction, RebaseStep, UndoMode, UntrustedS
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import { PickDuringOperationException } from "../../src/exceptions/pick-during-operation.exception.ts";
 import { RebaseChangesInTheWayException } from "../../src/exceptions/rebase-changes-in-the-way.exception.ts";
+import { RebasePlanMovedException } from "../../src/exceptions/rebase-plan-moved.exception.ts";
 import { RebaseStoppedException } from "../../src/exceptions/rebase-stopped.exception.ts";
 import type { RepositoryFolders } from "../../src/models/repository-folders.ts";
 import { GitVersionReader } from "../../src/services/git-version.reader.ts";
@@ -126,7 +127,7 @@ describe("RebaseWriter", () => {
   });
 
   test("stops at an edit step with the rebase in progress, and refuses another while it is", async () => {
-    const write = await writerAsync([["feature~3", RebaseAction.Edit, null], ["feature~2", RebaseAction.Pick, null]]);
+    const write = await writerAsync([["feature~3", RebaseAction.Edit, null], ["feature~2", RebaseAction.Pick, null], ["feature~1", RebaseAction.Drop, null], ["feature", RebaseAction.Drop, null]]);
     await write.runAsync(...await readAsync());
 
     assert.deepEqual([await isRebasingAsync(), (await repository.runGitAsync(["log", "-1", "--format=%s"])).trim()], [true, "Add b"]);
@@ -145,10 +146,23 @@ describe("RebaseWriter", () => {
   });
 
   test("leaves the rebase stopped on a conflict for the person to resolve, with git's output marked untrusted", async () => {
-    await assert.rejects((await writerAsync([["feature~1", RebaseAction.Pick, null], ["feature~3", RebaseAction.Pick, null]])).runAsync(...await readAsync()),
+    await assert.rejects((await writerAsync([["feature~1", RebaseAction.Pick, null], ["feature~3", RebaseAction.Pick, null], ["feature~2", RebaseAction.Drop, null], ["feature", RebaseAction.Drop, null]])).runAsync(...await readAsync()),
       (error: unknown) => error instanceof RebaseStoppedException && error.gitCode === GitCode.Conflict && error.output?.source === UntrustedSource.Repository);
 
     assert.equal(await isRebasingAsync(), true);
+  });
+
+  test("refuses steps that aren't the branch's commits since the target, as after a commit or a switch since the plan was read, changing nothing", async () => {
+    const steps: readonly (readonly [string, RebaseAction, string | null])[] = [["feature~3", RebaseAction.Pick, null], ["feature~2", RebaseAction.Pick, null], ["feature~1", RebaseAction.Pick, null], ["feature", RebaseAction.Pick, null]];
+    const write = await writerAsync(steps);
+    await repository.writeAsync("f.txt", "later\n");
+    await repository.runGitAsync(["add", "f.txt"]);
+    await repository.runGitAsync(["commit", "--quiet", "-m", "Commit made after the plan"]);
+    const head = await idOf("HEAD");
+
+    await assert.rejects(write.runAsync(...await readAsync()), RebasePlanMovedException);
+    await assert.rejects((await writerAsync(steps.slice(1))).runAsync(...await readAsync()), RebasePlanMovedException);
+    assert.deepEqual([await idOf("HEAD"), await isRebasingAsync()], [head, false]);
   });
 
   test("refuses changes to tracked files before git runs, naming them, but not untracked files", async () => {
@@ -171,15 +185,18 @@ describe("RebaseWriter", () => {
     const failsWith = (command: string) => (error: unknown): boolean =>
       error instanceof GitFailedException && error.message.includes(command) && error.output?.source === UntrustedSource.Repository;
     const head = await idOf("HEAD");
+    const rest: readonly (readonly [string, RebaseAction, string | null])[] = [["feature~2", RebaseAction.Pick, null], ["feature~1", RebaseAction.Pick, null], ["feature", RebaseAction.Pick, null]];
 
     runner.failing = "--interactive";
     runner.failingCode = 128;
-    await assert.rejects((await writerAsync([["feature~3", RebaseAction.Pick, null]])).runAsync(...await readAsync()), failsWith("rebase"));
+    await assert.rejects((await writerAsync([["feature~3", RebaseAction.Pick, null], ...rest])).runAsync(...await readAsync()), failsWith("rebase"));
     assert.ok(commands.some(t => t.endsWith("rebase --abort")), commands.join("\n"));
     runner.failing = "commit-tree";
-    await assert.rejects((await writerAsync([["feature~3", RebaseAction.Reword, "Add b again"]])).runAsync(...await readAsync()), failsWith("commit-tree"));
+    await assert.rejects((await writerAsync([["feature~3", RebaseAction.Reword, "Add b again"], ...rest])).runAsync(...await readAsync()), failsWith("commit-tree"));
     runner.failing = "for-each-ref --format=%(objectname) %(refname) refs/heads";
-    await assert.rejects((await writerAsync([["feature~3", RebaseAction.Pick, null]])).runAsync(...await readAsync()), failsWith("for-each-ref"));
+    await assert.rejects((await writerAsync([["feature~3", RebaseAction.Pick, null], ...rest])).runAsync(...await readAsync()), failsWith("for-each-ref"));
+    runner.failing = "rev-list --no-merges";
+    await assert.rejects((await writerAsync([["feature~3", RebaseAction.Pick, null], ...rest])).runAsync(...await readAsync()), failsWith("rev-list"));
 
     assert.deepEqual([await idOf("HEAD"), await isRebasingAsync()], [head, false]);
   });

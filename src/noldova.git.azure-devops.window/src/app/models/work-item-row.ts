@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { HostWorkItemDetail } from "@noldova/git.hosting.protocol";
 
 export class WorkItemRow {
@@ -25,7 +26,7 @@ export class WorkItemRow {
       for (const child of details.filter(t => t.item.parent === detail.item.id))
         place(child, depth + 1);
     };
-    for (const root of details.filter(t => t.item.parent === null || !ids.has(t.item.parent)))
+    for (const root of details.filter(t => Object.isNull(t.item.parent) || !ids.has(t.item.parent)))
       place(root, 0);
     return rows;
   }

@@ -8,6 +8,7 @@
 
 import { signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
@@ -31,7 +32,7 @@ describe("GitDiffFilesComponent outside the Git view", () => {
     const element: HTMLElement = fixture.nativeElement;
     await new Promise<void>(resolve => {
       const observer: MutationObserver = new MutationObserver(() => {
-        if (element.querySelector(".file-row") !== null) {
+        if (!Object.isNull(element.querySelector(".file-row"))) {
           observer.disconnect();
           resolve();
         }
@@ -55,12 +56,12 @@ describe("GitDiffFilesComponent outside the Git view", () => {
     fixture.componentRef.setInput("layout", layout);
     fixture.autoDetectChanges();
     const element: HTMLElement = fixture.nativeElement;
-    await vi.waitUntil(() => element.querySelector(".file-row") !== null);
+    await vi.waitUntil(() => !Object.isNull(element.querySelector(".file-row")));
     const listed = [...element.querySelectorAll(".file-row")].map(t => t.getAttribute("title"));
     layout.set(GitFileLayout.Folders);
     await fixture.whenStable();
 
-    expect([listed, [...element.querySelectorAll(".file-row")].map(t => t.getAttribute("title")), element.querySelector("nol-git-file-layout-button") !== null])
+    expect([listed, [...element.querySelectorAll(".file-row")].map(t => t.getAttribute("title")), !Object.isNull(element.querySelector("nol-git-file-layout-button"))])
       .toEqual([["src/a.ts"], ["src", "src/a.ts"], true]);
   });
 
@@ -76,10 +77,10 @@ describe("GitDiffFilesComponent outside the Git view", () => {
     fixture.autoDetectChanges();
     const element: HTMLElement = fixture.nativeElement;
     const header = (): string[] => [...element.querySelectorAll(".files-header > span")].map(t => t.textContent.trim());
-    await vi.waitUntil(() => element.querySelector(".file-row") !== null);
+    await vi.waitUntil(() => !Object.isNull(element.querySelector(".file-row")));
     const cut: string[] = header();
     fixture.componentRef.setInput("scope", new DiffScope(DiffScopeKind.Range, "1".repeat(40), "9".repeat(40)));
-    await vi.waitUntil(() => diffs.length === 0 && element.querySelector(".file-row") !== null);
+    await vi.waitUntil(() => diffs.length === 0 && !Object.isNull(element.querySelector(".file-row")));
 
     expect([cut, header()]).toEqual([["2391 files changed", "+14214", "−13074"], ["1 file changed", "+1", "−1"]]);
   });
@@ -94,7 +95,7 @@ describe("GitDiffFilesComponent outside the Git view", () => {
     fixture.componentRef.setInput("scope", new DiffScope(DiffScopeKind.Range, "0".repeat(40), "9".repeat(40)));
     fixture.autoDetectChanges();
     const element: HTMLElement = fixture.nativeElement;
-    await vi.waitUntil(() => element.querySelector(".file-row:not(.folder)") !== null);
+    await vi.waitUntil(() => !Object.isNull(element.querySelector(".file-row:not(.folder)")));
     const row: Element | null = element.querySelector(".file-row:not(.folder)");
 
     expect([row?.querySelector(".grow")?.textContent, row?.getAttribute("title")])
@@ -157,7 +158,7 @@ describe("GitDiffFilesComponent outside the Git view", () => {
       const missed = [element.querySelector(".marked-line"), scrolled.map(t => t.getAttribute("title"))];
       fixture.componentInstance.reveal("src/app.ts", 22);
       await vi.waitUntil(() => scrolled.length > 1);
-      const marked: boolean = element.querySelector(".marked-line") !== null;
+      const marked: boolean = !Object.isNull(element.querySelector(".marked-line"));
 
       fixture.componentRef.setInput("scope", new DiffScope(DiffScopeKind.Range, "1".repeat(40), "9".repeat(40)));
       await vi.waitUntil(() => answers.length === 0 && fixture.componentInstance.isRead());

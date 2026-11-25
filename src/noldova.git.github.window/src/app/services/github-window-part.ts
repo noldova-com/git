@@ -7,6 +7,7 @@
  */
 
 import { signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { ContentPadding, type IWindowPart, type IWindowPartContext, WindowException } from "@noldova/desktop.window";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { HostSignIn } from "@noldova/git.hosting.protocol";
@@ -34,7 +35,7 @@ export class GitHubWindowPart implements IWindowPart {
   public readonly padding: ContentPadding = ContentPadding.None;
 
   public get isActive(): boolean {
-    return this.context !== null;
+    return !Object.isNull(this.context);
   }
 
   public async activateAsync(context: IWindowPartContext): Promise<void> {
@@ -76,7 +77,7 @@ export class GitHubWindowPart implements IWindowPart {
   }
 
   public async reconnectAsync(): Promise<boolean> {
-    return this.context !== null;
+    return !Object.isNull(this.context);
   }
 
   public async deactivateAsync(): Promise<void> {
@@ -93,10 +94,10 @@ export class GitHubWindowPart implements IWindowPart {
 
   private static cardsFor(signIn: HostSignIn | null): GitHostCard[] {
     const account = signIn?.account ?? null;
-    if (account !== null)
+    if (!Object.isNull(account))
       return [new GitHostCard(Resources.formatAccountTitle(account.login), Resources.formatAccess(account.scopes), GitHostCardState.SignedIn, Resources.signedIn)];
     const code = signIn?.deviceCode ?? null;
-    if (code !== null)
+    if (!Object.isNull(code))
       return [new GitHostCard(Resources.hostName, Resources.formatCodeNote(code.verificationUri, code.userCode, false), GitHostCardState.Waiting, Resources.waiting)];
     return [new GitHostCard(Resources.hostName, Resources.signedOutNote, GitHostCardState.SignedOut, Resources.signInAction)];
   }

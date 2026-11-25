@@ -19,6 +19,14 @@ describe("AzureDevOpsRemote", () => {
       .toEqual([true, true, true, true]);
   });
 
+  it("encodes each name of the remote's path but letters, digits, '.', '_' and '-', decoding first a name git kept encoded, and gives no path for none", () => {
+    const pathOf = (path: string | null): string | null => AzureDevOpsRemote.pathOf(new GitRemote("origin", "dev.azure.com", path, RemoteTransport.Https));
+
+    expect(["fabrikam/web/_git/site", "fabrikam/Sample Project/_git/site", "v3/fabrikam/Sample%20Project/site", "fabrikam/Café (new)!/_git/it's~*",
+      "fabrikam/100% done/_git/site", null].map(pathOf)).toEqual(["fabrikam/web/_git/site", "fabrikam/Sample%20Project/_git/site",
+      "v3/fabrikam/Sample%20Project/site", "fabrikam/Caf%C3%A9%20%28new%29%21/_git/it%27s%7E%2A", "fabrikam/100%25%20done/_git/site", null]);
+  });
+
   it("refuses a remote on another host, one that only ends like visualstudio.com, and one with no host", () => {
     expect(["github.com", "fabrikamvisualstudio.com", "visualstudio.com", null].map(t => AzureDevOpsRemote.isAzureDevOps(remoteOf(t))))
       .toEqual([false, false, false, false]);

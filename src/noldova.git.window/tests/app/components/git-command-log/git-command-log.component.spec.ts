@@ -8,11 +8,13 @@
 
 import { ErrorHandler, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { FailureCode, GitCommand, GitCommandLog } from "@noldova/git.protocol";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { GitCommandLogComponent } from "../../../../src/app/components/git-command-log/git-command-log.component.ts";
+import { GitRuntimeClient } from "../../../../src/app/services/git-runtime-client.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 
@@ -79,7 +81,7 @@ describe("GitCommandLogComponent", () => {
       ...GitFixtures.watching, "git.status": () => GitFixtures.status([], null, { fingerprint: `f${fingerprint}` }).toJson(), "git.commandLog": () => log.toJson()
     });
     const { element } = mount(context);
-    await until(() => element.querySelector(".note") !== null);
+    await until(() => !Object.isNull(element.querySelector(".note")));
     const empty: string | undefined = element.querySelector(".note")?.textContent?.trim();
 
     log = commands;
@@ -96,35 +98,43 @@ describe("GitCommandLogComponent", () => {
     const held: GitHeldRequests = new GitHeldRequests(context, ["git.commandLog"], {
       ...GitFixtures.watching, "git.status": () => GitFixtures.status([], null, { fingerprint: `f${fingerprint}` }).toJson()
     });
-    const { element } = mount(context);
+    const reads = vi.spyOn(GitRuntimeClient.prototype, "commandLogAsync");
+    onTestFinished(() => reads.mockRestore());
+    const { fixture, element } = mount(context);
     const changed = (): void => {
       fingerprint += 1;
       context.raiseEvent("git.changed", { folder: GitFixtures.folder });
+    };
+    const settledAsync = async (): Promise<void> => {
+      await Promise.allSettled(reads.mock.results.flatMap(t => t.type === "return" ? [t.value] : []));
+      await fixture.whenStable();
     };
 
     const first = await held.nextAsync("git.commandLog");
     changed();
     const second = await held.nextAsync("git.commandLog");
-    first(commands.toJson());
     second(GitFixtures.failure(FailureCode.Unavailable, null, "Git can't run."));
-    await until(() => element.querySelector(".failure") !== null);
+    await until(() => !Object.isNull(element.querySelector(".failure")));
+    first(commands.toJson());
+    await settledAsync();
     const failed: readonly unknown[] = [element.querySelector(".failure")?.textContent?.trim(), element.querySelectorAll(".command").length];
     changed();
     const third = await held.nextAsync("git.commandLog");
     changed();
     const fourth = await held.nextAsync("git.commandLog");
-    third(GitFixtures.failure(FailureCode.Unavailable, null, "Old failure."));
     fourth(new GitCommandLog([]).toJson());
-    await until(() => element.querySelector(".note:not(.failure)") !== null);
+    await until(() => !Object.isNull(element.querySelector(".note:not(.failure)")));
+    third(GitFixtures.failure(FailureCode.Unavailable, null, "Old failure."));
+    await settledAsync();
 
-    expect([failed, element.querySelector(".failure")]).toEqual([["Git can't run.", 0], null]);
+    expect([failed, element.querySelector(".failure"), !Object.isNull(element.querySelector(".note:not(.failure)"))]).toEqual([["Git can't run.", 0], null, true]);
   });
 
   it("says why a read failed, keeps a later read's log over an earlier one's, and reports a failure outside Git", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.commandLog": GitFixtures.failure(FailureCode.Unavailable, null, "Git can't run.") });
     const { element, handled } = mount(context);
-    await until(() => element.querySelector(".failure") !== null);
+    await until(() => !Object.isNull(element.querySelector(".failure")));
     const failed: string | undefined = element.querySelector(".failure")?.textContent?.trim();
 
     GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status([], null, { fingerprint: "f2" }).toJson(), "git.commandLog": new Error("log broke") });

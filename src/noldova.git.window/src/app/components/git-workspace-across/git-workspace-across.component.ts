@@ -7,6 +7,7 @@
  */
 
 import { Component, computed, ErrorHandler, inject, input, type InputSignal, output, type OutputEmitterRef, signal, type Signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { ButtonComponent, ButtonSize, ButtonVariant, DialogService, ToolbarButtonComponent } from "@noldova/ui.components.angular";
 
@@ -68,7 +69,7 @@ export class GitWorkspaceAcrossComponent {
   protected readonly working: Signal<readonly GitWorkspaceRun[]> = computed(() => GitWorkspaceOverview.workingOf(this.runs()));
   protected readonly hasNeeds: Signal<boolean> = computed(() => this.waiting().length + this.reviews().rows.length + this.conflicted().length + this.failing().length
     + this.stacks().length + this.behind().length > 0);
-  protected readonly isQuiet: Signal<boolean> = computed(() => this.shared() === null && !this.hasNeeds() && this.working().length === 0);
+  protected readonly isQuiet: Signal<boolean> = computed(() => Object.isNull(this.shared()) && !this.hasNeeds() && this.working().length === 0);
   protected readonly isWriting: WritableSignal<boolean> = signal(false);
   /** How the last push or pull ended, a line each. */
   protected readonly result: WritableSignal<readonly string[]> = signal<readonly string[]>([]);
@@ -89,7 +90,7 @@ export class GitWorkspaceAcrossComponent {
   /** Opens the failing checks' pull request, or the repository's history when its branch has none. */
   protected openFailing(row: GitWorkspaceRow): void {
     const pullRequest: GitPullRequestRow | null = row.pullRequest();
-    if (pullRequest === null)
+    if (Object.isNull(pullRequest))
       this.repositoryOpened.emit(row.folder);
     else
       this.pullRequestOpened.emit(new GitRowPullRequest(row, pullRequest));
@@ -116,7 +117,7 @@ export class GitWorkspaceAcrossComponent {
 
   /** Whether a push of the change has anything to push: a repository of it with an upstream. */
   protected canPush(shared: GitSharedBranch): boolean {
-    return GitWorkspaceOverview.pushTargetsOf(shared).some(t => t.upstream !== null);
+    return GitWorkspaceOverview.pushTargetsOf(shared).some(t => !Object.isNull(t.upstream));
   }
 
   /** Asks once, naming the targets as they are now, and pushes what the confirm named on Push; any other answer pushes nothing. */

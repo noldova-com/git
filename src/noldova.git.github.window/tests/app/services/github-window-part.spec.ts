@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { DeviceCode, HostAccount, HostAvatar, HostSignIn } from "@noldova/git.hosting.protocol";
@@ -101,7 +102,7 @@ describe("GitHubWindowPart", () => {
     await part.deactivateAsync();
     await part.deactivateAsync();
 
-    expect([before, asked === null, found, GitLinkReferences.of("/repository")])
+    expect([before, Object.isNull(asked), found, GitLinkReferences.of("/repository")])
       .toEqual([null, false, [[4, 34, "https://github.com/example-owner/example-repository/issues/5"]], null]);
   });
 

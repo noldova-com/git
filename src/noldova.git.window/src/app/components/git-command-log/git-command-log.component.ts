@@ -7,6 +7,7 @@
  */
 
 import { Component, computed, DestroyRef, effect, ErrorHandler, inject, input, type InputSignal, type Signal, signal, untracked, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, WindowPartTokens } from "@noldova/desktop.window";
 import type { GitCommand, GitCommandLog } from "@noldova/git.protocol";
 
@@ -57,11 +58,11 @@ export class GitCommandLogComponent {
   }
 
   protected iconOf(command: GitCommand): string {
-    return command.exitCode === null ? Resources.commandStoppedIcon : command.exitCode === 0 ? Resources.commandDoneIcon : Resources.commandFailedIcon;
+    return Object.isNull(command.exitCode) ? Resources.commandStoppedIcon : command.exitCode === 0 ? Resources.commandDoneIcon : Resources.commandFailedIcon;
   }
 
   protected toneOf(command: GitCommand): string {
-    return command.exitCode === null ? "muted" : command.exitCode === 0 ? "ok" : "failure";
+    return Object.isNull(command.exitCode) ? "muted" : command.exitCode === 0 ? "ok" : "failure";
   }
 
   private async watchAsync(folder: string): Promise<void> {
