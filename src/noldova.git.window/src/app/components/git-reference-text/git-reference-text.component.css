@@ -33,6 +33,11 @@
   flex-shrink: 1000;
 }
 
+/* A chip's own content is as wide as its whole text, so it would never shrink: it shrinks to its mark, its icon and its text's ellipsis, then the text before it. */
+:host(.line) > a[nol-link-reference-chip] {
+  min-width: calc(var(--nol-reference-mark) + var(--nol-icon) + 2 * var(--nol-space-1) + 1em);
+}
+
 :host(.line) > a[nol-link-reference-chip] ~ nol-link-reference-work-item-state {
   flex: none;
   margin-inline-start: var(--nol-space-1);

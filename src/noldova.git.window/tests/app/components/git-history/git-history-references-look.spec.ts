@@ -101,7 +101,7 @@ describe("GitHistoryComponent references in the kit's look", () => {
     await page.screenshot({ element, path: `${screenshots}/git-history-reference-chip-${mode}.png` });
   });
 
-  it.each(AppearanceFixture.modes)("cuts a chip after the text with its ellipsis at the message's end, rather than hiding it past the end, in %s mode", async mode => {
+  it.each(AppearanceFixture.modes)("cuts a chip after the text with its ellipsis at the message's end, rather than the text before it or hiding it past the end, in %s mode", async mode => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
     onTestFinished(GitLinkReferences.provide({
       referencesFor: folder => folder === GitFixtures.folder ? {
@@ -112,7 +112,7 @@ describe("GitHistoryComponent references in the kit's look", () => {
       opens: () => false
     }));
     const long: GitGraph = new GitGraph([new GitGraphCommit(new GitCommit("a".repeat(40), [], "Sample Author", "2026-11-06T17:30:00Z",
-      "Show the garden's long list of plants on one line (AB#12)"), "author@example.com", [])], false);
+      "Show the garden's plants (AB#12)"), "author@example.com", [])], false);
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.graph": long.toJson(), "git.status": GitFixtures.status().toJson() });
     GitFixtures.setUp(context);
@@ -129,7 +129,8 @@ describe("GitHistoryComponent references in the kit's look", () => {
     const text: HTMLElement = chip.querySelector<HTMLElement>(".nol-link-reference-chip-text") ?? element;
     const before: HTMLElement = message.querySelector<HTMLElement>("nol-git-reference-text > span") ?? element;
 
-    expect([text.scrollWidth > text.clientWidth, box(chip).left < box(message).right, box(before).right <= box(chip).left]).toEqual([true, true, true]);
+    expect([text.scrollWidth > text.clientWidth, before.scrollWidth > before.clientWidth, box(chip).left < box(message).right, box(before).right <= box(chip).left])
+      .toEqual([true, false, true, true]);
     AppearanceFixture.expectPixels(Math.min(box(chip).right, box(message).right), box(chip).right);
     await page.screenshot({ element, path: `${screenshots}/git-history-reference-chip-cut-${mode}.png` });
   });
