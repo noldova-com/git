@@ -14,7 +14,7 @@ Each version's section is written by the pull request that changes the version, 
 - `git.watch` walks a folder's tree one walk at a time, so a folder made while a walk runs keeps one watch (#32).
 - `@noldova/git.hosting.protocol` adds `HostWorkItem.changedAt`, when the item last changed, and `HostWorkItemType.image`, the type's icon as the host draws it, in SVG; `@noldova/git.window` adds `GitBranchPullRequest.stateLabel`, the host's own word for a pull request's state, and `GitRepositoryLink.isActive`, which selects a host's row in the repository panel while its page is the active document, as the My work items row does.
   Each is optional in its constructor, and JSON without it reads as null.
-- Both modules take Noldova Desktop 0.0.16: `module.json`'s `noldovaDesktop` range and the runtime packages' Noldova Desktop peers start at 0.0.16, and the window packages take Noldova Desktop 0.0.16's packages, `@noldova/ui.components.angular` 0.0.29 and the editor packages at 0.0.9 (#32).
+- Both modules take Noldova Desktop 0.0.16: `module.json`'s `noldovaDesktop` range and the runtime packages' Noldova Desktop peers start at 0.0.16, and the window packages take Noldova Desktop 0.0.16's packages, `@noldova/ui.components.angular` 0.0.31 and the editor packages at 0.0.9 (#32).
 
 ## 0.0.6
 
