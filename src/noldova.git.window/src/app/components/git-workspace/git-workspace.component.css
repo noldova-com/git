@@ -31,8 +31,7 @@
 
 .page {
   display: grid;
-  grid-template-columns: 15rem minmax(0, 1fr);
-  gap: 0.25rem;
+  grid-template-columns: minmax(0, 1fr);
   height: 100%;
   min-height: 0;
 }
@@ -48,50 +47,6 @@
   background: var(--nol-panel);
 }
 
-.side {
-  gap: 0.125rem;
-  padding: 0.5rem 0.25rem;
-  overflow: auto;
-}
-
-.row {
-  box-sizing: border-box;
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 0.375rem;
-  min-width: 0;
-  height: 1.625rem;
-  padding: 0 0.5rem;
-  border: 0;
-  border-radius: var(--nol-radius-medium);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: start;
-  white-space: nowrap;
-}
-
-button.row {
-  cursor: pointer;
-}
-
-button.row:hover {
-  background: var(--nol-hover);
-}
-
-.row.selected,
-.row.selected:hover {
-  background: var(--nol-selected);
-}
-
-.caps {
-  color: var(--nol-text-muted);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
 .grow {
   flex: 1 1 auto;
   min-width: 0;
@@ -99,12 +54,10 @@ button.row:hover {
   text-overflow: ellipsis;
 }
 
-.count,
 .muted {
   color: var(--nol-text-muted);
 }
 
-.count,
 .small {
   font-size: 0.75rem;
 }
@@ -325,23 +278,6 @@ button.row:hover {
   background-color: var(--nol-warning);
 }
 
-.section {
-  margin-top: 0.5rem;
-}
-
-.badge {
-  box-sizing: border-box;
-  min-width: 1rem;
-  height: 1rem;
-  padding: 0 0.25rem;
-  border-radius: 0.5rem;
-  background: var(--nol-badge);
-  color: var(--nol-badge-text);
-  font-size: 0.6875rem;
-  line-height: 1rem;
-  text-align: center;
-}
-
 .empty {
   display: grid;
   grid-column: 1 / -1;
@@ -366,9 +302,9 @@ button.row:hover {
 
 /*
  * As the window narrows, the table's lesser columns leave, the pull request first, then changes and sync, so every row keeps its repository, branch,
- * checks and fetched time whole. The table is the window's content less 15.375rem beside the side panel, past 46.75rem, or less 0.125rem above it.
+ * checks and fetched time whole. The table is the window's content less 0.125rem.
  */
-@container (width < 67.25rem) {
+@container (width < 52rem) {
   .table {
     grid-template-columns: 2.125rem 8rem minmax(8rem, 1fr) 5.5rem 5rem 5rem 6.25rem;
   }
@@ -379,7 +315,7 @@ button.row:hover {
   }
 }
 
-@container (46.75rem < width < 58.25rem) or (width < 43rem) {
+@container (width < 43rem) {
   .table {
     grid-template-columns: 2.125rem 8rem minmax(8rem, 1fr) 5.5rem 5rem 6.25rem;
   }
@@ -390,7 +326,7 @@ button.row:hover {
   }
 }
 
-@container (46.75rem < width < 52.75rem) or (width < 37.5rem) {
+@container (width < 37.5rem) {
   .table {
     grid-template-columns: 2.125rem 8rem minmax(8rem, 1fr) 5rem 6.25rem;
   }
@@ -411,21 +347,8 @@ button.row:hover {
   }
 }
 
-/* Too narrow for the table's fewest columns beside the workspaces, the table takes the upper half, its toolbar wrapping, over the workspaces. */
+/* Too narrow for the toolbar's buttons on one line, it wraps. */
 @container (max-width: 46.75rem) {
-  .page {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-  }
-
-  .page > main {
-    grid-row: 1;
-  }
-
-  .side {
-    grid-row: 2;
-  }
-
   .toolbar {
     flex-wrap: wrap;
     height: auto;

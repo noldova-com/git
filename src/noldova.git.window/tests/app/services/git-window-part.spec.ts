@@ -20,6 +20,7 @@ import { GitCommitDetailViewComponent } from "../../../src/app/components/git-co
 import { GitConflictDetailComponent } from "../../../src/app/components/git-conflict-detail/git-conflict-detail.component.ts";
 import { GitHistoryComponent } from "../../../src/app/components/git-history/git-history.component.ts";
 import { GitRepositoryComponent } from "../../../src/app/components/git-repository/git-repository.component.ts";
+import { GitWorkspacesComponent } from "../../../src/app/components/git-workspaces/git-workspaces.component.ts";
 import { GitViewComponent } from "../../../src/app/components/git-view/git-view.component.ts";
 import { GitWorkspaceComponent } from "../../../src/app/components/git-workspace/git-workspace.component.ts";
 import { GitWorkspaceAcrossViewComponent } from "../../../src/app/components/git-workspace-across-view/git-workspace-across-view.component.ts";
@@ -65,7 +66,7 @@ describe("GitWindowPart", () => {
 
     expect(answers).toEqual([false, true, true, false, false]);
     expect(GitAvatars.imageOf("/repository", "kim@example.com", "a1")).toBeNull();
-    expect(context.calls.map(t => t.member)).toEqual(["registerView", "registerView", "registerDocument", "registerDocument", "registerDocument", "registerView",
+    expect(context.calls.map(t => t.member)).toEqual(["registerView", "registerView", "registerView", "registerDocument", "registerDocument", "registerDocument", "registerView",
       "registerView", "registerView", "registerView", "registerView", "onViewClosed", "onViewClosed", "onViewClosed", "onViewClosed", "registerCommand", "registerCommand", "registerCommand", "onViewClosed",
       "registerDocument", "registerCommand", "registerSettingsPage", "setSettingsRows", "registerStatusBarItem",
       "registerStatusBarItem", "registerStatusBarItem"]);
@@ -135,7 +136,7 @@ describe("GitWindowPart", () => {
     expect([view?.name, view?.title, view?.icon, view?.defaultSide, view?.isShownByDefault, view?.padding, view?.defaultGroup, view?.defaultOrder])
       .toEqual(["git.view", "Git", "account_tree", DockSide.Right, true, ContentPadding.None, 0, 20]);
     expect(await view?.loadComponent()).toBe(GitViewComponent);
-    expect(context.callsOf("registerView")).toEqual([[view], [views[1]], [views[2]], [views[3]], [views[4]], [views[5]], [views[6]]]);
+    expect(context.callsOf("registerView")).toEqual([[view], [views[1]], [views[2]], [views[3]], [views[4]], [views[5]], [views[6]], [views[7]]]);
   });
 
   it("registers the repository view in the left dock's first group at order 10, shown by default, with no padding, loading its component", async () => {
@@ -162,7 +163,7 @@ describe("GitWindowPart", () => {
     expect(await view?.loadComponent()).toBe(GitRepositoryComponent);
   });
 
-  it("registers the command log as a view with an instance per repository, in the bottom dock's first group at order 20, hidden by default, with no padding, loading its component", async () => {
+  it("registers the Workspaces view in the left dock's first group at order 20, after the repository view, shown by default, with no padding, loading its component", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const views: ViewContribution[] = [];
     context.answer("registerView", t => {
@@ -180,6 +181,30 @@ describe("GitWindowPart", () => {
     await part.activateAsync(context);
     onTestFinished(() => part.deactivateAsync());
     const view: ViewContribution | undefined = views[2];
+
+    expect([view?.name, view?.title, view?.icon, view?.defaultSide, view?.isShownByDefault, view?.padding, view?.defaultGroup, view?.defaultOrder])
+      .toEqual(["git.workspaces", "Workspaces", "dashboard", DockSide.Left, true, ContentPadding.None, 0, 20]);
+    expect(await view?.loadComponent()).toBe(GitWorkspacesComponent);
+  });
+
+  it("registers the command log as a view with an instance per repository, in the bottom dock's first group at order 20, hidden by default, with no padding, loading its component", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    const views: ViewContribution[] = [];
+    context.answer("registerView", t => {
+      views.push(t);
+    });
+    context.allow("registerDocument");
+    context.allow("registerCommand");
+    context.allow("registerSettingsPage");
+    context.allow("setSettingsRows");
+    context.allow("onViewClosed");
+    context.beStrict();
+    context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
+
+    const part: GitWindowPart = new GitWindowPart();
+    await part.activateAsync(context);
+    onTestFinished(() => part.deactivateAsync());
+    const view: ViewContribution | undefined = views[3];
 
     expect([view?.name, view?.title, view?.icon, view?.defaultSide, view?.isShownByDefault, view?.padding, view?.hasInstances, view?.defaultGroup, view?.defaultOrder])
       .toEqual(["git.commands", "Command log", "receipt_long", DockSide.Bottom, false, ContentPadding.None, true, 0, 20]);
@@ -203,7 +228,7 @@ describe("GitWindowPart", () => {
     const part: GitWindowPart = new GitWindowPart();
     await part.activateAsync(context);
     onTestFinished(() => part.deactivateAsync());
-    const view: ViewContribution | undefined = views[3];
+    const view: ViewContribution | undefined = views[4];
 
     expect([view?.name, view?.title, view?.icon, view?.defaultSide, view?.isShownByDefault, view?.padding, view?.hasInstances, view?.defaultGroup, view?.defaultOrder])
       .toEqual(["git.commitView", "Commit", "commit", DockSide.Right, false, ContentPadding.None, true, 0, 45]);
@@ -228,7 +253,7 @@ describe("GitWindowPart", () => {
     const part: GitWindowPart = new GitWindowPart();
     await part.activateAsync(context);
     onTestFinished(() => part.deactivateAsync());
-    const view: ViewContribution | undefined = views[4];
+    const view: ViewContribution | undefined = views[5];
 
     expect([view?.name, view?.title, view?.icon, view?.defaultSide, view?.isShownByDefault, view?.padding, view?.hasInstances, view?.defaultGroup, view?.defaultOrder])
       .toEqual(["git.conflictDetail", "Conflict", "warning", DockSide.Right, false, ContentPadding.None, true, 0, 50]);
@@ -253,7 +278,7 @@ describe("GitWindowPart", () => {
     const part: GitWindowPart = new GitWindowPart();
     await part.activateAsync(context);
     onTestFinished(() => part.deactivateAsync());
-    const added: readonly ViewContribution[] = views.slice(5, 7);
+    const added: readonly ViewContribution[] = views.slice(6, 8);
 
     expect(added.map(t => [t.name, t.title, t.icon, t.defaultSide, t.isShownByDefault, t.padding, t.hasInstances, t.defaultGroup, t.defaultOrder])).toEqual([
       ["git.rebasePreview", "Rebase preview", "low_priority", DockSide.Right, false, ContentPadding.None, true, 0, 60],

@@ -19,6 +19,7 @@ import { page } from "vitest/browser";
 
 import { GitWorkspaceComponent } from "../../../../src/app/components/git-workspace/git-workspace.component.ts";
 import { GitWorkspaceAcrossViewComponent } from "../../../../src/app/components/git-workspace-across-view/git-workspace-across-view.component.ts";
+import { GitWorkspacesComponent } from "../../../../src/app/components/git-workspaces/git-workspaces.component.ts";
 import { GitPullRequestState } from "../../../../src/app/enums/git-pull-request-state.ts";
 import { GitBranchPullRequest } from "../../../../src/app/models/git-branch-pull-request.ts";
 import { GitPullRequestRow } from "../../../../src/app/models/git-pull-request-row.ts";
@@ -71,8 +72,11 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     return (await renderBothAsync()).page;
   }
 
-  /** Renders the page at 90rem by 24rem with the Across repositories view beside it at the dock's 22rem, once every row shows its checks. */
-  async function renderBothAsync(): Promise<{ readonly page: HTMLElement; readonly view: HTMLElement }> {
+  /**
+   * Renders the page at 90rem by 24rem with the Across repositories view beside it at the dock's 22rem and the Workspaces view at the left dock's 15rem, once
+   * every row shows its checks.
+   */
+  async function renderBothAsync(): Promise<{ readonly page: HTMLElement; readonly view: HTMLElement; readonly side: HTMLElement }> {
     await page.viewport(1440, 900);
     localStorage.clear();
     GitWorkspaces.restore();
@@ -118,8 +122,13 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     viewElement.style.width = "22rem";
     viewElement.style.height = "24rem";
     view.autoDetectChanges();
-    // TestBed takes the earlier fixtures' root elements out of the page as it creates a component, so the page goes back beside the view.
-    document.body.append(element);
+    const side: ComponentFixture<GitWorkspacesComponent> = TestBed.createComponent(GitWorkspacesComponent);
+    const sideElement: HTMLElement = side.nativeElement;
+    sideElement.style.width = "15rem";
+    sideElement.style.height = "24rem";
+    side.autoDetectChanges();
+    // TestBed takes the earlier fixtures' root elements out of the page as it creates a component, so the page and the view go back beside the side.
+    document.body.append(element, viewElement);
     await new Promise<void>(resolve => {
       const check = (): void => {
         if ([...element.querySelectorAll(".checks")].filter(t => (t.textContent ?? "").trim().length > 0).length < repositories.length)
@@ -131,7 +140,7 @@ describe("GitWorkspaceComponent in the kit's look", () => {
       observer.observe(element, { characterData: true, childList: true, subtree: true });
       check();
     });
-    return { page: element, view: viewElement };
+    return { page: element, view: viewElement, side: sideElement };
   }
 
   /** Waits until done holds, checking again on each change under the root. */
@@ -207,9 +216,9 @@ describe("GitWorkspaceComponent in the kit's look", () => {
       await page.screenshot({ element: panel, path: `${screenshots}/git-workspace-across-${mode}.png` });
     });
 
-  it.each(AppearanceFixture.modes)("lays the side panel's views and hosts out as its workspace rows, with 1rem count badges and 0.5rem host dots, in %s mode", async mode => {
+  it.each(AppearanceFixture.modes)("lays the Workspaces view's views and hosts out as its workspace rows, with 1rem count badges and 0.5rem host dots, in %s mode", async mode => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
-    const element: HTMLElement = await renderAsync();
+    const { side: element } = await renderBothAsync();
     const side: HTMLElement = element.querySelector<HTMLElement>(".side") ?? element;
     const workspace: HTMLElement = side.querySelector<HTMLElement>(".workspace") ?? side;
     const views: HTMLElement[] = [...side.querySelectorAll<HTMLElement>(".view")];
@@ -228,8 +237,8 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     expect(badges.map(t => [rem(box(t).height), rem(box(t).width) >= 1, rem(box(t.parentElement ?? t).right - box(t).right),
       rem((box(t).top + box(t).bottom - box(t.parentElement ?? t).top - box(t.parentElement ?? t).bottom) / 2), getComputedStyle(t).backgroundColor, getComputedStyle(t).color,
       getComputedStyle(t).fontSize])).toEqual(badges.map(() => [1, true, 0.5, 0, resolve("var(--nol-badge)"), resolve("var(--nol-badge-text)"), "11px"]));
-    expect(sections.map(t => [t.innerText.trim(), rem(box(t).top - box(t.previousElementSibling ?? t).bottom), rem(box(t).height)]))
-      .toEqual([["VIEWS", 0.625, 1.625], ["HOSTS", 0.625, 1.625]]);
+    expect(sections.map(t => [(t.querySelector<HTMLElement>(".caps") ?? t).innerText.trim(), rem(box(t).top - box(t.previousElementSibling ?? t).bottom), rem(box(t).height)]))
+      .toEqual([["WORKSPACES", 0.625, 1.625], ["VIEWS", 0.625, 1.625], ["HOSTS", 0.625, 1.625]]);
     expect([host.innerText.replace(/\s+/gu, " ").trim(), rem(box(dot).width), rem(box(dot).height), rem(box(dot).left - box(host).left), getComputedStyle(dot).backgroundColor,
       getComputedStyle(detail).color, getComputedStyle(detail).fontSize, rem(box(host).right - box(detail).right)])
       .toEqual(["GitHub signed in", 0.5, 0.5, 0.5, resolve("var(--nol-status-ok)"), resolve("var(--nol-text-muted)"), "12px", 0.5]);
@@ -301,21 +310,19 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     })).toEqual(widest.map(([, text]) => [text, 0]));
   });
 
-  it.each(AppearanceFixture.modes)("fits the app's narrowest window, 640 by 480 less the title bar and margins, the table above the workspaces at full width, with nothing clipped, outside it or overlapping, in %s mode",
+  it.each(AppearanceFixture.modes)("fits the app's narrowest window, 640 by 480 less the title bar and margins, the table at full width with its toolbar wrapping, with nothing clipped, outside it or overlapping, in %s mode",
     async mode => {
       AppearanceFixture.apply(DefaultTheme.theme, mode);
       const element: HTMLElement = await renderAsync();
       element.style.width = "39.5rem";
       element.style.height = "27rem";
       const main: DOMRect = box(element.querySelector("main"));
-      const side: DOMRect = box(element.querySelector(".side"));
       const toolbar: DOMRect = box(element.querySelector(".toolbar"));
       const filter: DOMRect = box(element.querySelector(".filter"));
 
       await page.screenshot({ element, path: `${screenshots}/git-workspace-narrow-${mode}.png` });
       expect(GitLayout.problemsOf(element).filter(t => !t.startsWith("scrolls sideways: div.table "))).toEqual([]);
-      expect([rem(side.top - main.bottom), rem(side.left - main.left), rem(side.width), rem(main.width), rem(box(element).bottom - side.bottom)])
-        .toEqual([0.25, 0, rem(box(element).width) - 0.5, rem(box(element).width) - 0.5, 0.25]);
+      expect([rem(main.width), rem(main.height), rem(toolbar.height) > 2.25]).toEqual([rem(box(element).width) - 0.5, rem(box(element).height) - 0.5, true]);
       expect([filter.bottom <= toolbar.bottom, rem(box(element.querySelector(".table")).top - toolbar.bottom)]).toEqual([true, 0]);
     });
 
@@ -344,7 +351,7 @@ describe("GitWorkspaceComponent in the kit's look", () => {
       expect(rows.map(t => rem(box(t.querySelector(".branch")).width) >= 6)).toEqual(rows.map(() => true));
     });
 
-  it.each(AppearanceFixture.modes)("fits the whole page in a 30rem middle, its side column stacked under the table, with nothing cut, outside it or overlapping and no sideways scroll, in %s mode",
+  it.each(AppearanceFixture.modes)("fits the whole page in a 30rem middle, its toolbar wrapping, with nothing cut, outside it or overlapping and no sideways scroll, in %s mode",
     async mode => {
       AppearanceFixture.apply(DefaultTheme.theme, mode);
       const element: HTMLElement = await renderAsync();

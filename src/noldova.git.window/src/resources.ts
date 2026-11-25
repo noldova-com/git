@@ -501,6 +501,10 @@ export class Resources {
   public static readonly repositoryViewIcon: string = "folder";
   public static readonly repositoryViewDefaultGroup: number = 0;
   public static readonly repositoryViewDefaultOrder: number = 10;
+  public static readonly workspacesViewName: string = "git.workspaces";
+  /** In the left dock's first group, after the Repository view. */
+  public static readonly workspacesViewDefaultGroup: number = 0;
+  public static readonly workspacesViewDefaultOrder: number = 20;
   public static readonly repositoryLabel: string = "Repository";
   public static readonly fetchAllLabel: string = "Fetch all";
   public static readonly fetchAllRemotesTitle: string = "Fetch all: every remote of this repository";

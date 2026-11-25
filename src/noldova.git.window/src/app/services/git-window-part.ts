@@ -51,6 +51,9 @@ export class GitWindowPart implements IWindowPart {
     context.registerView(new ViewContribution(Resources.repositoryViewName, Resources.repositoryViewTitle, Resources.repositoryViewIcon, DockSide.Left, true,
       () => import("../components/git-repository/git-repository.component.ts").then(t => t.GitRepositoryComponent), ContentPadding.None,
       { defaultGroup: Resources.repositoryViewDefaultGroup, defaultOrder: Resources.repositoryViewDefaultOrder }));
+    context.registerView(new ViewContribution(Resources.workspacesViewName, Resources.workspacesHeading, Resources.dashboardIcon, DockSide.Left, true,
+      () => import("../components/git-workspaces/git-workspaces.component.ts").then(t => t.GitWorkspacesComponent), ContentPadding.None,
+      { defaultGroup: Resources.workspacesViewDefaultGroup, defaultOrder: Resources.workspacesViewDefaultOrder }));
     context.registerDocument(new DocumentContribution(Resources.historyDocumentName,
       () => import("../components/git-history/git-history.component.ts").then(t => t.GitHistoryComponent), ContentPadding.None));
     context.registerDocument(new DocumentContribution(Resources.conflictsDocumentName,

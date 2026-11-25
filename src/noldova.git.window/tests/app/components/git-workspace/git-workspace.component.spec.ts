@@ -18,6 +18,7 @@ import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { GitVisibleDirective } from "../../../../src/app/components/git-workspace/git-visible.directive.ts";
 import { GitWorkspaceComponent } from "../../../../src/app/components/git-workspace/git-workspace.component.ts";
 import { GitWorkspaceAcrossViewComponent } from "../../../../src/app/components/git-workspace-across-view/git-workspace-across-view.component.ts";
+import { GitWorkspacesComponent } from "../../../../src/app/components/git-workspaces/git-workspaces.component.ts";
 import { GitAgentState } from "../../../../src/app/enums/git-agent-state.ts";
 import { GitPullRequestState } from "../../../../src/app/enums/git-pull-request-state.ts";
 import { GitAgentRow } from "../../../../src/app/models/git-agent-row.ts";
@@ -44,14 +45,17 @@ describe("GitWorkspaceComponent", () => {
     public readonly fixture: ComponentFixture<GitWorkspaceComponent>;
     /** The Across repositories view beside the page, which shows the page's repositories while it is in front. */
     public readonly view: ComponentFixture<GitWorkspaceAcrossViewComponent>;
+    /** The Workspaces view in the left dock, which shows the views and hosts of the page in front. */
+    public readonly side: ComponentFixture<GitWorkspacesComponent>;
     /** Whether the page is the window's active document. */
     public readonly active: WritableSignal<boolean>;
 
     public constructor(context: FakeWindowPartContext, fixture: ComponentFixture<GitWorkspaceComponent>, view: ComponentFixture<GitWorkspaceAcrossViewComponent>,
-      active: WritableSignal<boolean>) {
+      side: ComponentFixture<GitWorkspacesComponent>, active: WritableSignal<boolean>) {
       this.context = context;
       this.fixture = fixture;
       this.view = view;
+      this.side = side;
       this.active = active;
     }
 
@@ -61,6 +65,10 @@ describe("GitWorkspaceComponent", () => {
 
     public get viewElement(): HTMLElement {
       return this.view.nativeElement;
+    }
+
+    public get sideElement(): HTMLElement {
+      return this.side.nativeElement;
     }
 
     /**
@@ -100,14 +108,16 @@ describe("GitWorkspaceComponent", () => {
       const view: ComponentFixture<GitWorkspaceAcrossViewComponent> = TestBed.createComponent(GitWorkspaceAcrossViewComponent);
       view.componentRef.setInput("instance", "selected");
       view.autoDetectChanges();
-      // TestBed takes the earlier fixtures' root elements out of the page as it creates a component, so the page goes back beside the view.
-      document.body.append(fixture.nativeElement);
-      return new Screen(context, fixture, view, active);
+      const side: ComponentFixture<GitWorkspacesComponent> = TestBed.createComponent(GitWorkspacesComponent);
+      side.autoDetectChanges();
+      // TestBed takes the earlier fixtures' root elements out of the page as it creates a component, so the page and the view go back beside the side.
+      document.body.append(fixture.nativeElement, view.nativeElement);
+      return new Screen(context, fixture, view, side, active);
     }
 
-    /** The matches in the page, then in the Across repositories view, as the window shows them side by side. */
+    /** The matches in the page, then in the Across repositories view, then in the Workspaces view, as the window shows them side by side. */
     public all<T extends Element = Element>(selector: string): readonly T[] {
-      return [...this.element.querySelectorAll<T>(selector), ...this.viewElement.querySelectorAll<T>(selector)];
+      return [...this.element.querySelectorAll<T>(selector), ...this.viewElement.querySelectorAll<T>(selector), ...this.sideElement.querySelectorAll<T>(selector)];
     }
 
     /** Reads an element's text as a person sees it: each piece of text, such as an icon's name and a label, apart. */
@@ -134,10 +144,15 @@ describe("GitWorkspaceComponent", () => {
       return this.all(selector).length > 0;
     }
 
-    public click(selector: string): void {
-      this.find(selector).click();
+    /** Clicks the match at an index, counted from 0, or the first. */
+    public click(selector: string, index: number = 0): void {
+      const found: HTMLElement | undefined = this.all<HTMLElement>(selector)[index];
+      if (found === undefined)
+        throw new Error(`Nothing matches ${selector} at ${index}.`);
+      found.click();
       this.fixture.detectChanges();
       this.view.detectChanges();
+      this.side.detectChanges();
     }
 
     /** Ticks the checkbox of a row, counted from 0 below the header. */
@@ -167,7 +182,7 @@ describe("GitWorkspaceComponent", () => {
           resolve();
         };
         const observer: MutationObserver = new MutationObserver(check);
-        for (const root of [this.element, this.viewElement])
+        for (const root of [this.element, this.viewElement, this.sideElement])
           observer.observe(root, { attributes: true, characterData: true, childList: true, subtree: true });
         Screen.checks.add(check);
       });
@@ -207,21 +222,20 @@ describe("GitWorkspaceComponent", () => {
 
     expect(screen.rows()).toEqual(["git call_split feature/graph ↑3 3 files None Never", "desktop call_split main ↓4 Clean None Never",
       "site call_split main Up to date 1 file None Never"]);
-    expect(screen.texts(".side .workspace, .side .open-repositories")).toEqual(["workspaces Noldova 3", "workspaces Websites 0", "dashboard Dashboard 1"]);
+    expect(screen.texts(".side .workspace, .side .open-repositories")).toEqual(["dashboard Dashboard 1", "workspaces Noldova 3", "workspaces Websites 0"]);
     expect(screen.texts(".side [aria-current=page]")).toEqual(["workspaces Noldova 3"]);
     expect(screen.texts(".toolbar .name, .toolbar .count-text")).toEqual(["Noldova", "3 repositories"]);
     expect(new Set(screen.folders("git.watch"))).toEqual(new Set(["/work/git", "/work/desktop", "/work/site"]));
     expect([...screen.folders("git.status")].sort()).toEqual(["/work/desktop", "/work/git", "/work/site"]);
   });
 
-  it("lays the page out to the design at its 1440px width: a 15rem side panel, a 2.25rem toolbar, 2rem rows and the columns' widths", async () => {
+  it("lays the page out to the design at its 1440px width, the whole width with the workspaces in their own view: a 2.25rem toolbar, 2rem rows and the columns' widths", async () => {
     const workspace: GitWorkspace = fresh("/work/git");
     const screen: Screen = Screen.render(workspace.id);
     screen.element.style.width = "90rem";
     await screen.untilAsync(() => screen.texts(".sync")[0] === "Up to date");
     const row: Element = screen.find(".tr:not(.th)");
 
-    expect(rem(screen.find(".side")).width).toBeCloseTo(15, 2);
     expect(rem(screen.find(".toolbar")).height).toBeCloseTo(2.25, 2);
     expect(rem(row).height).toBeCloseTo(2, 2);
     expect(rem(screen.find(".th")).height).toBeCloseTo(1.75, 2);
@@ -233,7 +247,7 @@ describe("GitWorkspaceComponent", () => {
     expect(screen.texts(".th [role=columnheader]")).toEqual(["Select", "Repository", "Branch", "Sync", "Changes", "Pull request", "Checks", "Fetched"]);
     expect(rem(screen.find(".side .row")).height).toBeCloseTo(1.625, 2);
     expect(rem(screen.find(".filter")).width).toBeCloseTo(14, 2);
-    expect([screen.element.querySelectorAll(".across, aside.panel:not(.side)").length, rem(screen.find("main")).width]).toEqual([0, 74.25]);
+    expect([screen.element.querySelectorAll(".across, aside").length, rem(screen.find("main")).width]).toEqual([0, 89.5]);
   });
 
   it("opens the Across repositories view once for the page in front with its repositories, keeps them while a document of another kind is, giving the tab back and taking it again, and empties once the page closes",
@@ -462,12 +476,12 @@ describe("GitWorkspaceComponent", () => {
     expect([screen.context.callsOf("openDocument"), GitRecentRepositories.recent()]).toEqual([[["git.history", "/work/site", "site"]], ["/work/site"]]);
   });
 
-  it("opens another workspace's page, the open repositories' page, and a new workspace's page from the side panel", () => {
+  it("opens another workspace's page, the open repositories' page, and a new workspace's page from the Workspaces view", () => {
     const workspace: GitWorkspace = fresh();
     const other: GitWorkspace = GitWorkspaces.create("Websites");
     const screen: Screen = Screen.render(workspace.id);
 
-    screen.click(".side .workspace:nth-of-type(2)");
+    screen.click(".side .workspace", 1);
     screen.click(".side .open-repositories");
     screen.click(".side .new");
     const made: GitWorkspace | undefined = GitWorkspaces.list().at(-1);
@@ -714,7 +728,7 @@ describe("GitWorkspaceComponent", () => {
     expect(String(await handled)).toBe("RangeError: No browser.");
   });
 
-  it("counts the repositories behind, changed, waiting for review and with agents at work, and shows only a view's while it is chosen, reading every one first",
+  it("counts the repositories behind, changed, waiting for review and with agents at work, and shows only a view's while it is chosen, as a menu does, reading every one first and showing them all again from the workspace",
     async () => {
       const remote: GitRemote = new GitRemote("origin", "github.com", "example-owner/site", RemoteTransport.Https);
       const row: GitPullRequestRow = new GitPullRequestRow("533", "#533", "Change 533", "https://github.com/example-owner/site/pull/533", false, 0, 0, 0, 0, "main");
@@ -738,14 +752,13 @@ describe("GitWorkspaceComponent", () => {
       const reads: number = screen.folders("git.status").length;
       const names = (): readonly string[] => screen.rows().map(t => t.split(" ")[0] ?? "");
       const choose = (view: number): void => {
-        screen.element.querySelectorAll<HTMLElement>(".view")[view]?.click();
-        screen.fixture.detectChanges();
+        screen.click(".side .view", view);
       };
 
       choose(0);
       const behind: readonly string[] = names();
       await screen.untilAsync(() => screen.folders("git.status").length >= reads + 3);
-      const pressed: readonly (string | null)[] = [...screen.element.querySelectorAll(".view")].map(t => t.getAttribute("aria-pressed"));
+      const current: readonly (string | null)[] = screen.all(".side .view, .side .workspace").map(t => t.getAttribute("aria-current"));
       choose(1);
       const changed: readonly string[] = names();
       choose(2);
@@ -753,12 +766,15 @@ describe("GitWorkspaceComponent", () => {
       choose(3);
       const working: readonly string[] = names();
       choose(3);
+      const again: readonly string[] = names();
+      screen.click(".side .workspace");
 
       expect(counted).toEqual(["sync_problem Behind their upstream 2", "edit_note With uncommitted changes 1", "rate_review Waiting for review 1",
         "smart_toy Agents at work"]);
       expect(screen.texts(".side .view .badge")).toEqual(["2", "1", "1", "1"]);
-      expect([behind, pressed, changed, review, working]).toEqual([["desktop", "site"], ["true", "false", "false", "false"], ["git"], ["desktop"], ["git"]]);
-      expect([screen.rows().length, screen.element.querySelectorAll(".view.selected").length, screen.texts(".side .section")]).toEqual([3, 0, ["Views", "Hosts"]]);
+      expect([behind, current, changed, review, working, again]).toEqual([["desktop", "site"], [null, "page", null, null, null], ["git"], ["desktop"], ["git"], ["git"]]);
+      expect([screen.rows().length, screen.all(".side .selected").map(t => Screen.textOf(t)), screen.texts(".side .section .caps")])
+        .toEqual([3, ["workspaces Noldova 3"], ["Workspaces", "Views", "Hosts"]]);
     });
 
   it("reports an agent provider whose list throws and counts its repositories as having none at work", async () => {
@@ -844,10 +860,10 @@ describe("GitWorkspaceComponent", () => {
     screen.context.answer("runCommandAsync", () => Promise.reject(new RangeError("No settings.")));
     screen.click("button.host");
 
-    expect([counted, signedOut, screen.texts(".host"), [...screen.element.querySelectorAll(".host .dot")].map(t => t.className), screen.find("button.host").title])
+    expect([counted, signedOut, screen.texts(".host"), screen.all(".host .dot").map(t => t.className), screen.find("button.host").title])
       .toEqual([["GitHub 1 remote", "Plain Git over SSH 1 remote"], "dot signed-out", ["GitHub signed in", "Plain Git over SSH 1 remote"], ["dot ok", "dot none"],
         "Open GitHub in Accounts and hosts"]);
-    expect([screen.context.callsOf("runCommandAsync"), String(await handled), screen.element.querySelectorAll("div.host").length])
+    expect([screen.context.callsOf("runCommandAsync"), String(await handled), screen.all("div.host").length])
       .toEqual([[["desktop.openSettings", { page: "git-github.account" }], ["desktop.openSettings", { page: "git-github.account" }]], "RangeError: No settings.", 1]);
   });
 });

@@ -15,7 +15,6 @@ import { ButtonComponent, CheckboxComponent, DialogService, IconButtonComponent,
 import { Resources } from "../../../resources.ts";
 import { GitAgentState } from "../../enums/git-agent-state.ts";
 import { GitWorkspaceView } from "../../enums/git-workspace-view.ts";
-import type { IGitPullRequests } from "../../interfaces/i-git-pull-requests.ts";
 import type { IGitWorkspaceAcrossPage } from "../../interfaces/i-git-workspace-across-page.ts";
 import type { GitAgentRow } from "../../models/git-agent-row.ts";
 import type { GitBulkResult } from "../../models/git-bulk-result.ts";
@@ -32,6 +31,7 @@ import type { GitWorkspaceReview } from "../../models/git-workspace-review.ts";
 import type { GitWorkspaceReviews } from "../../models/git-workspace-reviews.ts";
 import { GitWorkspaceRow } from "../../models/git-workspace-row.ts";
 import { GitWorkspaceRun } from "../../models/git-workspace-run.ts";
+import { GitWorkspaceSide } from "../../models/git-workspace-side.ts";
 import { GitAgents } from "../../services/git-agents.ts";
 import type { GitDetailView } from "../../services/git-detail-view.ts";
 import { GitPullRequests } from "../../services/git-pull-requests.ts";
@@ -43,6 +43,7 @@ import { GitWorkspaceBulk } from "../../services/git-workspace-bulk.ts";
 import { GitWorkspacePages } from "../../services/git-workspace-pages.ts";
 import { GitWorkspacePullRequests } from "../../services/git-workspace-pull-requests.ts";
 import { GitWorkspaces } from "../../services/git-workspaces.ts";
+import { GitWorkspaceSides } from "../../services/git-workspace-sides.ts";
 import { GitBulkBranchDialogComponent } from "../git-bulk-branch-dialog/git-bulk-branch-dialog.component.ts";
 import { GitReferenceTextComponent } from "../git-reference-text/git-reference-text.component.ts";
 import { GitVisibleDirective } from "./git-visible.directive.ts";
@@ -67,8 +68,6 @@ export class GitWorkspaceComponent {
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly around: typeof GitReferencePart.around = GitReferencePart.around;
-  protected readonly workspaces: Signal<readonly GitWorkspace[]> = GitWorkspaces.list;
-  protected readonly recentCount: Signal<number> = computed(() => GitRecentRepositories.recent().length);
   protected readonly filter: WritableSignal<string> = signal("");
   protected readonly selected: WritableSignal<ReadonlySet<string>> = signal<ReadonlySet<string>>(new Set());
   protected readonly isFetching: WritableSignal<boolean> = signal(false);
@@ -103,6 +102,9 @@ export class GitWorkspaceComponent {
   protected readonly views: Signal<readonly (readonly [GitWorkspaceView, number])[]> = computed(() =>
     Object.values(GitWorkspaceView).map(view => [view, this.allRows().filter(t => t.views().has(view)).length] as const));
   protected readonly hosts: Signal<readonly GitWorkspaceHost[]> = computed(() => GitWorkspaceHost.listOf(this.allRows(), t => GitPullRequests.of(t)));
+  /** What the Workspaces view shows of the page while it is in front. */
+  protected readonly side: Signal<GitWorkspaceSide> = computed(() => new GitWorkspaceSide(this.workspace()?.id ?? null, this.view, this.views, this.hosts,
+    view => this.chooseView(view)));
   /** The agents' runs in every listed repository, from every module that runs agents. */
   protected readonly runs: Signal<readonly GitWorkspaceRun[]> = computed(() => GitAgents.all().flatMap(provider => this.allRows().flatMap(row =>
     this.attempt(() => provider.listFor(row.folder)() ?? [], []).map(t => new GitWorkspaceRun(row.folder, row.name, provider, t)))));
@@ -168,6 +170,7 @@ export class GitWorkspaceComponent {
     const active: Signal<boolean> = inject(WindowPartTokens.activeDocument);
     const acrossViews: GitDetailView<GitWorkspaceAcross> = GitWorkspaceAcrossViews.of(this.context);
     acrossViews.follow(this.across, active, inject(Injector));
+    GitWorkspaceSides.of(this.context).follow(this.side, active, inject(Injector));
     effect(() => {
       const across: GitWorkspaceAcross = this.across();
       if (active())
@@ -258,26 +261,14 @@ export class GitWorkspaceComponent {
     void this.context.openLinkAsync(review.row.url, { place: LinkPlace.System }).catch((error: unknown) => this.errors.handleError(error));
   }
 
-  /** Shows only a view's repositories, reading every listed one once so the view finds them all, or every repository again when it is the view shown. */
-  protected chooseView(view: GitWorkspaceView): void {
-    const chosen: GitWorkspaceView | null = this.view() === view ? null : view;
-    this.view.set(chosen);
-    if (chosen !== null)
+  /**
+   * Shows a view of the page's repositories, reading every one first, or all of them for null.
+   * @param view The view, or null.
+   */
+  protected chooseView(view: GitWorkspaceView | null): void {
+    this.view.set(view);
+    if (view !== null)
       void this.summaries.refreshAllAsync(this.folders());
-  }
-
-  /** Opens the host's page in Settings, Accounts and hosts, where the person signs in. */
-  protected openHost(host: IGitPullRequests): void {
-    void this.context.runCommandAsync(Resources.openSettingsCommand, { [Resources.settingsPageArgument]: host.signInPage })
-      .catch((error: unknown) => this.errors.handleError(error));
-  }
-
-  protected openWorkspace(id: string | null): void {
-    GitWorkspacePages.open(this.context, id);
-  }
-
-  protected newWorkspace(): void {
-    GitWorkspacePages.open(this.context, GitWorkspaces.create(Resources.newWorkspaceTitle).id);
   }
 
   /**
