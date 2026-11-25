@@ -10,7 +10,7 @@ LICENSE file in the root directory of this source tree.
   <span class="title">{{ resources.groupTitles[group().kind] }}</span>
   <span class="count">{{ group().rows.length }}</span>
   <span class="spacer"></span>
-  <nol-git-file-layout-button class="layout" />
+  <nol-git-file-layout-button class="layout" [layout]="state.fileLayout" />
   @if (group().kind !== kinds.Conflicts) {
     <button type="button" class="move-all" [disabled]="state.busy()" (click)="moveAll()">
       {{ group().kind === kinds.Staged ? resources.unstageAllLabel : resources.stageAllLabel }}

@@ -21,7 +21,7 @@ LICENSE file in the root directory of this source tree.
   @let local = folder();
   @if (local !== null && scope(); as scope) {
     <section class="local" [attr.aria-label]="resources.pullRequestFilesLabel">
-      <nol-git-diff-files [folder]="local" [scope]="scope" />
+      <nol-git-diff-files [folder]="local" [scope]="scope" [layout]="layout" />
     </section>
   } @else {
     <section class="list" [attr.aria-label]="resources.pullRequestFilesLabel">
@@ -37,13 +37,29 @@ LICENSE file in the root directory of this source tree.
           <p class="hint"><span class="hint-text">{{ resources.pullRequestFilesOpenHint }}</span></p>
         }
       }
-      @for (file of list.files; track $index) {
-        <div class="row" [title]="file.path">
-          <span class="letter">{{ letterOf(file) }}</span>
-          <span class="path">{{ file.path }}@if (file.previousPath; as previous) {<span class="from">{{ resources.formatPullRequestFileMovedFrom(previous) }}</span>}</span>
+      @if (list.files.length > 0) {
+        <div class="files-header">
+          <span class="caps">{{ resources.formatFilesChanged(list.files.length) }}</span>
+          <nol-git-file-layout-button class="layout" [layout]="layout" />
         </div>
-      } @empty {
+      } @else {
         <p class="empty">{{ resources.pullRequestNoFiles }}</p>
+      }
+      @for (entry of rows(); track $index) {
+        @if (entry.item; as file) {
+          <div class="row" [title]="file.path" [style.padding-inline-start.rem]="insetOf(entry.depth)">
+            <nol-file-badge [fileName]="nameOf(file.path)" />
+            <span class="path">{{ entry.name }}@if (file.previousPath; as previous) {<span class="from">{{ resources.formatPullRequestFileMovedFrom(previous) }}</span>}</span>
+            <span class="letter">{{ letterOf(file) }}</span>
+          </div>
+        } @else {
+          <button type="button" class="row folder" [title]="entry.folder" [attr.aria-expanded]="!closed().has(entry.folder)"
+            [style.padding-inline-start.rem]="insetOf(entry.depth)" (click)="toggle(entry.folder)">
+            <span class="ms">{{ closed().has(entry.folder) ? resources.sectionClosedIcon : resources.sectionOpenIcon }}</span>
+            <span class="ms">{{ resources.folderIcon }}</span>
+            <span class="path">{{ entry.name }}</span>
+          </button>
+        }
       }
       @if (list.hasMore) {
         <p class="cap">{{ resources.formatPullRequestFilesCapped(list.files.length) }}</p>

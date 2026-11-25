@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import { signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import type { JsonValue } from "@noldova/context.json";
 import { WindowPartTokens } from "@noldova/desktop.window";
@@ -14,6 +15,7 @@ import { DiffFile, DiffHunk, DiffLine, DiffScope, DiffScopeKind, FileChange, Git
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { GitDiffFilesComponent } from "../../../../src/app/components/git-diff-files/git-diff-files.component.ts";
+import { GitFileLayout } from "../../../../src/app/enums/git-file-layout.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 
 describe("GitDiffFilesComponent outside the Git view", () => {
@@ -40,6 +42,26 @@ describe("GitDiffFilesComponent outside the Git view", () => {
     expect(context.callsOf("requestAsync")).toEqual([["git.diff", new GitDiffParams(GitFixtures.folder, scope).toJson()]]);
     expect([...element.querySelectorAll(".file-row")].map(t => [t.classList.contains("folder"), t.getAttribute("title")])).toEqual([[true, "src"], [false, "src/a.ts"]]);
     expect(element.querySelector("nol-git-file-layout-button")).toBeNull();
+  });
+
+  it("follows a layout it is given, such as a pull request page's own, with the layout button that sets it", async () => {
+    const context = new FakeWindowPartContext();
+    const layout: WritableSignal<GitFileLayout> = signal(GitFileLayout.List);
+    context.answer("requestAsync", async () => GitFixtures.diff("src/a.ts", [LineKind.Added, "one"]).toJson());
+    TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: context }] });
+    const fixture = TestBed.createComponent(GitDiffFilesComponent);
+    fixture.componentRef.setInput("folder", GitFixtures.folder);
+    fixture.componentRef.setInput("scope", new DiffScope(DiffScopeKind.Range, "0".repeat(40), "9".repeat(40)));
+    fixture.componentRef.setInput("layout", layout);
+    fixture.autoDetectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    await vi.waitUntil(() => element.querySelector(".file-row") !== null);
+    const listed = [...element.querySelectorAll(".file-row")].map(t => t.getAttribute("title"));
+    layout.set(GitFileLayout.Folders);
+    await fixture.whenStable();
+
+    expect([listed, [...element.querySelectorAll(".file-row")].map(t => t.getAttribute("title")), element.querySelector("nol-git-file-layout-button") !== null])
+      .toEqual([["src/a.ts"], ["src", "src/a.ts"], true]);
   });
 
   it("says a renamed file came from its old file name, its row's title holding the whole old path", async () => {

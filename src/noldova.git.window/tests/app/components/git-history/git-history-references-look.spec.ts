@@ -100,4 +100,37 @@ describe("GitHistoryComponent references in the kit's look", () => {
     expect([box(chip).top >= box(row).top, box(chip).bottom <= box(row).bottom]).toEqual([true, true]);
     await page.screenshot({ element, path: `${screenshots}/git-history-reference-chip-${mode}.png` });
   });
+
+  it.each(AppearanceFixture.modes)("cuts a chip after the text with its ellipsis at the message's end, rather than hiding it past the end, in %s mode", async mode => {
+    AppearanceFixture.apply(DefaultTheme.theme, mode);
+    onTestFinished(GitLinkReferences.provide({
+      referencesFor: folder => folder === GitFixtures.folder ? {
+        find: t => t === issue ? signal(new LinkReference("Bug 12", "Bug", new LinkReferenceImage(icon), { title: "Fix the login when the session ends while the page is open",
+          itemHref: issue })) : null,
+        findText: t => [new LinkReferenceMatch(t.indexOf("AB#12"), 5, issue)]
+      } : null,
+      opens: () => false
+    }));
+    const long: GitGraph = new GitGraph([new GitGraphCommit(new GitCommit("a".repeat(40), [], "Sample Author", "2026-11-06T17:30:00Z",
+      "Show the garden's long list of plants on one line (AB#12)"), "author@example.com", [])], false);
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.graph": long.toJson(), "git.status": GitFixtures.status().toJson() });
+    GitFixtures.setUp(context);
+    const fixture: ComponentFixture<GitHistoryComponent> = TestBed.createComponent(GitHistoryComponent);
+    fixture.componentRef.setInput("instance", GitFixtures.folder);
+    fixture.autoDetectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    element.style.width = "40rem";
+    element.style.height = "20rem";
+    await until(() => element.querySelector("a[nol-link-reference-chip]") !== null);
+    await fixture.whenStable();
+    const message: HTMLElement = element.querySelector<HTMLElement>(".message") ?? element;
+    const chip: HTMLElement = message.querySelector<HTMLElement>("a[nol-link-reference-chip]") ?? element;
+    const text: HTMLElement = chip.querySelector<HTMLElement>(".nol-link-reference-chip-text") ?? element;
+    const before: HTMLElement = message.querySelector<HTMLElement>("nol-git-reference-text > span") ?? element;
+
+    expect([text.scrollWidth > text.clientWidth, box(chip).left < box(message).right, box(before).right <= box(chip).left]).toEqual([true, true, true]);
+    AppearanceFixture.expectPixels(Math.min(box(chip).right, box(message).right), box(chip).right);
+    await page.screenshot({ element, path: `${screenshots}/git-history-reference-chip-cut-${mode}.png` });
+  });
 });

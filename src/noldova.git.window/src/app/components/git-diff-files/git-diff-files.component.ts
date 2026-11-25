@@ -43,13 +43,12 @@ export class GitDiffFilesComponent {
   private readonly host: HTMLElement = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector: Injector = inject(Injector);
   private readonly state: GitViewStateService | null = inject(GitViewStateService, { optional: true });
-  private readonly layout: Signal<GitFileLayout> = this.state?.fileLayout ?? signal(GitFileLayout.Folders);
   private reading: number = 0;
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly lineKinds: typeof GitDiffRowKind = GitDiffRowKind;
-  /** Whether the Git view's state is here, so the layout button can switch the view's file layout. */
-  protected readonly hasLayout: boolean = this.state !== null;
+  /** The layout the files follow and the layout button sets: the one given, else the Git view's; `null` for folders, with no button, outside both. */
+  protected readonly chosen: Signal<WritableSignal<GitFileLayout> | null> = computed(() => this.layout() ?? this.state?.fileLayout ?? null);
   protected readonly diff: WritableSignal<GitDiff | null> = signal<GitDiff | null>(null);
   /** The read diff's files, none until it is read. */
   private readonly files: WritableSignal<readonly DiffFile[]> = signal<readonly DiffFile[]>([]);
@@ -57,7 +56,7 @@ export class GitDiffFilesComponent {
   protected readonly closed: WritableSignal<ReadonlySet<string>> = signal<ReadonlySet<string>>(new Set());
   /** The files whose diff shows under their row, by path. */
   protected readonly open: WritableSignal<ReadonlySet<string>> = signal<ReadonlySet<string>>(new Set());
-  protected readonly rows: Signal<readonly GitCommitFileRow[]> = computed(() => GitCommitFiles.rowsOf(this.files(), this.layout(), this.closed()));
+  protected readonly rows: Signal<readonly GitCommitFileRow[]> = computed(() => GitCommitFiles.rowsOf(this.files(), this.chosen()?.() ?? GitFileLayout.Folders, this.closed()));
   protected readonly totals: Signal<readonly [number, number]> = computed(() => GitCommitFiles.totalsOf(this.files()));
   /** The line a reveal marked, by its file's path and its row in the file's diff lines. */
   protected readonly marked: WritableSignal<readonly [string, number] | null> = signal<readonly [string, number] | null>(null);
@@ -84,6 +83,9 @@ export class GitDiffFilesComponent {
 
   /** The changes to read, such as a range between two commits. */
   public readonly scope: InputSignal<DiffScope> = input.required<DiffScope>();
+
+  /** The layout the files follow, such as a pull request page's own; `null` follows the Git view's. */
+  public readonly layout: InputSignal<WritableSignal<GitFileLayout> | null> = input<WritableSignal<GitFileLayout> | null>(null);
 
   public constructor() {
     effect(() => {

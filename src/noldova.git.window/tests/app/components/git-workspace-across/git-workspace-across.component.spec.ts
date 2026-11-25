@@ -279,9 +279,10 @@ describe("GitWorkspaceAcrossComponent", () => {
       panel.click(".review a", 0);
       panel.click(".review", 0);
 
-      expect(panel.texts(".needs .row, .needs .more")).toEqual(["pan_tool Agent in terminal waits: Push Review", "rate_review Review #533 · Change 533 · desktop Review",
-        "rate_review Review #41 · Change 41 · site Review", "More pull requests ask for your review than the host listed.", "warning context: one conflict Open"]);
-      expect([panel.find(".review").title, [...panel.find(".review").querySelectorAll(".grow > span")].map(t => t.getAttribute("title"))]).toEqual(["", ["Change 533", "Change 533"]]);
+      expect(panel.texts(".needs .row, .needs .more")).toEqual(["pan_tool Agent in terminal waits: Push Review", "rate_review Review #533 Change 533 · desktop Review",
+        "rate_review Review #41 Change 41 · site Review", "More pull requests ask for your review than the host listed.", "warning context: one conflict Open"]);
+      expect([panel.find(".review").title, [...panel.find(".review").querySelectorAll(".grow [title]")].map(t => [t.textContent, t.getAttribute("title")])])
+        .toEqual(["", [["Change 533", "Change 533"]]]);
       expect(panel.rem(panel.find(".review")).height).toBeCloseTo(1.625, 2);
       expect([opened, panel.find(".review a").getAttribute("href"), getComputedStyle(panel.find(".review")).cursor])
         .toEqual([[reviews[1], reviews[0], reviews[0]], "https://github.com/example-owner/desktop/pull/533", "pointer"]);
@@ -294,7 +295,7 @@ describe("GitWorkspaceAcrossComponent", () => {
       "https://github.com/example-owner/a/pull/9", false, 0, 0, 0, 0, "fix/y"), "/work/a", "a", host)], false));
     await panel.fixture.whenStable();
 
-    expect([panel.texts(".needs .row"), panel.has(".quiet"), panel.has(".more")]).toEqual([["rate_review Review #9 · Change 9 · a Review"], false, false]);
+    expect([panel.texts(".needs .row"), panel.has(".quiet"), panel.has(".more")]).toEqual([["rate_review Review #9 Change 9 · a Review"], false, false]);
   });
 
   it("says nothing needs the person when nothing does", async () => {

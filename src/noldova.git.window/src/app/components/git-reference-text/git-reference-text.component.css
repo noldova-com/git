@@ -11,3 +11,29 @@
 .reference.linked {
   color: inherit;
 }
+
+/* On a line that cuts with an ellipsis, such as a history row's message, the parts shrink in a row: a chip, and what follows it, first, to its marks and its
+   text's ellipsis, then the text before it, each cut with its own ellipsis, so a chip after text shows what fits rather than going past the line's end. */
+:host(.line) {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+}
+
+:host(.line) > span,
+:host(.line) > .reference {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
+}
+
+:host(.line) > a[nol-link-reference-chip],
+:host(.line) > a[nol-link-reference-chip] ~ * {
+  flex-shrink: 1000;
+}
+
+:host(.line) > a[nol-link-reference-chip] ~ nol-link-reference-work-item-state {
+  flex: none;
+  margin-inline-start: var(--nol-space-1);
+}

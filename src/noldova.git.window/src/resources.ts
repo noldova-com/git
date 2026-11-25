@@ -1407,9 +1407,9 @@ export class Resources {
 
   public static readonly moreReviews: string = "More pull requests ask for your review than the host listed.";
 
-  /** A pull request that asks the person for a review, such as "Review #533 · Kit 0.0.25 · desktop". */
-  public static formatReviewRequest(label: string, title: string, repository: string): string {
-    return `Review ${label} · ${title} · ${repository}`;
+  /** A pull request that asks the person for a review, such as "Review #533 · desktop", the reference followed by its title. */
+  public static formatReviewRequest(label: string, repository: string): string {
+    return `Review ${label} · ${repository}`;
   }
 
   public static formatAgentWaiting(repository: string, name: string): string {

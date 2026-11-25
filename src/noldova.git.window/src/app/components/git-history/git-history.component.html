@@ -98,7 +98,7 @@ LICENSE file in the root directory of this source tree.
             [attr.class]="'dot lane-' + row.graph.color" />
         }
       </svg>
-      <div class="cell"><span class="message" [class.italic]="row.isChanges"><nol-git-reference-text [text]="row.message" [folder]="instance()" [chipTabIndex]="-1" /></span></div>
+      <div class="cell"><span class="message" [class.italic]="row.isChanges"><nol-git-reference-text class="line" [text]="row.message" [folder]="instance()" [chipTabIndex]="-1" /></span></div>
       <div class="cell">
         @if (!row.isChanges) {
           @let picture = imageOf(row);

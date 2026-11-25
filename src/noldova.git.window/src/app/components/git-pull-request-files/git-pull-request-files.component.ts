@@ -7,27 +7,32 @@
  */
 
 import {
-  afterRenderEffect, Component, effect, inject, input, type InputSignal, output, type OutputEmitterRef, PendingTasks, type Signal, signal, untracked, viewChild, type WritableSignal
+  afterRenderEffect, Component, computed, effect, inject, input, type InputSignal, output, type OutputEmitterRef, PendingTasks, type Signal, signal, untracked, viewChild, type WritableSignal
 } from "@angular/core";
 import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { type HostPullRequestFile, HostPullRequestFiles, type HostReference } from "@noldova/git.hosting.protocol";
 import { DiffScope, DiffScopeKind, GitCommitDetailParams, GitFetchParams, GitFolderParams, GitNames, GitStatus } from "@noldova/git.protocol";
-import { ButtonComponent, ButtonVariant, SpinnerComponent } from "@noldova/ui.components.angular";
+import { ButtonComponent, ButtonVariant, FileBadgeComponent, SpinnerComponent } from "@noldova/ui.components.angular";
 
+import { GitFileLayout } from "../../enums/git-file-layout.ts";
 import type { IGitPullRequestHost } from "../../interfaces/i-git-pull-request-host.ts";
 import type { GitFileLine } from "../../models/git-file-line.ts";
+import type { GitPathEntry } from "../../models/git-path-entry.ts";
+import { GitPathLayout } from "../../services/git-path-layout.ts";
 import { Resources } from "../../../resources.ts";
 import { GitDiffFilesComponent } from "../git-diff-files/git-diff-files.component.ts";
+import { GitFileLayoutButtonComponent } from "../git-file-layout-button/git-file-layout-button.component.ts";
 
 /**
  * The pull request page's Files tab: the files its latest push changes. When the open repository is the pull request's and has that push's commits, it shows
- * the changes from local Git; otherwise it lists the paths the host names, never their contents, with a Fetch for a repository that lacks the commits.
+ * the changes from local Git; otherwise it lists the paths the host names, never their contents, with a Fetch for a repository that lacks the commits. Both
+ * follow the layout its button chooses: a tree, folders or a list.
  */
 @Component({
   selector: "nol-git-pull-request-files",
   templateUrl: "./git-pull-request-files.component.html",
   styleUrl: "./git-pull-request-files.component.css",
-  imports: [ButtonComponent, GitDiffFilesComponent, SpinnerComponent]
+  imports: [ButtonComponent, FileBadgeComponent, GitDiffFilesComponent, GitFileLayoutButtonComponent, SpinnerComponent]
 })
 export class GitPullRequestFilesComponent {
   private readonly context: IWindowPartContext = inject(WindowPartTokens.context);
@@ -50,6 +55,12 @@ export class GitPullRequestFilesComponent {
   protected readonly isReading: WritableSignal<boolean> = signal<boolean>(true);
   protected readonly isFetching: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly fetchFailure: WritableSignal<string | null> = signal<string | null>(null);
+  /** How the tab lays its files out, the host's list and local Git's alike: a tree, folders or a list. */
+  protected readonly layout: WritableSignal<GitFileLayout> = signal<GitFileLayout>(GitFileLayout.Folders);
+  /** The host's list's folders the person closed, by path. */
+  protected readonly closed: WritableSignal<ReadonlySet<string>> = signal<ReadonlySet<string>>(new Set());
+  protected readonly rows: Signal<readonly GitPathEntry<HostPullRequestFile>[]> = computed(() =>
+    GitPathLayout.layout(this.list()?.files ?? [], t => t.path, this.layout(), this.closed()));
 
   /** The host that reads the tab's list and finds the pull request's repository on this computer. */
   public readonly host: InputSignal<IGitPullRequestHost> = input.required<IGitPullRequestHost>();
@@ -108,6 +119,23 @@ export class GitPullRequestFilesComponent {
 
   protected retry(): void {
     this.attempt.update(t => t + 1);
+  }
+
+  /** A row's start inset in rem past the top level, as the commit's files step in; `null` at the top, which keeps its own. */
+  protected insetOf(depth: number): number | null {
+    return depth === 0 ? null : Resources.rowStartRem + depth * Resources.commitFileStepRem;
+  }
+
+  /** A path's file name, which picks its badge. */
+  protected nameOf(path: string): string {
+    return path.slice(path.lastIndexOf(Resources.slash) + 1);
+  }
+
+  protected toggle(folder: string): void {
+    const closed: Set<string> = new Set(this.closed());
+    if (!closed.delete(folder))
+      closed.add(folder);
+    this.closed.set(closed);
   }
 
   protected letterOf(file: HostPullRequestFile): string {

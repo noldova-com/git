@@ -34,12 +34,13 @@ const READ: LinkReference = new LinkReference("Bug 12", "Bug", new LinkReference
   selector: "nol-git-reference-row",
   imports: [GitReferenceTextComponent],
   template: "<div class=\"row\" (click)=\"rowClicks = rowClicks + 1\"><nol-git-reference-text [text]=\"text()\" [folder]=\"folder\" [link]=\"link()\""
-    + " [chipTabIndex]=\"chipTabIndex()\" /></div>"
+    + " [title]=\"title()\" [chipTabIndex]=\"chipTabIndex()\" /></div>"
 })
 class RowComponent {
   public readonly folder: string = FOLDER;
   public readonly text: InputSignal<string> = input<string>("Fixes AB#12 and #5");
   public readonly link: InputSignal<string | null> = input<string | null>(null);
+  public readonly title: InputSignal<string | null> = input<string | null>(null);
   public readonly chipTabIndex: InputSignal<number | null> = input<number | null>(null);
   public rowClicks: number = 0;
 }
@@ -163,4 +164,14 @@ describe("GitReferenceTextComponent", () => {
     expect([row.links.map(t => [t.matches("[nol-link-reference-chip]"), t.textContent, t.getAttribute("href"), t.getAttribute("tabindex")]), row.opened,
       row.context.callsOf("openLinkAsync"), row.rowClicks]).toEqual([[[true, "Bug 12", ISSUE, "-1"]], [], [], 1]);
   });
+
+  it.each([["a chip with no title of its own", ISSUE, BUG, "Fix the sign-in page"], ["a chip with its own title", ISSUE, READ, null],
+    ["a plain link", OTHER, BUG, "Fix the sign-in page"]] as const)("follows a whole text's link with its title, its tooltip too, for %s only while it shows none",
+    async (_case, link, reference, shown) => {
+      const row = new Row(() => false, { text: "!12", link, title: "Fix the sign-in page" }, reference);
+      await row.fixture.whenStable();
+      const words: Element | null = (row.fixture.nativeElement as HTMLElement).querySelector("nol-git-reference-text > span[title]");
+
+      expect([words?.textContent ?? null, words?.getAttribute("title") ?? null]).toEqual([shown, shown]);
+    });
 });

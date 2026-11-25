@@ -31,11 +31,10 @@ LICENSE file in the root directory of this source tree.
       </div>
     }
     @for (review of reviews().rows; track review.row.url) {
-      @let words = around(resources.formatReviewRequest(review.row.label, review.row.title, review.repository), review.row.label);
+      @let words = around(resources.formatReviewRequest(review.row.label, review.repository), review.row.label);
       <div class="row review" (click)="reviewOpened.emit(review)">
         <span class="material-symbols-rounded" aria-hidden="true">{{ resources.reviewIcon }}</span>
-        <span class="grow"><span [title]="review.row.title">{{ words[0] }}</span><nol-git-reference-text [text]="words[1]" [folder]="review.folder" [link]="review.row.url" /><span
-          [title]="review.row.title">{{ words[2] }}</span></span>
+        <span class="grow"><span>{{ words[0] }}</span><nol-git-reference-text [text]="words[1]" [title]="review.row.title" [folder]="review.folder" [link]="review.row.url" /><span>{{ words[2] }}</span></span>
         <button nol-toolbar-button type="button" [label]="resources.reviewLabel" [isShowingLabel]="true"></button>
       </div>
     }

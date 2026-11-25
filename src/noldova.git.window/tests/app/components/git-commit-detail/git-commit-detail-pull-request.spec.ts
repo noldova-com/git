@@ -68,7 +68,7 @@ describe("GitCommitDetailComponent's pull request", () => {
       answer.set(GitBranchPullRequest.of(rowOf(2, 6, 0, 0), GitPullRequestState.Merged, false));
       await view.waitForAsync(".pull-request");
       const card: HTMLElement = view.find(".pull-request");
-      const merged = [cardOf(view), card.dataset["state"], card.title, card.querySelector(".pull-request-title nol-git-reference-text ~ span")?.getAttribute("title")];
+      const merged = [cardOf(view), card.dataset["state"], card.title, card.querySelector(".pull-request-title nol-git-reference-text span[title]")?.getAttribute("title")];
       await view.clickAsync(".pull-request");
       await view.clickAsync(".pull-request a");
       answer.set(GitBranchPullRequest.of(rowOf(0, 0, 0, 0), GitPullRequestState.Open, false));

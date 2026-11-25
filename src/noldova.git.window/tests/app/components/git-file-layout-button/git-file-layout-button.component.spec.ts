@@ -26,6 +26,7 @@ describe("GitFileLayoutButtonComponent", () => {
       GitFixtures.setUp(this.context, [GitViewStateService]);
       this.state = TestBed.inject(GitViewStateService);
       this.fixture = TestBed.createComponent(GitFileLayoutButtonComponent);
+      this.fixture.componentRef.setInput("layout", this.state.fileLayout);
       this.fixture.autoDetectChanges();
     }
 

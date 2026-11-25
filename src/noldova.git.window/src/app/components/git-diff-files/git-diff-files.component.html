@@ -14,8 +14,8 @@ LICENSE file in the root directory of this source tree.
       <span class="caps grow">{{ resources.formatFilesChanged(diff.files.length) }}</span>
       <span class="small added">{{ resources.addedPrefix }}{{ totals()[0] }}</span>
       <span class="small removed">{{ resources.removedSign }}{{ totals()[1] }}</span>
-      @if (hasLayout) {
-        <nol-git-file-layout-button class="layout" />
+      @if (chosen(); as layout) {
+        <nol-git-file-layout-button class="layout" [layout]="layout" />
       }
     </div>
     @for (row of rows(); track row.key + row.isFolder) {

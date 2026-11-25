@@ -74,23 +74,31 @@ describe("The pull request's Files and Conflicts tabs in the kit's look", () => 
     AppearanceFixture.reset();
   });
 
-  it.each(AppearanceFixture.modes)("starts a file row's letter at its inset with the hint and the cap, and cuts a long path at the row's end, in %s mode", async mode => {
+  it.each(AppearanceFixture.modes)("starts a folder row's icon at its inset with the hint and the cap, steps its files in with their badge and letter, and cuts a long"
+    + " folder at the row's end, with the layout button at the header's end, in %s mode", async mode => {
     const root: HTMLElement = (await openAsync(mode)).nativeElement;
     const tab = find(root, "nol-git-pull-request-files");
-    const row = find(tab, ".row");
-    const box = row.getBoundingClientRect();
-    const letter = find(row, ".letter").getBoundingClientRect();
-    const path = find(row, ".path");
+    const folder = find(tab, ".row.folder");
+    const box = folder.getBoundingClientRect();
+    const icon = find(folder, ".ms").getBoundingClientRect();
+    const file = find(tab, ".row:not(.folder)");
+    const badge = find(file, "nol-file-badge").getBoundingClientRect();
+    const letter = find(file, ".letter").getBoundingClientRect();
+    const long = find(tab, ".row.folder[title^='src/'] .path");
+    const layout = find(tab, ".files-header button.layout").getBoundingClientRect();
     const hint = find(tab, ".hint-text").getBoundingClientRect();
     const cap = find(tab, ".cap").getBoundingClientRect();
 
     AppearanceFixture.expectPixels(box.width, tab.getBoundingClientRect().width);
-    AppearanceFixture.expectPixels(letter.left - box.left, px(0.25));
-    AppearanceFixture.expectPixels(path.getBoundingClientRect().left - letter.right, px(0.5));
-    AppearanceFixture.expectPixels(box.right - path.getBoundingClientRect().right, px(0.25));
-    expect(path.scrollWidth).toBeGreaterThan(path.clientWidth);
-    AppearanceFixture.expectPixels(hint.left, letter.left);
-    AppearanceFixture.expectPixels(cap.left + px(0.25), letter.left);
+    AppearanceFixture.expectPixels(icon.left - box.left, px(0.25));
+    AppearanceFixture.expectPixels(badge.left - file.getBoundingClientRect().left, px(1.75));
+    AppearanceFixture.expectPixels(find(file, ".path").getBoundingClientRect().left - badge.right, px(0.5));
+    AppearanceFixture.expectPixels(file.getBoundingClientRect().right - letter.right, px(0.25));
+    AppearanceFixture.expectPixels(box.right - long.getBoundingClientRect().right, px(0.25));
+    expect(long.scrollWidth).toBeGreaterThan(long.clientWidth);
+    AppearanceFixture.expectPixels(box.right - layout.right, px(0.25));
+    AppearanceFixture.expectPixels(hint.left, icon.left);
+    AppearanceFixture.expectPixels(cap.left + px(0.25), icon.left);
   });
 
   it.each(AppearanceFixture.modes)("lays a conflict row out as a file row: its icon at the inset and a long path cut at the row's end, in %s mode", async mode => {

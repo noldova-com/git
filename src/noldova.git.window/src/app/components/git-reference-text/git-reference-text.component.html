@@ -3,9 +3,11 @@
     @if (chipOf(part); as reference) {
       <a nol-link-reference-chip [reference]="reference" [href]="url" [attr.tabindex]="chipTabIndex()" (click)="activate($event, url)" (linkActivate)="open($event)"></a>
       @if (reference.workItemState; as state) {{{ ' ' }}<nol-link-reference-work-item-state [state]="state" />}
+      @if (reference.title === null && title(); as words) {{{ ' ' }}<span [title]="words">{{ words }}</span>}
     }
     @else {
       <a class="reference" [class.linked]="link() !== null" [href]="url" [attr.tabindex]="chipTabIndex()" (click)="activate($event, url)">{{ part.reference?.()?.reference ?? part.text }}</a>
+      @if (title(); as words) {{{ ' ' }}<span [title]="words">{{ words }}</span>}
     }
   } @else {
     <span>{{ part.text }}</span>

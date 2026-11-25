@@ -29,7 +29,7 @@ LICENSE file in the root directory of this source tree.
         @for (row of rows(); track row.url) {
           <div class="row pull-request" (click)="open(row)">
             <span [class]="'dot ' + toneOf(row)"></span>
-            <span class="grow title"><nol-git-reference-text [text]="row.label" [folder]="folder()" [link]="row.url" />{{ ' ' }}<span [title]="row.title">{{ row.title }}</span></span>
+            <span class="grow title"><nol-git-reference-text [text]="row.label" [title]="row.title" [folder]="folder()" [link]="row.url" /></span>
             <span class="small muted">{{ noteOf(row) }}</span>
           </div>
         } @empty {

@@ -197,7 +197,7 @@ describe("GitHistoryComponent", () => {
     expect([shown, context.callsOf("requestAsync").filter(t => t[0] === "git.graph").length, GitViewing.branch()]).toEqual(["Commit 4", 2, null]);
   });
 
-  it("opens the Commit view once, through openView only, the first time the document in front chooses a commit, and shows its choice there until it closes", async () => {
+  it("brings the Commit view to the front, through openView only, for each commit the person clicks, and shows its choice there until it closes", async () => {
     onTestFinished(() => GitViewing.commit.set(null));
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.graph": graph.toJson() });
@@ -219,7 +219,7 @@ describe("GitHistoryComponent", () => {
     fixture.destroy();
 
     expect([context.callsOf("openView"), context.callsOf("showView"), first, second, details.shown()])
-      .toEqual([[["git.commitView", "selected", "Commit"]], [["git.repository"]], "First", "Second", null]);
+      .toEqual([[["git.commitView", "selected", "Commit"], ["git.commitView", "selected", "Commit"]], [["git.repository"]], "First", "Second", null]);
   });
 
   it("points the panels at its repository only once its tab is the window's active document, whatever tab is drawn in front of it", async () => {

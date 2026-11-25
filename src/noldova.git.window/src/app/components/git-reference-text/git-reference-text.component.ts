@@ -39,6 +39,9 @@ export class GitReferenceTextComponent {
   /** The address the whole text links to, such as a pull request's page for its number; null finds the references the text writes. */
   public readonly link: InputSignal<string | null> = input<string | null>(null);
 
+  /** The words after a linked reference, such as a pull request's title: shown after it while its chip shows no title of its own, or it is a plain link. */
+  public readonly title: InputSignal<string | null> = input<string | null>(null);
+
   /** The references' tab index: -1 keeps them out of the tab order of a row that has its own keys; null leaves them in it. */
   public readonly chipTabIndex: InputSignal<number | null> = input<number | null>(null);
 

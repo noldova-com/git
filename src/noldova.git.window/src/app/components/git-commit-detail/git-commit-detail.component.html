@@ -121,7 +121,7 @@ LICENSE file in the root directory of this source tree.
     @let found = comments();
     <div class="pull-request" [attr.data-state]="card.state" (click)="openPullRequest(card)">
       <span class="pull-request-head"><span class="ms pull-request-icon">{{ resources.commitPullRequestIcon }}</span><span class="pull-request-title"><nol-git-reference-text
-        [text]="card.row.label" [folder]="folder()" [link]="card.row.url" />{{ ' ' }}<span [title]="card.row.title">{{ card.row.title }}</span></span><span
+        [text]="card.row.label" [title]="card.row.title" [folder]="folder()" [link]="card.row.url" /></span><span
         class="small pull-request-state">{{ card.stateLabel }}</span></span>
       @if (card.note.length > 0 || found !== null) {
         <span class="small muted pull-request-note">{{ card.note }}@if (found !== null) {@if (card.note.length > 0) {<span>{{ resources.peopleSeparator }}</span>}<button type="button"

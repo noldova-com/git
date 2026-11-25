@@ -60,21 +60,71 @@
   overflow-wrap: anywhere;
 }
 
+.files-header {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 0 var(--nol-space-1);
+}
+
+.caps {
+  color: var(--nol-text-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* A file or folder row in the commit's files' look: its badge, or a folder's icons, then its name; a folder's row is a button that opens and closes it. */
 .row {
   display: flex;
   gap: var(--nol-space-2);
   align-items: center;
+  box-sizing: border-box;
+  width: 100%;
   min-width: 0;
   min-height: var(--nol-button-height);
   padding: 0 var(--nol-space-1);
+  border: 0;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
   white-space: nowrap;
+}
+
+.row:hover {
+  background: var(--nol-hover);
+}
+
+.folder {
+  cursor: pointer;
+}
+
+.ms {
+  display: inline-block;
+  flex: none;
+  overflow: hidden;
+  width: 1rem;
+  height: 1rem;
+  color: var(--nol-icon-color);
+  font-family: "Material Symbols Rounded";
+  font-size: 1rem;
+  font-weight: 400;
+  font-style: normal;
+  line-height: 1;
+  white-space: nowrap;
+  font-feature-settings: "liga";
 }
 
 .letter {
   flex: none;
-  width: 1ch;
+  min-width: 1rem;
   color: var(--nol-text-muted);
   font-family: var(--nol-font-mono);
+  text-align: center;
 }
 
 .path {

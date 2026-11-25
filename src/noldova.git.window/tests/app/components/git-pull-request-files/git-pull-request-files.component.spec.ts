@@ -142,10 +142,34 @@ describe("GitPullRequestFilesComponent", () => {
       await tab.openAsync();
 
       expect([tab.requests.methods, tab.requests.payloads]).toEqual([[TestPullRequestHost.changesMethod], [reference.toJson()]]);
-      expect(tab.texts(".row")).toEqual(["A src/new.ts", "M src/app.ts", "D old.md", "R docs/guide.md from guide.md"]);
+      expect([tab.texts(".row .path"), tab.texts(".row .letter"), tab.element.querySelectorAll(".row:not(.folder) nol-file-badge").length])
+        .toEqual([["docs", "guide.md from guide.md", "src", "new.ts", "app.ts", "old.md"], ["R", "A", "M", "D"], 4]);
       expect([tab.texts(".hint"), tab.element.querySelector("button.fetch"), tab.element.querySelector("nol-git-diff-files"), tab.counts])
         .toEqual([["Open this repository in Git to see each file's changes."], null, null, ["4"]]);
     });
+
+  it("lays the host's paths out as the layout button chooses, a tree, folders or a list, and closes and opens a folder its row is clicked on", async () => {
+    const tab = new Tab();
+    tab.requests.answer(TestPullRequestHost.changesMethod, changed.toJson());
+    await tab.openAsync();
+    const choose = async (label: string): Promise<string[]> => {
+      await tab.clickAsync("button.layout");
+      await vi.waitUntil(() => document.querySelector("button[nol-menu-item]") !== null);
+      [...document.querySelectorAll<HTMLElement>("button[nol-menu-item]")].find(t => t.textContent.includes(label))?.click();
+      await vi.waitUntil(() => document.querySelector("button[nol-menu-item]") === null);
+      await tab.settleAsync();
+      return tab.texts(".row .path");
+    };
+
+    await tab.clickAsync(".row.folder");
+    const closed = [tab.texts(".row .path"), tab.element.querySelector(".row.folder")?.getAttribute("aria-expanded")];
+    await tab.clickAsync(".row.folder");
+    const list: string[] = await choose("List");
+    const tree: string[] = await choose("Tree");
+
+    expect([closed, list, tree]).toEqual([[["docs", "src", "new.ts", "app.ts", "old.md"], "false"],
+      ["src/new.ts", "src/app.ts", "old.md", "docs/guide.md from guide.md"], ["docs", "guide.md from guide.md", "src", "new.ts", "app.ts", "old.md"]]);
+  });
 
   it("says when the host has more than the files it shows, 1000 or fewer, and when there are none, with no hint for no files", async () => {
     const full = new Tab();
@@ -172,7 +196,7 @@ describe("GitPullRequestFilesComponent", () => {
     tab.requests.fail(GitNames.diffMethod, new WindowFailure("Not now."));
     await tab.openAsync();
 
-    expect([tab.element.querySelector("nol-git-diff-files") !== null, tab.texts(".row"), tab.counts, tab.host.asked]).toEqual([true, [], ["4"], [URL]]);
+    expect([tab.element.querySelector("nol-git-diff-files") !== null, tab.texts(".row:not(.folder)"), tab.counts, tab.host.asked]).toEqual([true, [], ["4"], [URL]]);
     expect(tab.requests.payloads.filter((_, i) => tab.requests.methods[i] !== TestPullRequestHost.changesMethod)).toEqual([
       new GitCommitDetailParams(FOLDER, COMMON).toJson(), new GitCommitDetailParams(FOLDER, SOURCE).toJson(),
       new GitDiffParams(FOLDER, scope).toJson()]);
@@ -188,7 +212,7 @@ describe("GitPullRequestFilesComponent", () => {
     tab.requests.answer(GitNames.fetchMethod, null);
     tab.requests.fail(GitNames.diffMethod, new WindowFailure("Not now."));
     await tab.openAsync();
-    const offered = [tab.texts(".hint"), tab.texts(".row").length, tab.logs];
+    const offered = [tab.texts(".hint"), tab.texts(".row:not(.folder)").length, tab.logs];
 
     await tab.clickAsync("button.fetch");
     await tab.requests.askedAsync(9);
@@ -210,7 +234,7 @@ describe("GitPullRequestFilesComponent", () => {
 
     await tab.clickAsync("button.fetch");
 
-    expect([tab.texts(".hint"), tab.texts(".row").length, tab.logs]).toEqual([["The fetch didn't finish. Try again to see each file's changes. Fetch"], 4,
+    expect([tab.texts(".hint"), tab.texts(".row:not(.folder)").length, tab.logs]).toEqual([["The fetch didn't finish. Try again to see each file's changes. Fetch"], 4,
       ["The Example module's git.fetch request failed: WindowFailure: The remote refused."]]);
   });
 
@@ -226,7 +250,7 @@ describe("GitPullRequestFilesComponent", () => {
       empty.requests.answer(TestPullRequestHost.changesMethod, new HostPullRequestFiles(null, null, [], false).toJson());
       await empty.openAsync();
 
-      expect([tab.texts(".row").length, tab.texts(".hint"), tab.requests.methods]).toEqual([4, [], [TestPullRequestHost.changesMethod]]);
+      expect([tab.texts(".row:not(.folder)").length, tab.texts(".hint"), tab.requests.methods]).toEqual([4, [], [TestPullRequestHost.changesMethod]]);
       expect([empty.texts(".empty"), empty.requests.methods]).toEqual([["No changed files."], [TestPullRequestHost.changesMethod]]);
     });
 
@@ -240,7 +264,7 @@ describe("GitPullRequestFilesComponent", () => {
     expect(tab.texts("[role=status]")).toEqual(["Reading the files on Example."]);
     release(changed.toJson());
     await tab.settleAsync();
-    expect(tab.texts(".row")).toHaveLength(4);
+    expect(tab.texts(".row:not(.folder)")).toHaveLength(4);
   });
 
   it("logs a read the window fails, offers to try again, and shows the files the retry reads", async () => {
@@ -252,7 +276,7 @@ describe("GitPullRequestFilesComponent", () => {
     expect([tab.texts("[role=alert]"), tab.logs, tab.counts]).toEqual([["error Example didn't answer. Try again to read the files. Try again"],
       ["The Example module's git-example.readPullRequestChanges request failed: WindowFailure: The runtime stopped."], []]);
     await tab.clickAsync("[role=alert] button");
-    expect([tab.texts(".row").length, tab.counts]).toEqual([4, ["4"]]);
+    expect([tab.texts(".row:not(.folder)").length, tab.counts]).toEqual([4, ["4"]]);
   });
 
   it("drops an answer or a failure for a pull request it left", async () => {
@@ -282,12 +306,12 @@ describe("GitPullRequestFilesComponent", () => {
     tab.requests.answer(TestPullRequestHost.changesMethod, filesOf(3).toJson());
     tab.create(changed);
     await tab.settleAsync();
-    const handed = [tab.texts(".row").length, [...tab.counts], [...tab.requests.methods]];
+    const handed = [tab.texts(".row:not(.folder)").length, [...tab.counts], [...tab.requests.methods]];
 
     tab.fixture?.componentRef.setInput("reference", other);
     await tab.requests.askedAsync(1);
     await tab.settleAsync();
-    const another = [tab.texts(".row").length, [...tab.requests.payloads]];
+    const another = [tab.texts(".row:not(.folder)").length, [...tab.requests.payloads]];
     tab.fixture?.componentRef.setInput("reference", reference);
     await tab.requests.askedAsync(2);
     await tab.settleAsync();
@@ -297,7 +321,7 @@ describe("GitPullRequestFilesComponent", () => {
 
     expect(handed).toEqual([4, ["4"], []]);
     expect(another).toEqual([2, [other.toJson()]]);
-    expect([tab.texts(".row").length, tab.counts, tab.requests.payloads.slice(1)]).toEqual([3, ["4", "2", "3"], [reference.toJson(), reference.toJson()]]);
+    expect([tab.texts(".row:not(.folder)").length, tab.counts, tab.requests.payloads.slice(1)]).toEqual([3, ["4", "2", "3"], [reference.toJson(), reference.toJson()]]);
   });
 
   it("opens the file of a line to reveal in the changes from local Git once they are read, marking the line, and marks a new line given after", async () => {
