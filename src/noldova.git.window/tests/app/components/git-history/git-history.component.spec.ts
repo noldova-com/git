@@ -219,7 +219,7 @@ describe("GitHistoryComponent", () => {
     fixture.destroy();
 
     expect([context.callsOf("openView"), context.callsOf("showView"), first, second, details.shown()])
-      .toEqual([[["git.commitView", "selected", "Commit"]], [], "First", "Second", null]);
+      .toEqual([[["git.commitView", "selected", "Commit"]], [["git.repository"]], "First", "Second", null]);
   });
 
   it("points the panels at its repository only once its tab is the window's active document, whatever tab is drawn in front of it", async () => {
@@ -237,6 +237,27 @@ describe("GitHistoryComponent", () => {
     await fixture.whenStable();
 
     expect([before, GitFolder.folder()]).toEqual([GitFixtures.folder, "/work/other"]);
+  });
+
+  it("brings the Repository view forward, wherever the person put it, each time its tab becomes the window's active document", async () => {
+    const active: WritableSignal<boolean> = signal(false);
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.graph": graph.toJson() });
+    GitFixtures.setUp(context, [{ provide: WindowPartTokens.activeDocument, useValue: active }]);
+    const fixture: ComponentFixture<GitHistoryComponent> = TestBed.createComponent(GitHistoryComponent);
+    fixture.componentRef.setInput("instance", GitFixtures.folder);
+    fixture.autoDetectChanges();
+    await fixture.whenStable();
+    const behind: number = context.callsOf("showView").length;
+
+    active.set(true);
+    await fixture.whenStable();
+    active.set(false);
+    await fixture.whenStable();
+    active.set(true);
+    await fixture.whenStable();
+
+    expect([behind, context.callsOf("showView")]).toEqual([0, [["git.repository"], ["git.repository"]]]);
   });
 
   it("puts its repository first among the repositories opened lately when it opens, as a tab restored with the window or opened from the panel does", async () => {

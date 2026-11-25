@@ -68,7 +68,7 @@ describe("GitCommitDetailComponent's pull request", () => {
       answer.set(GitBranchPullRequest.of(rowOf(2, 6, 0, 0), GitPullRequestState.Merged, false));
       await view.waitForAsync(".pull-request");
       const card: HTMLElement = view.find(".pull-request");
-      const merged = [cardOf(view), card.dataset["state"], card.title];
+      const merged = [cardOf(view), card.dataset["state"], card.title, card.querySelector(".pull-request-title nol-git-reference-text ~ span")?.getAttribute("title")];
       await view.clickAsync(".pull-request");
       await view.clickAsync(".pull-request a");
       answer.set(GitBranchPullRequest.of(rowOf(0, 0, 0, 0), GitPullRequestState.Open, false));
@@ -78,7 +78,7 @@ describe("GitCommitDetailComponent's pull request", () => {
       await view.untilAsync(() => view.all(".pull-request").length === 0);
 
       expect([seen, empty]).toEqual([[`${GitFixtures.folder} example-owner/example-repository ${id}`], 0]);
-      expect(merged).toEqual([[["alt_route", "#212 Follow renames in the history", "Merged"], ["2 approvals · 6 of 6 checks passed"]], "Merged", "Follow renames in the history"]);
+      expect(merged).toEqual([[["alt_route", "#212 Follow renames in the history", "Merged"], ["2 approvals · 6 of 6 checks passed"]], "Merged", "", "Follow renames in the history"]);
       expect([open, view.context.callsOf("openLinkAsync"), card.tagName, card.querySelector(".pull-request-title a")?.getAttribute("href")]).toEqual([
         [["alt_route", "#212 Follow renames in the history", "Open"]], [[url, { place: LinkPlace.System }], [url, { place: LinkPlace.System }]], "DIV", url]);
     });

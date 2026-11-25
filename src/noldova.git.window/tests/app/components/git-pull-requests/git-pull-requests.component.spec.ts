@@ -78,7 +78,8 @@ describe("GitPullRequestsComponent", () => {
     ]);
     expect([...mounted.element.querySelectorAll(".pull-request .dot")].slice(0, 6).map(t => t.className)).toEqual(["dot failed", "dot pending", "dot ok", "dot none", "dot none", "dot none"]);
     expect([rem(row.height), rem(dot.width), rem(dot.height), rem(dot.left - row.left), rem(title.left - row.left)]).toEqual([1.625, 0.5, 0.5, 1.875, 3.25]);
-    expect(mounted.element.querySelector(".pull-request")?.getAttribute("title")).toBe("Change 1");
+    expect([mounted.element.querySelector(".pull-request")?.getAttribute("title"), mounted.element.querySelector(".pull-request .title nol-git-reference-text ~ span")?.getAttribute("title")])
+      .toEqual([null, "Change 1"]);
   });
 
   it("shows only the host's name in the header up to 20, and folds the section closed and open", async () => {

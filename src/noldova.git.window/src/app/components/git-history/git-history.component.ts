@@ -166,6 +166,10 @@ export class GitHistoryComponent {
     }));
     const active: Signal<boolean> = inject(WindowPartTokens.activeDocument);
     destroyed.onDestroy(GitFolder.follow(this.instance, active));
+    effect(() => {
+      if (active())
+        untracked(() => this.context.showView(Resources.repositoryViewName));
+    });
     const details: GitDetailView<GitCommitView> = GitCommitDetails.of(inject(WindowPartTokens.context));
     const chosen: Signal<GitCommitView | null> = computed(() => GitViewing.commitOf(this.instance()));
     details.follow(chosen, active, inject(Injector));
