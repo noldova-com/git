@@ -306,7 +306,7 @@ describe("AzureDevOpsWindowPart", () => {
       ["git-azure-devops.workItemDetail", "git-azure-devops.pullRequestDetail"]]);
   });
 
-  it("opens the Work item view again for the next work item chosen once the person closed it, and stops listening when it deactivates", async () => {
+  it("opens the Work item view for a work item chosen, hears the person close it, and stops listening when it deactivates", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     new RequestAnswers(context).answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
@@ -314,17 +314,16 @@ describe("AzureDevOpsWindowPart", () => {
     const selection = WorkItemSelection.of(context);
     const choiceOf = (id: number): WorkItemChoice => new WorkItemChoice(new WorkItemsPlace("fabrikam", "Sample Project", null),
       detailOf(itemOf(id, story, `Story ${id}`, "Active", WorkItemCategory.InProgress, null)), []);
-    selection.showOnce(choiceOf(7402));
-    selection.showChosen(choiceOf(7490));
+    selection.showInFront(choiceOf(7402));
     context.raiseViewClosed("git-azure-devops.workItemDetail", "selected");
-    selection.showChosen(choiceOf(7521));
     const listening: number = context.activeCallsOf("onViewClosed").length;
     await part.deactivateAsync();
 
-    expect([context.callsOf("openView").map(t => t[2]), listening, context.activeCallsOf("onViewClosed")]).toEqual([["Work item 7402", "Work item 7521"], 2, []]);
+    expect([context.callsOf("openView").map(t => t[2]), selection.isOpen(), listening, context.activeCallsOf("onViewClosed")])
+      .toEqual([["Work item 7402"], false, 2, []]);
   });
 
-  it("opens the Pull request view again for the next pull request read once the person closed it, and stops listening when it deactivates", async () => {
+  it("opens the Pull request view for a pull request chosen, hears the person close it, and stops listening when it deactivates", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     new RequestAnswers(context).answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
@@ -336,15 +335,13 @@ describe("AzureDevOpsWindowPart", () => {
         new HostChanges(null, null, null, "export-notes", "main", "0123456789abcdef0123456789abcdef01234567")), [], [], [], false, "", null, []);
       return new PullRequestChoice(pullRequest, [], 0, { changed: () => undefined, added: () => undefined });
     };
-    selection.showChosen(choiceOf(7));
-    selection.showChosen(choiceOf(8));
+    selection.showInFront(choiceOf(7));
     context.raiseViewClosed("git-azure-devops.pullRequestDetail", "selected");
-    selection.showChosen(choiceOf(9));
     const listening: number = context.activeCallsOf("onViewClosed").length;
     await part.deactivateAsync();
 
-    expect([context.callsOf("openView").map(t => t[2]), listening, context.activeCallsOf("onViewClosed")])
-      .toEqual([["Pull request !7", "Pull request !9"], 2, []]);
+    expect([context.callsOf("openView").map(t => t[2]), selection.isOpen(), listening, context.activeCallsOf("onViewClosed")])
+      .toEqual([["Pull request !7"], false, 2, []]);
   });
 
   it("registers Open my work items, which opens the project its instance names", async () => {

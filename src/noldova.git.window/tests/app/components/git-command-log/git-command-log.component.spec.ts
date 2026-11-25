@@ -59,6 +59,18 @@ describe("GitCommandLogComponent", () => {
     ]);
   });
 
+  it("draws no card of its own, leaving the dock's background and inset, with the title, the hint and each row's time starting at its edge", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.commandLog": commands.toJson() });
+    const { element } = mount(context);
+    await until(() => element.querySelectorAll(".command").length === 3);
+    const panel: HTMLElement = element.querySelector<HTMLElement>(".panel") ?? element;
+    const leftOf = (selector: string): number => rem((element.querySelector(selector)?.getBoundingClientRect().left ?? 0) - element.getBoundingClientRect().left);
+
+    expect([getComputedStyle(element).padding, getComputedStyle(panel).backgroundColor, getComputedStyle(panel).borderTopWidth]).toEqual(["0px", "rgba(0, 0, 0, 0)", "0px"]);
+    expect([".title-icon", ".hint", ".command .time"].map(leftOf)).toEqual([0, 0, 0]);
+  });
+
   it("says no command ran yet, and reads the log again each time the repository changes", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     let log: GitCommandLog = new GitCommandLog([]);

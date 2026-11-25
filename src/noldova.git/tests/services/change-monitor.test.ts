@@ -8,7 +8,7 @@
 
 import assert from "node:assert/strict";
 import { type FSWatcher, type PathLike, type WatchListener, watch } from "node:fs";
-import { readdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import timers from "node:timers";
 
@@ -16,9 +16,13 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, test, vi } from "
 
 import { FakeModuleLog } from "@noldova/desktop.runtime/testing";
 
+import { TreeWatch } from "../../src/enums/tree-watch.ts";
 import { WatchStart } from "../../src/enums/watch-start.ts";
 import { RepositoryFolders } from "../../src/models/repository-folders.ts";
+import { Resources } from "../../src/resources.ts";
 import { ChangeMonitor } from "../../src/services/change-monitor.ts";
+import { FolderTreeWatch } from "../../src/services/folder-tree-watch.ts";
+import { IgnoredPaths } from "../../src/services/ignored-paths.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
 import { StatusReader } from "../../src/services/status.reader.ts";
 import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
@@ -39,6 +43,7 @@ describe("ChangeMonitor", () => {
   const cleanUps: CleanUps = new CleanUps();
   let supervisor: DesktopFixture;
   let monitor: ChangeMonitor;
+  let monitorOf: (treeWatch: TreeWatch) => ChangeMonitor;
   let changes: [string, number][];
   let lines: string[];
   let waits: { milliseconds: number; fire: () => void; timer: NodeJS.Timeout; isCleared: boolean; isTaken: boolean }[];
@@ -98,10 +103,11 @@ describe("ChangeMonitor", () => {
       lines.push(line);
       hear();
     });
-    monitor = new ChangeMonitor(new ProgramRunner(supervisor.context), log, (key, sequence) => {
+    monitorOf = treeWatch => new ChangeMonitor(new ProgramRunner(supervisor.context), log, (key, sequence) => {
       changes.push([key, sequence]);
       hear();
-    });
+    }, treeWatch);
+    monitor = monitorOf(TreeWatch.None);
     cleanUps.add(() => monitor.disposeAsync());
   });
 
@@ -605,5 +611,242 @@ describe("ChangeMonitor", () => {
     monitor.unwatch(KEY);
 
     assert.deepEqual([await start, await monitor.startedAsync(KEY), lines, await cookiesAsync()], [WatchStart.Stopped, WatchStart.Stopped, [], [[], []]]);
+  });
+
+  describe("watching the worktree's files", () => {
+    const QUIET = 300;
+    const LONGEST = 2_000;
+    interface ICheck { readonly names: readonly string[]; readonly isShown: boolean }
+
+    /** Records each check of what git ignores, answering from the real one unless told to fail, and waits for one that matches. */
+    const checksOf = (refusing: (names: readonly string[]) => boolean = () => false): { readonly untilAsync: (matches: (check: ICheck) => boolean) => Promise<ICheck> } => {
+      const seen: ICheck[] = [];
+      let listeners: (() => boolean)[] = [];
+      const original = IgnoredPaths.prototype.hasShownAsync;
+      vi.spyOn(IgnoredPaths.prototype, "hasShownAsync").mockImplementation(async function (this: IgnoredPaths, top: string, names: readonly string[], signal?: AbortSignal) {
+        if (refusing(names))
+          throw new Error("check refused");
+        const isShown = await original.call(this, top, names, signal);
+        seen.push({ names, isShown });
+        listeners = listeners.filter(t => !t());
+        return isShown;
+      });
+      return {
+        untilAsync: matches => new Promise(resolve => {
+          const look = (): boolean => {
+            const found = seen.find(matches);
+            if (found !== undefined)
+              resolve(found);
+            return found !== undefined;
+          };
+          if (!look())
+            listeners.push(look);
+        })
+      };
+    };
+    const names = (check: ICheck, file: string): boolean => check.names.some(t => t.replaceAll("\\", "/") === file);
+    const quietWaits = (): number => vi.mocked(timers.setTimeout).mock.calls.filter(t => t[1] === QUIET).length;
+    /** The watch of a worktree's whole tree, found by its folder, since on Linux Node makes it from a watch of each folder inside. */
+    const treeOf = (folder: string): FSWatcher | undefined => {
+      const index = vi.mocked(watch).mock.calls.findLastIndex(t => {
+        const options: unknown = t[1];
+        return t[0] === folder && typeof options === "object" && options !== null && "recursive" in options && options.recursive === true;
+      });
+      const result = vi.mocked(watch).mock.results[index];
+      return result?.type === "return" ? result.value : undefined;
+    };
+
+    beforeEach(async () => {
+      await monitor.disposeAsync();
+      monitor = monitorOf(TreeWatch.Whole);
+      await repository.writeAsync(".gitignore", "bin/\n");
+      await mkdir(path.join(repository.folder, "bin"));
+    });
+
+    test("refreshes a shown worktree for a file git shows but not one it ignores, and checks it anyway only every minute rather than every few seconds", async () => {
+      const checks = checksOf();
+      monitor.watch(KEY, repository.folder, folders());
+      await startedAsync();
+      const started = waits.length;
+      monitor.setVisible(KEY, true);
+      await fireNextAsync(DEBOUNCE);
+      await untilChangesAsync(1);
+
+      await repository.writeAsync("bin/out.dll", "built\n");
+      const built = await checks.untilAsync(t => names(t, "bin/out.dll"));
+      const debounces = waits.filter(t => t.milliseconds === DEBOUNCE).length;
+      await repository.writeAsync("a.txt", "changed\n");
+      const edited = await checks.untilAsync(t => names(t, "a.txt"));
+      await fireNextAsync(DEBOUNCE);
+      await untilChangesAsync(2);
+
+      assert.deepEqual([built.isShown, debounces, edited.isShown, changes], [false, 1, true, [[KEY, 1], [KEY, 2]]]);
+      assert.deepEqual([waits.slice(started).filter(t => t.milliseconds === POLL).length, vi.mocked(timers.setTimeout).mock.calls.some(t => t[1] === 60_000), lines], [0, true, []]);
+    });
+
+    test("refreshes a shown worktree when it can't tell what git ignores, logging the folder", async () => {
+      checksOf(t => t.some(u => u.endsWith("a.txt")));
+      monitor.watch(KEY, repository.folder, folders());
+      await startedAsync();
+      monitor.setVisible(KEY, true);
+      await fireNextAsync(DEBOUNCE);
+      await untilChangesAsync(1);
+
+      await repository.writeAsync("a.txt", "changed\n");
+      await fireNextAsync(DEBOUNCE);
+      await untilChangesAsync(2);
+
+      assert.ok(lines.includes(`Couldn't tell which changed files git ignores in ${repository.folder}, so the module reads its status anyway: Error: check refused`));
+      assert.equal(lines.some(t => t.includes("QA-KEY")), false);
+    });
+
+    test("logs nothing for a check that fails once its worktree is unwatched", async () => {
+      const { promise: refused, resolve } = Promise.withResolvers<void>();
+      checksOf(names => {
+        if (!names.some(t => t.endsWith("a.txt")))
+          return false;
+        monitor.unwatch(KEY);
+        resolve();
+        return true;
+      });
+      const asked = vi.mocked(IgnoredPaths.prototype.hasShownAsync);
+      monitor.watch(KEY, repository.folder, folders());
+      await startedAsync();
+      monitor.setVisible(KEY, true);
+      await fireNextAsync(DEBOUNCE);
+      await untilChangesAsync(1);
+
+      await repository.writeAsync("a.txt", "changed\n");
+      await refused;
+      await Promise.allSettled(asked.mock.results.map(t => t.value));
+      await monitor.disposeAsync();
+
+      assert.deepEqual([lines, changes.length], [[], 1]);
+    });
+
+    test("leaves a hidden worktree's file changes to the read that showing it starts, and drops waiting changes when it is unwatched", async () => {
+      monitor.watch(KEY, repository.folder, folders());
+      await startedAsync();
+      const tree = treeOf(repository.folder);
+      assert.ok(tree !== undefined);
+      const quiet = quietWaits();
+
+      const seen = seenAsync(tree, t => t.endsWith("a.txt"));
+      await repository.writeAsync("a.txt", "changed while hidden\n");
+      await seen;
+      const hidden = quietWaits() - quiet;
+      monitor.setVisible(KEY, true);
+      await fireNextAsync(DEBOUNCE);
+      await untilChangesAsync(1);
+      const shown = seenAsync(tree, t => t.endsWith("a.txt"));
+      await repository.writeAsync("a.txt", "changed while shown\n");
+      await shown;
+      const waiting = quietWaits() - quiet;
+      const longest = vi.mocked(timers.setTimeout).mock.results.filter((_, i) => vi.mocked(timers.setTimeout).mock.calls[i]?.[1] === LONGEST).at(-1)?.value;
+      monitor.unwatch(KEY);
+
+      assert.deepEqual([hidden, waiting > 0, longest !== undefined && vi.mocked(timers.clearTimeout).mock.calls.some(t => t[0] === longest), changes],
+        [0, true, true, [[KEY, 1]]]);
+    });
+
+    test("checks a shown worktree every few seconds when its files can't be watched, or once their watch fails, logging the folder", async () => {
+      const { watch: realWatch } = await vi.importActual<typeof import("node:fs")>("node:fs");
+      vi.mocked(watch).mockImplementation((folder: PathLike, options: unknown, listener?: WatchListener<string>) => {
+        const recursive = typeof options === "object" && options !== null && "recursive" in options && options.recursive === true;
+        if (recursive && folder === path.join(repository.root, "unwatchable"))
+          throw new Error("No watch of the whole tree.");
+        return realWatch(folder, { persistent: false, recursive }, listener);
+      });
+      const unwatchable = path.join(repository.root, "unwatchable");
+      await repository.runGitAsync(["init", "--quiet", unwatchable]);
+      monitor.watch(OTHER, unwatchable, new RepositoryFolders(unwatchable, path.join(unwatchable, ".git"), path.join(unwatchable, ".git")));
+      await startedAsync(OTHER);
+      monitor.setVisible(OTHER, true);
+      await fireNextAsync(DEBOUNCE);
+      const unwatched = await nextWaitAsync(POLL);
+      monitor.setVisible(OTHER, false);
+
+      monitor.watch(KEY, repository.folder, folders());
+      await startedAsync();
+      const tree = treeOf(repository.folder);
+      assert.ok(tree !== undefined);
+      tree.emit("error", new Error("The tree went away."));
+      monitor.setVisible(KEY, true);
+      await fireNextAsync(DEBOUNCE);
+      const failed = await nextWaitAsync(POLL);
+
+      assert.deepEqual([unwatched.milliseconds, failed.milliseconds], [POLL, POLL]);
+      assert.deepEqual(lines, [
+        `Couldn't watch ${unwatchable}, so the module checks the worktree for changes every few seconds instead: Error: No watch of the whole tree.`,
+        `Couldn't watch ${repository.folder}, so the module checks the worktree for changes every few seconds instead: Error: The tree went away.`
+      ]);
+    });
+  });
+
+  describe("watching each folder of the worktree", () => {
+    const watcherOf = (folder: string): FSWatcher => {
+      const index = vi.mocked(watch).mock.calls.findLastIndex(t => t[0] === folder);
+      const result = vi.mocked(watch).mock.results[index];
+      assert.ok(result?.type === "return");
+      return result.value;
+    };
+
+    beforeEach(async () => {
+      await monitor.disposeAsync();
+      monitor = monitorOf(TreeWatch.Folders);
+      await mkdir(path.join(repository.folder, "src"));
+    });
+
+    test("watches each folder of a worktree only while it shows, refreshing for a file in one", async () => {
+      const starts = vi.spyOn(FolderTreeWatch.prototype, "startAsync");
+      const closes = vi.spyOn(FolderTreeWatch.prototype, "close");
+      monitor.watch(KEY, repository.folder, folders());
+      await startedAsync();
+      const whileHidden = starts.mock.calls.length;
+      monitor.setVisible(KEY, true);
+      await fireNextAsync(DEBOUNCE);
+      await untilChangesAsync(1);
+      await starts.mock.results[0]?.value;
+
+      await repository.writeAsync("src/a.txt", "changed\n");
+      await fireNextAsync(DEBOUNCE);
+      await untilChangesAsync(2);
+      watcherOf(path.join(repository.folder, "src")).emit("change", "change", null);
+      const unnamed = await nextWaitAsync(DEBOUNCE);
+      monitor.setVisible(KEY, false);
+      const closedOnHide = closes.mock.calls.length;
+      monitor.setVisible(KEY, true);
+      monitor.unwatch(KEY);
+
+      assert.deepEqual([whileHidden, starts.mock.calls.length, closedOnHide, closes.mock.calls.length, changes.length, unnamed.milliseconds], [0, 2, 1, 2, 2, DEBOUNCE]);
+    });
+
+    test("checks a shown worktree every few seconds when it has more folders than the module watches or a folder's watch fails, logging why", async () => {
+      const starts = vi.spyOn(FolderTreeWatch.prototype, "startAsync");
+      const limit = Resources.treeFoldersLimit;
+      Object.defineProperty(Resources, "treeFoldersLimit", { value: 1, configurable: true, writable: true });
+      cleanUps.add(() => {
+        Object.defineProperty(Resources, "treeFoldersLimit", { value: limit, configurable: true, writable: true });
+      });
+      monitor.watch(KEY, repository.folder, folders());
+      await startedAsync();
+      monitor.setVisible(KEY, true);
+      await untilLinesAsync(1);
+      Object.defineProperty(Resources, "treeFoldersLimit", { value: limit, configurable: true, writable: true });
+      monitor.setVisible(KEY, false);
+      monitor.setVisible(KEY, true);
+      await starts.mock.results[1]?.value;
+      watcherOf(path.join(repository.folder, "src")).emit("error", new Error("The folder failed."));
+      await untilLinesAsync(2);
+      monitor.setVisible(KEY, false);
+      monitor.setVisible(KEY, true);
+      monitor.setVisible(KEY, false);
+      await starts.mock.results[2]?.value.catch(() => undefined);
+
+      assert.deepEqual(lines, [
+        `Couldn't watch ${repository.folder}, so the module checks the worktree for changes every few seconds instead: RangeError: ${repository.folder} has more than 1 folders git doesn't ignore, more than the module watches one at a time`,
+        `Couldn't watch ${repository.folder}, so the module checks the worktree for changes every few seconds instead: Error: The folder failed.`
+      ]);
+    });
   });
 });

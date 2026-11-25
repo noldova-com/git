@@ -14,17 +14,22 @@ import timers from "node:timers";
 
 import type { IModuleLog } from "@noldova/desktop.runtime";
 
+import { TreeWatch } from "../enums/tree-watch.ts";
 import { WatchStart } from "../enums/watch-start.ts";
 import type { RepositoryFolders } from "../models/repository-folders.ts";
 import { WatchCookie } from "../models/watch-cookie.ts";
 import { WatchedWorktree } from "../models/watched-worktree.ts";
 import { Resources } from "../resources.ts";
 import { FilePresence } from "./file-presence.ts";
+import { FolderTreeWatch } from "./folder-tree-watch.ts";
+import { IgnoredPaths } from "./ignored-paths.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 import { StatusReader } from "./status.reader.ts";
 
 export class ChangeMonitor {
   private readonly statuses: StatusReader;
+  private readonly ignored: IgnoredPaths;
+  private readonly treeWatch: TreeWatch;
   private readonly log: IModuleLog;
   private readonly onChanged: (key: string, sequence: number) => void;
   private readonly worktrees: Map<string, WatchedWorktree> = new Map();
@@ -33,8 +38,14 @@ export class ChangeMonitor {
   private sequence: number = 0;
   private isDisposed: boolean = false;
 
-  public constructor(runner: ProgramRunner, log: IModuleLog, onChanged: (key: string, sequence: number) => void) {
+  /**
+   * @param treeWatch How to watch a worktree's files for their changes, so a shown worktree whose files are watched is checked only now and then; one
+   * whose files aren't is checked every few seconds. A whole tree's watch runs from the start; a watch of each folder runs only while the worktree shows.
+   */
+  public constructor(runner: ProgramRunner, log: IModuleLog, onChanged: (key: string, sequence: number) => void, treeWatch: TreeWatch) {
     this.statuses = new StatusReader(runner);
+    this.ignored = new IgnoredPaths(runner);
+    this.treeWatch = treeWatch;
     this.log = log;
     this.onChanged = onChanged;
   }
@@ -56,6 +67,8 @@ export class ChangeMonitor {
         : this.addWatcher(watched, path.join(folders.commonGitFolder, ...Resources.branchRefsFolder), t => !t.endsWith(Resources.lockExtension), Resources.lockExtension)
     ];
     this.addWatcher(watched, folders.commonGitFolder, t => t === Resources.packedRefsFile, undefined);
+    if (this.treeWatch === TreeWatch.Whole)
+      this.addTreeWatcher(watched);
     watched.started = this.startAsync(watched, cookies.filter(t => t !== undefined));
     this.track(watched.started.then(() => undefined, () => undefined));
   }
@@ -70,6 +83,8 @@ export class ChangeMonitor {
       return;
     this.worktrees.delete(key);
     watched.stop.abort();
+    ChangeMonitor.endTreeWaits(watched);
+    ChangeMonitor.stopFolderTree(watched);
     for (const watcher of watched.watchers)
       watcher.close();
   }
@@ -82,14 +97,18 @@ export class ChangeMonitor {
       if (!isVisible) {
         watched.poll.abort();
         watched.poll = null;
+        ChangeMonitor.stopFolderTree(watched);
       }
       return;
     }
     if (!isVisible)
       return;
     watched.poll = new AbortController();
+    if (this.treeWatch === TreeWatch.Folders)
+      this.startFolderTree(watched);
     this.schedule(watched);
-    this.track(this.pollAsync(watched, AbortSignal.any([watched.poll.signal, watched.stop.signal])));
+    this.track(this.pollAsync(watched, AbortSignal.any([watched.poll.signal, watched.stop.signal]),
+      () => watched.isTreeWatched ? Resources.backstopPollMilliseconds : Resources.changePollMilliseconds));
   }
 
   /** Holds back refreshes while the module's own write runs, since its files change midway; the write's end announces it. */
@@ -156,6 +175,92 @@ export class ChangeMonitor {
       this.pollAlways(watched);
       return undefined;
     }
+  }
+
+  /** Watches the worktree's whole folder tree; a watch that fails leaves a shown worktree checked every few seconds, as without one. */
+  private addTreeWatcher(watched: WatchedWorktree): void {
+    try {
+      const watcher = watch(watched.worktree, { persistent: false, recursive: true }, (_event, name) => this.noteTreeChange(watched, name));
+      watcher.on("error", (error: Error) => {
+        this.log.write(Resources.formatWatchFailed(watched.worktree, String(error)));
+        watcher.close();
+        watched.isTreeWatched = false;
+      });
+      watched.watchers.push(watcher);
+      watched.isTreeWatched = true;
+    } catch (error) {
+      this.log.write(Resources.formatWatchFailed(watched.worktree, String(error)));
+    }
+  }
+
+  /**
+   * Watches each folder of a shown worktree that git doesn't ignore; one with too many folders, or whose watch fails, is checked every few seconds, as
+   * without one, and the log says why.
+   */
+  private startFolderTree(watched: WatchedWorktree): void {
+    const tree: FolderTreeWatch = new FolderTreeWatch(watched.worktree, watched.folders.top, this.ignored, name => this.noteTreeChange(watched, name),
+      error => this.loseFolderTree(watched, tree, Resources.formatWatchFailed(watched.worktree, String(error))));
+    watched.folderTree = tree;
+    this.track(tree.startAsync().then(() => {
+      watched.isTreeWatched ||= watched.folderTree === tree;
+    }, (error: unknown) => this.loseFolderTree(watched, tree, Resources.formatWatchFailed(watched.worktree, String(error)))));
+  }
+
+  /** Falls back to checking every few seconds once the worktree's current folder watch fails, logging why; a watch already stopped is left alone. */
+  private loseFolderTree(watched: WatchedWorktree, tree: FolderTreeWatch, line: string): void {
+    if (watched.folderTree !== tree)
+      return;
+    ChangeMonitor.stopFolderTree(watched);
+    this.log.write(line);
+  }
+
+  private static stopFolderTree(watched: WatchedWorktree): void {
+    watched.folderTree?.close();
+    watched.folderTree = null;
+    watched.isTreeWatched = false;
+  }
+
+  /**
+   * Collects a shown worktree's changed file until its files go quiet, or a stream of changes has waited its longest; a hidden worktree's changes wait
+   * for it to be shown, which reads its status anyway, and a change the file system names no file for refreshes it.
+   */
+  private noteTreeChange(watched: WatchedWorktree, name: string | null): void {
+    if (watched.poll === null)
+      return;
+    if (name === null) {
+      this.schedule(watched);
+      return;
+    }
+    watched.changed.add(name);
+    if (watched.treeQuiet !== null)
+      timers.clearTimeout(watched.treeQuiet);
+    const check = (): void => this.checkTree(watched);
+    watched.treeQuiet = timers.setTimeout(check, Resources.treeQuietMilliseconds);
+    watched.treeLongest ??= timers.setTimeout(check, Resources.treeLongestWaitMilliseconds);
+  }
+
+  /** Refreshes the worktree when a collected change is one git doesn't ignore, or when it can't tell. */
+  private checkTree(watched: WatchedWorktree): void {
+    ChangeMonitor.endTreeWaits(watched);
+    const names = [...watched.changed];
+    watched.changed.clear();
+    this.track(this.ignored.hasShownAsync(watched.folders.top, names, watched.stop.signal).then(isShown => {
+      if (isShown)
+        this.schedule(watched);
+    }, (error: unknown) => {
+      if (watched.stop.signal.aborted)
+        return;
+      this.log.write(Resources.formatIgnoreCheckFailed(watched.worktree, String(error)));
+      this.schedule(watched);
+    }));
+  }
+
+  private static endTreeWaits(watched: WatchedWorktree): void {
+    for (const timer of [watched.treeQuiet, watched.treeLongest])
+      if (timer !== null)
+        timers.clearTimeout(timer);
+    watched.treeQuiet = null;
+    watched.treeLongest = null;
   }
 
   private async startAsync(watched: WatchedWorktree, cookies: readonly WatchCookie[]): Promise<WatchStart> {
@@ -240,7 +345,7 @@ export class ChangeMonitor {
     if (watched.isPolledAlways)
       return;
     watched.isPolledAlways = true;
-    this.track(this.pollAsync(watched, watched.stop.signal));
+    this.track(this.pollAsync(watched, watched.stop.signal, () => Resources.changePollMilliseconds));
   }
 
   private schedule(watched: WatchedWorktree): void {
@@ -265,9 +370,9 @@ export class ChangeMonitor {
     await this.refreshAsync(watched);
   }
 
-  private async pollAsync(watched: WatchedWorktree, signal: AbortSignal): Promise<void> {
+  private async pollAsync(watched: WatchedWorktree, signal: AbortSignal, interval: () => number): Promise<void> {
     for (;;) {
-      await ChangeMonitor.waitAsync(Resources.changePollMilliseconds, signal);
+      await ChangeMonitor.waitAsync(interval(), signal);
       if (signal.aborted)
         return;
       this.schedule(watched);

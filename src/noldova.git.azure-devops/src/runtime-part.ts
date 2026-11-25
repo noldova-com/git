@@ -42,7 +42,7 @@ export class RuntimePart implements IRuntimePart {
     const fetcher = (url: string, init: RequestInit): Promise<Response> => fetch(url, init);
     const api = new AzureApi(fetcher);
     const signIn = new AzureSignIn(api, new EntraFlow(fetcher), context.secrets, context.appWindows, context.log, t => changed.publish(t.toJson()));
-    const reads = new AzureReads(api, signIn);
+    const reads = new AzureReads(api, signIn, context.log);
     const writes = new AzureWrites(api, signIn, reads);
     const avatars = new AzureAvatars(api, signIn, context.log);
     const methods: readonly (readonly [string, (request: RequestContext) => HostSignIn | Promise<HostSignIn>])[] = [

@@ -34,6 +34,7 @@ export class Resources {
   public static readonly binaryHunksExpected: string = "no hunks, since the file is binary";
   public static readonly submoduleCommitsExpected: string = "an old or a new commit";
   public static readonly truncatedExpected: string = "true, since files were left out";
+  public static readonly totalsExpected: string = "no totals, since nothing was left out";
   public static readonly oldPathExpected: string = "the path itself, unless the file is renamed or copied";
   public static readonly similarityExpected: string = "a whole percent from 0 to 100 on a renamed or copied file, or no value";
   public static readonly conflictStatesExpected: string = "Unmodified, since the entry is a conflict";
@@ -99,6 +100,7 @@ export class Resources {
   public static readonly filesField: string = "files";
   public static readonly totalBytesField: string = "totalBytes";
   public static readonly omittedFilesField: string = "omittedFiles";
+  public static readonly totalsField: string = "totals";
   public static readonly folderExpected: string = "an absolute path of at most 4096 characters";
   public static readonly relativePathExpected: string =
     "a relative path of 1 to 4096 characters, not starting with a drive and colon, a colon or a backslash, without a .. segment or a NUL character";

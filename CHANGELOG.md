@@ -4,6 +4,18 @@
 
 Each version's section is written by the pull request that changes the version, from the pull requests merged since the previous version; other pull requests don't edit this file.
 
+## 0.0.7
+
+- The Azure DevOps host module, three new packages that move with the others: `@noldova/git.azure-devops`, `@noldova/git.azure-devops.window` and `@noldova/git.azure-devops.protocol` (#32).
+  It signs in with Microsoft or a personal access token, whose sign-in lists the token's scopes, reads and writes pull requests with their threads, replies, votes, reviewers and Complete, and reads the person's work items with the commits that name them.
+  Its counts match Azure DevOps' pages: approvals count people, not the groups that carry a person's vote, checks take each pipeline's newest build, and a completed or abandoned pull request shows nothing still queued as running.
+  A pull request's state shows in Azure DevOps' words, Active, Draft, Completed or Abandoned, and a work item's type in Azure DevOps' own icon, with when the item last changed.
+- The Git window adds History and the commit detail, Conflicts with the editor's merge view, interactive rebase, the Dashboard with the Across repositories view, stash, the Undo menu over the write journal, ahead and behind of the upstream, and the detail views as dock tabs; the status bar follows the open repository's branch, upstream, changes and checks, with the diff's line totals from the new method `git.diffTotals` (#32).
+- `git.watch` walks a folder's tree one walk at a time, so a folder made while a walk runs keeps one watch (#32).
+- `@noldova/git.hosting.protocol` adds `HostWorkItem.changedAt`, when the item last changed, and `HostWorkItemType.image`, the type's icon as the host draws it, in SVG; `@noldova/git.window` adds `GitBranchPullRequest.stateLabel`, the host's own word for a pull request's state, and `GitRepositoryLink.isActive`, which selects a host's row in the repository panel while its page is the active document, as the My work items row does.
+  Each is optional in its constructor, and JSON without it reads as null.
+- Both modules take Noldova Desktop 0.0.16: `module.json`'s `noldovaDesktop` range and the runtime packages' Noldova Desktop peers start at 0.0.16, and the window packages take Noldova Desktop 0.0.16's packages, `@noldova/ui.components.angular` 0.0.29 and the editor packages at 0.0.9 (#32).
+
 ## 0.0.6
 
 - Both modules take Noldova Desktop 0.0.11: `module.json`'s `noldovaDesktop` range and the runtime packages' Noldova Desktop peers start at 0.0.11, and the window packages take Noldova Desktop 0.0.11's packages and `@noldova/ui.components.angular` 0.0.21; Git is built and tested with context 0.0.10, and its context peers stay at 0.0.9 and up (#100, #105, #107).

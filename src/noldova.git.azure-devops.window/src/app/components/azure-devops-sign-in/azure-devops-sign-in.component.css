@@ -39,6 +39,12 @@
   color: var(--nol-text-muted);
 }
 
+.nol-git-azure-devops-scopes {
+  margin: calc(var(--nol-settings-item-description-gap) - var(--nol-settings-item-control-gap)) 0 0;
+  padding-inline-start: 1.25rem;
+  color: var(--nol-text-muted);
+}
+
 .nol-git-azure-devops-row {
   display: flex;
   gap: var(--nol-space-2);

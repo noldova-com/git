@@ -26,7 +26,7 @@ export class GitCommitPullRequest {
     this.host = host;
     this.row = row;
     this.state = state;
-    this.stateLabel = Resources.commitPullRequestStates[state];
+    this.stateLabel = answer.stateLabel ?? Resources.commitPullRequestStates[state];
     this.note = Resources.formatCommitPullRequestNote(row.approvals, answer.passed, answer.failing, answer.pending);
   }
 

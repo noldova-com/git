@@ -10,6 +10,8 @@ import type { BinaryToTextEncoding } from "node:crypto";
 
 import { ConflictKind, ConflictResolution, FileChange, FileState, LineKind, OperationKind, ResetMode, SigningFormat, UndoMode } from "@noldova/git.protocol";
 
+import { TreeWatch } from "./enums/tree-watch.ts";
+
 export class Resources {
   public static readonly indexLocked: string = "Another process holds the repository's index.lock. Let it finish, then try again.";
   public static readonly outputLimitInvalid: string = "The output limit must be a whole number of bytes above zero.";
@@ -258,6 +260,25 @@ export class Resources {
   public static readonly changeDebounceMilliseconds: number = 200;
   public static readonly changePollMilliseconds: number = 5_000;
   public static readonly cookieTouchMilliseconds: number = 100;
+  /** How long a worktree's files stay quiet before the module checks what changed, and the longest a stream of changes holds that check back. */
+  public static readonly treeQuietMilliseconds: number = 300;
+  public static readonly treeLongestWaitMilliseconds: number = 2_000;
+  /** How often a shown worktree whose files the module watches is checked anyway, for a change the file system didn't report. */
+  public static readonly backstopPollMilliseconds: number = 60_000;
+  /**
+   * How each system's worktrees are watched: one watch of the whole tree where the system has one, a watch of each folder git doesn't ignore on Linux,
+   * whose watch covers one folder; elsewhere the module checks a shown worktree every few seconds.
+   */
+  public static readonly treeWatches: Readonly<Record<string, TreeWatch>> = { win32: TreeWatch.Whole, darwin: TreeWatch.Whole, linux: TreeWatch.Folders };
+  /** The most folders the module watches one at a time in a worktree, leaving the rest of the system's watches to other programs; past it, it checks every few seconds. */
+  public static readonly treeFoldersLimit: number = 10_000;
+  public static readonly checkIgnoreCommand: string = "check-ignore";
+  /** check-ignore refuses the literal pathspecs every read sets, so it turns them off; it takes each path from its input as a name, never a pattern. */
+  public static readonly checkIgnoreArguments: readonly string[] = ["--no-literal-pathspecs", Resources.checkIgnoreCommand, "--stdin", "-z"];
+  public static readonly ignoreFileName: string = ".gitignore";
+  public static readonly dotGitName: string = ".git";
+  /** The most folders the ignore check remembers before it starts over. */
+  public static readonly ignoredFoldersLimit: number = 10_000;
   public static readonly watchedGitFiles: readonly string[] = ["HEAD", "index"];
   public static readonly branchRefsFolder: readonly string[] = ["refs", "heads"];
   public static readonly packedRefsFile: string = "packed-refs";
@@ -500,6 +521,7 @@ export class Resources {
   public static readonly numstatCommand: string = "diff --numstat";
   public static readonly numstatArguments: readonly string[] = ["diff", "--numstat", "-z", "--no-color", "--no-ext-diff", "--no-textconv", "--no-relative", "--ignore-submodules=none"];
   public static readonly findRenamesOption: string = "--find-renames";
+  public static readonly totalsDiffArguments: readonly string[] = [...Resources.diffSettings, "--literal-pathspecs", ...Resources.numstatArguments, "--find-renames"];
   public static readonly noRenamesOption: string = "--no-renames";
   public static readonly binaryCount: string = "-";
   public static readonly countPattern: RegExp = /^\d+$/v;
@@ -875,6 +897,19 @@ export class Resources {
 
   public static formatCookieUnwritten(folder: string, failure: string): string {
     return `Couldn't write the file that confirms the watch of ${folder} has started, so the module counts it as started within a few seconds: ${failure}`;
+  }
+
+  public static formatIgnoreCheckFailed(folder: string, failure: string): string {
+    return `Couldn't tell which changed files git ignores in ${folder}, so the module reads its status anyway: ${failure}`;
+  }
+
+  /** How a system's worktrees are watched; a system the module names no watch for checks a shown worktree every few seconds. */
+  public static treeWatchOf(platform: string): TreeWatch {
+    return Resources.treeWatches[platform] ?? TreeWatch.None;
+  }
+
+  public static formatTreeTooLarge(folder: string, limit: number): string {
+    return `${folder} has more than ${limit} folders git doesn't ignore, more than the module watches one at a time`;
   }
 
   public static formatWatchFailed(folder: string, failure: string): string {

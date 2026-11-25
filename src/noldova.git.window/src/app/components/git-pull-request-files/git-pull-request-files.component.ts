@@ -11,7 +11,8 @@ import {
 } from "@angular/core";
 import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { type HostPullRequestFile, HostPullRequestFiles, type HostReference } from "@noldova/git.hosting.protocol";
-import { DiffScope, DiffScopeKind, GitCommitDetailParams, GitFetchParams, GitFolderParams, GitNames, GitStatus } from "@noldova/git.protocol";
+import { DiffScope, DiffScopeKind, DiffTotals, GitCommitDetailParams, GitDiffParams, GitFetchParams, GitFolderParams, GitNames, GitStatus }
+  from "@noldova/git.protocol";
 import { ButtonComponent, ButtonVariant, FileBadgeComponent, SpinnerComponent } from "@noldova/ui.components.angular";
 
 import { GitFileLayout } from "../../enums/git-file-layout.ts";
@@ -59,8 +60,10 @@ export class GitPullRequestFilesComponent {
   protected readonly layout: WritableSignal<GitFileLayout> = signal<GitFileLayout>(GitFileLayout.Folders);
   /** The host's list's folders the person closed, by path. */
   protected readonly closed: WritableSignal<ReadonlySet<string>> = signal<ReadonlySet<string>>(new Set());
+  /** The host's list's files, which the rows lay out; none while no list is read. */
+  private readonly files: WritableSignal<readonly HostPullRequestFile[]> = signal<readonly HostPullRequestFile[]>([]);
   protected readonly rows: Signal<readonly GitPathEntry<HostPullRequestFile>[]> = computed(() =>
-    GitPathLayout.layout(this.list()?.files ?? [], t => t.path, this.layout(), this.closed()));
+    GitPathLayout.layout(this.files(), t => t.path, this.layout(), this.closed()));
 
   /** The host that reads the tab's list and finds the pull request's repository on this computer. */
   public readonly host: InputSignal<IGitPullRequestHost> = input.required<IGitPullRequestHost>();
@@ -77,7 +80,7 @@ export class GitPullRequestFilesComponent {
   /** A line to show in its file's diff once the tab has read, such as a comment thread's; `null` for none. */
   public readonly reveal: InputSignal<GitFileLine | null> = input<GitFileLine | null>(null);
 
-  /** The tab's count once read, such as `12` or `1000+`. */
+  /** The tab's count once read, such as `12` or `5000+`: the files local Git counts when the tab shows its changes, else the host's list's. */
   public readonly counted: OutputEmitterRef<string> = output<string>();
 
   /** A line given in `reveal` that the tab can't show, as the changes from local Git aren't here or don't hold its file, so the page can show it elsewhere. */
@@ -95,6 +98,7 @@ export class GitPullRequestFilesComponent {
         const given: HostPullRequestFiles | null = this.isFirstRead ? this.answer() : null;
         this.isFirstRead = false;
         this.list.set(null);
+        this.files.set([]);
         this.folder.set(null);
         this.scope.set(null);
         this.failure.set(null);
@@ -174,12 +178,14 @@ export class GitPullRequestFilesComponent {
       const [list, folder] = await Promise.all([given ?? this.readListAsync(reference), this.host().localFolderAsync(this.url())]);
       const scope: DiffScope | null = folder === null || list.sourceCommit === null || list.commonCommit === null ? null
         : await this.scopeAsync(folder, list.commonCommit, list.sourceCommit);
+      const totals: DiffTotals | null = folder === null || scope === null ? null : await this.totalsAsync(folder, scope);
       if (!isCurrent())
         return;
       this.list.set(list);
+      this.files.set(list.files);
       this.folder.set(folder);
       this.scope.set(scope);
-      this.counted.emit(`${list.files.length}${list.hasMore ? Resources.pullRequestMoreMark : ""}`);
+      this.counted.emit(totals === null ? `${list.files.length}${list.hasMore ? Resources.pullRequestMoreMark : ""}` : String(totals.files));
     }
     catch (error) {
       if (!(error instanceof WindowException))
@@ -200,6 +206,19 @@ export class GitPullRequestFilesComponent {
   }
 
   /** The range from the common commit to the head commit when the repository has both; `null` when it lacks either, which a fetch brings. */
+  /** The files local Git counts in the changes the tab shows from it, as its header counts them; `null` when Git can't count them, which it logs. */
+  private async totalsAsync(folder: string, scope: DiffScope): Promise<DiffTotals | null> {
+    try {
+      return DiffTotals.fromJson(await this.context.requestAsync(GitNames.diffTotalsMethod, new GitDiffParams(folder, scope).toJson()));
+    }
+    catch (error) {
+      if (!(error instanceof WindowException))
+        throw error;
+      this.context.log(Resources.formatHostRequestFailed(this.host().name, GitNames.diffTotalsMethod, String(error)));
+      return null;
+    }
+  }
+
   private async scopeAsync(folder: string, common: string, source: string): Promise<DiffScope | null> {
     try {
       await Promise.all([common, source].map(t => this.context.requestAsync(GitNames.commitDetailMethod, new GitCommitDetailParams(folder, t).toJson())));

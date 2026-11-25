@@ -20,7 +20,13 @@ LICENSE file in the root directory of this source tree.
     <div class="wrow item" role="row" tabindex="0" [class.sel]="row.detail === selected()" [attr.aria-selected]="row.detail === selected()"
       [attr.aria-level]="row.depth + 1" [attr.aria-expanded]="shownRow.hasChildren ? !shownRow.isCollapsed : null"
       (click)="chosen.emit(row.detail)" (keydown.enter)="chosen.emit(row.detail)" (keydown.space)="chosen.emit(row.detail)">
-      <span role="gridcell"><span class="material-symbols-rounded wi" aria-hidden="true" [style.color]="colorOf(row.detail.item)">{{ iconOf(row.detail.item) }}</span></span>
+      <span role="gridcell">
+        @if (imageOf(row.detail.item); as image) {
+          <img class="material-symbols-rounded wi type-image" [src]="image" alt="" aria-hidden="true">
+        } @else {
+          <span class="material-symbols-rounded wi" aria-hidden="true" [style.color]="colorOf(row.detail.item)">{{ iconOf(row.detail.item) }}</span>
+        }
+      </span>
       <span role="gridcell" class="id">{{ row.detail.item.id }}</span>
       <span role="gridcell" class="cell-title" [style.padding-left.rem]="row.depth">
         @if (shownRow.hasChildren) {

@@ -72,6 +72,11 @@ LICENSE file in the root directory of this source tree.
         </button>
       </div>
       <p class="nol-git-azure-devops-setting-note nol-git-azure-devops-label">{{ resources.tokenNote }}</p>
+      <ul class="nol-git-azure-devops-scopes nol-git-azure-devops-label" [attr.aria-label]="resources.tokenScopesLabel">
+        @for (scope of resources.tokenScopes; track scope) {
+          <li>{{ scope }}</li>
+        }
+      </ul>
       <div class="nol-git-azure-devops-row">
         @if (tokensUrl(); as url) {
           <button type="button" nol-button [variant]="secondary" (click)="openAsync(url)">

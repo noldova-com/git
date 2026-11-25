@@ -2155,7 +2155,78 @@ export declare class DiffFile {
 }
 
 /**
- * A diff within its budget: the files, their size, and how many were left out.
+ * A whole diff's counts, as `git diff --numstat` counts them, for a diff its budget cut: the files it changes and the lines they add and remove, a binary
+ * file's lines counting none.
+ * @example
+ * ```ts
+ * import type { DiffTotals } from "@noldova/git.protocol";
+ * export function describe(totals: DiffTotals): string {
+ *   return `${totals.files} files, +${totals.added} -${totals.removed}`;
+ * }
+ * ```
+ */
+export declare class DiffTotals {
+  /**
+   * The files the diff changes.
+   */
+  public readonly files: number;
+
+  /**
+   * The lines the files add.
+   */
+  public readonly added: number;
+
+  /**
+   * The lines the files remove.
+   */
+  public readonly removed: number;
+
+  /**
+   * Creates the totals.
+   * @param files The files changed; zero or more.
+   * @param added The lines added; zero or more.
+   * @param removed The lines removed; zero or more.
+   * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
+   * @throws {ProtocolFieldException} When a count isn't a whole number of zero or more.
+   * @example
+   * ```ts
+   * import { DiffTotals } from "@noldova/git.protocol";
+   * export const totals: DiffTotals = new DiffTotals(3, 40, 7);
+   * ```
+   */
+  public constructor(files: number, added: number, removed: number, reader?: JsonReader);
+
+  /**
+   * Reads the totals from their JSON form.
+   * @param value The parsed JSON value, untrusted.
+   * @param path The totals' path in error messages; `$` by default.
+   * @returns The totals.
+   * @throws {JsonException} When the value isn't an object, or a field is missing or of the wrong type; it comes from `@noldova/context.json`.
+   * @throws {ProtocolFieldException} When the value holds an unknown field, or a count is invalid.
+   * @example
+   * ```ts
+   * import { DiffTotals } from "@noldova/git.protocol";
+   * export function readTotals(text: string): DiffTotals {
+   *   return DiffTotals.fromJson(JSON.parse(text));
+   * }
+   * ```
+   */
+  public static fromJson(value: unknown, path?: string): DiffTotals;
+
+  /**
+   * Writes the totals' JSON form, with the fields `files`, `added` and `removed`.
+   * @returns The JSON object.
+   * @example
+   * ```ts
+   * import { DiffTotals, type JsonObject } from "@noldova/git.protocol";
+   * export const json: JsonObject = new DiffTotals(3, 40, 7).toJson();
+   * ```
+   */
+  public toJson(): JsonObject;
+}
+
+/**
+ * A diff within its budget: the files, their size, how many were left out, and the whole diff's totals when it was cut.
  * @example
  * ```ts
  * import type { GitDiff } from "@noldova/git.protocol";
@@ -2186,20 +2257,26 @@ export declare class GitDiff {
   public readonly truncated: boolean;
 
   /**
+   * The whole diff's files and lines when the budget cut it, so a count shows all of it; `null` when nothing was left out, or Git couldn't count it.
+   */
+  public readonly totals: DiffTotals | null;
+
+  /**
    * Creates the diff.
    * @param files The files.
    * @param totalBytes The bytes shown; zero or more.
    * @param omittedFiles The files left out; zero or more.
    * @param truncated Whether anything was left out; `true` whenever files were.
+   * @param totals The whole diff's totals, only when `truncated`; `null` by default.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
-   * @throws {ProtocolFieldException} When a count isn't a whole number of zero or more, or files were left out without `truncated`.
+   * @throws {ProtocolFieldException} When a count isn't a whole number of zero or more, files were left out without `truncated`, or totals come without it.
    * @example
    * ```ts
    * import { GitDiff } from "@noldova/git.protocol";
    * export const empty: GitDiff = new GitDiff([], 0, 0, false);
    * ```
    */
-  public constructor(files: readonly DiffFile[], totalBytes: number, omittedFiles: number, truncated: boolean, reader?: JsonReader);
+  public constructor(files: readonly DiffFile[], totalBytes: number, omittedFiles: number, truncated: boolean, totals?: DiffTotals | null, reader?: JsonReader);
 
   /**
    * Reads the diff from its JSON form.
@@ -2219,7 +2296,7 @@ export declare class GitDiff {
   public static fromJson(value: unknown, path?: string): GitDiff;
 
   /**
-   * Writes the diff's JSON form, with the fields `files`, `totalBytes`, `omittedFiles` and `truncated`.
+   * Writes the diff's JSON form, with the fields `files`, `totalBytes`, `omittedFiles`, `truncated` and `totals`.
    * @returns The JSON object.
    * @example
    * ```ts
@@ -4306,6 +4383,12 @@ export declare class GitNames {
    * `git.diff`: reads a {@link GitDiff}, with {@link GitDiffParams}.
    */
   public static readonly diffMethod: string;
+
+  /**
+   * `git.diffTotals`: reads a diff's {@link DiffTotals} with {@link GitDiffParams}, as `git diff --numstat` counts them and without the diff itself, so a
+   * view can show a large range's counts cheaply; the worktree's counts leave out its untracked files.
+   */
+  public static readonly diffTotalsMethod: string;
 
   /**
    * `git.branches`: reads a folder's {@link GitBranches}, with {@link GitFolderParams}.

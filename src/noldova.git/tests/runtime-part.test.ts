@@ -187,6 +187,7 @@ describe("RuntimePart", () => {
     assert.deepEqual([...supervisor.methods.keys()], [
       GitNames.statusMethod,
       GitNames.diffMethod,
+      GitNames.diffTotalsMethod,
       GitNames.branchesMethod,
       GitNames.mergedBranchesMethod,
       GitNames.remoteTracksMethod,
@@ -253,14 +254,15 @@ describe("RuntimePart", () => {
     assert.deepEqual([[...supervisor.services.keys()], status.branch, status.entries.map(t => t.path)], [[GitNames.repositoriesService], "main", ["a.txt"]]);
   });
 
-  it("registers git.diff, which answers the scope's diff, and git.branches, which answers the branches and remotes", async () => {
+  it("registers git.diff, which answers the scope's diff, git.diffTotals, which counts it, and git.branches, which answers the branches and remotes", async () => {
     await repository.writeAsync("a.txt", "changed" + String.fromCharCode(10));
     await repository.runGitAsync(["branch", "feature"]);
 
     const diff = GitDiff.fromJson(await callAsync(GitNames.diffMethod, { folder: repository.folder, scope: { kind: DiffScopeKind.Worktree } }));
+    const totals = await callAsync(GitNames.diffTotalsMethod, { folder: repository.folder, scope: { kind: DiffScopeKind.Worktree } });
     const branches = await callAsync(GitNames.branchesMethod, { folder: repository.folder });
 
-    assert.deepEqual(diff.files.map(t => t.path), ["a.txt"]);
+    assert.deepEqual([diff.files.map(t => t.path), totals], [["a.txt"], { files: 1, added: 1, removed: 1 }]);
     const tip: string = (await repository.runGitAsync(["rev-parse", "main"])).trim();
     const committedAt: string = (await repository.runGitAsync(["log", "-1", "--format=%cI", "main"])).trim();
     assert.deepEqual(branches, { current: "main", branches: ["feature", "main"], remotes: [], remoteBranches: [], tracks: [],

@@ -25,6 +25,6 @@ describe("The Azure DevOps module's Resources", () => {
 
     assert.deepEqual(urls.filter(t => !t.includes(encoded) || t.includes(id)), []);
     assert.deepEqual([urls[0], urls[1]], [`https://dev.azure.com/fabrikam/_apis/git/repositories/${encoded}/pullrequests/12?api-version=7.1`,
-      `https://dev.azure.com/fabrikam/web/_apis/build/builds?branchName=refs%2Fpull%2F12%2Fmerge&repositoryId=${encoded}&repositoryType=TfsGit&api-version=7.1`]);
+      `https://dev.azure.com/fabrikam/web/_apis/build/builds?branchName=refs%2Fpull%2F12%2Fmerge&repositoryId=${encoded}&repositoryType=TfsGit&maxBuildsPerDefinition=1&queryOrder=queueTimeDescending&api-version=7.1`]);
   });
 });

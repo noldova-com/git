@@ -152,11 +152,6 @@ export class GitConflictsComponent {
     inject(DestroyRef).onDestroy(GitFolder.follow(this.instance, active));
     const details: GitDetailView<GitConflictDetail> = GitConflictDetails.of(inject(WindowPartTokens.context));
     details.follow(this.detail, active, inject(Injector));
-    effect(() => {
-      const detail: GitConflictDetail | null = this.detail();
-      if (active() && detail !== null)
-        untracked(() => details.showOnce(detail));
-    });
   }
 
   /** The staged files that merged without a conflict and weren't resolved here. */

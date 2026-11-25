@@ -304,9 +304,6 @@ export class AzureDevOpsPullRequestComponent {
         this.readAt.set(Date.now());
         this.pullRequest.set(pullRequest);
         this.isMissing.set(pullRequest === null);
-        const choice: PullRequestChoice | null = this.choice();
-        if (choice !== null)
-          PullRequestSelection.of(this.context).showChosen(choice);
         this.pullIfMerged(reference, pullRequest);
         if (pullRequest !== null)
           this.readTabsEarly(reference, isCurrent);

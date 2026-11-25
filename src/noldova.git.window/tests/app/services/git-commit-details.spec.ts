@@ -25,20 +25,18 @@ describe("GitCommitDetails", () => {
     expect([GitCommitDetails.of(first) === GitCommitDetails.of(first), GitCommitDetails.of(first) === GitCommitDetails.of(second)]).toEqual([true, false]);
   });
 
-  it("opens the window's Commit view as its one instance titled Commit, once, and again only once the person closed it", () => {
+  it("opens the window's Commit view as its one instance titled Commit, and hears the person close that instance only", () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const details: GitDetailView<GitCommitView> = GitCommitDetails.of(context);
     const stop: () => void = details.listen();
 
-    details.showOnce(view);
-    details.showChosen(view);
+    details.showInFront(view);
     context.raiseViewClosed("git.commitView", "another");
-    details.showChosen(view);
+    const open: boolean = details.isOpen();
     context.raiseViewClosed("git.commitView", "selected");
-    details.showChosen(view);
     stop();
 
-    expect([context.callsOf("openView"), context.callsOf("showView")])
-      .toEqual([[["git.commitView", "selected", "Commit"], ["git.commitView", "selected", "Commit"]], []]);
+    expect([context.callsOf("openView"), context.callsOf("showView"), open, details.isOpen()])
+      .toEqual([[["git.commitView", "selected", "Commit"]], [], true, false]);
   });
 });

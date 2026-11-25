@@ -33,10 +33,10 @@ LICENSE file in the root directory of this source tree.
         </div>
         <div class="meta">
           @if (pullRequest.item.author; as author) {
-            <nol-git-azure-devops-person-avatar [organization]="pullRequest.item.reference.owner" [login]="author.login" [name]="resources.formatAvatarName(author.login)"
+            <nol-git-azure-devops-person-avatar [organization]="pullRequest.item.reference.owner" [login]="author.login" [name]="resources.formatPersonName(author)"
               [image]="author.avatar" [size]="small" />
           }
-          <span>{{ resources.formatWantsToMerge(pullRequest.item.author?.login ?? resources.unknownAuthor) }}</span>
+          <span>{{ resources.formatWantsToMerge(pullRequest.item.author === null ? resources.unknownAuthor : resources.formatPersonName(pullRequest.item.author)) }}</span>
           @if (pullRequest.item.changes; as changes) {
             <span class="branch">{{ changes.headBranch }}</span>
             <span>{{ resources.into }}</span>

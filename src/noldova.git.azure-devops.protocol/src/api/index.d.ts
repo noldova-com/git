@@ -187,7 +187,7 @@ export declare class AzureDevOpsNames {
 
   /**
    * `git-azure-devops.readPullRequestChanges`: takes a pull request's `HostReference` as JSON and answers the files it changes at its latest push as
-   * `HostPullRequestFiles` JSON: each file's path and what the pull request did to it, never its contents, at most 1000 and whether there are more,
+   * `HostPullRequestFiles` JSON: each file's path and what the pull request did to it, never its contents, at most 5000 and whether there are more,
    * with that push's head commit and the commit its changes count from; signed out, or for another host, organization or repository id, none.
    */
   public static readonly readPullRequestChangesMethod: string;

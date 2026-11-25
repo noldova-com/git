@@ -88,6 +88,23 @@ export class GitWorkspacePullRequests {
   }
 
   /**
+   * The host's whole open list, which the Dashboard's Open cell counts, whether or not the host reads branches on its own: undefined while no remote
+   * is known or no host claims it, null before the host has an answer. It is asked for only when the host or the remote changes.
+   */
+  public openListOf(folder: string, summary: Signal<GitRepositorySummary | null>): Signal<GitPullRequestList | null | undefined> {
+    const remote: Signal<GitRemote | null> = computed(() => summary()?.remote ?? null, { equal: GitWorkspacePullRequests.isSameRemote });
+    const list: Signal<Signal<GitPullRequestList | null> | null | undefined> = computed(() => {
+      const shown: GitRemote | null = remote();
+      const provider: IGitPullRequests | null = shown === null ? null : GitPullRequests.of(shown);
+      return provider === null || shown === null ? undefined : this.attempt(() => provider.listFor(folder, shown), null);
+    });
+    return computed(() => {
+      const listed: Signal<GitPullRequestList | null> | null | undefined = list();
+      return listed === undefined || listed === null ? listed : listed();
+    });
+  }
+
+  /**
    * The open list the workspace page finds stacks in: the host's stack list when it has one, which nothing else reads, else the open list as
    * {@link listOf} reads it; undefined for a host with neither, while no remote is known or no host claims it, null before the host has an answer.
    * The stack list is asked for only when the host or the remote changes.
@@ -122,8 +139,15 @@ export class GitWorkspacePullRequests {
     this.refreshed.add(key);
     if (refreshBranch === undefined)
       this.attempt(() => host.refresh(folder, remote), undefined);
-    else if (branch !== null)
-      this.attempt(() => refreshBranch.call(host, folder, remote, branch, summary.head), undefined);
+    else {
+      if (branch !== null)
+        this.attempt(() => refreshBranch.call(host, folder, remote, branch, summary.head), undefined);
+      const listKey: string = JSON.stringify([folder, remote.name, remote.host, remote.path, remote.transport]);
+      if (!this.refreshed.has(listKey)) {
+        this.refreshed.add(listKey);
+        this.attempt(() => host.refresh(folder, remote), undefined);
+      }
+    }
   }
 
   /**

@@ -19,7 +19,7 @@ const link: AzureDevOpsReferenceLink = new AzureDevOpsReferenceLink(new WorkItem
 const pending: LinkReference = AzureDevOpsReferenceLooks.pendingOf(link);
 const item: LinkReference = AzureDevOpsReferenceLooks.workItemOf(new HostWorkItem("git-azure-devops", "fabrikam", "web", 42,
   new HostWorkItemType("Bug", "CC293D", "icon_insect"), "The greeting is cut short", "Active", WorkItemCategory.InProgress,
-  "https://dev.azure.com/fabrikam/web/_workitems/edit/42", null, null, null, null));
+  "https://dev.azure.com/fabrikam/web/_workitems/edit/42", null, null, null, null), null);
 
 describe("AzureDevOpsReferenceRead", () => {
   it("shows the pending look until a read shows the item, and holds its link", () => {

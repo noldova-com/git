@@ -46,6 +46,7 @@ export { GitGraph } from "../models/git-graph.ts";
 export { GitGraphCommit } from "../models/git-graph-commit.ts";
 export { GitGraphParams } from "../models/git-graph-params.ts";
 export { GitCommitParams } from "../models/git-commit-params.ts";
+export { DiffTotals } from "../models/diff-totals.ts";
 export { GitDiff } from "../models/git-diff.ts";
 export { GitDiffParams } from "../models/git-diff-params.ts";
 export { GitDiffPaths } from "../models/git-diff-paths.ts";

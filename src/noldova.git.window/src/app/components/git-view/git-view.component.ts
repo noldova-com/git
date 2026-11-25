@@ -6,9 +6,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Component, computed, DestroyRef, effect, ElementRef, ErrorHandler, inject, type Signal, signal, untracked, type WritableSignal } from "@angular/core";
+import { Component, computed, DestroyRef, ElementRef, ErrorHandler, inject, type Signal, signal, type WritableSignal } from "@angular/core";
 import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
-import type { GitCommandLog, GitOperation } from "@noldova/git.protocol";
+import type { GitOperation } from "@noldova/git.protocol";
 import { ButtonComponent, ButtonVariant, DialogService, SpinnerComponent } from "@noldova/ui.components.angular";
 
 import { GitFileGroupKind } from "../../enums/git-file-group-kind.ts";
@@ -20,8 +20,6 @@ import { Resources } from "../../../resources.ts";
 import { FocusKeeper } from "../../services/focus-keeper.ts";
 import { GitPendingSwitch } from "../../services/git-pending-switch.ts";
 import { GitResolving } from "../../services/git-resolving.ts";
-import { GitRuntimeClient } from "../../services/git-runtime-client.ts";
-import { GitStatusBar } from "../../services/git-status-bar.ts";
 import { GitViewOptions } from "../../services/git-view-options.ts";
 import { GitViewStateService } from "../../services/git-view-state.service.ts";
 import { GitBranchCardComponent } from "../git-branch-card/git-branch-card.component.ts";
@@ -42,8 +40,6 @@ import { GitUndoMenuComponent } from "../git-undo-menu/git-undo-menu.component.t
 export class GitViewComponent {
   private readonly context: IWindowPartContext = inject(WindowPartTokens.context);
   private readonly dialogs: DialogService = inject(DialogService);
-  private readonly client: GitRuntimeClient = new GitRuntimeClient(this.context);
-  private commandReads = 0;
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly phases: typeof GitViewPhase = GitViewPhase;
@@ -62,30 +58,6 @@ export class GitViewComponent {
 
   public constructor() {
     inject(DestroyRef).onDestroy(FocusKeeper.keep(inject<ElementRef<HTMLElement>>(ElementRef).nativeElement));
-    effect(() => GitStatusBar.show(this.state.folder(), this.state.status()));
-    effect(() => {
-      const folder: string | null = this.state.folder();
-      const shown: boolean = this.state.status() !== null;
-      untracked(() => void this.showCommandAsync(shown ? folder : null));
-    });
-  }
-
-  /** Shows the last git command the folder's writes ran in the status bar; a later read wins over an earlier one still running. */
-  private async showCommandAsync(folder: string | null): Promise<void> {
-    const read: number = ++this.commandReads;
-    if (folder === null) {
-      GitStatusBar.showCommand(null, null);
-      return;
-    }
-    try {
-      const log: GitCommandLog = await this.client.commandLogAsync(folder);
-      if (read === this.commandReads)
-        GitStatusBar.showCommand(folder, log.commands.at(-1) ?? null);
-    }
-    catch (error) {
-      if (!GitRuntimeClient.isFailure(error))
-        this.errors.handleError(error);
-    }
   }
 
   protected async getGitAsync(): Promise<void> {

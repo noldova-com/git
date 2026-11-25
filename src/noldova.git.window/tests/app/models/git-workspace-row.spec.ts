@@ -85,7 +85,7 @@ describe("GitWorkspaceRow", () => {
     expect([GitWorkspaceRow.fetchedOf(null, now), GitWorkspaceRow.fetchedOf(summaryOf(null), now)]).toEqual(["", ""]);
   });
 
-  it("shows the current branch's pull request in any state, an open one that waits for its reviews as Review, with the worst of its checks, opening it from the row", () => {
+  it("shows the current branch's pull request in any state, in the host's own word when it gives one, an open one that waits for its reviews as Review, with the worst of its checks, opening it from the row", () => {
     const pull = (label: string, passed: number, failing: number, pending: number): GitPullRequestRow =>
       new GitPullRequestRow(label, label, `Change ${label}`, `https://github.com/example-owner/site/pull/${label.slice(1)}`, false, 1, passed, failing, pending, "feature/graph");
     const cells = (shown: GitBranchPullRequest): readonly string[] => {
@@ -96,11 +96,16 @@ describe("GitWorkspaceRow", () => {
     expect([
       cells(GitBranchPullRequest.of(pull("#214", 3, 0, 0), GitPullRequestState.Open, false)), cells(GitBranchPullRequest.of(pull("#533", 1, 0, 2), GitPullRequestState.Open, true)),
       cells(GitBranchPullRequest.of(pull("#1046", 0, 0, 0), GitPullRequestState.Draft, true)), cells(GitBranchPullRequest.of(pull("#22", 3, 1, 2), GitPullRequestState.Merged, false)),
-      cells(GitBranchPullRequest.of(pull("#9", 0, 0, 0), GitPullRequestState.Closed, false))
+      cells(GitBranchPullRequest.of(pull("#9", 0, 0, 0), GitPullRequestState.Closed, false)),
+      cells(GitBranchPullRequest.of(pull("!22", 3, 0, 0), GitPullRequestState.Merged, false, "Completed")),
+      cells(GitBranchPullRequest.of(pull("!9", 0, 0, 0), GitPullRequestState.Closed, false, "Abandoned")),
+      cells(GitBranchPullRequest.of(pull("!533", 1, 0, 2), GitPullRequestState.Open, true, "Active"))
     ]).toEqual([
       ["#214 open", "Passing", "ok", "https://github.com/example-owner/site/pull/214"], ["Review #533", "Running", "pending", "https://github.com/example-owner/site/pull/533"],
       ["#1046 draft", "None", "none", "https://github.com/example-owner/site/pull/1046"], ["#22 merged", "Failing", "failed", "https://github.com/example-owner/site/pull/22"],
-      ["#9 closed", "None", "none", "https://github.com/example-owner/site/pull/9"]
+      ["#9 closed", "None", "none", "https://github.com/example-owner/site/pull/9"],
+      ["!22 completed", "Passing", "ok", "https://github.com/example-owner/site/pull/22"], ["!9 abandoned", "None", "none", "https://github.com/example-owner/site/pull/9"],
+      ["Review !533", "Running", "pending", "https://github.com/example-owner/site/pull/533"]
     ]);
   });
 
@@ -121,6 +126,24 @@ describe("GitWorkspaceRow", () => {
       cells(loose, GitPullRequestList.ready([loose, bottom])), cells(own, GitPullRequestList.ready([own]))]).toEqual([["#215 open · on #214", "#214", true],
       ["#215 open", null, true], ["#215 open", null, true], ["#215 open", null, true], ["#216 open", null, true], ["#217 open", null, true]]);
     expect(new GitWorkspaceRow(folder, signal(null), signal(undefined), signal(false)).openList()).toBeUndefined();
+  });
+
+  it("counts the repository's open pull requests and the ones failing their checks in words, a + when the host has more, and nothing until the host lists them", () => {
+    const pullOf = (n: number, failing: number): GitPullRequestRow =>
+      new GitPullRequestRow(`${n}`, `#${n}`, `Change ${n}`, `https://github.com/example-owner/site/pull/${n}`, false, 0, 0, failing, 0, `change-${n}`);
+    const cells = (opened: GitPullRequestList | null | undefined): readonly string[] => {
+      const row: GitWorkspaceRow = new GitWorkspaceRow(folder, signal(null), signal(undefined), signal(false), signal(undefined), signal(opened));
+      return [row.open(), row.openTitle()];
+    };
+
+    expect([
+      cells(GitPullRequestList.ready([pullOf(1, 0), pullOf(2, 2), pullOf(3, 1)])), cells(GitPullRequestList.ready([pullOf(1, 0)])),
+      cells(GitPullRequestList.ready([pullOf(1, 1), pullOf(2, 0)], true)), cells(GitPullRequestList.ready([])),
+      cells(GitPullRequestList.reading([pullOf(1, 0)])), cells(GitPullRequestList.signedOut()), cells(GitPullRequestList.failed("offline")), cells(null), cells(undefined)
+    ]).toEqual([
+      ["3 · 2 failing", "3 open pull requests, 2 with failing checks"], ["1", "1 open pull request"], ["2+ · 1 failing", "2+ open pull requests, 1 with failing checks"],
+      ["None", "0 open pull requests"], ["", ""], ["", ""], ["", ""], ["", ""], ["", ""]
+    ]);
   });
 
   it("shows a branch without a pull request as None with its head commit's checks, and keeps the last answer's checks while the host reads again", () => {

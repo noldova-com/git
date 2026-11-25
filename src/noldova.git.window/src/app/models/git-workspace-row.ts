@@ -52,6 +52,10 @@ export class GitWorkspaceRow {
   public readonly failing: Signal<number>;
   /** Where the host's read of the branch's pull request stands, or null while no host reads it or before it answers. */
   public readonly hostState: Signal<GitPullRequestsState | null>;
+  /** The Open cell: how many pull requests the repository has open and how many fail their checks; empty while no host lists them or before it answers. */
+  public readonly open: Signal<string>;
+  /** The Open cell's tooltip, in words; empty with the cell. */
+  public readonly openTitle: Signal<string>;
   /** The side panel's views that show the row. */
   public readonly views: Signal<ReadonlySet<GitWorkspaceView>>;
 
@@ -59,9 +63,11 @@ export class GitWorkspaceRow {
    * @param pullRequest The current branch's pull request: undefined while no host reads it for the repository's remote, null before the host answers.
    * @param hasAgentsAtWork Whether an agent works in the repository or waits for the person.
    * @param openList The host's list of the repository's open pull requests to find stacks in, when the page reads one; undefined by default.
+   * @param opened The host's whole list of the repository's open pull requests, which the Open cell counts; undefined by default.
    */
   public constructor(folder: string, summary: Signal<GitRepositorySummary | null>, pullRequest: Signal<GitBranchPullRequest | null | undefined>,
-    hasAgentsAtWork: Signal<boolean>, openList: Signal<GitPullRequestList | null | undefined> = signal(undefined)) {
+    hasAgentsAtWork: Signal<boolean>, openList: Signal<GitPullRequestList | null | undefined> = signal(undefined),
+    opened: Signal<GitPullRequestList | null | undefined> = signal(undefined)) {
     this.folder = folder;
     this.name = Resources.formatHistoryTitle(folder);
     this.summary = summary;
@@ -85,6 +91,18 @@ export class GitWorkspaceRow {
     this.checksTone = computed(() => GitWorkspaceRow.checksToneOf(counted()));
     this.failing = computed(() => counted()?.failing ?? 0);
     this.hostState = computed(() => pullRequest()?.state ?? null);
+    const ready: Signal<GitPullRequestList | null> = computed(() => {
+      const listed: GitPullRequestList | null | undefined = opened();
+      return listed === undefined || listed === null || listed.state !== GitPullRequestsState.Ready ? null : listed;
+    });
+    this.open = computed(() => {
+      const listed: GitPullRequestList | null = ready();
+      return listed === null ? "" : Resources.formatOpenPullRequests(listed.rows.length, listed.hasMore, listed.rows.filter(t => t.failing > 0).length);
+    });
+    this.openTitle = computed(() => {
+      const listed: GitPullRequestList | null = ready();
+      return listed === null ? "" : Resources.formatOpenPullRequestsTitle(listed.rows.length, listed.hasMore, listed.rows.filter(t => t.failing > 0).length);
+    });
     this.views = computed(() => GitWorkspaceRow.viewsOf(summary(), pullRequest(), hasAgentsAtWork()));
   }
 
@@ -122,7 +140,7 @@ export class GitWorkspaceRow {
     if (shown === undefined)
       return Resources.noPullRequest;
     if (shown !== null && shown.pullRequest !== null && shown.pullRequestState !== null)
-      return Resources.formatWorkspacePullRequest(shown.pullRequest.label, shown.pullRequestState, shown.isWaitingForReview);
+      return Resources.formatWorkspacePullRequest(shown.pullRequest.label, shown.pullRequestState, shown.isWaitingForReview, shown.stateLabel);
     switch (shown?.state) {
       case GitPullRequestsState.Ready:
         return Resources.noPullRequest;

@@ -98,6 +98,24 @@ describe("AzureDevOpsWorkItemTableComponent", () => {
       ["rgb(119, 59, 147)", "rgb(0, 156, 204)", "rgb(0, 156, 204)", "rgb(0, 156, 204)"]]);
   });
 
+  it("draws a type's icon as Azure DevOps drew it, 0.875 of the symbol it stands in for and centred in the symbol's square, and the symbol when it drew none",
+    () => {
+    const svg: string = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill="#009CCC" d="M2 2h12v12H2z"/></svg>';
+    const drawn: HostWorkItemDetail = detailOf(7540, new HostWorkItemType("User Story", "009CCC", "icon_book", svg), "Import notes", null, [], [], 0);
+    const fixture = open([new WorkItemRow(drawn, 0), new WorkItemRow(bare, 0)]);
+    const [imaged, plain] = rowsOf(fixture);
+    const image = imaged?.querySelector<HTMLImageElement>("img.type-image");
+    const imageBox = image?.getBoundingClientRect();
+    const symbolBox = plain?.querySelector<HTMLElement>(".wi")?.getBoundingClientRect();
+
+    expect([image?.getAttribute("src"), imaged?.querySelector("span.wi"), plain?.querySelector("img")]).toEqual([`data:image/svg+xml,${encodeURIComponent(svg)}`,
+      null, null]);
+    const size: number = (symbolBox?.width ?? 0) * 0.875;
+    const inset: number = (symbolBox?.width ?? 0) * 0.0625;
+    expect([imageBox?.width, imageBox?.height, imageBox?.left]).toEqual([size, size, (symbolBox?.left ?? 0) + inset]);
+    expect(imageBox?.width).toBeGreaterThan(0);
+  });
+
   it("marks only the chosen work item's row as selected, its title in the same weight as the others'", () => {
     const fixture = open(rows, linked);
     const weights: string[] = rowsOf(fixture).map(t => getComputedStyle(t.querySelector(".cell-title") ?? t).fontWeight);

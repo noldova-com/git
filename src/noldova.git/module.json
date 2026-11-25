@@ -1,16 +1,17 @@
 {
   "id": "git",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "displayName": "Git",
   "description": "Shows a folder's Git state, stages, commits, switches branches, pushes, pulls, cherry-picks and reverts, and lets AI agents stage, commit, branch, push and pull through permission requests.",
   "parts": ["runtime", "window"],
   "dependencies": {},
-  "optionalDependencies": { "checkpoints": "0.0.3" },
+  "optionalDependencies": { "checkpoints": "0.0.3", "terminal": "0.0.7" },
   "noldovaDesktop": ">=0.0.16 <0.1.0",
   "contributes": {
     "methods": [
       "git.status",
       "git.diff",
+      "git.diffTotals",
       "git.branches",
       "git.mergedBranches",
       "git.remoteTracks",

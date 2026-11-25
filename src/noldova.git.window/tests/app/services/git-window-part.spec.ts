@@ -34,6 +34,7 @@ import { GitStatusBar } from "../../../src/app/services/git-status-bar.ts";
 import { GitWindowPart } from "../../../src/app/services/git-window-part.ts";
 import { GitWorkspaces } from "../../../src/app/services/git-workspaces.ts";
 import { GitFixtures } from "../../fixtures/git-fixtures.fixture.ts";
+import { Resources } from "../../../src/resources.ts";
 import manifest from "../../../../noldova.git/module.json" with { type: "json" };
 
 @Component({ selector: "nol-git-test-sign-in", template: "" })
@@ -51,6 +52,7 @@ describe("GitWindowPart", () => {
     context.allow("registerSettingsPage");
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
+    context.allow("onEvent");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
     context.allow("registerView");
@@ -69,7 +71,8 @@ describe("GitWindowPart", () => {
     expect(context.calls.map(t => t.member)).toEqual(["registerView", "registerView", "registerView", "registerDocument", "registerDocument", "registerDocument", "registerView",
       "registerView", "registerView", "registerView", "registerView", "onViewClosed", "onViewClosed", "onViewClosed", "onViewClosed", "registerCommand", "registerCommand", "registerCommand", "onViewClosed",
       "registerDocument", "registerCommand", "registerSettingsPage", "setSettingsRows", "registerStatusBarItem",
-      "registerStatusBarItem", "registerStatusBarItem"]);
+      "registerStatusBarItem", "registerStatusBarItem", "onEvent"]);
+    expect(context.activeCallsOf("onEvent")).toHaveLength(0);
   });
 
   it("registers only the views, documents and commands its module declares", async () => {
@@ -89,6 +92,7 @@ describe("GitWindowPart", () => {
     context.allow("registerSettingsPage");
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
+    context.allow("onEvent");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -125,6 +129,7 @@ describe("GitWindowPart", () => {
     context.allow("registerSettingsPage");
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
+    context.allow("onEvent");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -150,6 +155,7 @@ describe("GitWindowPart", () => {
     context.allow("registerSettingsPage");
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
+    context.allow("onEvent");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -174,6 +180,7 @@ describe("GitWindowPart", () => {
     context.allow("registerSettingsPage");
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
+    context.allow("onEvent");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -187,7 +194,7 @@ describe("GitWindowPart", () => {
     expect(await view?.loadComponent()).toBe(GitWorkspacesComponent);
   });
 
-  it("registers the command log as a view with an instance per repository, in the bottom dock's first group at order 20, hidden by default, with no padding, loading its component", async () => {
+  it("registers the command log as a view with an instance per repository, in the bottom dock's first group at order 20, hidden by default, with the app's padding for a docked view, as other views have, loading its component", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const views: ViewContribution[] = [];
     context.answer("registerView", t => {
@@ -198,6 +205,7 @@ describe("GitWindowPart", () => {
     context.allow("registerSettingsPage");
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
+    context.allow("onEvent");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -207,7 +215,7 @@ describe("GitWindowPart", () => {
     const view: ViewContribution | undefined = views[3];
 
     expect([view?.name, view?.title, view?.icon, view?.defaultSide, view?.isShownByDefault, view?.padding, view?.hasInstances, view?.defaultGroup, view?.defaultOrder])
-      .toEqual(["git.commands", "Command log", "receipt_long", DockSide.Bottom, false, ContentPadding.None, true, 0, 20]);
+      .toEqual(["git.commands", "Command log", "receipt_long", DockSide.Bottom, false, ContentPadding.Default, true, 0, 20]);
     expect(await view?.loadComponent()).toBe(GitCommandLogComponent);
   });
 
@@ -222,6 +230,7 @@ describe("GitWindowPart", () => {
     context.allow("registerSettingsPage");
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
+    context.allow("onEvent");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -247,6 +256,7 @@ describe("GitWindowPart", () => {
     context.allow("registerSettingsPage");
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
+    context.allow("onEvent");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -272,6 +282,7 @@ describe("GitWindowPart", () => {
     context.allow("registerSettingsPage");
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
+    context.allow("onEvent");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -300,6 +311,7 @@ describe("GitWindowPart", () => {
     context.allow("registerSettingsPage");
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
+    context.allow("onEvent");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
     onTestFinished(() => localStorage.clear());
@@ -334,6 +346,7 @@ describe("GitWindowPart", () => {
     context.allow("registerSettingsPage");
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
+    context.allow("onEvent");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -393,6 +406,7 @@ describe("GitWindowPart", () => {
     context.allow("registerSettingsPage");
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
+    context.allow("onEvent");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -451,6 +465,12 @@ describe("GitWindowPart", () => {
     expect(names.filter((t, i) => names.indexOf(t) !== i)).toEqual([]);
   });
 
+  it("lists the terminal module as a dependency, since Noldova Desktop refuses a module's run of another's command it doesn't list", () => {
+    const owner: string = Resources.newTerminalCommand.slice(0, Resources.newTerminalCommand.indexOf("."));
+
+    expect(Object.keys(manifest.optionalDependencies)).toContain(owner);
+  });
+
   it("refuses to open the history without a folder", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const commands: CommandContribution[] = [];
@@ -462,6 +482,7 @@ describe("GitWindowPart", () => {
     context.allow("registerSettingsPage");
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
+    context.allow("onEvent");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -484,6 +505,7 @@ describe("GitWindowPart", () => {
     });
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
+    context.allow("onEvent");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 

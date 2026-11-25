@@ -218,6 +218,18 @@ export class Resources {
     return `Changes made outside the Git view aren't followed, since the folder couldn't be watched: ${reason}`;
   }
 
+  public static formatStatusBarWatchFailed(folder: string, reason: string): string {
+    return `The status bar doesn't follow changes made outside the window in ${folder}, since it couldn't be watched: ${reason}`;
+  }
+
+  public static formatStatusBarUnwatchFailed(folder: string, reason: string): string {
+    return `The status bar couldn't stop watching ${folder}: ${reason}`;
+  }
+
+  public static formatStatusBarReadFailed(folder: string, reason: string): string {
+    return `The status bar couldn't read ${folder}: ${reason}`;
+  }
+
   public static formatUnwatchFailed(folder: string, reason: string): string {
     return `The Git view couldn't stop watching ${folder}: ${reason}`;
   }
@@ -236,6 +248,19 @@ export class Resources {
   }
 
   /** The section header's note: the host's name, and when it has more pull requests than the section lists, that there are more. */
+  /** The Dashboard's Open cell: how many pull requests the repository has open, a + when the host has more than it listed, and how many of them fail their checks. */
+  public static formatOpenPullRequests(open: number, hasMore: boolean, failing: number): string {
+    if (open === 0)
+      return Resources.noPullRequest;
+    const count: string = hasMore ? `${open}+` : `${open}`;
+    return failing > 0 ? `${count} · ${failing} failing` : count;
+  }
+
+  public static formatOpenPullRequestsTitle(open: number, hasMore: boolean, failing: number): string {
+    const count: string = `${open}${hasMore ? "+" : ""} open ${open === 1 && !hasMore ? "pull request" : "pull requests"}`;
+    return failing > 0 ? `${count}, ${failing} with failing checks` : count;
+  }
+
   public static formatPullRequestsHost(hostName: string, count: number): string {
     return count > Resources.shownPullRequests ? `${hostName} · ${Resources.shownPullRequests}+` : hostName;
   }
@@ -686,12 +711,31 @@ export class Resources {
     return `${name}, ${tracking}. Open the history`;
   }
 
+  public static readonly aheadArrow: string = "↑";
+  public static readonly behindArrow: string = "↓";
+
   public static formatAhead(ahead: number): string {
-    return `↑${ahead}`;
+    return `${Resources.aheadArrow}${ahead}`;
+  }
+
+  public static formatAheadTitle(ahead: number): string {
+    return `${ahead} ${ahead === 1 ? "commit" : "commits"} to push`;
+  }
+
+  public static formatBehindTitle(behind: number): string {
+    return `${behind} ${behind === 1 ? "commit" : "commits"} to pull`;
+  }
+
+  public static formatRemoteAheadTitle(ahead: number): string {
+    return `${ahead} ${ahead === 1 ? "commit" : "commits"} your branch doesn't have`;
+  }
+
+  public static formatRemoteBehindTitle(behind: number): string {
+    return `${behind} ${behind === 1 ? "commit" : "commits"} on your branch it doesn't have`;
   }
 
   public static formatBehind(behind: number): string {
-    return `↓${behind}`;
+    return `${Resources.behindArrow}${behind}`;
   }
 
   public static formatHistoryTitle(folder: string): string {
@@ -773,6 +817,9 @@ export class Resources {
   public static readonly tagNameLabel: string = "New tag name";
   public static readonly switchLabel: string = "Switch to branch";
   public static readonly switchIcon: string = "swap_horiz";
+  public static readonly openInBrowserLabel: string = "Open in browser";
+  public static readonly copyLinkLabel: string = "Copy link";
+  public static readonly copyLinkIcon: string = "link";
   public static readonly renameLabel: string = "Rename…";
   public static readonly renameIcon: string = "edit";
   public static readonly deleteLabel: string = "Delete";
@@ -1269,6 +1316,7 @@ export class Resources {
   public static readonly fetchedColumn: string = "Fetched";
   public static readonly pullRequestColumn: string = "Pull request";
   public static readonly checksColumn: string = "Checks";
+  public static readonly openColumn: string = "Open";
   /** The branch has no pull request, or no host reads the repository's pull requests. */
   public static readonly noPullRequest: string = "None";
   public static readonly pullRequestSignedOut: string = "Sign in";
@@ -1326,11 +1374,14 @@ export class Resources {
     return selected === 0 ? repositories : `${repositories} · ${selected} selected`;
   }
 
-  /** A branch's pull request as the workspace shows it, such as "#214 open", "#1046 draft", "#22 merged", or "Review #533" when it waits for its reviews. */
-  public static formatWorkspacePullRequest(label: string, state: GitPullRequestState, isWaitingForReview: boolean): string {
+  /**
+   * A branch's pull request as the workspace shows it, such as "#214 open", "#1046 draft", "#22 merged", or "Review #533" when it waits for its reviews;
+   * with the host's own word for its state when it gives one, such as "!22 completed".
+   */
+  public static formatWorkspacePullRequest(label: string, state: GitPullRequestState, isWaitingForReview: boolean, stateLabel: string | null = null): string {
     if (state === GitPullRequestState.Open && isWaitingForReview)
       return `Review ${label}`;
-    return `${label} ${Resources.workspacePullRequestStates[state]}`;
+    return `${label} ${stateLabel?.toLowerCase() ?? Resources.workspacePullRequestStates[state]}`;
   }
 
   public static formatRemoveRepositories(count: number): string {

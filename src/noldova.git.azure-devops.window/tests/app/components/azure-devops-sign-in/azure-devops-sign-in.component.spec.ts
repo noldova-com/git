@@ -147,13 +147,28 @@ describe("AzureDevOpsSignInComponent", () => {
     expect(page.requests.methods).toEqual([AzureDevOpsNames.readSignInMethod]);
     expect([...page.texts("h3, p, h4"), ...page.labels()]).toEqual(["Account",
       "Sign in to see pull requests, their checks and their reviewers' votes. Git works without it.",
-      "The token needs the Code (Read) scope in this organization. It's kept in this computer's secrets.", "Or sign in with Microsoft",
+      "Make the token in this organization with these scopes. It's kept in this computer's secrets.", "Or sign in with Microsoft",
       "Your organization's admin may need to approve this app.", "Sign in", "Make a token on Azure DevOps", "Sign in with Microsoft"]);
     expect([organization.type, organization.autocomplete, organization.getAttribute("aria-label"), organization.placeholder, organization.value,
       organization.classList.contains("nol-text-field")]).toEqual(["text", "off", "Organization", "Organization, as in dev.azure.com/organization", "", true]);
     expect([field.type, field.autocomplete, field.getAttribute("aria-label"), field.placeholder, field.value, field.classList.contains("nol-text-field")])
       .toEqual(["password", "off", "Personal access token", "Paste a personal access token", "", true]);
     expect([page.button("Sign in").disabled, page.button("Make a token").disabled, page.element.querySelector("[role=alert]")]).toEqual([true, true, null]);
+  });
+
+  it("lists the scopes a token needs under its note, in the note's colour and size, starting at its edge and indented past the bullets", async () => {
+    const page = await new Page().openAsync(HostSignIn.signedOut());
+    const note = [...page.element.querySelectorAll("p")].find(t => t.textContent.startsWith("Make the token"));
+    const list = page.element.querySelector("ul[aria-label='Token scopes']");
+    const items = [...list?.querySelectorAll("li") ?? []];
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const [noteBox, listBox, itemBox] = [note?.getBoundingClientRect(), list?.getBoundingClientRect(), items[0]?.getBoundingClientRect()];
+
+    expect(items.map(t => t.textContent.trim())).toEqual(["Code (Read & write)", "Work Items (Read & write)", "Graph (Read)", "Build (Read)"]);
+    expect([listBox?.left, ((itemBox?.left ?? 0) - (listBox?.left ?? 0)) / rem, (listBox?.top ?? 0) >= (noteBox?.bottom ?? Infinity)]).toEqual([noteBox?.left, 1.25, true]);
+    const looksOf = (element: Element | null | undefined): readonly string[] => element === null || element === undefined ? [] : [getComputedStyle(element).color,
+      getComputedStyle(element).fontSize];
+    expect([looksOf(list), looksOf(note).length]).toEqual([looksOf(note), 2]);
   });
 
   it("fills the organization from the open repository's Azure DevOps remote, and signs in and makes a token there", async () => {

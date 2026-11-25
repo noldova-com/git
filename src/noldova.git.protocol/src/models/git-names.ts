@@ -10,6 +10,7 @@ export class GitNames {
   public static readonly moduleId: string = "git";
   public static readonly statusMethod: string = "git.status";
   public static readonly diffMethod: string = "git.diff";
+  public static readonly diffTotalsMethod: string = "git.diffTotals";
   public static readonly branchesMethod: string = "git.branches";
   public static readonly logMethod: string = "git.log";
   public static readonly graphMethod: string = "git.graph";

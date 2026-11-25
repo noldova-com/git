@@ -168,7 +168,7 @@ export class RuntimePart implements IRuntimePart {
     const monitor = new ChangeMonitor(runner, context.log, top => {
       for (const watch of watches.watchesOf(top))
         changed.publishTo(watch.connection, watch.window, new GitChanged(watch.folder).toJson());
-    });
+    }, Resources.treeWatchOf(process.platform));
     this.monitor = monitor;
     const sharedReads = new SharedReads(this.reads);
     const register = <T extends { readonly folder: string }>(
@@ -191,6 +191,7 @@ export class RuntimePart implements IRuntimePart {
       return status;
     });
     register(GitNames.diffMethod, t => GitDiffParams.fromJson(t), (folders, params, signal) => diffs.readAsync(folders.top, params.scope, [], signal));
+    register(GitNames.diffTotalsMethod, t => GitDiffParams.fromJson(t), (folders, params, signal) => diffs.countAsync(folders.top, params.scope, signal));
     register(GitNames.branchesMethod, t => GitFolderParams.fromJson(t), (folders, _params, signal) => branches.readAsync(folders.top, signal));
     register(GitNames.mergedBranchesMethod, t => GitFolderParams.fromJson(t), (folders, _params, signal) => branches.readMergedAsync(folders.top, signal));
     register(GitNames.remoteTracksMethod, t => GitFolderParams.fromJson(t), (folders, _params, signal) => branches.readRemoteTracksAsync(folders.top, signal));

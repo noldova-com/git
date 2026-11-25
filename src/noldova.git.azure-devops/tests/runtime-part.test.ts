@@ -25,6 +25,7 @@ const profile = (): Response => FakeAzure.json({ authenticatedUser: { providerDi
 const reference: JsonValue = new HostReference("git-azure-devops", "fabrikam", "3411ebc1-d5aa-464f-9615-0b527bc66719", 12).toJson();
 const bugItem: JsonValue = { id: 42, fields: { "System.TeamProject": "web", "System.WorkItemType": "Bug", "System.Title": "Fix the sign-in", "System.State": "New" } };
 const bugType = (): Response => FakeAzure.json({ name: "Bug", color: "CC293D", icon: { id: "icon_insect" }, states: [{ name: "New", category: "Proposed" }] });
+const noIcon = (): Response => new Response(null, { status: 404 });
 const bugDetail: HostWorkItemDetail = new HostWorkItemDetail(new HostWorkItem("git-azure-devops", "fabrikam", "web", 42, new HostWorkItemType("Bug", "CC293D",
   "icon_insect"), "Fix the sign-in", "New", WorkItemCategory.Proposed, "https://dev.azure.com/fabrikam/web/_workitems/edit/42", null, null, null, null), null, null,
 null, null, null, [], [], 0, []);
@@ -229,7 +230,7 @@ describe("RuntimePart", () => {
     const azure = new FakeAzure();
     azure.hold();
     azure.answer(FakeAzure.json({ id: 42, fields: { "System.TeamProject": "web", "System.WorkItemType": "Bug", "System.Title": "Fix the sign-in",
-      "System.State": "New" } }), FakeAzure.json({ name: "Bug", color: "CC293D", icon: { id: "icon_insect" }, states: [{ name: "New", category: "Proposed" }] }));
+      "System.State": "New" } }), FakeAzure.json({ name: "Bug", color: "CC293D", icon: { id: "icon_insect" }, states: [{ name: "New", category: "Proposed" }] }), noIcon());
     vi.stubGlobal("fetch", azure.fetch);
     const part = new RuntimePart();
     const context = new RuntimeContext();
@@ -302,7 +303,7 @@ describe("RuntimePart", () => {
   it("serves a signed-in work items read through its method as a list of their details and whether the search stopped at its limit, and refuses a query that isn't the protocol's", async () => {
     const azure = new FakeAzure();
     azure.hold();
-    azure.answer(FakeAzure.json({ count: 1, value: [bugItem] }), bugType());
+    azure.answer(FakeAzure.json({ count: 1, value: [bugItem] }), bugType(), noIcon());
     vi.stubGlobal("fetch", azure.fetch);
     const part = new RuntimePart();
     const context = new RuntimeContext();
@@ -320,7 +321,7 @@ describe("RuntimePart", () => {
   it("updates a work item only for the app's main process acting for a window, with a payload it can read, and answers its detail", async () => {
     const azure = new FakeAzure();
     azure.hold();
-    azure.answer(FakeAzure.json(bugItem), bugType());
+    azure.answer(FakeAzure.json(bugItem), bugType(), noIcon());
     vi.stubGlobal("fetch", azure.fetch);
     const part = new RuntimePart();
     const context = new RuntimeContext();
@@ -337,7 +338,7 @@ describe("RuntimePart", () => {
 
     assert.deepEqual([refusals, answer, azure.urls().slice(1)], [[FailureCode.Unauthorized, FailureCode.Unauthorized, FailureCode.Unauthorized,
       FailureCode.InvalidParams], bugDetail.toJson(), ["https://dev.azure.com/fabrikam/_apis/wit/workitems/42?$expand=relations&api-version=7.1",
-      "https://dev.azure.com/fabrikam/web/_apis/wit/workitemtypes/Bug?api-version=7.1"]]);
+      "https://dev.azure.com/fabrikam/web/_apis/wit/workitemtypes/Bug?api-version=7.1", "https://dev.azure.com/fabrikam/_apis/wit/workitemicons/icon_insect?color=CC293D&v=2&api-version=7.1"]]);
   });
 
   it("replies to a thread and changes its state only for the app's main process acting for a window, with a payload it can read", async () => {

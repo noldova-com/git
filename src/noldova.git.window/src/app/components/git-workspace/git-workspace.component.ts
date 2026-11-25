@@ -171,11 +171,6 @@ export class GitWorkspaceComponent {
     const acrossViews: GitDetailView<GitWorkspaceAcross> = GitWorkspaceAcrossViews.of(this.context);
     acrossViews.follow(this.across, active, inject(Injector));
     GitWorkspaceSides.of(this.context).follow(this.side, active, inject(Injector));
-    effect(() => {
-      const across: GitWorkspaceAcross = this.across();
-      if (active())
-        untracked(() => acrossViews.showOnce(across));
-    });
     inject(DestroyRef).onDestroy(() => {
       window.removeEventListener("focus", refresh);
       this.summaries.dispose();
@@ -343,7 +338,7 @@ export class GitWorkspaceComponent {
     const summary: Signal<GitRepositorySummary | null> = this.summaries.summaryOf(folder);
     const list: Signal<GitPullRequestList | null | undefined> = this.pullRequests.listOf(folder, summary);
     return new GitWorkspaceRow(folder, summary, this.pullRequests.branchOf(folder, summary, list), computed(() => this.hasAgentsAtWork(folder)),
-      this.pullRequests.stackListOf(folder, summary, list));
+      this.pullRequests.stackListOf(folder, summary, list), this.pullRequests.openListOf(folder, summary));
   }
 
   /** Runs a module's member, reporting what it throws and answering the fallback instead. */

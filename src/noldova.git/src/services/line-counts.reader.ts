@@ -52,7 +52,7 @@ export class LineCountsReader {
     return counted;
   }
 
-  private static parse(output: Buffer): Map<string, LineCounts | null> {
+  public static parse(output: Buffer): Map<string, LineCounts | null> {
     const counts = new Map<string, LineCounts | null>();
     const records = LineCountsReader.split(output);
     for (let index = 0; index < records.length; index++) {

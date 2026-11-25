@@ -167,6 +167,76 @@ describe("GitPullRequestsComponent", () => {
     ]);
   });
 
+  describe("its row's menu", () => {
+    const menuOf = async (row: Element | undefined): Promise<HTMLButtonElement[]> => {
+      const box: DOMRect = row?.getBoundingClientRect() ?? new DOMRect();
+      row?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: box.left + 4, clientY: box.top + 4, button: 2 }));
+      await vi.waitUntil(() => document.querySelector("[nol-menu-item]") !== null);
+      return [...document.querySelectorAll<HTMLButtonElement>("[nol-menu-item]")];
+    };
+    const choose = async (row: Element | undefined, action: string): Promise<void> => {
+      (await menuOf(row)).find(t => t.dataset["action"] === action)?.click();
+      await vi.waitUntil(() => document.querySelector("[nol-menu-item]") === null);
+    };
+    const close = async (): Promise<void> => {
+      document.querySelector("[nol-menu-item]")?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true, cancelable: true }));
+      await vi.waitUntil(() => document.querySelector("[nol-menu-item]") === null);
+    };
+    const isOff = (item: HTMLButtonElement): boolean => item.disabled || item.getAttribute("aria-disabled") === "true";
+
+    it("offers Switch to branch, Open in browser and Copy link on the whole row, its link too, the switch off until the panel can switch and on the current branch's own", async () => {
+      const mounted: IMounted = await mount();
+      const switched: string[] = [];
+      mounted.fixture.componentInstance.switchTo.subscribe(t => switched.push(t));
+      mounted.list.set(GitPullRequestList.ready([rowOf(1), rowOf(2)]));
+      await mounted.fixture.whenStable();
+      const rows: Element[] = [...mounted.element.querySelectorAll(".pull-request")];
+      const items: HTMLButtonElement[] = await menuOf(rows[0]);
+      const before: [string | undefined, string, boolean][] = items.map(t => [t.dataset["action"], (t.textContent ?? "").trim(), isOff(t)]);
+      await close();
+      mounted.fixture.componentRef.setInput("canSwitch", true);
+      mounted.fixture.componentRef.setInput("current", "change-2");
+      await mounted.fixture.whenStable();
+      const ownIsOff: boolean = isOff((await menuOf(rows[1]))[0] ?? document.createElement("button"));
+      await close();
+
+      const onLink: (string | undefined)[] = (await menuOf(rows[0]?.querySelector("a") ?? undefined)).map(t => t.dataset["action"]);
+      await close();
+      // The window's own link menu opens only for a right-click nothing handled, so the row's menu taking it keeps that one shut.
+      const linkClick = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, button: 2 });
+      rows[0]?.querySelector("a")?.dispatchEvent(linkClick);
+      await vi.waitUntil(() => document.querySelector("[nol-menu-item]") !== null);
+      await close();
+      await choose(rows[0], "switch");
+
+      expect([onLink, linkClick.defaultPrevented]).toEqual([["switch", "open", "copy"], true]);
+      expect(before.map(t => [t[0], t[2]])).toEqual([["switch", true], ["open", false], ["copy", false]]);
+      expect(before.map(t => t[1].endsWith("Switch to branch") || t[1].endsWith("Open in browser") || t[1].endsWith("Copy link"))).toEqual([true, true, true]);
+      expect([ownIsOff, switched]).toEqual([true, ["change-1"]]);
+    });
+
+    it("opens the pull request's page in the browser even for a host with its own page, copies its link, and reports a copy the system refuses", async () => {
+      const mounted: IMounted = await mount({ open: () => true });
+      mounted.context.answer("openLinkAsync", () => Promise.resolve());
+      const writes = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("copy refused"));
+      onTestFinished(() => writes.mockRestore());
+      mounted.list.set(GitPullRequestList.ready([rowOf(1)]));
+      await mounted.fixture.whenStable();
+      const row: Element | undefined = mounted.element.querySelector(".pull-request") ?? undefined;
+
+      await choose(row, "open");
+      await choose(row, "copy");
+      await choose(row, "copy");
+      await vi.waitUntil(() => mounted.handled.length > 0);
+
+      expect([mounted.context.callsOf("openLinkAsync"), writes.mock.calls, mounted.handled.map(t => String(t))]).toEqual([
+        [["https://github.com/example-owner/example-repository/pull/1", { place: LinkPlace.System }]],
+        [["https://github.com/example-owner/example-repository/pull/1"], ["https://github.com/example-owner/example-repository/pull/1"]],
+        ["Error: copy refused"]
+      ]);
+    });
+  });
+
   it("makes each row's number the link to its pull request, whose click opens it once as the row's does, and keeps the whole row a click target", async () => {
     const opened: string[] = [];
     const mounted: IMounted = await mount({ open: (folder, row) => opened.push(`${folder} ${row.key}`) > 0 });

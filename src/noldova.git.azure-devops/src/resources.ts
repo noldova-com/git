@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import { FailureCode } from "@noldova/desktop.protocol";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
 import { CheckState, type HostReference, HostReviewRequestList, PolicyState, ThreadStatus, WorkItemCategory } from "@noldova/git.hosting.protocol";
 
@@ -116,6 +117,14 @@ export class Resources {
   public static readonly acceptHeader: string = "Accept";
   public static readonly authorizationHeader: string = "Authorization";
   public static readonly jsonType: string = "application/json";
+  public static readonly svgType: string = "image/svg+xml";
+  /** What an icon's read accepts: SVG first, and anything else as a browser does, since Azure DevOps answers a stricter ask with no image. */
+  public static readonly svgAccept: string = "image/svg+xml, */*;q=0.8";
+  public static readonly iconTooLarge: string = "it's larger than 64 KiB";
+  public static readonly iconNotSvg: string = "it isn't SVG";
+  /** The most of a work item type's icon the module reads; Azure DevOps' are under 2 KB. */
+  public static readonly maximumIconBytes: number = 65_536;
+  public static readonly svgPattern: RegExp = /^\s*(?:<\?xml[^>]*\?>\s*)?<svg[\s>]/u;
   public static readonly contentTypeHeader: string = "Content-Type";
   public static readonly jsonPatchType: string = "application/json-patch+json";
   public static readonly patchMethod: string = "PATCH";
@@ -280,6 +289,23 @@ export class Resources {
   public static readonly renameChange: string = "rename";
   public static readonly changeTypeSeparator: RegExp = /\s*,\s*/v;
   public static readonly leadingSlashesPattern: RegExp = /^\/+/v;
+  /** A file diffs request's fields, and the files it asks about at a time, since Azure DevOps documents no limit. */
+  public static readonly baseVersionCommitField: string = "baseVersionCommit";
+  public static readonly targetVersionCommitField: string = "targetVersionCommit";
+  public static readonly fileDiffParamsField: string = "fileDiffParams";
+  public static readonly fileDiffsBatch: number = 100;
+  /** The changes a pull request's files read a page at a time, so its at most 5000 files take at most 6 pages and its counts 50 batches of line blocks. */
+  public static readonly changesPage: number = 1000;
+  public static readonly fileDiffsNotFoundMessage: string = "Azure DevOps found no line blocks for the pull request's files.";
+  /** The failures that leave a pull request's counts unknown rather than failing its read: an answer Azure DevOps can't give, or doesn't give in time. */
+  public static readonly unknownCountFailures: readonly FailureCode[] = [FailureCode.Unavailable, FailureCode.DeadlineExceeded];
+  /** A file diff's line blocks and their change types: none, add, delete and edit. */
+  public static readonly lineDiffBlocksField: string = "lineDiffBlocks";
+  public static readonly modifiedLinesCountField: string = "modifiedLinesCount";
+  public static readonly originalLinesCountField: string = "originalLinesCount";
+  public static readonly addBlock: string = "add";
+  public static readonly deleteBlock: string = "delete";
+  public static readonly editBlock: string = "edit";
   public static readonly itemField: string = "item";
   /** What ends a commit message's first line. */
   public static readonly subjectEndPattern: RegExp = /\r?\n/v;
@@ -311,6 +337,7 @@ export class Resources {
   public static readonly iterationPathField: string = "System.IterationPath";
   public static readonly areaPathField: string = "System.AreaPath";
   public static readonly parentField: string = "System.Parent";
+  public static readonly changedDateField: string = "System.ChangedDate";
   public static readonly colorField: string = "color";
   public static readonly iconField: string = "icon";
   public static readonly statesField: string = "states";
@@ -401,6 +428,19 @@ export class Resources {
     return `data:${type};base64,${base64}`;
   }
 
+  /** Why a pull request's line and file counts aren't shown, by its number and the failure's message, which carries no value from the answer. */
+  public static formatCountsUnknown(number: number, reason: string): string {
+    return `Azure DevOps pull request !${String(number)} shows no line and file counts: ${reason}`;
+  }
+
+  public static formatIconRefused(status: number): string {
+    return `Azure DevOps answered ${status}`;
+  }
+
+  public static formatIconDropped(icon: string, reason: string): string {
+    return `Azure DevOps' ${icon} icon isn't shown: ${reason}.`;
+  }
+
   public static formatAvatarDropped(reason: string): string {
     return `An Azure DevOps picture isn't shown: ${reason}.`;
   }
@@ -463,7 +503,7 @@ export class Resources {
 
   public static formatBuildsUrl(organization: string, project: string, repository: string, number: number): string {
     return `https://dev.azure.com/${organization}/${encodeURIComponent(project)}/_apis/build/builds?branchName=${encodeURIComponent(`refs/pull/${number}/merge`)}`
-      + `&repositoryId=${encodeURIComponent(repository)}&repositoryType=TfsGit&api-version=7.1`;
+      + `&repositoryId=${encodeURIComponent(repository)}&repositoryType=TfsGit&maxBuildsPerDefinition=1&queryOrder=queueTimeDescending&api-version=7.1`;
   }
 
   public static formatPullRequestCommitsUrl(organization: string, repository: string, number: number): string {
@@ -482,9 +522,21 @@ export class Resources {
     return path === Resources.jsonRootPath ? Resources.unreadableAnswerMessage : `Azure DevOps' answer couldn't be read at ${path}.`;
   }
 
-  public static formatPullRequestChangesUrl(organization: string, repository: string, number: number, iteration: number, top: number): string {
+  /** The line blocks of each file asked about between two commits. */
+  public static formatFileDiffsUrl(organization: string, project: string, repository: string): string {
+    return `https://dev.azure.com/${organization}/${encodeURIComponent(project)}/_apis/git/repositories/${encodeURIComponent(repository)}/FileDiffs`
+      + "?api-version=7.1-preview.1";
+  }
+
+  /** A repository path as Azure DevOps writes it, from the root. */
+  public static formatAzurePath(path: string): string {
+    return `/${path}`;
+  }
+
+  /** A push's changes against the target branch, `top` of them after the first `skip`. */
+  public static formatPullRequestChangesUrl(organization: string, repository: string, number: number, iteration: number, top: number, skip: number = 0): string {
     return `https://dev.azure.com/${organization}/_apis/git/repositories/${encodeURIComponent(repository)}/pullRequests/${number}/iterations/${iteration}`
-      + `/changes?$top=${top}&$compareTo=0&api-version=7.1`;
+      + `/changes?$top=${top}${skip > 0 ? `&$skip=${skip}` : ""}&$compareTo=0&api-version=7.1`;
   }
 
   /** The conflicts that keep a pull request from merging, at most the given number. */
@@ -566,6 +618,11 @@ export class Resources {
 
   private static formatText(text: string): string {
     return `'${text.replaceAll("'", "''")}'`;
+  }
+
+  /** A work item type's icon drawn in its color, as SVG, which Azure DevOps answers to an Accept of image/svg+xml. */
+  public static formatWorkItemIconUrl(organization: string, icon: string, color: string): string {
+    return `https://dev.azure.com/${organization}/_apis/wit/workitemicons/${encodeURIComponent(icon)}?color=${encodeURIComponent(color)}&v=2&api-version=7.1`;
   }
 
   public static formatWorkItemTypeUrl(organization: string, project: string, type: string): string {

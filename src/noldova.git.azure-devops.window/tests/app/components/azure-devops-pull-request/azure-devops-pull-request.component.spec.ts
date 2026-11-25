@@ -18,7 +18,8 @@ import { CheckState, FileChangeKind, HostAccount, HostBuild, HostChanges, HostCo
   HostPullRequestFile, HostPullRequestFiles,
   HostPullRequestThreads, HostPullRequestUpdate, HostPullRequestUpdates, HostReference, HostReviewer, HostSignIn, HostThread, HostWorkItemLink, HostWorkItemType, PolicyState, ReferenceKind,
   ReferenceState, ThreadStatus, WorkItemCategory } from "@noldova/git.hosting.protocol";
-import { DiffFile, DiffHunk, DiffLine, FileChange, GitDiff, GitNames, GitPullParams, GitRemote, GitStatus, LineKind, RemoteTransport, StatusUpstream }
+import { DiffFile, DiffHunk, DiffLine, DiffTotals, FileChange, GitDiff, GitNames, GitPullParams, GitRemote,
+  GitStatus, LineKind, RemoteTransport, StatusUpstream }
   from "@noldova/git.protocol";
 import { GitFileLine, GitFolder, GitPullRequestFilesComponent } from "@noldova/git.window";
 import { provideMarkdown } from "@noldova/ui.components.angular/markdown";
@@ -196,6 +197,11 @@ class Page {
   }
 
   /** The elements the selector matches on the page, then in the Pull request view. */
+  /** The Files tab's files, each as its change letter and path, leaving out the folder rows its layout adds. */
+  public files(): string[] {
+    return this.queryAll("nol-git-pull-request-files .row:not(.folder)").map(t => `${t.querySelector(".letter")?.textContent ?? ""} ${t.getAttribute("title") ?? ""}`);
+  }
+
   public queryAll<T extends Element = Element>(selector: string): T[] {
     return [...this.element.querySelectorAll<T>(selector), ...this.detail.querySelectorAll<T>(selector)];
   }
@@ -292,7 +298,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
       .toEqual([null, ["Reviewers", "Policies", "Builds", "Work items", "nol-git-azure-devops-complete"]]);
   });
 
-  it("opens the Pull request view, without showing it, once its pull request is read, leaves it open for the next one, and titles it for the one it shows",
+  it("brings the Pull request view to the front, without the focus, once each pull request the document names is read, and titles it for the one it shows",
     async () => {
       const page = new Page();
       page.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson(), otherPullRequest(ReferenceState.Open).toJson());
@@ -303,9 +309,24 @@ describe("AzureDevOpsPullRequestComponent", () => {
       await page.settleAsync();
 
       expect([page.context.callsOf("openView"), page.context.callsOf("showView"), first, page.context.callsOf("updateView").at(-1)])
-        .toEqual([[["git-azure-devops.pullRequestDetail", "selected", "Pull request !752"]], [],
+        .toEqual([[["git-azure-devops.pullRequestDetail", "selected", "Pull request !752"], ["git-azure-devops.pullRequestDetail", "selected", "Pull request !7"]], [],
           ["git-azure-devops.pullRequestDetail", "selected", { title: "Pull request !752" }], ["git-azure-devops.pullRequestDetail", "selected", { title: "Pull request !7" }]]);
     });
+
+  it("opens no view for a document read while another is in front, and brings it forward once the person brings the document to the front, once", async () => {
+    const page = new Page();
+    page.active.set(false);
+    page.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson());
+    await page.openAsync();
+    const behind: number = page.context.callsOf("openView").length;
+    page.active.set(true);
+    await page.settleAsync();
+    const front: number = page.context.callsOf("openView").length;
+    page.active.set(true);
+    await page.settleAsync();
+
+    expect([behind, front, page.context.callsOf("openView").length, page.context.callsOf("showView")]).toEqual([0, 1, 1, []]);
+  });
 
   it("keeps the last pull request in the view while another kind of document is in front, and says to open one once no pull request is open", async () => {
     const page = new Page();
@@ -410,7 +431,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     await page.clickAsync("Updates");
 
     expect(counted).toEqual(["Overview", "Files 12", "Updates 100+", "Commits 5", "Conflicts"]);
-    expect([page.texts("nol-git-pull-request-files .row").length, page.texts("nol-git-azure-devops-pull-request-updates .row").length,
+    expect([page.files().length, page.texts("nol-git-azure-devops-pull-request-updates .row").length,
       page.payloadsOf(AzureDevOpsNames.readPullRequestChangesMethod), page.payloadsOf(AzureDevOpsNames.readPullRequestUpdatesMethod)])
       .toEqual([12, 100, [reference.toJson()], [reference.toJson()]]);
   });
@@ -455,7 +476,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     expect(failed).toEqual([["Overview", "Files", "Updates", "Commits 5", "Conflicts"], [
       "The Azure DevOps module's git-azure-devops.readPullRequestChanges request failed: WindowFailure: The runtime stopped.",
       "The Azure DevOps module's git-azure-devops.readPullRequestUpdates request failed: WindowFailure: The runtime stopped."]]);
-    expect([page.texts("nol-git-pull-request-files .row"), page.payloadsOf(AzureDevOpsNames.readPullRequestChangesMethod).length]).toEqual([["A src/a.ts"], 2]);
+    expect([page.files(), page.payloadsOf(AzureDevOpsNames.readPullRequestChangesMethod).length]).toEqual([["A src/a.ts"], 2]);
   });
 
   it("drops a tab's answer or failure read for a pull request the page left", async () => {
@@ -520,7 +541,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
 
     await page.clickAsync("Files");
     await page.untilAsync(() => page.texts(".tab")[1] === "Files 2");
-    const files = [current(), shown(), page.texts("nol-git-pull-request-files .row")];
+    const files = [current(), shown(), page.files()];
     await page.clickAsync("Conflicts");
     await page.untilAsync(() => page.texts(".tab")[4] === "Conflicts 1");
 
@@ -1164,6 +1185,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
         FileChangeKind.Modified, null)], false).toJson());
       page.requests.otherwise(GitNames.statusMethod, cloneStatus());
       page.requests.answer(GitNames.commitDetailMethod, {}, {});
+      page.requests.answer(GitNames.diffTotalsMethod, new DiffTotals(1, 1, 0).toJson());
       page.requests.answer(GitNames.diffMethod, diff.toJson());
       page.context.answer("openLinkAsync", async () => undefined);
       return page;

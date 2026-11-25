@@ -9,19 +9,21 @@
 import { computed, DestroyRef, effect, type Injector, linkedSignal, type Signal, signal, untracked, type WritableSignal } from "@angular/core";
 import type { IWindowPartContext } from "@noldova/desktop.window";
 
-/** A detail view beside the documents that shows what the active document of its kind chose, such as a work item or a conflict. */
+/**
+ * A detail view beside the documents that shows what the active document of its kind chose, such as a work item or a conflict. One rule brings it to the
+ * front of its group: a followed document coming to the front with a choice, or showing its first one while in front, and a choice the person makes; a
+ * read again that keeps a choice moves nothing, and the focus always stays where it is.
+ */
 export class GitDetailView<T> {
   private readonly context: IWindowPartContext;
   private readonly view: string;
   private readonly instance: string;
   private readonly titleOf: (choice: T) => string;
+  private readonly isBroughtForward: boolean;
   private readonly pages: WritableSignal<readonly (readonly [Signal<T | null>, Signal<boolean>])[]> = signal([]);
-  private isShown: boolean = false;
-  private isReturned: boolean = false;
-  private isFrontAsked: boolean = false;
-  /** The followed document that was in front when the view was asked forward, `null` until one is; another one coming to the front ends the ask. */
-  private askedPage: readonly [Signal<T | null>, Signal<boolean>] | null = null;
   private readonly opened: WritableSignal<boolean> = signal<boolean>(false);
+  /** The choice the view last opened for while its document stayed in front, so a document showing the one the person just chose doesn't open it twice. */
+  private lastOpened: T | null = null;
 
   /** The choice of the followed document that is the window's active document: `undefined` while none is, `null` while it has nothing chosen. */
   public readonly front: Signal<T | null | undefined> = computed(() => this.pages().find(t => t[1]())?.[0]());
@@ -39,63 +41,59 @@ export class GitDetailView<T> {
   /** Whether the view is open since a choice opened it: `false` before, and once the person closed it, which `listen` hears. */
   public readonly isOpen: Signal<boolean> = this.opened.asReadonly();
 
-  public constructor(context: IWindowPartContext, view: string, instance: string, titleOf: (choice: T) => string) {
+  /**
+   * @param isBroughtForward Whether a followed document coming to the front brings the view forward; false for a view that stays where the person put it,
+   * which only `showInFront` and `bringForward` open.
+   */
+  public constructor(context: IWindowPartContext, view: string, instance: string, titleOf: (choice: T) => string, isBroughtForward: boolean = true) {
     this.context = context;
     this.view = view;
     this.instance = instance;
     this.titleOf = titleOf;
+    this.isBroughtForward = isBroughtForward;
   }
 
   /**
-   * Adds a document's choice, with whether it is the window's active document, until the document's injector is destroyed; while the view is open,
-   * the person leaving the followed documents gives its group's front back with `returnView`, and coming back to one brings the view forward again.
+   * Adds a document's choice, with whether it is the window's active document, until the document's injector is destroyed. The document coming to the
+   * front with a choice, or showing its first choice while in front, brings the view forward; while the view is open, the person leaving the followed
+   * documents for another kind gives its group's front back with `returnView`.
    */
   public follow(choice: Signal<T | null>, active: Signal<boolean>, injector: Injector): void {
     const page: readonly [Signal<T | null>, Signal<boolean>] = [choice, active];
     this.pages.update(t => [...t, page]);
     injector.get(DestroyRef).onDestroy(() => this.pages.update(t => t.filter(u => u !== page)));
-    let wasActive: boolean = untracked(active);
-    if (wasActive)
-      this.cameToFront(page);
+    let wasShowing: boolean = false;
+    let wasActive: boolean = false;
     effect(() => {
-      const isActive = active();
-      untracked(() => this.turned(page, wasActive, isActive));
+      const isActive: boolean = active();
+      const chosen: T | null = choice();
+      const isShowing: boolean = isActive && chosen !== null;
+      untracked(() => {
+        if (wasActive && !isActive)
+          this.lastOpened = null;
+        if (isShowing && !wasShowing && chosen !== null && chosen !== this.lastOpened && this.isBroughtForward)
+          this.open(chosen);
+        else if (wasActive && !isActive && this.opened() && this.front() === undefined)
+          this.context.returnView(this.view, this.instance);
+      });
+      wasShowing = isShowing;
       wasActive = isActive;
     }, { injector });
   }
 
-  /** Opens the view the first time a document in front shows a choice, leaving the focus where it is; later, the person's choice of tab stays. */
-  public showOnce(choice: T): void {
-    if (!this.isShown || this.isFrontAsked)
-      this.open(choice);
-  }
-
-  /** Opens the view, leaving the focus where it is, when the person chose while it is closed; while it is open, its tab stays where it is. */
-  public showChosen(choice: T): void {
-    if (!this.opened())
-      this.open(choice);
-  }
-
-  /** Opens the view, leaving the focus where it is, or brings its tab to the front of its group while it is open, for a choice the person made. */
+  /** Opens the view, or brings its tab to the front of its group while it is open, retitled, for a choice the person made. */
   public showInFront(choice: T): void {
     this.open(choice);
   }
 
-  /**
-   * Brings the view to the front of its group, leaving the focus where it is: at once while the followed document in front shows a choice, else at the
-   * next choice that document, or the next one to come to the front, shows, until another followed document comes to the front.
-   */
+  /** Brings the view to the front of its group for the followed document in front's choice; with none, the next one in front with a choice brings it. */
   public bringForward(): void {
     const front: T | null | undefined = this.front();
-    if (front !== undefined && front !== null) {
+    if (front !== undefined && front !== null)
       this.open(front);
-      return;
-    }
-    this.isFrontAsked = true;
-    this.askedPage = this.pages().find(t => t[1]()) ?? null;
   }
 
-  /** Follows the person closing the view, so their next choice opens it again; returns the function that stops following. */
+  /** Follows the person closing the view; returns the function that stops following. */
   public listen(): () => void {
     return this.context.onViewClosed(this.view, instance => {
       if (instance === this.instance)
@@ -103,36 +101,8 @@ export class GitDetailView<T> {
     });
   }
 
-  private turned(page: readonly [Signal<T | null>, Signal<boolean>], wasActive: boolean, isActive: boolean): void {
-    if (isActive && !wasActive)
-      this.cameToFront(page);
-    if (!this.opened() || wasActive === isActive)
-      return;
-    if (!isActive && this.front() === undefined) {
-      this.isReturned = true;
-      this.context.returnView(this.view, this.instance);
-      return;
-    }
-    const shown = this.shown();
-    if (isActive && this.isReturned && shown !== null)
-      this.open(shown);
-  }
-
-  /** Ties an ask to bring the view forward to the first followed document in front after it, and ends it when another one comes to the front. */
-  private cameToFront(page: readonly [Signal<T | null>, Signal<boolean>]): void {
-    if (!this.isFrontAsked)
-      return;
-    if (this.askedPage === null)
-      this.askedPage = page;
-    else if (this.askedPage !== page)
-      this.isFrontAsked = false;
-  }
-
   private open(choice: T): void {
-    this.isShown = true;
-    this.isReturned = false;
-    this.isFrontAsked = false;
-    this.askedPage = null;
+    this.lastOpened = choice;
     this.opened.set(true);
     this.context.openView(this.view, this.instance, this.titleOf(choice));
   }

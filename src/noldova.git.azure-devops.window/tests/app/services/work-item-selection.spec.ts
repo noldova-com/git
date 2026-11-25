@@ -26,7 +26,7 @@ describe("WorkItemSelection", () => {
   it("opens the Work item view's one instance, titled for the work item", () => {
     const context = new FakeWindowPartContext();
     const detail = detailOf(itemOf(7402, story, "Note sharing and sync", "Active", WorkItemCategory.InProgress, null));
-    WorkItemSelection.of(context).showChosen(new WorkItemChoice(new WorkItemsPlace("fabrikam", "Sample Project", null), detail, []));
+    WorkItemSelection.of(context).showInFront(new WorkItemChoice(new WorkItemsPlace("fabrikam", "Sample Project", null), detail, []));
 
     expect(context.callsOf("openView")).toEqual([["git-azure-devops.workItemDetail", "selected", "Work item 7402"]]);
   });

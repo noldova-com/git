@@ -29,7 +29,7 @@ export class GitWorkspaceSides {
     if (known !== undefined)
       return known;
     const sides: GitDetailView<GitWorkspaceSide> = new GitDetailView<GitWorkspaceSide>(context, Resources.workspacesViewName, Resources.workspacesViewName,
-      () => Resources.workspacesHeading);
+      () => Resources.workspacesHeading, false);
     GitWorkspaceSides.windows.set(context, sides);
     return sides;
   }

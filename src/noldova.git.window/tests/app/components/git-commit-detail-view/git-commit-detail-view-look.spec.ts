@@ -57,7 +57,7 @@ describe("GitCommitDetailViewComponent in the kit's look", () => {
     }
   });
 
-  it.each(AppearanceFixture.modes)("lays the chosen commit out at the dock's width with its text on one edge 0.75rem in, nothing cut, beside the panel's status, in %s mode",
+  it.each(AppearanceFixture.modes)("lays the chosen commit out at the dock's width with its text on one edge 0.75rem in, nothing cut, beside the panel's status, on the dock's background with none of its own, in %s mode",
     async mode => {
       AppearanceFixture.apply(DefaultTheme.theme, mode);
       onTestFinished(() => GitViewing.commit.set(null));
@@ -69,7 +69,7 @@ describe("GitCommitDetailViewComponent in the kit's look", () => {
       expect(starts).toEqual([0.75, 0.75, 0.75, 0.75]);
       expect([rem(box(view.find(".id-row")).top - host.top), rem(host.right - box(view.find(".id-row")).right)]).toEqual([0.75, 0.75]);
       expect([view.element.scrollWidth <= view.element.clientWidth, getComputedStyle(view.element).backgroundColor, GitLayout.problemsOf(view.element)])
-        .toEqual([true, resolve("var(--nol-panel)"), []]);
+        .toEqual([true, "rgba(0, 0, 0, 0)", []]);
       expect([view.panel.querySelectorAll(".body").length, view.panel.querySelectorAll(".detail").length]).toEqual([1, 0]);
       await page.screenshot({ element: view.element, path: `${screenshots}/git-commit-detail-view-${mode}.png` });
     });
@@ -87,7 +87,7 @@ describe("GitCommitDetailViewComponent in the kit's look", () => {
     expect([view.element.scrollWidth <= view.element.clientWidth, GitLayout.problemsOf(view.element)]).toEqual([true, []]);
   });
 
-  it.each(AppearanceFixture.modes)("says how to choose a commit, muted, 0.75rem in from the view's edges and wrapped inside them, while none is chosen, in %s mode", async mode => {
+  it.each(AppearanceFixture.modes)("says how to choose a commit, muted, 0.75rem in from the view's edges and wrapped inside them, on the dock's background, while none is chosen, in %s mode", async mode => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
     const view: GitViewFixture = await GitViewFixture.renderCommitAsync(answers, ".empty-view");
     const host: DOMRect = await dock(view);
@@ -97,7 +97,7 @@ describe("GitCommitDetailViewComponent in the kit's look", () => {
     expect([view.texts(".empty-view"), rem(text.left - host.left), rem(text.top - host.top), rem(host.right - text.right)])
       .toEqual([["Choose a commit in History to see it here"], 0.75, 0.75, 0.75]);
     expect([getComputedStyle(empty).color, getComputedStyle(view.element).backgroundColor, view.element.scrollWidth <= view.element.clientWidth, GitLayout.problemsOf(view.element)])
-      .toEqual([resolve("var(--nol-text-muted)"), resolve("var(--nol-panel)"), true, []]);
+      .toEqual([resolve("var(--nol-text-muted)"), "rgba(0, 0, 0, 0)", true, []]);
     await page.screenshot({ element: view.element, path: `${screenshots}/git-commit-detail-view-empty-${mode}.png` });
   });
 });

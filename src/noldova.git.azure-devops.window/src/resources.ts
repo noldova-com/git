@@ -7,7 +7,7 @@
  */
 
 import "@noldova/context.core";
-import { CheckState, PolicyState, ReferenceState, SignInFailure, WorkItemCategory } from "@noldova/git.hosting.protocol";
+import { CheckState, type HostPerson, PolicyState, ReferenceState, SignInFailure, WorkItemCategory } from "@noldova/git.hosting.protocol";
 import { GitCounts } from "@noldova/git.window";
 
 import { WorkItemFacet } from "./app/enums/work-item-facet.ts";
@@ -105,7 +105,10 @@ export class Resources {
   public static readonly organizationLabel: string = "Organization";
   public static readonly organizationPlaceholder: string = "Organization, as in dev.azure.com/organization";
   public static readonly organizationUnread: string = "Type the organization's name, or paste its address on dev.azure.com or visualstudio.com.";
-  public static readonly tokenNote: string = "The token needs the Code (Read) scope in this organization. It's kept in this computer's secrets.";
+  public static readonly tokenNote: string = "Make the token in this organization with these scopes. It's kept in this computer's secrets.";
+  public static readonly tokenScopesLabel: string = "Token scopes";
+  /** The scopes a token needs for what the module reads and writes: pull requests and their votes and comments, work items, people's pictures and checks' builds. */
+  public static readonly tokenScopes: readonly string[] = ["Code (Read & write)", "Work Items (Read & write)", "Graph (Read)", "Build (Read)"];
   public static readonly makeToken: string = "Make a token on Azure DevOps";
   public static readonly openIcon: string = "open_in_new";
   public static readonly signOut: string = "Sign out";
@@ -411,6 +414,11 @@ export class Resources {
     return Resources.workItemIcons.get(icon) ?? Resources.workItemFallbackIcon;
   }
 
+  /** A work item type's icon as Azure DevOps draws it, as a data address an image shows, or null when it gave none and the type's symbol stands in. */
+  public static workItemImageOf(type: { readonly image: string | null }): string | null {
+    return type.image === null ? null : Resources.svgImagePrefix + encodeURIComponent(type.image);
+  }
+
   public static readonly expandIcon: string = "expand_more";
   public static readonly collapsedIcon: string = "chevron_right";
 
@@ -448,9 +456,9 @@ export class Resources {
     return login.slice(login.lastIndexOf(Resources.groupSeparator) + 1);
   }
 
-  /** A reviewer's name in the list: a group's "[Project]\Name" as its name alone, and a person's login as it is. */
-  public static formatReviewerName(login: string): string {
-    return Resources.formatAvatarName(login);
+  /** A person's name as the window shows it: the name they show on Azure DevOps, or without one, a group's "[Project]\Name" as its name alone and a login as it is. */
+  public static formatPersonName(person: HostPerson): string {
+    return person.name ?? Resources.formatAvatarName(person.login);
   }
 
   public static formatCommitCount(count: number): string {
@@ -546,6 +554,11 @@ export class Resources {
     return `${Resources.formatOrganizationAddress(organization)}/_workitems/edit/${id}`;
   }
 
+  /** A pull request page's Files tab. */
+  public static formatPullRequestFilesAddress(page: string): string {
+    return `${page}?_a=files`;
+  }
+
   public static formatOrganizationAddress(organization: string): string {
     return `${Resources.referenceProtocol}//${Resources.azureHost}/${organization}`;
   }
@@ -630,6 +643,10 @@ export class Resources {
   public static readonly choiceFolderField: string = "folder";
   public static readonly choiceBranchField: string = "branch";
   public static readonly choiceIdField: string = "id";
+  public static readonly changesField: string = "changes";
+  public static readonly additionsField: string = "additions";
+  public static readonly deletionsField: string = "deletions";
+  public static readonly changedFilesField: string = "changedFiles";
   public static readonly emptyList: string = "[]";
 
   public static formatOwnedBranch(owner: string, name: string): string {

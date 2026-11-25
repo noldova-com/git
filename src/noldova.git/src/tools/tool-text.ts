@@ -19,7 +19,7 @@ export class ToolText {
   public static ofDiff(diff: GitDiff): string | null {
     const { files } = diff;
     return ToolText.fit(files.length, kept => new GitDiff(files.slice(0, kept), diff.totalBytes, diff.omittedFiles + files.length - kept,
-      diff.truncated || kept < files.length).toJson());
+      diff.truncated || kept < files.length, diff.totals).toJson());
   }
 
   public static ofLog(log: GitLog): string | null {

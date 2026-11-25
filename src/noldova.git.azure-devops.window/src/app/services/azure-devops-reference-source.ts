@@ -9,10 +9,11 @@
 import { type Signal, type WritableSignal, signal } from "@angular/core";
 
 import "@noldova/context.core";
-import type { IWindowPartContext } from "@noldova/desktop.window";
+import { type IWindowPartContext, WindowException } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
-import { type HostReference, HostItem, HostSignIn, HostWorkItem, SignInState, WorkItemQuery } from "@noldova/git.hosting.protocol";
-import { GitFolderParams, GitNames, type GitRemote, GitStatus } from "@noldova/git.protocol";
+import { HostAvatar, type HostPerson, type HostReference, HostItem, HostPullRequestFiles, HostSignIn, HostWorkItem, PersonQuery, SignInState, WorkItemQuery }
+  from "@noldova/git.hosting.protocol";
+import { DiffScope, DiffScopeKind, DiffTotals, GitDiffParams, GitFolderParams, GitNames, type GitRemote, GitStatus } from "@noldova/git.protocol";
 import type { ILinkReferenceSource, LinkReference, LinkReferenceMatch } from "@noldova/ui.components.angular";
 
 import { Resources } from "../../resources.ts";
@@ -20,6 +21,7 @@ import type { AzureDevOpsReferenceLink } from "../models/azure-devops-reference-
 import { AzureDevOpsReferenceRead } from "../models/azure-devops-reference-read.ts";
 import { WorkItemsPlace } from "../models/work-items-place.ts";
 import { AzureDevOpsHomeReferences } from "./azure-devops-home-references.ts";
+import { AzureDevOpsLocalFolder } from "./azure-devops-local-folder.ts";
 import { AzureDevOpsReferenceLinks } from "./azure-devops-reference-links.ts";
 import { AzureDevOpsReferenceLooks } from "./azure-devops-reference-looks.ts";
 
@@ -218,10 +220,54 @@ export class AzureDevOpsReferenceSource implements ILinkReferenceSource {
   private async readItemAsync(query: WorkItemQuery | HostReference): Promise<LinkReference | null> {
     if (query instanceof WorkItemQuery) {
       const workItem = await this.context.requestAsync(AzureDevOpsNames.readWorkItemMethod, query.toJson());
-      return Object.isNull(workItem) ? null : AzureDevOpsReferenceLooks.workItemOf(HostWorkItem.fromJson(workItem));
+      if (Object.isNull(workItem))
+        return null;
+      const read = HostWorkItem.fromJson(workItem);
+      return AzureDevOpsReferenceLooks.workItemOf(read, await this.avatarOfAsync(read.organization, read.assignee));
     }
     const item = await this.context.requestAsync(AzureDevOpsNames.readReferenceMethod, query.toJson());
-    return Object.isNull(item) ? null : AzureDevOpsReferenceLooks.pullRequestOf(HostItem.fromJson(item));
+    if (Object.isNull(item))
+      return null;
+    const read = await this.countedLocallyAsync(HostItem.fromJson(item));
+    return AzureDevOpsReferenceLooks.pullRequestOf(read, await this.avatarOfAsync(read.reference.owner, read.author));
+  }
+
+  /**
+   * The pull request with the counts local Git gives for its latest push, when the open repository is its own and has the push's commits, as the Files tab
+   * shows them: Azure DevOps miscounts the lines of a large file's diff. Otherwise, or when a read fails, which it logs, it keeps Azure DevOps' counts.
+   */
+  private async countedLocallyAsync(item: HostItem): Promise<HostItem> {
+    const { changes } = item;
+    if (Object.isNull(changes))
+      return item;
+    const folder: string | null = await AzureDevOpsLocalFolder.readAsync(this.context, item.url);
+    if (Object.isNull(folder))
+      return item;
+    let method: string = AzureDevOpsNames.readPullRequestChangesMethod;
+    try {
+      const files = HostPullRequestFiles.fromJson(await this.context.requestAsync(method, item.reference.toJson()));
+      if (Object.isNull(files.commonCommit) || Object.isNull(files.sourceCommit))
+        return item;
+      method = GitNames.diffTotalsMethod;
+      const totals = DiffTotals.fromJson(await this.context.requestAsync(method,
+        new GitDiffParams(folder, new DiffScope(DiffScopeKind.Range, files.commonCommit, files.sourceCommit)).toJson()));
+      return HostItem.fromJson({ ...item.toJson(), [Resources.changesField]: { ...changes.toJson(), [Resources.additionsField]: totals.added,
+        [Resources.deletionsField]: totals.removed, [Resources.changedFilesField]: totals.files } });
+    }
+    catch (error) {
+      if (!(error instanceof WindowException))
+        throw error;
+      this.context.log(Resources.formatRequestFailed(method, String(error)));
+      return item;
+    }
+  }
+
+  /** A person's picture in an organization, as the card shows it with them; none for no one, for a group, or when it can't be read. */
+  private async avatarOfAsync(organization: string, person: HostPerson | null): Promise<string | null> {
+    if (Object.isNull(person) || !Object.isNull(person.avatar) || Resources.isGroupLogin(person.login))
+      return person?.avatar ?? null;
+    return this.context.requestAsync(AzureDevOpsNames.readPersonAvatarMethod, new PersonQuery(Resources.azureHost, organization, person.login).toJson())
+      .then(t => HostAvatar.fromJson(t).avatar, () => null);
   }
 
   private next(): void {

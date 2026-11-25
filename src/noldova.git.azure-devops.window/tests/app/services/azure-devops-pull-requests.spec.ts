@@ -237,13 +237,13 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
     const read = await branchAsync(host, "export-notes");
 
     expect([before, read, host.pullRequests.branchFor(FOLDER, remote, "export-notes", HEAD)(), host.pullRequests.branchFor(FOLDER, remote, "export-notes", null)()])
-      .toEqual([null, GitBranchPullRequest.of(rowOf(2), GitPullRequestState.Open, true), read, null]);
+      .toEqual([null, GitBranchPullRequest.of(rowOf(2), GitPullRequestState.Open, true, "Active"), read, null]);
     expect([host.requests.methods, host.requests.payloads]).toEqual([[AzureDevOpsNames.readSignInMethod, AzureDevOpsNames.readBranchPullRequestMethod],
       [null, new BranchQuery("dev.azure.com", "fabrikam/web/_git/site", "export-notes", HEAD).toJson()]]);
     expect(host.pages).toEqual([[URL, new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752)]]);
   });
 
-  it("maps each state, waits for review only while open without a decision, keeps the base branch, and answers none without a pull request", async () => {
+  it("maps each state with Azure DevOps' word for it, waits for review only while open without a decision, keeps the base branch, and answers none without a pull request", async () => {
     const host = new Host();
     const answers: BranchPullRequest[] = [pullRequestOf(ReferenceState.Draft), pullRequestOf(ReferenceState.Merged, ReviewDecision.Approved),
       pullRequestOf(ReferenceState.Closed, ReviewDecision.ChangesRequested, null), pullRequestOf(ReferenceState.Open, ReviewDecision.Approved),
@@ -257,10 +257,10 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
     for (const [index] of answers.entries())
       read.push(await branchAsync(host, `branch-${String(index)}`));
 
-    expect(read).toEqual([GitBranchPullRequest.of(rowOf(2, true, "branch-0"), GitPullRequestState.Draft, false),
-      GitBranchPullRequest.of(rowOf(2, false, "branch-1"), GitPullRequestState.Merged, false),
-      GitBranchPullRequest.of(rowOf(0, false, "branch-2"), GitPullRequestState.Closed, false),
-      GitBranchPullRequest.of(rowOf(2, false, "branch-3"), GitPullRequestState.Open, false), GitBranchPullRequest.none(0, 0, 0)]);
+    expect(read).toEqual([GitBranchPullRequest.of(rowOf(2, true, "branch-0"), GitPullRequestState.Draft, false, "Draft"),
+      GitBranchPullRequest.of(rowOf(2, false, "branch-1"), GitPullRequestState.Merged, false, "Completed"),
+      GitBranchPullRequest.of(rowOf(0, false, "branch-2"), GitPullRequestState.Closed, false, "Abandoned"),
+      GitBranchPullRequest.of(rowOf(2, false, "branch-3"), GitPullRequestState.Open, false, "Active"), GitBranchPullRequest.none(0, 0, 0)]);
   });
 
   it("says nobody is signed in when the sign-in read finds none", async () => {
@@ -294,7 +294,7 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
         throw new Error("The last read hasn't failed yet.");
     });
 
-    expect([reading, merged, refused, answer()]).toEqual([GitBranchPullRequest.reading(first), GitBranchPullRequest.of(rowOf(2), GitPullRequestState.Merged, false),
+    expect([reading, merged, refused, answer()]).toEqual([GitBranchPullRequest.reading(first), GitBranchPullRequest.of(rowOf(2), GitPullRequestState.Merged, false, "Completed"),
       GitBranchPullRequest.failed("The organization isn't reachable."), GitBranchPullRequest.failed(BRANCH_UNANSWERED)]);
     expect(host.context.callsOf("log").map(t => String(t[0]).includes("git-azure-devops.readBranchPullRequest"))).toEqual([true, true]);
   });
@@ -328,7 +328,7 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
     await untilAsync(answer, GitPullRequestsState.Ready);
 
     expect([answer(), host.pullRequests.commitFor(FOLDER, remote, HEAD), host.requests.methods, host.requests.payloads]).toEqual([
-      GitBranchPullRequest.of(rowOf(1, false, ""), GitPullRequestState.Merged, false), answer, [AzureDevOpsNames.readCommitPullRequestMethod],
+      GitBranchPullRequest.of(rowOf(1, false, ""), GitPullRequestState.Merged, false, "Completed"), answer, [AzureDevOpsNames.readCommitPullRequestMethod],
       [new CommitQuery("dev.azure.com", "fabrikam/web/_git/site", HEAD).toJson()]]);
     expect(host.pages).toEqual([[URL, new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752)]]);
   });
@@ -350,7 +350,7 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
 
     expect([refused(), asked, unanswered(), host.context.callsOf("log").map(t => String(t[0]).includes("git-azure-devops.readCommitPullRequest")), reopened(),
       host.requests.methods]).toEqual([GitBranchPullRequest.failed("The organization isn't reachable."), 1, GitBranchPullRequest.failed(COMMIT_UNANSWERED), [true, true],
-      GitBranchPullRequest.of(rowOf(1, false, ""), GitPullRequestState.Merged, false), Array.from({ length: 3 }, () => AzureDevOpsNames.readCommitPullRequestMethod)]);
+      GitBranchPullRequest.of(rowOf(1, false, ""), GitPullRequestState.Merged, false, "Completed"), Array.from({ length: 3 }, () => AzureDevOpsNames.readCommitPullRequestMethod)]);
   });
 
   it("reads the remote's review requests into a list of its own, keyed by the remote and opened as its document, and says when there were more", async () => {

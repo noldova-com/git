@@ -6,9 +6,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Component, computed, effect, ErrorHandler, inject, input, type InputSignal, signal, type Signal, untracked, type WritableSignal } from "@angular/core";
+import { Component, computed, effect, ErrorHandler, inject, input, type InputSignal, output, type OutputEmitterRef, signal, type Signal, untracked, type WritableSignal } from "@angular/core";
 import { type IWindowPartContext, LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
 import type { GitRemote } from "@noldova/git.protocol";
+import { ContextMenuTriggerDirective, MenuComponent, MenuItemComponent, MenuSeparatorComponent } from "@noldova/ui.components.angular";
 
 import { GitPullRequestsState } from "../../enums/git-pull-requests-state.ts";
 import type { IGitPullRequests } from "../../interfaces/i-git-pull-requests.ts";
@@ -21,7 +22,7 @@ import { GitReferenceTextComponent } from "../git-reference-text/git-reference-t
 /** The repository panel's Pull requests section: the open pull requests of the current branch's remote, from the host that claims it. */
 @Component({
   selector: "nol-git-pull-requests",
-  imports: [GitReferenceTextComponent],
+  imports: [ContextMenuTriggerDirective, GitReferenceTextComponent, MenuComponent, MenuItemComponent, MenuSeparatorComponent],
   templateUrl: "./git-pull-requests.component.html",
   styleUrl: "./git-pull-requests.component.css",
   host: { "(window:focus)": "refresh()" }
@@ -32,6 +33,12 @@ export class GitPullRequestsComponent {
 
   public readonly folder: InputSignal<string> = input.required<string>();
   public readonly remote: InputSignal<GitRemote> = input.required<GitRemote>();
+  /** The current branch, whose own pull request's Switch to branch is off; null with none out. */
+  public readonly current: InputSignal<string | null> = input<string | null>(null);
+  /** Whether a switch can start now: off while the panel writes or has no status to switch on. */
+  public readonly canSwitch: InputSignal<boolean> = input<boolean>(false);
+  /** Asks the panel to switch to a pull request's source branch, which git makes from the remote's when it isn't here. */
+  public readonly switchTo: OutputEmitterRef<string> = output<string>();
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly states: typeof GitPullRequestsState = GitPullRequestsState;
@@ -84,7 +91,15 @@ export class GitPullRequestsComponent {
     const host: IGitPullRequests | null = this.host();
     if (host !== null && this.attempt(() => host.open?.(this.folder(), row) === true, false))
       return;
+    this.openInBrowser(row);
+  }
+
+  protected openInBrowser(row: GitPullRequestRow): void {
     void this.context.openLinkAsync(row.url, { place: LinkPlace.System }).catch((error: unknown) => this.errors.handleError(error));
+  }
+
+  protected copyLink(row: GitPullRequestRow): void {
+    navigator.clipboard.writeText(row.url).catch((error: unknown) => this.errors.handleError(error));
   }
 
   protected signIn(page: string): void {

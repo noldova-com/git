@@ -67,6 +67,8 @@ export class GitRepositoryComponent {
     const remote: GitRemote | null = this.status()?.remote ?? null;
     return remote === null ? [] : GitRepositoryLinks.of(remote);
   });
+  /** Whether a host row's page is the active document, which selects that row in place of Changes or History. */
+  protected readonly showsLink: Signal<boolean> = computed(() => this.links().some(t => t.isActive()));
   /** Whether the history selected a commit, which the Commit view shows, rather than the changes. */
   protected readonly showsCommit: Signal<boolean> = computed(() => GitViewing.commitOf(this.folder()) !== null);
   protected readonly switching: Signal<string | null> = computed(() => GitPendingSwitch.branchOf(this.folder()));

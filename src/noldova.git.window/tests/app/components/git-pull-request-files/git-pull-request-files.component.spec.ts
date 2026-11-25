@@ -10,7 +10,7 @@ import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { FileChangeKind, HostPullRequestFile, HostPullRequestFiles, HostReference } from "@noldova/git.hosting.protocol";
-import { DiffFile, DiffHunk, DiffLine, DiffScope, DiffScopeKind, FileChange, GitCommitDetailParams, GitDiff, GitDiffParams, GitFetchParams, GitNames, GitRemote,
+import { DiffFile, DiffHunk, DiffLine, DiffScope, DiffScopeKind, DiffTotals, FileChange, GitCommitDetailParams, GitDiff, GitDiffParams, GitFetchParams, GitNames, GitRemote,
   GitStatus, LineKind, RemoteTransport } from "@noldova/git.protocol";
 import { describe, expect, it, vi } from "vitest";
 
@@ -100,13 +100,14 @@ class Tab {
     this.host.folder = FOLDER;
     this.requests.answer(TestPullRequestHost.changesMethod, changed.toJson());
     this.requests.answer(GitNames.commitDetailMethod, {}, {});
+    this.requests.answer(GitNames.diffTotalsMethod, new DiffTotals(1, 1, 0).toJson());
     if (diff instanceof GitDiff)
       this.requests.answer(GitNames.diffMethod, diff.toJson());
     else
       this.requests.fail(GitNames.diffMethod, diff);
     this.create();
     this.reveal(line);
-    await this.requests.askedAsync(4);
+    await this.requests.askedAsync(5);
     await vi.waitUntil(() => this.unrevealed.length > 0 || this.element.querySelector(".marked-line") !== null);
     return this;
   }
@@ -188,18 +189,33 @@ describe("GitPullRequestFilesComponent", () => {
       .toEqual([["Showing the first 1000."], ["1000+"], ["Showing the first 961."], ["961+"], ["No changed files."], [], ["0"]]);
   });
 
-  it("shows the changes from local Git when the open repository is the pull request's and has the push's head and common commits", async () => {
+  it("shows the changes from local Git when the open repository is the pull request's and has the push's head and common commits, counting the files Git "
+    + "counts", async () => {
     const tab = new Tab();
     tab.host.folder = FOLDER;
     tab.requests.answer(TestPullRequestHost.changesMethod, changed.toJson());
     tab.requests.answer(GitNames.commitDetailMethod, {}, {});
+    tab.requests.answer(GitNames.diffTotalsMethod, new DiffTotals(5, 9, 2).toJson());
     tab.requests.fail(GitNames.diffMethod, new WindowFailure("Not now."));
     await tab.openAsync();
 
-    expect([tab.element.querySelector("nol-git-diff-files") !== null, tab.texts(".row:not(.folder)"), tab.counts, tab.host.asked]).toEqual([true, [], ["4"], [URL]]);
-    expect(tab.requests.payloads.filter((_, i) => tab.requests.methods[i] !== TestPullRequestHost.changesMethod)).toEqual([
-      new GitCommitDetailParams(FOLDER, COMMON).toJson(), new GitCommitDetailParams(FOLDER, SOURCE).toJson(),
-      new GitDiffParams(FOLDER, scope).toJson()]);
+    expect([tab.element.querySelector("nol-git-diff-files") !== null, tab.texts(".row:not(.folder)"), tab.counts, tab.host.asked]).toEqual([true, [], ["5"], [URL]]);
+    expect(tab.requests.methods.slice(1)).toEqual([GitNames.commitDetailMethod, GitNames.commitDetailMethod, GitNames.diffTotalsMethod, GitNames.diffMethod]);
+    expect(tab.requests.payloads.slice(1)).toEqual([new GitCommitDetailParams(FOLDER, COMMON).toJson(), new GitCommitDetailParams(FOLDER, SOURCE).toJson(),
+      new GitDiffParams(FOLDER, scope).toJson(), new GitDiffParams(FOLDER, scope).toJson()]);
+  });
+
+  it("counts the host's files and logs why when local Git can't count the changes it shows", async () => {
+    const tab = new Tab();
+    tab.host.folder = FOLDER;
+    tab.requests.answer(TestPullRequestHost.changesMethod, changed.toJson());
+    tab.requests.answer(GitNames.commitDetailMethod, {}, {});
+    tab.requests.fail(GitNames.diffTotalsMethod, new WindowFailure("Not now."));
+    tab.requests.fail(GitNames.diffMethod, new WindowFailure("Not now."));
+    await tab.openAsync();
+
+    expect([tab.element.querySelector("nol-git-diff-files") !== null, tab.counts, tab.logs.filter(t => String(t).includes(GitNames.diffTotalsMethod)).length])
+      .toEqual([true, ["4"], 1]);
   });
 
   it("offers a fetch when the open repository lacks the push's commits, fetches with the status's fingerprint, then shows the changes from local Git", async () => {
@@ -210,17 +226,18 @@ describe("GitPullRequestFilesComponent", () => {
     tab.requests.fail(GitNames.commitDetailMethod, new WindowFailure("Unknown revision."));
     tab.requests.answer(GitNames.commitDetailMethod, {}, {}, {});
     tab.requests.answer(GitNames.fetchMethod, null);
+    tab.requests.answer(GitNames.diffTotalsMethod, new DiffTotals(5, 9, 2).toJson());
     tab.requests.fail(GitNames.diffMethod, new WindowFailure("Not now."));
     await tab.openAsync();
     const offered = [tab.texts(".hint"), tab.texts(".row:not(.folder)").length, tab.logs];
 
     await tab.clickAsync("button.fetch");
-    await tab.requests.askedAsync(9);
+    await tab.requests.askedAsync(10);
     await tab.settleAsync();
 
     expect(offered).toEqual([["Fetch to see each file's changes. Fetch"], 4, []]);
     expect(tab.requests.payloads[tab.requests.methods.indexOf(GitNames.fetchMethod)]).toEqual(new GitFetchParams(FOLDER, "f1").toJson());
-    expect([tab.element.querySelector("nol-git-diff-files") !== null, tab.texts(".hint"), tab.counts]).toEqual([true, [], ["4", "4"]]);
+    expect([tab.element.querySelector("nol-git-diff-files") !== null, tab.texts(".hint"), tab.counts]).toEqual([true, [], ["4", "5"]]);
   });
 
   it("logs a fetch the window fails and says so in the hint, keeping the list", async () => {
@@ -365,10 +382,11 @@ describe("GitPullRequestFilesComponent", () => {
     tab.host.folder = FOLDER;
     tab.requests.answer(TestPullRequestHost.changesMethod, changed.toJson());
     tab.requests.answer(GitNames.commitDetailMethod, {}, {});
+    tab.requests.answer(GitNames.diffTotalsMethod, new DiffTotals(1, 1, 0).toJson());
     const release = tab.requests.hold(GitNames.diffMethod);
     tab.create();
     tab.reveal(new GitFileLine("src/app.ts", 41));
-    await tab.requests.askedAsync(4);
+    await tab.requests.askedAsync(5);
     await tab.settleAsync();
     const waiting = [tab.element.querySelector(".file-row.open"), tab.unrevealed.length];
 
@@ -378,7 +396,7 @@ describe("GitPullRequestFilesComponent", () => {
     expect([waiting, tab.marked(), tab.unrevealed]).toEqual([[null, 0], ["+const b = 2;"], []]);
   });
 
-  it("rethrows a failure that isn't the window's while it reads, finds the repository, checks the commits or fetches", async () => {
+  it("rethrows a failure that isn't the window's while it reads, finds the repository, checks the commits, counts the changes or fetches", async () => {
     const reading = new Tab();
     const readRejection: Promise<unknown> = UnhandledRejections.nextAsync();
     reading.requests.fail(TestPullRequestHost.changesMethod, new RangeError("Unexpected."));
@@ -401,6 +419,16 @@ describe("GitPullRequestFilesComponent", () => {
     checking.requests.fail(GitNames.commitDetailMethod, new RangeError("Unexpected."));
     await checking.openAsync();
     expect(await checkRejection).toBeInstanceOf(RangeError);
+
+    TestBed.resetTestingModule();
+    const counting = new Tab();
+    counting.host.folder = FOLDER;
+    const countRejection: Promise<unknown> = UnhandledRejections.nextAsync();
+    counting.requests.answer(TestPullRequestHost.changesMethod, changed.toJson());
+    counting.requests.answer(GitNames.commitDetailMethod, {}, {});
+    counting.requests.fail(GitNames.diffTotalsMethod, new RangeError("Unexpected."));
+    await counting.openAsync();
+    expect(await countRejection).toBeInstanceOf(RangeError);
 
     TestBed.resetTestingModule();
     const fetching = new Tab();

@@ -12,8 +12,12 @@ import { GitRepositoryLink, type IGitRepositoryLinks } from "@noldova/git.window
 
 import { WorkItemsPlace } from "../models/work-items-place.ts";
 import { Resources } from "../../resources.ts";
+import { WorkItemsPages } from "./work-items-pages.ts";
 
-/** Gives the repository panel a My work items row for a repository on Azure DevOps, which opens that document for its remote's project. */
+/**
+ * Gives the repository panel a My work items row for a repository on Azure DevOps, which opens that document for its remote's project and is selected while
+ * a page of that project's work items is in front.
+ */
 export class AzureDevOpsRepositoryLinks implements IGitRepositoryLinks {
   private readonly context: IWindowPartContext;
 
@@ -28,7 +32,8 @@ export class AzureDevOpsRepositoryLinks implements IGitRepositoryLinks {
     const instance: string = Resources.formatWorkItemsInstance(place.organization, place.project, null);
     return [
       new GitRepositoryLink(Resources.workItemsDocument, Resources.myWorkItemsTitle, Resources.workItemsIcon,
-        () => this.context.openDocument(Resources.workItemsDocument, instance, Resources.myWorkItemsTitle))
+        () => this.context.openDocument(Resources.workItemsDocument, instance, Resources.myWorkItemsTitle),
+        WorkItemsPages.isActive(place.organization, place.project))
     ];
   }
 }

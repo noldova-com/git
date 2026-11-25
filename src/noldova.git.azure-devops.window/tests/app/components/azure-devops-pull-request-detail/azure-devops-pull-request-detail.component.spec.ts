@@ -104,6 +104,24 @@ class View {
 }
 
 describe("AzureDevOpsPullRequestDetailComponent", () => {
+  it("draws a linked work item's type icon as Azure DevOps drew it, named by its type and 0.875 of the symbol it stands in for", async () => {
+    const svg: string = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill="#009CCC" d="M2 2h12v12H2z"/></svg>';
+    const drawn = (type: HostWorkItemType): HostPullRequest => new HostPullRequest(itemOf(7, changes), [], [], [], false, "", null, [
+      new HostWorkItemLink(7521, "Export notes as Markdown files", type, "Active", WorkItemCategory.InProgress, ITEM_URL)]);
+    const view: View = new View();
+    view.show(drawn(new HostWorkItemType("User Story", "009CCC", "icon_book", svg)));
+    await view.settleAsync();
+    const image = view.element.querySelector<HTMLImageElement>(".list .row img.type-image");
+    const imageBox = image?.getBoundingClientRect();
+    view.show(drawn(new HostWorkItemType("User Story", "009CCC", "icon_book")));
+    await view.settleAsync();
+    const symbolBox = view.element.querySelector<HTMLElement>(".list .row .material-symbols-rounded")?.getBoundingClientRect();
+
+    expect([image?.getAttribute("src"), image?.alt]).toEqual([`data:image/svg+xml,${encodeURIComponent(svg)}`, "User Story"]);
+    expect([imageBox?.width, imageBox?.height]).toEqual([(symbolBox?.width ?? 0) * 0.875, (symbolBox?.width ?? 0) * 0.875]);
+    expect(imageBox?.width).toBeGreaterThan(0);
+  });
+
   it("says to open a pull request while none is shown, and titles its view plainly", async () => {
     const view: View = new View();
     await view.settleAsync();

@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 
 import { FailureCode } from "@noldova/desktop.protocol";
 import { MethodFailureException } from "@noldova/desktop.runtime";
+import { FakeModuleLog } from "@noldova/desktop.runtime/testing";
 import { HostComment, HostPerson, HostReference, HostReviewer, HostWorkItem, HostWorkItemDetail, HostWorkItemType, ThreadStatus, WorkItemCategory,
   WorkItemUpdate } from "@noldova/git.hosting.protocol";
 import { describe, it } from "vitest";
@@ -44,7 +45,7 @@ const repository = (): Response => FakeAzure.json({ id: repositoryId, name: "sit
 
 function writesOf(azure: FakeAzure, token: FakeToken): AzureWrites {
   const api = new AzureApi(azure.fetch);
-  return new AzureWrites(api, token, new AzureReads(api, token));
+  return new AzureWrites(api, token, new AzureReads(api, token, new FakeModuleLog()));
 }
 
 const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", repositoryId, 12);
@@ -147,7 +148,7 @@ describe("AzureWrites", () => {
     const comment: HostComment = await writes.replyToThreadAsync(reply, signal);
 
     const post = azure.requests[0];
-    assert.deepEqual(comment, new HostComment(2, 1, new HostPerson("monalisa@fabrikam.com", null, null), Date.parse("2027-01-15T10:05:00Z"),
+    assert.deepEqual(comment, new HostComment(2, 1, new HostPerson("monalisa@fabrikam.com", null, null, undefined, "Mona Lisa"), Date.parse("2027-01-15T10:05:00Z"),
       "Fixed in **the next** commit."));
     assert.deepEqual([azure.urls(), post?.init.method, post?.header("Content-Type"), post?.body], [[commentsUrl], "POST", "application/json",
       { content: "Fixed in **the next** commit.", parentCommentId: 1, commentType: 1 }]);
@@ -203,7 +204,7 @@ describe("AzureWrites", () => {
 
     const reviewers: HostReviewer[] = [await writes.voteAsync(approve, signal), await writes.voteAsync(new PullRequestVote(reference, -5), signal)];
 
-    const mona = new HostPerson("monalisa@fabrikam.com", null, null);
+    const mona = new HostPerson("monalisa@fabrikam.com", null, null, undefined, "Mona Lisa");
     assert.deepEqual(reviewers, [new HostReviewer(mona, 1, "Approved", true), new HostReviewer(mona, -0.5, "Waiting for the author", true)]);
     const puts = [azure.requests[1], azure.requests[3]].map(t => [t?.init.method, t?.header("Content-Type"), t?.body]);
     assert.deepEqual([azure.urls(), azure.requests.map(t => t.init.method), puts], [[connectionUrl, reviewerUrl, connectionUrl, reviewerUrl],
@@ -457,6 +458,8 @@ describe("AzureWrites' auto-complete and abandon", () => {
 const connectionUrl: string = "https://dev.azure.com/fabrikam/_apis/connectionData";
 const updateUrl: string = "https://dev.azure.com/fabrikam/_apis/wit/workitems/42?$expand=relations&api-version=7.1";
 const typeUrl: string = "https://dev.azure.com/fabrikam/Web%20Site/_apis/wit/workitemtypes/Bug?api-version=7.1";
+const iconUrl: string = "https://dev.azure.com/fabrikam/_apis/wit/workitemicons/icon_insect?color=CC293D&v=2&api-version=7.1";
+const noIcon = (): Response => new Response(null, { status: 404 });
 const profile = (properties: Readonly<Record<string, unknown>> = { Account: { $value: "monalisa@fabrikam.com" } }): Response =>
   FakeAzure.json({ authenticatedUser: { providerDisplayName: "Mona Lisa", properties } });
 const changed = (): Response => FakeAzure.json({ id: 42, fields: { "System.TeamProject": "Web Site", "System.WorkItemType": "Bug", "System.Title": "Fix the sign-in",
@@ -464,32 +467,32 @@ const changed = (): Response => FakeAzure.json({ id: 42, fields: { "System.TeamP
 const bugType = (): Response => FakeAzure.json({ name: "Bug", color: "CC293D", icon: { id: "icon_insect" }, states: [{ name: "Active", category: "InProgress" }] });
 const detail: HostWorkItemDetail = new HostWorkItemDetail(new HostWorkItem("git-azure-devops", "fabrikam", "Web Site", 42,
   new HostWorkItemType("Bug", "CC293D", "icon_insect"), "Fix the sign-in", "Active", WorkItemCategory.InProgress,
-  "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/42", new HostPerson("monalisa@fabrikam.com", null, null), null, null, null), null, null, null, null,
+  "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/42", new HostPerson("monalisa@fabrikam.com", null, null, undefined, "Mona Lisa"), null, null, null), null, null, null, null,
 null, [], [], 0, []);
 const update: WorkItemUpdate = new WorkItemUpdate("git-azure-devops", "fabrikam", 42, "Active", true);
 
 describe("AzureWrites, work items", () => {
   it("moves a work item to a state and assigns it to the signed-in person's account with a JSON patch, answering its detail", async () => {
     const azure = new FakeAzure();
-    azure.answer(profile(), changed(), bugType());
+    azure.answer(profile(), changed(), bugType(), noIcon());
 
     const answer: HostWorkItemDetail = await writesOf(azure, new FakeToken()).updateWorkItemAsync(update, signal);
 
     const patch = azure.requests[1];
-    assert.deepEqual([answer, azure.urls()], [detail, [connectionUrl, updateUrl, typeUrl]]);
+    assert.deepEqual([answer, azure.urls()], [detail, [connectionUrl, updateUrl, typeUrl, iconUrl]]);
     assert.deepEqual([patch?.init.method, patch?.header("Content-Type"), patch?.body], ["PATCH", "application/json-patch+json", [
       { op: "add", path: "/fields/System.State", value: "Active" }, { op: "add", path: "/fields/System.AssignedTo", value: "monalisa@fabrikam.com" }]]);
   });
 
   it("only moves the state, or only assigns, when the update asks for one", async () => {
     const azure = new FakeAzure();
-    azure.answer(changed(), bugType(), profile(), changed());
+    azure.answer(changed(), bugType(), noIcon(), profile(), changed());
     const writes = writesOf(azure, new FakeToken());
 
     await writes.updateWorkItemAsync(new WorkItemUpdate("git-azure-devops", "fabrikam", 42, "Active", false), signal);
     await writes.updateWorkItemAsync(new WorkItemUpdate("git-azure-devops", "fabrikam", 42, null, true), signal);
 
-    assert.deepEqual([azure.urls(), azure.requests[0]?.body, azure.requests[3]?.body], [[updateUrl, typeUrl, connectionUrl, updateUrl], [{ op: "add", path: "/fields/System.State", value: "Active" }],
+    assert.deepEqual([azure.urls(), azure.requests[0]?.body, azure.requests[4]?.body], [[updateUrl, typeUrl, iconUrl, connectionUrl, updateUrl], [{ op: "add", path: "/fields/System.State", value: "Active" }],
     [{ op: "add", path: "/fields/System.AssignedTo", value: "monalisa@fabrikam.com" }]]);
   });
 

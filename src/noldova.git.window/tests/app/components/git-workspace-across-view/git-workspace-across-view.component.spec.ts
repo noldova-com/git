@@ -84,6 +84,12 @@ describe("GitWorkspaceAcrossViewComponent", () => {
       .toEqual(["Open a workspace to see its repositories together here.", 0]);
   });
 
+  it("draws no background of its own, so it sits on the dock's like the other views", () => {
+    const screen = new Screen(signal(null));
+
+    expect(getComputedStyle(screen.element).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+  });
+
   it("shows the page's repositories, runs and reviews in one labelled panel", () => {
     const reviews = new GitWorkspaceReviews([], true);
     const screen = new Screen(signal(new GitWorkspaceAcross("workspace-1", [row], [], reviews, new RecordedPage())));

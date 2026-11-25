@@ -27,7 +27,7 @@ describe("GitRebasePreviews", () => {
   it("opens the view by its name and instance, titled Rebase preview", () => {
     const context = new FakeWindowPartContext();
 
-    GitRebasePreviews.of(context).showOnce(new GitRebasePreview("/work/git", plan, "main", 1, [], [], null, null));
+    GitRebasePreviews.of(context).showInFront(new GitRebasePreview("/work/git", plan, "main", 1, [], [], null, null));
 
     expect(context.callsOf("openView")).toEqual([["git.rebasePreview", "selected", "Rebase preview"]]);
   });

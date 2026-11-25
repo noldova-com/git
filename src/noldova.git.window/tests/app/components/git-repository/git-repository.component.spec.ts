@@ -6,11 +6,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { signal } from "@angular/core";
+import { type Signal, signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import type { JsonValue } from "@noldova/context.json";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { FailureCode, GitBranchTrack, GitCode, GitRemote, GitRepositoryItems, GitStash, GitSubmodule, GitTag, GitWorktrees, RemoteTransport, StatusUpstream } from "@noldova/git.protocol";
+import { DefaultTheme } from "@noldova/ui.components.angular";
+import { AppearanceFixture } from "@noldova/ui.components.angular/testing";
 import { describe, expect, it, onTestFinished } from "vitest";
 
 import { GitRepositoryComponent } from "../../../../src/app/components/git-repository/git-repository.component.ts";
@@ -126,7 +128,7 @@ describe("GitRepositoryComponent", () => {
     expect(expanded).toEqual(["true", "true", null, null, null]);
   });
 
-  it("stacks the name over the path between the folder icon and the fetch button, all centred in a 2.25rem row", async () => {
+  it("puts the folder icon, the name and the fetch button on one line and the path under the name", async () => {
     const { element } = await renderAsync([], new Error("unused"));
     const head: HTMLElement | null = element.querySelector<HTMLElement>(".row.head");
     const boxOf = (selector: string): DOMRect => head?.querySelector(selector)?.getBoundingClientRect() ?? new DOMRect();
@@ -137,11 +139,8 @@ describe("GitRepositoryComponent", () => {
     const path: DOMRect = boxOf(".path");
     const middle = (box: DOMRect): number => rem(box.top + box.height / 2);
 
-    const row: DOMRect = head?.getBoundingClientRect() ?? new DOMRect();
-
-    expect([icon.height > 0, rem(row.height)]).toEqual([true, 2.25]);
-    expect([middle(icon) - middle(row), middle(button) - middle(row), rem(name.top - row.top) - rem(row.bottom - path.bottom)].map(t => Math.abs(t) < 0.0625))
-      .toEqual([true, true, true]);
+    expect(icon.height).toBeGreaterThan(0);
+    expect([middle(name) - middle(icon), middle(button) - middle(icon)].map(t => Math.abs(t) < 0.0625)).toEqual([true, true]);
     expect(rem(path.top - name.bottom)).toBeGreaterThanOrEqual(0);
     expect(rem(path.left - name.left)).toBe(0);
     expect(rem(path.left - (head?.getBoundingClientRect().left ?? 0))).toBe(1.875);
@@ -188,6 +187,44 @@ describe("GitRepositoryComponent", () => {
 
     expect(["feature", "fix", "main", "old"].map(t => [...element.querySelectorAll(`button[title=${t}] .small`)].map(u => u.textContent).join(" ")))
       .toEqual(["↑3", "↓4", "↑2 ↓1", ""]);
+    expect([...element.querySelectorAll("button[title=main] .count")].map(t => t.getAttribute("title"))).toEqual(["2 commits to push", "1 commit to pull"]);
+  });
+
+  it.each(AppearanceFixture.modes)("colours a branch's counts, arrow and number alike, green to push and blue to pull, with remote branches' counts named against the current branch, in %s mode", async mode => {
+    AppearanceFixture.apply(DefaultTheme.theme, mode);
+    onTestFinished(() => AppearanceFixture.reset());
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, {
+      ...answers,
+      "git.status": GitFixtures.status([], new StatusUpstream("origin/main", 1, 2, false)).toJson(),
+      "git.branches": GitFixtures.branches("main", ["feature", "main"], ["origin/main"]).toJson(),
+      "git.remoteTracks": { tracks: [new GitBranchTrack("origin/main", 1, 3).toJson()] }
+    });
+    GitFixtures.setUp(context);
+    const fixture: ComponentFixture<GitRepositoryComponent> = TestBed.createComponent(GitRepositoryComponent);
+    fixture.autoDetectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    await domAsync(() => element.querySelector("button[title=main] .count.behind") !== null);
+    const resolve = (color: string): string => {
+      const probe: HTMLSpanElement = document.createElement("span");
+      probe.style.color = color;
+      document.body.append(probe);
+      const resolved: string = getComputedStyle(probe).color;
+      probe.remove();
+      return resolved;
+    };
+    const colorOf = (selector: string): string => getComputedStyle(element.querySelector(selector) ?? element).color;
+    [...element.querySelectorAll<HTMLElement>("button.toggle")].find(t => t.textContent?.includes("Remotes"))?.click();
+    await domAsync(() => element.querySelector("[title='origin/']") !== null);
+    element.querySelector<HTMLElement>("[title='origin/']")?.click();
+    await domAsync(() => element.querySelector("[title='origin/main'] .count.behind") !== null);
+    const remote: readonly (string | null)[] = [...element.querySelectorAll("[title='origin/main'] .count")].map(t => t.getAttribute("title"));
+
+    expect([colorOf("button[title=main] .ahead .arrow"), colorOf("button[title=main] .behind .arrow"), colorOf("button[title=main] .ahead"), colorOf("button[title=main] .behind")])
+      .toEqual([resolve("var(--nol-status-ok)"), resolve("var(--nol-accent)"), resolve("var(--nol-status-ok)"), resolve("var(--nol-accent)")]);
+    expect(resolve("var(--nol-status-ok)")).not.toBe(resolve("var(--nol-accent)"));
+    expect(remote).toEqual(["1 commit your branch doesn't have", "3 commits on your branch it doesn't have"]);
+    expect([...element.querySelectorAll("button[title=main] .count")].map(t => t.getAttribute("title"))).toEqual(["1 commit to push", "2 commits to pull"]);
   });
 
   it("asks a new branch's name from the side panel's new branch button, creates it on the status it read, and creates none when cancelled", async () => {
@@ -381,6 +418,34 @@ describe("GitRepositoryComponent", () => {
 
       expect(requested(context, "git.deleteTag")).toEqual([{ folder: GitFixtures.folder, name: "v1", basedOn: GitFixtures.status().fingerprint }]);
     });
+
+    it("switches to a pull request's source branch from its menu, on the status the panel read, and offers no switch to the current branch's own", async () => {
+      const context: FakeWindowPartContext = new FakeWindowPartContext();
+      const remote: GitRemote = new GitRemote("origin", "github.com", "example-owner/example-repository", RemoteTransport.Https);
+      new GitHeldRequests(context, [], { ...answers, "git.status": GitFixtures.status([], null, { remote }).toJson(), "git.switchBranch": null });
+      onTestFinished(GitPullRequests.provide(context, {
+        claims: t => t.host === "github.com", hostName: "GitHub", signInPage: "git-github.account",
+        listFor: () => signal(GitPullRequestList.ready([
+          new GitPullRequestRow("214", "#214", "Draw lanes", "https://github.com/example-owner/example-repository/pull/214", false, 0, 0, 0, 0, "feature/graph"),
+          new GitPullRequestRow("215", "#215", "Tidy the garden", "https://github.com/example-owner/example-repository/pull/215", false, 0, 0, 0, 0, "main")
+        ])),
+        refresh: () => undefined
+      }));
+      GitFixtures.setUp(context);
+      const fixture: ComponentFixture<GitRepositoryComponent> = TestBed.createComponent(GitRepositoryComponent);
+      fixture.autoDetectChanges();
+      const element: HTMLElement = fixture.nativeElement;
+      await domAsync(() => element.querySelectorAll(".pull-request").length === 2 && element.querySelector("button[title=main]") !== null);
+      const rows: HTMLElement[] = [...element.querySelectorAll<HTMLElement>(".pull-request")];
+      const forCurrent: boolean = isOff((await menuOf(rows[1] ?? element))[0] ?? document.createElement("button"));
+      document.querySelector("[nol-menu-item]")?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true, cancelable: true }));
+      await domAsync(() => document.querySelector("[nol-menu-item]") === null);
+
+      await choose(rows[0] ?? element, "Switch to branch");
+      await domAsync(() => requested(context, "git.switchBranch").length === 1);
+
+      expect([forCurrent, requested(context, "git.switchBranch")]).toEqual([true, [{ folder: GitFixtures.folder, name: "feature/graph", basedOn: GitFixtures.status().fingerprint }]]);
+    });
   });
 
   it("shows the agents' runs and the current branch's remote's pull requests after the branches and before the remotes, and no pull requests without a remote", async () => {
@@ -408,11 +473,11 @@ describe("GitRepositoryComponent", () => {
     expect(sections.slice(0, 4)).toEqual(["Branches", "Agents", "Pull requests", "Remotes"]);
   });
 
-  const linkedAsync = async (remote: GitRemote | null, opened: string[]): Promise<HTMLElement> => {
+  const linkedAsync = async (remote: GitRemote | null, opened: string[], active: Signal<boolean> = signal(false)): Promise<HTMLElement> => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     GitFixtures.answerWith(context, { ...answers, "git.status": GitFixtures.status([], null, { remote }).toJson() });
     onTestFinished(GitRepositoryLinks.provide({
-      linksFor: t => t.host !== "dev.azure.com" ? [] : [new GitRepositoryLink("workItems", "Work items", "checklist", () => opened.push("workItems")),
+      linksFor: t => t.host !== "dev.azure.com" ? [] : [new GitRepositoryLink("workItems", "Work items", "checklist", () => opened.push("workItems"), active),
         new GitRepositoryLink("sprint", "Sprint", "view_kanban", () => opened.push("sprint"))]
     }));
     GitFixtures.setUp(context);
@@ -434,6 +499,20 @@ describe("GitRepositoryComponent", () => {
 
     expect([rows.map(t => [t.querySelector(".ms")?.textContent, t.querySelector(".grow")?.textContent]), element.querySelector(".row.history + .row.link") === rows[0], opened])
       .toEqual([[["checklist", "Work items"], ["view_kanban", "Sprint"]], true, ["sprint", "workItems"]]);
+  });
+
+  it("selects a host's row while its page is the active document, in place of Changes or History, and Changes again once it isn't", async () => {
+    const active = signal(true);
+    const element: HTMLElement = await linkedAsync(new GitRemote("origin", "dev.azure.com", "fabrikam/web/_git/site", RemoteTransport.Https), [], active);
+    const selected = (): (string | null)[][] => [...element.querySelectorAll<HTMLElement>(".row.changes, .row.history, .row.link")]
+      .map(t => [t.querySelector(".grow")?.textContent ?? null, t.classList.contains("sel") ? "sel" : null, t.getAttribute("aria-current")]);
+    const whileActive = selected();
+    active.set(false);
+    await domAsync(() => element.querySelector(".row.changes.sel") !== null);
+
+    expect([whileActive, selected()]).toEqual([
+      [["Changes", null, null], ["History", null, null], ["Work items", "sel", "true"], ["Sprint", null, null]],
+      [["Changes", "sel", "true"], ["History", null, null], ["Work items", null, null], ["Sprint", null, null]]]);
   });
 
   it.each([["another host's remote", new GitRemote("origin", "github.com", "octocat/hello-world", RemoteTransport.Https)], ["no remote", null]])(

@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Component, computed, effect, inject, Injector, input, type InputSignal, PendingTasks, type Signal, signal, untracked,
+import { Component, computed, DestroyRef, effect, inject, Injector, input, type InputSignal, PendingTasks, type Signal, signal, untracked,
   type WritableSignal } from "@angular/core";
 import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
@@ -23,6 +23,7 @@ import { WorkItemRow } from "../../models/work-item-row.ts";
 import { WorkItemsPlace } from "../../models/work-items-place.ts";
 import { Resources } from "../../../resources.ts";
 import { WorkItemSelection } from "../../services/work-item-selection.ts";
+import { WorkItemsPages } from "../../services/work-items-pages.ts";
 
 @Component({
   selector: "nol-git-azure-devops-work-item",
@@ -66,11 +67,7 @@ export class AzureDevOpsWorkItemComponent {
   public constructor() {
     const active: Signal<boolean> = inject(WindowPartTokens.activeDocument);
     this.selection.follow(this.choice, active, inject(Injector));
-    effect(() => {
-      const choice: WorkItemChoice | null = this.choice();
-      if (active() && choice !== null)
-        untracked(() => this.selection.showOnce(choice));
-    });
+    inject(DestroyRef).onDestroy(WorkItemsPages.follow(this.place, active));
     effect(onCleanup => {
       this.attempt();
       const instance: string = this.instance();

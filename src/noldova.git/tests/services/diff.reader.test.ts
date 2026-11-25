@@ -265,6 +265,47 @@ describe("DiffReader", () => {
     assert.ok(Buffer.byteLength(JSON.stringify(diff.toJson())) <= 4 * 1024 * 1024 + 100);
   });
 
+  test("counts the whole of a range its limit cuts, so its totals show every file, and counts none for a worktree's, whose untracked files git can't count", async () => {
+    const big = `${"x".repeat(99)}\n`.repeat(8_000);
+    await commitAsync({ "big1.txt": big, "big2.txt": big, "big3.txt": big, "big4.txt": big, "big5.txt": big, "small.txt": "s\n" }, "Big");
+    await repository.writeAsync("big1.txt", "y\n");
+
+    const range = await reader.readAsync(repository.folder, new DiffScope(DiffScopeKind.Range, "HEAD~1", "HEAD"), []);
+    const worktree = await reader.readAsync(repository.folder, WORKTREE, []);
+    const whole = await reader.readAsync(repository.folder, new DiffScope(DiffScopeKind.Range, "HEAD~1", "HEAD"), ["small.txt"]);
+
+    assert.deepEqual([range.files.length < 6, range.omittedFiles > 0, range.totals?.toJson()], [true, true, { files: 6, added: 40_001, removed: 0 }]);
+    assert.deepEqual([worktree.truncated, worktree.totals, whole.truncated, whole.totals], [false, null, false, null]);
+  });
+
+  test("counts a diff's files and lines without reading it: a rename once, a binary file's lines as none, and the staged changes apart from the worktree's", async () => {
+    await commitAsync({ "old.txt": "one\ntwo\nthree\nfour\n", "c.bin": "\0a\0" }, "Second");
+    await repository.runGitAsync(["mv", "old.txt", "new.txt"]);
+    await repository.writeAsync("c.bin", "\0b\0");
+    await repository.writeAsync("a.txt", "a\nmore\n");
+    await repository.runGitAsync(["add", "c.bin"]);
+
+    const staged = await reader.countAsync(repository.folder, STAGED);
+    const worktree = await reader.countAsync(repository.folder, WORKTREE);
+    const range = await reader.countAsync(repository.folder, new DiffScope(DiffScopeKind.Range, "HEAD~1", "HEAD"));
+
+    assert.deepEqual([staged.toJson(), worktree.toJson(), range.toJson()], [{ files: 2, added: 0, removed: 0 }, { files: 1, added: 1, removed: 0 },
+      { files: 2, added: 4, removed: 0 }]);
+  });
+
+  test("fails to count when git's answer outgrows its limit, and leaves a cut diff's totals unknown then", async () => {
+    const runner = new ScriptedRunnerFixture(supervisor.context);
+    const big = `${"x".repeat(99)}
+`.repeat(8_000);
+    await commitAsync({ "big1.txt": big, "big2.txt": big, "big3.txt": big, "big4.txt": big, "big5.txt": big }, "Big");
+    runner.truncating = "--numstat";
+
+    const diff = await new DiffReader(runner).readAsync(repository.folder, new DiffScope(DiffScopeKind.Range, "HEAD~1", "HEAD"), []);
+
+    assert.deepEqual([diff.truncated, diff.totals], [true, null]);
+    await assert.rejects(new DiffReader(runner).countAsync(repository.folder, STAGED), { name: "UnreadableOutputException" });
+  });
+
   test("fails as unavailable outside a repository, with git's errors marked untrusted", async () => {
     const outside = path.join(repository.root, "outside");
     await mkdir(outside);

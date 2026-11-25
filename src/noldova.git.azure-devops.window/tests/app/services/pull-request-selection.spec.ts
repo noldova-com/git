@@ -28,7 +28,7 @@ describe("PullRequestSelection", () => {
 
   it("opens the Pull request view's one instance, titled for the pull request", () => {
     const context = new FakeWindowPartContext();
-    PullRequestSelection.of(context).showOnce(new PullRequestChoice(pullRequest, pullRequest.reviewers, 0, { changed: () => undefined, added: () => undefined }));
+    PullRequestSelection.of(context).showInFront(new PullRequestChoice(pullRequest, pullRequest.reviewers, 0, { changed: () => undefined, added: () => undefined }));
 
     expect([context.callsOf("openView"), context.callsOf("showView")]).toEqual([[["git-azure-devops.pullRequestDetail", "selected", "Pull request !752"]], []]);
   });

@@ -129,6 +129,10 @@ export class AzureDevOpsWorkItemDetailComponent {
     return Resources.workItemIconOf(item.type.icon);
   }
 
+  protected imageOf(item: HostWorkItem): string | null {
+    return Resources.workItemImageOf(item.type);
+  }
+
   protected colorOf(item: HostWorkItem): string {
     return Resources.formatHexColor(item.type.color);
   }

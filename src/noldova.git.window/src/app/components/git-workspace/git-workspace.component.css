@@ -12,7 +12,6 @@
   box-sizing: border-box;
   height: 100%;
   min-height: 0;
-  padding: 0.25rem;
   color: var(--nol-text);
   font-family: var(--nol-font-sans);
   font-size: var(--nol-text-panel);
@@ -42,8 +41,6 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border: var(--nol-border-width) solid var(--nol-card-border);
-  border-radius: var(--nol-radius-large);
   background: var(--nol-panel);
 }
 
@@ -148,7 +145,7 @@
 .table {
   display: grid;
   /* A row is a subgrid whose 0.75rem padding comes out of the first and last tracks, so they hold 1.375rem and 5.5rem for the cells; the first keeps the checkbox clear of the repository's inset. The branch takes what the others leave, at least 8rem, all fitting a 1440px window. */
-  grid-template-columns: 2.125rem 8rem minmax(8rem, 1fr) 5.5rem 5rem 8.5rem 5rem 6.25rem;
+  grid-template-columns: 2.125rem 8rem minmax(8rem, 1fr) 5.5rem 5rem 8.5rem 5rem 6.5rem 6.25rem;
   align-content: start;
   column-gap: 0.5rem;
   min-height: 0;
@@ -301,9 +298,20 @@
 }
 
 /*
- * As the window narrows, the table's lesser columns leave, the pull request first, then changes and sync, so every row keeps its repository, branch,
- * checks and fetched time whole. The table is the window's content less 0.125rem.
+ * As the window narrows, the table's lesser columns leave, the open count first, then the pull request, then changes and sync, so every row keeps
+ * its repository, branch, checks and fetched time whole. The table is the window's content less 0.125rem.
  */
+@container (width < 59rem) {
+  .table {
+    grid-template-columns: 2.125rem 8rem minmax(8rem, 1fr) 5.5rem 5rem 8.5rem 5rem 6.25rem;
+  }
+
+  .open,
+  .open-head {
+    display: none;
+  }
+}
+
 @container (width < 52rem) {
   .table {
     grid-template-columns: 2.125rem 8rem minmax(8rem, 1fr) 5.5rem 5rem 5rem 6.25rem;

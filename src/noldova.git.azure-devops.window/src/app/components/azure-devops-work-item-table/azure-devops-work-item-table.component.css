@@ -120,9 +120,10 @@ button.toggle:hover {
   font-variation-settings: "FILL" 1;
 }
 
+/* A work item's number in the text's own font, as Azure DevOps sets it, with figures of one width so the column lines up. */
 .id {
   color: var(--nol-text-muted);
-  font-family: var(--nol-font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .state {
@@ -148,4 +149,13 @@ button.toggle:hover {
 
 .empty {
   margin: var(--nol-space-3) var(--nol-space-2);
+}
+
+/* Azure DevOps' own drawing of a type's icon, which fills its square where a symbol leaves a margin, so it is drawn 0.875em inside the symbol's 1em. */
+.type-image {
+  width: 0.875em;
+  height: 0.875em;
+  margin: 0.0625em;
+  flex: none;
+  vertical-align: middle;
 }

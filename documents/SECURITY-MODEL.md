@@ -128,7 +128,7 @@ A change to any of these is risky in review:
 - which hosts the GitHub token goes to, whether GitHub's sign-in and API follow a redirect, how much of an answer they read, or what the avatar read sends, follows or takes;
 - who may give the Azure DevOps module a token, which hosts the token goes to, whether a request follows a redirect with it, or how it is kept;
 - the sign-in with Microsoft: its client, authority or scopes, what the loopback listener binds to, accepts or answers, how its state and PKCE verifier are made, or how its refresh token is kept and renewed;
-- what `git-azure-devops.readAuthorAvatar` or `git-azure-devops.readPersonAvatar` sends to Azure DevOps or takes;
+- what `git-azure-devops.readAuthorAvatar` or `git-azure-devops.readPersonAvatar` sends to Azure DevOps or takes, or which work item icons the module takes;
 - what `git.avatar` sends to Gravatar, follows or takes.
 
 ## What the sign-in with Microsoft sends and keeps
@@ -166,6 +166,9 @@ It sends the author's email, trimmed and in lower case, with the sign-in, to tha
 It takes only a PNG, JPEG, GIF or WebP image of at most 64 KiB, by the image's own first bytes, answers none for a picture Azure DevOps made itself, so Gravatar's can show, and the window gets the picture only as a data address.
 It keeps the answers for the last 500 emails while the app runs.
 
+A work item type's icon comes from Azure DevOps' `workitemicons` endpoint on `dev.azure.com`, with the token, once for each type and account: the module takes only an answer of at most 64 KiB whose text starts as SVG, whatever type Azure DevOps names, answers none otherwise, and logs why.
+The window draws it only as an image from a `data:` address, where SVG runs no script and loads nothing, never as markup it inserts.
+
 `git-azure-devops.readPersonAvatar` reads, the same way and under the same limits, the picture of a person the Azure DevOps pages show, such as a pull request's author or reviewer, a comment's author, or a work item's assignee, by the sign-in name Azure DevOps gives for them.
 It sends that name to Graph only when it reads as an email, trimmed and in lower case, and shares the answers it keeps with the authors' by organization and email; for any other name it asks nothing and answers none.
 
@@ -194,7 +197,7 @@ The pull request page reads its Files, Updates, Commits or Conflicts tab when th
 |---|---|
 | `git-azure-devops.readPullRequestCommits` | Only for a repository in the organization of the sign-in: one request for the pull request's commits, at most 251, with the sign-in. The window keeps the answer while the page shows that pull request, and keeps nothing after a failed read. |
 | `git-azure-devops.readPullRequestUpdates` | Only for a repository in the organization of the sign-in: one request for the pull request's iterations without their commits, with the sign-in. The window keeps the answer while the page shows that pull request, and keeps nothing after a failed read. |
-| `git-azure-devops.readPullRequestChanges` | Only for a repository in the organization of the sign-in: one request for the pull request's iterations without their commits, then one for the latest iteration's changes against the target branch, at most 1001, with the sign-in. It reads paths and change types only, never a file's contents. The window keeps the answer while the page shows that pull request, and keeps nothing after a failed read. |
+| `git-azure-devops.readPullRequestChanges` | Only for a repository in the organization of the sign-in: one request for the pull request's iterations without their commits, then the latest iteration's changes against the target branch, 1000 a page while a page comes back full and at most 6 pages, with the sign-in. It reads paths and change types only, never a file's contents. The window keeps the answer while the page shows that pull request, and keeps nothing after a failed read. |
 | `git-azure-devops.readPullRequestConflicts` | Only for a repository in the organization of the sign-in: one request for the pull request's conflicts, at most 101, with the sign-in, keeping only their paths. The window keeps the answer while the page shows that pull request, and keeps nothing after a failed read. |
 
 To decide whether a row can show a commit in the history, the tab reads the open repository's status, which stays on the machine; it compares the remote's organization, project and repository name with the pull request page's, ignoring case, and sends nothing to the host.

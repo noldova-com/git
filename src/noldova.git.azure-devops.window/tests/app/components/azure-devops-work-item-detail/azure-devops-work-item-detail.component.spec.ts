@@ -9,7 +9,7 @@
 import { signal } from "@angular/core";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
-import { HostPolicy, HostPullRequest, HostWorkItem, HostWorkItemDetail, PolicyState, WorkItemCategory, WorkItemScope, WorkItemsQuery } from "@noldova/git.hosting.protocol";
+import { HostPolicy, HostPullRequest, HostWorkItem, HostWorkItemDetail, HostWorkItemType, PolicyState, WorkItemCategory, WorkItemScope, WorkItemsQuery } from "@noldova/git.hosting.protocol";
 import { GitCommit, GitGraph, GitGraphCommit, GitGraphParams, GitNames } from "@noldova/git.protocol";
 import { GitFolder } from "@noldova/git.window";
 import { describe, expect, it, onTestFinished } from "vitest";
@@ -54,6 +54,20 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
     expect(page.texts(".acceptance")).toEqual([]);
     expect(page.texts(".section")).toEqual([expect.stringMatching(/^Development merge !479$/)]);
     expect(page.requests.methods).toEqual([AzureDevOpsNames.readWorkItemsMethod, AzureDevOpsNames.readPullRequestMethod]);
+  });
+
+  it("draws the work item's type icon as Azure DevOps drew it, 0.875rem square inside the 1rem symbol it stands in for, before the type's name", async () => {
+    const svg: string = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill="#009CCC" d="M2 2h12v12H2z"/></svg>';
+    const top = detailOf(new HostWorkItem(HOST, "fabrikam", PROJECT, 4900, new HostWorkItemType("User Story", "009CCC", "icon_book", svg), "Alone", "New",
+      WorkItemCategory.Proposed, urlOf(4900), null, null, null, null));
+    const page = await new Page().answerMine([top]).openAsync();
+    const image = page.find(".kind img.type-image");
+    const box = image.getBoundingClientRect();
+    const name = page.find(".kind .small").getBoundingClientRect();
+    const rem: number = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+
+    expect([image.getAttribute("src"), page.element.querySelector(".kind span.wi")]).toEqual([`data:image/svg+xml,${encodeURIComponent(svg)}`, null]);
+    expect([box.width / rem, box.height / rem, box.right <= name.left]).toEqual([0.875, 0.875, true]);
   });
 
   it("says no development is linked, and shows no parent, for a top work item with nothing linked", async () => {

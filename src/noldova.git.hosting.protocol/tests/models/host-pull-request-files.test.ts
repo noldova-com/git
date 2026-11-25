@@ -20,26 +20,26 @@ function filesOf(count: number): HostPullRequestFile[] {
 }
 
 describe("HostPullRequestFiles", () => {
-  it("returns its commits, files and whether there are more as JSON that reads back the same, more also with fewer than 1000", () => {
-    const full = new HostPullRequestFiles(SOURCE, COMMON, filesOf(1000), true);
+  it("returns its commits, files and whether there are more as JSON that reads back the same, more also with fewer than 5000", () => {
+    const full = new HostPullRequestFiles(SOURCE, COMMON, filesOf(5000), true);
     const fewer = new HostPullRequestFiles(SOURCE, null, filesOf(961), true);
 
     assert.deepEqual(new HostPullRequestFiles(SOURCE, null, filesOf(1), false).toJson(), { sourceCommit: SOURCE, commonCommit: null,
       files: [{ path: "src/file-0.ts", kind: "Modified", previousPath: null }], hasMore: false });
     assert.deepEqual(HostPullRequestFiles.fromJson(JSON.parse(JSON.stringify(full.toJson()))), full);
-    assert.deepEqual([full.files.length, full.hasMore, HostPullRequestFiles.maximumCount], [1000, true, 1000]);
+    assert.deepEqual([full.files.length, full.hasMore, HostPullRequestFiles.maximumCount], [5000, true, 5000]);
     assert.deepEqual(HostPullRequestFiles.fromJson(fewer.toJson()), fewer);
     assert.deepEqual(new HostPullRequestFiles(null, null, [], false).toJson(), { sourceCommit: null, commonCommit: null, files: [], hasMore: false });
   });
 
-  it("refuses commits that aren't ids, a common commit, files or more without a head commit, and more than 1000 files", () => {
+  it("refuses commits that aren't ids, a common commit, files or more without a head commit, and more than 5000 files", () => {
     assert.throws(() => new HostPullRequestFiles("x", null, [], false), { name: "HostingArgumentException", parameterName: "sourceCommit" });
     assert.throws(() => new HostPullRequestFiles(SOURCE, "x", [], false), { name: "HostingArgumentException", parameterName: "commonCommit" });
     assert.throws(() => new HostPullRequestFiles(null, COMMON, [], false), { name: "HostingArgumentException", parameterName: "sourceCommit",
       message: "The argument sourceCommit is invalid: expected a head commit for a common commit, files or more." });
     assert.throws(() => new HostPullRequestFiles(null, null, filesOf(1), false), { name: "HostingArgumentException", parameterName: "sourceCommit" });
-    assert.throws(() => new HostPullRequestFiles(SOURCE, COMMON, filesOf(1001), true), { name: "HostingArgumentException", parameterName: "files",
-      message: "The argument files is invalid: expected at most 1000 files." });
+    assert.throws(() => new HostPullRequestFiles(SOURCE, COMMON, filesOf(5001), true), { name: "HostingArgumentException", parameterName: "files",
+      message: "The argument files is invalid: expected at most 5000 files." });
     assert.throws(() => new HostPullRequestFiles(null, null, [], true), { name: "HostingArgumentException", parameterName: "sourceCommit" });
   });
 

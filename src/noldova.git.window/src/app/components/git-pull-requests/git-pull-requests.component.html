@@ -27,11 +27,20 @@ LICENSE file in the root directory of this source tree.
       }
       @default {
         @for (row of rows(); track row.url) {
-          <div class="row pull-request" (click)="open(row)">
+          <div class="row pull-request" (click)="open(row)" [nolContextMenuTriggerFor]="pullRequestMenu">
             <span [class]="'dot ' + toneOf(row)"></span>
             <span class="grow title"><nol-git-reference-text [text]="row.label" [title]="row.title" [folder]="folder()" [link]="row.url" /></span>
             <span class="small muted">{{ noteOf(row) }}</span>
           </div>
+          <ng-template #pullRequestMenu>
+            <nol-menu>
+              <button nol-menu-item data-action="switch" [label]="resources.switchLabel" [icon]="resources.switchIcon" [disabled]="!canSwitch() || row.headBranch === current()"
+                (triggered)="switchTo.emit(row.headBranch)"></button>
+              <nol-menu-separator />
+              <button nol-menu-item data-action="open" [label]="resources.openInBrowserLabel" [icon]="resources.openLinkIcon" (triggered)="openInBrowser(row)"></button>
+              <button nol-menu-item data-action="copy" [label]="resources.copyLinkLabel" [icon]="resources.copyLinkIcon" (triggered)="copyLink(row)"></button>
+            </nol-menu>
+          </ng-template>
         } @empty {
           <div class="row small muted note">{{ list()?.state === states.Ready ? resources.pullRequestsEmpty : resources.pullRequestsReading }}</div>
         }

@@ -173,11 +173,6 @@ export class GitHistoryComponent {
     const details: GitDetailView<GitCommitView> = GitCommitDetails.of(inject(WindowPartTokens.context));
     const chosen: Signal<GitCommitView | null> = computed(() => GitViewing.commitOf(this.instance()));
     details.follow(chosen, active, inject(Injector));
-    effect(() => {
-      const commit: GitCommitView | null = chosen();
-      if (active() && commit !== null)
-        untracked(() => details.showOnce(commit));
-    });
     afterNextRender(() => {
       const row: HTMLElement = this.row().nativeElement;
       const observer: ResizeObserver = new ResizeObserver(() => this.fit(row));

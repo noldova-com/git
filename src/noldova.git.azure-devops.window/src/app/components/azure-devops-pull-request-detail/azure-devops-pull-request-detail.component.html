@@ -26,7 +26,7 @@ LICENSE file in the root directory of this source tree.
               <span class="group-avatar"><span class="material-symbols-rounded" aria-hidden="true">{{ resources.groupIcon }}</span></span>
             } @else {
               <nol-git-azure-devops-person-avatar [organization]="pullRequest.item.reference.owner" [login]="reviewer.person.login"
-                [name]="resources.formatAvatarName(reviewer.person.login)" [image]="reviewer.person.avatar" [size]="small" />
+                [name]="resources.formatPersonName(reviewer.person)" [image]="reviewer.person.avatar" [size]="small" />
             }
             @if (voteIconOf(reviewer); as icon) {
               <span class="vote" [class.approved]="reviewer.vote > 0" [class.waiting]="reviewer.vote < 0 && reviewer.vote > -1" [class.rejected]="reviewer.vote <= -1">
@@ -35,7 +35,7 @@ LICENSE file in the root directory of this source tree.
             }
           </span>
           <span class="grow">
-            <span class="name" [title]="reviewer.person.login">{{ resources.formatReviewerName(reviewer.person.login) }}</span>
+            <span class="name" [title]="reviewer.person.login">{{ resources.formatPersonName(reviewer.person) }}</span>
             <span class="small muted">{{ resources.formatReviewerNote(reviewer.vote, reviewer.voteLabel, reviewer.isRequired) }}</span>
           </span>
           @if (reviewer.isRequired) {
@@ -88,8 +88,12 @@ LICENSE file in the root directory of this source tree.
       <h2 class="section-title">{{ resources.workItemsTitle }}</h2>
       @for (workItem of pullRequest.workItems; track workItem.id) {
         <button type="button" class="row" (click)="openAsync(workItem.url)">
-          <span class="material-symbols-rounded filled" role="img" [attr.aria-label]="workItem.type.name"
-            [style.color]="'#' + workItem.type.color">{{ resources.workItemIconOf(workItem.type.icon) }}</span>
+          @if (resources.workItemImageOf(workItem.type); as image) {
+            <img class="material-symbols-rounded type-image" [src]="image" [alt]="workItem.type.name">
+          } @else {
+            <span class="material-symbols-rounded filled" role="img" [attr.aria-label]="workItem.type.name"
+              [style.color]="'#' + workItem.type.color">{{ resources.workItemIconOf(workItem.type.icon) }}</span>
+          }
           <span class="id">{{ workItem.id }}</span>
           <span class="grow">{{ workItem.title }}</span>
           <span class="small work-state"><span class="dot" [style.background-color]="resources.categoryColors[workItem.category]"></span>{{ workItem.state }}</span>

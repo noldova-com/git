@@ -264,7 +264,8 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
     const row: GitPullRequestRow = new GitPullRequestRow(PullRequestDocument.instanceOf(item.reference), Resources.formatPullRequestReference(item.reference.number),
       item.title, item.url, item.state === ReferenceState.Draft, found.approvals ?? 0, count(CheckState.Succeeded), count(CheckState.Failed),
       count(CheckState.Queued, CheckState.Running), headBranch, item.changes.baseBranch);
-    return GitBranchPullRequest.of(row, AzureDevOpsPullRequests.STATES[item.state], item.state === ReferenceState.Open && found.reviewDecision === ReviewDecision.Waiting);
+    return GitBranchPullRequest.of(row, AzureDevOpsPullRequests.STATES[item.state], item.state === ReferenceState.Open && found.reviewDecision === ReviewDecision.Waiting,
+      Resources.stateLabels[item.state]);
   }
 
   private static answerOf(answers: Map<string, WritableSignal<GitBranchPullRequest | null>>, key: string): WritableSignal<GitBranchPullRequest | null> {

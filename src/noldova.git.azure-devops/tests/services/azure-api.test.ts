@@ -206,4 +206,61 @@ describe("AzureApi", () => {
       signedOut, signedOut, signedOut, signedOut, refused, refused]);
     assert.deepEqual(azure.requests.map(t => t.init.method), ["PUT", "PUT", "POST", "PATCH", "PATCH", undefined, "POST"]);
   });
+
+  it("asks for an SVG image with the token and answers its markup, an XML declaration before it too", async () => {
+    const svg: string = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill="#CC293D" d="M2 2h12v12H2z"/></svg>';
+    const declared: string = `<?xml version="1.0" encoding="utf-8"?>\n${svg}`;
+    const azure = new FakeAzure();
+    azure.answer(new Response(svg, { headers: { "Content-Type": "image/svg+xml; charset=utf-8" } }),
+      new Response(declared, { headers: { "Content-Type": "image/svg+xml" } }));
+    const api = new AzureApi(azure.fetch);
+
+    const answers = [await api.getSvgAsync(url, token, signal, () => undefined), await api.getSvgAsync(url, token, signal, () => undefined)];
+
+    assert.deepEqual([answers, azure.requests[0]?.header("Accept"), azure.requests[0]?.header("Authorization"), azure.requests[0]?.init.redirect],
+      [[svg, declared], "image/svg+xml, */*;q=0.8", `Basic ${Buffer.from(":azure-token").toString("base64")}`, "manual"]);
+  });
+
+  it("takes SVG by its text whatever type Azure DevOps names, and answers none, saying why, for a refused or missing one, text that isn't SVG or more than 64 KiB",
+    async () => {
+    const svg: string = '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
+    const dropped: number[] = [];
+    const unread = (status: number, type: string): Response =>
+      new Response(new ReadableStream<Uint8Array>({ cancel: () => void dropped.push(status) }), { status, headers: { "Content-Type": type } });
+    const azure = new FakeAzure();
+    azure.answer(unread(404, "image/svg+xml"), unread(500, "image/svg+xml"), new Response(svg, { headers: { "Content-Type": "application/octet-stream" } }),
+      new Response(svg), new Response("<html></html>", { headers: { "Content-Type": "image/svg+xml" } }),
+      new Response(`${svg}${" ".repeat(65_536)}`, { headers: { "Content-Type": "image/svg+xml" } }));
+    const api = new AzureApi(azure.fetch);
+    const reasons: string[] = [];
+
+    const answers: (string | null)[] = [];
+    for (let attempt = 0; attempt < 6; attempt++)
+      answers.push(await api.getSvgAsync(url, token, signal, t => reasons.push(t)));
+
+    assert.deepEqual([answers, dropped], [[null, null, svg, svg, null, null], [404, 500]]);
+    assert.deepEqual(reasons, ["Azure DevOps answered 404", "Azure DevOps answered 500", "it isn't SVG", "it's larger than 64 KiB"]);
+  });
+
+  it("fails as signed out for a refused token, as Unavailable without a network or when the image breaks off, and with the caller's reason when stopped", async () => {
+    const stopping = new AbortController();
+    const azure = new FakeAzure();
+    azure.answer(new Response(null, { status: 401 }), new Response(new ReadableStream<Uint8Array>({ pull: controller => controller.error(new TypeError("terminated")) }),
+      { headers: { "Content-Type": "image/svg+xml" } }));
+    azure.fail(new TypeError("fetch failed"));
+    azure.answer(new Response(new ReadableStream<Uint8Array>({
+      pull: controller => {
+        stopping.abort(new Error("Stopped while reading."));
+        controller.error(new TypeError("terminated"));
+      }
+    }, { highWaterMark: 0 }), { headers: { "Content-Type": "image/svg+xml" } }));
+    const api = new AzureApi(azure.fetch);
+
+    const failures: unknown[] = [];
+    for (const at of [signal, signal, signal, stopping.signal])
+      failures.push(await api.getSvgAsync(url, token, at, () => undefined).then(() => null, (error: unknown) => failureOf(error) ?? error));
+
+    assert.deepEqual(failures, [[FailureCode.Unauthorized, "Sign in to Azure DevOps first."], [FailureCode.Unavailable,
+      "Azure DevOps couldn't be reached."], [FailureCode.Unavailable, "Azure DevOps couldn't be reached."], new Error("Stopped while reading.")]);
+  });
 });

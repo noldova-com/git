@@ -6,16 +6,18 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import type { Signal } from "@angular/core";
+import { type Signal, signal } from "@angular/core";
 import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { FailureCode } from "@noldova/desktop.protocol";
 import { RuntimeRequestException } from "@noldova/desktop.window";
-import { DeviceCode, HostAccount, HostChanges, HostItem, HostPerson, HostReference, HostSignIn, HostWorkItem, HostWorkItemType, ReferenceKind, ReferenceState,
-  WorkItemCategory, WorkItemQuery } from "@noldova/git.hosting.protocol";
-import { GitFolderParams, GitRemote, GitStatus, RemoteTransport } from "@noldova/git.protocol";
-import type { LinkReference } from "@noldova/ui.components.angular";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
+import { DeviceCode, HostAccount, HostAvatar, HostChanges, HostItem, HostPerson, HostPullRequestFiles, HostReference, HostSignIn, HostWorkItem, HostWorkItemType,
+  ReferenceKind, ReferenceState, WorkItemCategory, WorkItemQuery } from "@noldova/git.hosting.protocol";
+import { DiffScope, DiffScopeKind, DiffTotals, GitDiffParams, GitFolderParams, GitRemote, GitStatus, RemoteTransport } from "@noldova/git.protocol";
+import { GitFolder } from "@noldova/git.window";
+import { LinkReferenceDiff, type LinkReference } from "@noldova/ui.components.angular";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished } from "vitest";
 
 import { AzureDevOpsReferenceSource } from "../../../src/app/services/azure-devops-reference-source.ts";
 import { DeferredResponse } from "../../fixtures/deferred-response.fixture.ts";
@@ -26,6 +28,7 @@ import { Wait } from "../../fixtures/wait.fixture.ts";
 describe("AzureDevOpsReferenceSource", () => {
   const readMethod = "git-azure-devops.readWorkItem";
   const referenceMethod = "git-azure-devops.readReference";
+  const avatarMethod = "git-azure-devops.readPersonAvatar";
   const signInEvent = "git-azure-devops.signInChanged";
   const signInMethod = "git-azure-devops.readSignIn";
   const statusMethod = "git.status";
@@ -102,6 +105,75 @@ describe("AzureDevOpsReferenceSource", () => {
     await Wait.until(() => expect(context.requests.filter(t => t.method === referenceMethod)).toHaveLength(2));
     await Wait.until(() => expect(gone()).toBeNull());
     expect(context.requests.find(t => t.method === referenceMethod)?.parameters).toEqual({ host: "git-azure-devops", owner: "fabrikam", repository, number: 7 });
+  });
+
+  it("counts a pull request's lines and files with local Git at its latest push when the open repository is its own, keeping Azure DevOps' counts when it isn't, "
+    + "for another repository, without counts, when the push has no common commit, or when a read fails, which it logs, and failing the read on another failure",
+  async () => {
+    const counted = (number: number): JsonValue => ({ ...HostItem.fromJson(pullRequest).toJson(),
+      kind: number === 5 ? ReferenceKind.Issue : ReferenceKind.PullRequest,
+      url: `https://dev.azure.com/fabrikam/web/_git/${number === 4 ? "other" : "site"}/pullrequest/${String(number)}`,
+      changes: number === 5 ? null : new HostChanges(717914 + number, 13074, 2390, "feature/greeting", "main", "0123456789abcdef0123456789abcdef01234567").toJson() });
+    const source = "9fceb02d0ae598e95dc970b74767f19372d61af8";
+    const common = "7638417db6d59f3c431d3e1f261cc637155684cd";
+    const files: JsonValue[] = [new HostPullRequestFiles(source, common, [], false).toJson(), new HostPullRequestFiles(source, null, [], false).toJson(),
+      new HostPullRequestFiles(source, common, [], false).toJson(), new HostPullRequestFiles(source, common, [], false).toJson()];
+    const totals: (() => JsonValue)[] = [() => new DiffTotals(2391, 14214, 13074).toJson(), () => {
+      throw new RuntimeRequestException(FailureCode.Disconnected, "The runtime is gone.");
+    }, () => {
+      throw new RangeError("Unexpected.");
+    }];
+    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/site")));
+    context.answerModule(referenceMethod, t => counted(HostReference.fromJson(t).number))
+      .answerModule(statusMethod, () => statusOf(azureRemote))
+      .answerModule("git-azure-devops.readPullRequestChanges", () => files.shift() ?? null)
+      .answerModule("git.diffTotals", () => totals.shift()?.() ?? null);
+    const diffOf = (number: number): Promise<LinkReferenceDiff | null> => {
+      const item = find(`https://dev.azure.com/fabrikam/web/_git/${repository}/pullrequest/${String(number)}`);
+      return Wait.until(() => {
+        const value = item();
+        expect(value?.title).toBe("Fix the greeting");
+        return value?.diff ?? null;
+      });
+    };
+
+    const local = await diffOf(1);
+    const uncommon = await diffOf(2);
+    const failed = await diffOf(3);
+    const elsewhere = await diffOf(4);
+    const unchanged = await diffOf(5);
+    const broken = find(`https://dev.azure.com/fabrikam/web/_git/${repository}/pullrequest/6`);
+    await Wait.until(() => expect(context.lines.some(t => t.endsWith("plain link: RangeError"))).toBe(true));
+
+    expect([local, uncommon, failed, elsewhere, unchanged, broken()]).toEqual([new LinkReferenceDiff(14214, 13074, 2391), new LinkReferenceDiff(717916, 13074, 2390),
+      new LinkReferenceDiff(717917, 13074, 2390), new LinkReferenceDiff(717918, 13074, 2390), null, null]);
+    expect(context.requests.find(t => t.method === "git.diffTotals")?.parameters)
+      .toEqual(new GitDiffParams("/work/site", new DiffScope(DiffScopeKind.Range, common, source)).toJson());
+    expect(context.lines.filter(t => t.includes("git.diffTotals"))).toHaveLength(1);
+  });
+
+  it("shows a pull request's author and a work item's assignee with their picture in the organization, none when it can't be read, and reads none for a group", async () => {
+    const avatar = "data:image/png;base64,iVBORw0KGgo=";
+    const asked: JsonValue[] = [];
+    const assigned = (id: number, login: string): JsonValue => new HostWorkItem("git-azure-devops", "fabrikam", "web", id, new HostWorkItemType("Bug", "CC293D", "icon_insect"),
+      "The greeting is cut short", "Active", WorkItemCategory.InProgress, urlOf(id), new HostPerson(login, null, null), null, null, null).toJson();
+    const answers = [assigned(2, "[web]\\Web Team"), assigned(3, "monalisa@example.com")];
+    context.answerModule(referenceMethod, () => pullRequest).answerModule(readMethod, () => answers.shift() ?? null).answerModule(avatarMethod, t => {
+      asked.push(t);
+      if (asked.length > 1)
+        throw new Error("No picture.");
+      return new HostAvatar(avatar).toJson();
+    });
+
+    const item = find(pullRequestUrl);
+    await Wait.until(() => expect(item()?.author?.image).toBe(avatar));
+    const group = find(urlOf(2));
+    await Wait.until(() => expect(group()?.author?.name).toBe("Web Team"));
+    const person = find(urlOf(3));
+    await Wait.until(() => expect(person()?.author?.name).toBe("monalisa@example.com"));
+
+    expect([group()?.author?.image, person()?.author?.image, asked]).toEqual([null, null, [{ host: "dev.azure.com", path: "fabrikam", login: "octocat@example.com" },
+      { host: "dev.azure.com", path: "fabrikam", login: "monalisa@example.com" }]]);
   });
 
   it("knows no link but an Azure DevOps work item's or a pull request's by repository id, and asks Azure DevOps nothing about the others", () => {

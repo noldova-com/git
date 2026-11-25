@@ -22,6 +22,7 @@ describe("The protocol package's API", () => {
       "DiffLine",
       "DiffScope",
       "DiffScopeKind",
+      "DiffTotals",
       "FailureCode",
       "FileChange",
       "FileState",

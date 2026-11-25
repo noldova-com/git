@@ -55,6 +55,7 @@ describe("GitNames", () => {
     assert.deepEqual([
       GitNames.statusMethod,
       GitNames.diffMethod,
+      GitNames.diffTotalsMethod,
       GitNames.branchesMethod,
       GitNames.logMethod,
       GitNames.worktreesMethod,
@@ -97,6 +98,7 @@ describe("GitNames", () => {
     ], [
       "git.status",
       "git.diff",
+      "git.diffTotals",
       "git.branches",
       "git.log",
       "git.worktrees",

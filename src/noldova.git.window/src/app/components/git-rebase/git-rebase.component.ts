@@ -182,11 +182,6 @@ export class GitRebaseComponent {
     inject(DestroyRef).onDestroy(GitFolder.follow(this.instance, active));
     const previews: GitDetailView<GitRebasePreview> = GitRebasePreviews.of(this.context);
     previews.follow(this.preview, active, inject(Injector));
-    effect(() => {
-      const preview: GitRebasePreview | null = this.preview();
-      if (active() && preview !== null)
-        untracked(() => previews.showOnce(preview));
-    });
   }
 
   protected shortOf(id: string): string {

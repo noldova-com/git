@@ -117,6 +117,36 @@ describe("GitWorkspacePullRequests", () => {
     expect(pullRequests.listOf(folder, signal(summaryOf(remoteOf())))()).toBeUndefined();
   });
 
+  it("answers the claiming host's whole open list for the Open count, a host that reads branches too, asked once for each remote, and none without a claiming host", () => {
+    const list: WritableSignal<GitPullRequestList | null> = signal(null);
+    const asked: string[] = [];
+    const { pullRequests } = setUp({ branchFor: () => signal(null), refreshBranch: () => undefined, listFor: (shown, remote) => {
+      asked.push(`${shown} ${remote.name}`);
+      return list;
+    } });
+    const summary: WritableSignal<GitRepositorySummary | null> = signal(summaryOf(remoteOf()));
+    const opened: Signal<GitPullRequestList | null | undefined> = pullRequests.openListOf(folder, summary);
+
+    const before: GitPullRequestList | null | undefined = opened();
+    list.set(GitPullRequestList.ready([row]));
+    const ready: readonly GitPullRequestRow[] | undefined = opened()?.rows;
+    summary.set(summaryOf(remoteOf(), "feature/graph", moved));
+    opened();
+    summary.set(summaryOf(new GitRemote("origin", "gitlab.com", "example-owner/site", RemoteTransport.Https)));
+    const unclaimed: GitPullRequestList | null | undefined = opened();
+    summary.set(summaryOf(null));
+
+    expect([before, ready, unclaimed, opened(), asked]).toEqual([null, [row], undefined, undefined, ["/work/site origin"]]);
+  });
+
+  it("reports a host's open list that throws, taking it as no answer", () => {
+    const { pullRequests, reported } = setUp({ listFor: () => {
+      throw new Error("list refused");
+    } });
+
+    expect([pullRequests.openListOf(folder, signal(summaryOf(remoteOf())))(), reported.map(t => String(t))]).toEqual([null, ["Error: list refused"]]);
+  });
+
   it("finds stacks in a host's stack list, asked once for each remote and read by no branch, else in its open list, and in none for a host with neither", () => {
     const stacks: WritableSignal<GitPullRequestList | null> = signal(null);
     const asked: string[] = [];
@@ -222,12 +252,11 @@ describe("GitWorkspacePullRequests", () => {
     expect(refreshed).toEqual(["/work/site origin", "/work/site upstream", "/work/site origin"]);
   });
 
-  it("asks a host that reads branches to read once for each branch and head commit until it forgets, and never without a branch", () => {
+  it("asks a host that reads branches to read once for each branch and head commit and its list once for each remote until it forgets, and no branch without one", () => {
     const refreshed: string[] = [];
+    const listed: string[] = [];
     const { pullRequests } = setUp({
-      refresh: () => {
-        throw new Error("A host that reads branches isn't asked to read its list.");
-      },
+      refresh: (shown, remote) => listed.push(`${shown} ${remote.name}`),
       branchFor: () => signal(null),
       refreshBranch: (shown, remote, branch, commit) => refreshed.push(`${shown} ${remote.name} ${branch} ${commit?.slice(0, 7)}`)
     });
@@ -241,6 +270,7 @@ describe("GitWorkspacePullRequests", () => {
     pullRequests.refreshOnce(folder, summaryOf(remoteOf()));
 
     expect(refreshed).toEqual(["/work/site origin main 0123456", "/work/site origin feature/graph 0123456", "/work/site origin main fedcba9", "/work/site origin main 0123456"]);
+    expect(listed).toEqual(["/work/site origin", "/work/site origin"]);
   });
 
   it("opens a pull request through the host that opens it, and leaves it to the browser for a host without its own page or no host", () => {

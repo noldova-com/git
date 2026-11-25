@@ -11,7 +11,7 @@ import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import type { JsonValue } from "@noldova/context.json";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
-import { DiffFile, DiffHunk, DiffLine, DiffScope, DiffScopeKind, FileChange, GitDiff, GitDiffParams, LineKind } from "@noldova/git.protocol";
+import { DiffFile, DiffHunk, DiffLine, DiffScope, DiffScopeKind, DiffTotals, FileChange, GitDiff, GitDiffParams, LineKind } from "@noldova/git.protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { GitDiffFilesComponent } from "../../../../src/app/components/git-diff-files/git-diff-files.component.ts";
@@ -62,6 +62,26 @@ describe("GitDiffFilesComponent outside the Git view", () => {
 
     expect([listed, [...element.querySelectorAll(".file-row")].map(t => t.getAttribute("title")), element.querySelector("nol-git-file-layout-button") !== null])
       .toEqual([["src/a.ts"], ["src", "src/a.ts"], true]);
+  });
+
+  it("heads a diff its budget cut with the whole diff's files and lines, and one it read whole with its own files'", async () => {
+    const context = new FakeWindowPartContext();
+    const shown: GitDiff = GitFixtures.diff("src/a.ts", [LineKind.Added, "one"], [LineKind.Removed, "two"]);
+    const diffs: GitDiff[] = [new GitDiff(shown.files, shown.totalBytes, 2389, true, new DiffTotals(2391, 14214, 13074)), shown];
+    context.answer("requestAsync", async () => diffs.shift()?.toJson() ?? null);
+    TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: context }] });
+    const fixture = TestBed.createComponent(GitDiffFilesComponent);
+    fixture.componentRef.setInput("folder", GitFixtures.folder);
+    fixture.componentRef.setInput("scope", new DiffScope(DiffScopeKind.Range, "0".repeat(40), "9".repeat(40)));
+    fixture.autoDetectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    const header = (): string[] => [...element.querySelectorAll(".files-header > span")].map(t => t.textContent.trim());
+    await vi.waitUntil(() => element.querySelector(".file-row") !== null);
+    const cut: string[] = header();
+    fixture.componentRef.setInput("scope", new DiffScope(DiffScopeKind.Range, "1".repeat(40), "9".repeat(40)));
+    await vi.waitUntil(() => diffs.length === 0 && element.querySelector(".file-row") !== null);
+
+    expect([cut, header()]).toEqual([["2391 files changed", "+14214", "−13074"], ["1 file changed", "+1", "−1"]]);
   });
 
   it("says a renamed file came from its old file name, its row's title holding the whole old path", async () => {

@@ -14,6 +14,7 @@ import { GitFolder } from "@noldova/git.window";
 import { describe, expect, it, onTestFinished } from "vitest";
 
 import { WorkItemSelection } from "../../../../src/app/services/work-item-selection.ts";
+import { WorkItemsPages } from "../../../../src/app/services/work-items-pages.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { Wait } from "../../../fixtures/wait.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
@@ -275,6 +276,21 @@ describe("AzureDevOpsWorkItemComponent", () => {
     await page.clickAsync(".item:nth-of-type(3)");
 
     expect(page.context.callsOf("openView").map(t => t[2])).toEqual(["Work item 7402", "Work item 7532", "Work item 7490"]);
+  });
+
+  it("tells its project's repository row that it's in front while it's the active document, and nothing once it closes", async () => {
+    const page = new Page().answerMine();
+    page.requests.answer(AzureDevOpsNames.readPullRequestMethod, null);
+    await page.openAsync();
+    const isActive = WorkItemsPages.isActive("fabrikam", "Sample Project");
+    const shown: boolean[] = [isActive()];
+    page.active.set(false);
+    shown.push(isActive());
+    page.active.set(true);
+    shown.push(isActive());
+    page.fixture?.destroy();
+
+    expect([...shown, isActive()]).toEqual([true, false, true, false]);
   });
 
   it("opens no view for a document that isn't in front, and the view shows its work item only once it is", async () => {

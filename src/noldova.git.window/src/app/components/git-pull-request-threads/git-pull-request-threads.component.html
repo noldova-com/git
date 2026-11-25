@@ -41,7 +41,7 @@ LICENSE file in the root directory of this source tree.
           @for (first of thread.comments.slice(0, 1); track first.id) {
             <button type="button" class="fold" aria-expanded="false" (click)="unfold(thread)">
               <span class="material-symbols-rounded" aria-hidden="true">{{ resources.unfoldIcon }}</span>
-              <span class="name">{{ first.author.login }}</span>
+              <span class="name">{{ first.author.name ?? first.author.login }}</span>
               <span class="grow muted">{{ first.body }}</span>
               <span class="small muted">{{ resources.formatCommentCount(thread.comments.length) }}</span>
             </button>
@@ -52,7 +52,7 @@ LICENSE file in the root directory of this source tree.
               <nol-git-person-avatar [host]="host()" [reference]="reference()" [login]="comment.author.login" [image]="comment.author.avatar" [size]="small" />
               <div class="comment-main">
                 <div class="comment-meta">
-                  <span class="name">{{ comment.author.login }}</span>
+                  <span class="name">{{ comment.author.name ?? comment.author.login }}</span>
                   <span class="small muted">{{ dateOf(comment) }}</span>
                 </div>
                 <nol-markdown-view [text]="comment.body" [references]="references()" (linkOpen)="linkOpen.emit($event)" />

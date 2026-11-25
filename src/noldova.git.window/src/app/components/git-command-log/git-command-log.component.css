@@ -11,7 +11,6 @@
   box-sizing: border-box;
   height: 100%;
   min-height: 0;
-  padding: 0.25rem;
   color: var(--nol-text);
   font-family: var(--nol-font-sans);
   font-size: var(--nol-text-panel);
@@ -25,9 +24,6 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border: var(--nol-border-width) solid var(--nol-card-border);
-  border-radius: var(--nol-radius-medium);
-  background-color: var(--nol-panel);
 }
 
 .head {
@@ -35,7 +31,7 @@
   flex: none;
   flex-direction: column;
   gap: 0.25rem;
-  padding: 0.75rem 0.75rem 0.5rem;
+  padding-bottom: 0.5rem;
 }
 
 .title-row {
@@ -72,7 +68,7 @@
 }
 
 .note {
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0;
 }
 
 .commands {
@@ -90,7 +86,6 @@
   gap: 0.75rem;
   align-items: center;
   min-height: 1.75rem;
-  padding: 0 0.75rem;
   border-top: var(--nol-border-width) solid var(--nol-card-border);
 }
 

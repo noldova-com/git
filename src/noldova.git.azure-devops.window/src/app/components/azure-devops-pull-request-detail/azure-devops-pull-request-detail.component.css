@@ -72,7 +72,10 @@
   margin: 0;
 }
 
-.id,
+.id {
+  font-variant-numeric: tabular-nums;
+}
+
 .build-number {
   font-family: var(--nol-font-mono);
 }
@@ -210,4 +213,13 @@ button.row:hover {
 /* The Complete panel follows the lists, a border's width under them. */
 .complete-panel {
   border-top: var(--nol-border-width) solid var(--nol-border);
+}
+
+/* Azure DevOps' own drawing of a type's icon, which fills its square where a symbol leaves a margin, so it is drawn 0.875em inside the symbol's 1em. */
+.type-image {
+  width: 0.875em;
+  height: 0.875em;
+  margin: 0.0625em;
+  flex: none;
+  vertical-align: middle;
 }

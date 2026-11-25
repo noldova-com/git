@@ -540,9 +540,14 @@ export declare class GitBranchPullRequest {
   public readonly pending: number;
   /** Why the read failed, in the host's words, or `null`. */
   public readonly failure: string | null;
+  /**
+   * The host's own word for where the pull request stands, as its site shows it, such as Azure DevOps' "Active", "Completed" or "Abandoned", which the
+   * commit's pull request card and the workspace page show; `null` shows Git's word for `pullRequestState`: Open, Draft, Merged or Closed.
+   */
+  public readonly stateLabel: string | null;
 
   /**
-   * A read that runs.
+   * A read that runs, keeping the last read's state word.
    * @param last What the last read gave, which the page keeps showing until this one ends; none by default.
    */
   public static reading(last?: GitBranchPullRequest | null): GitBranchPullRequest;
@@ -552,6 +557,7 @@ export declare class GitBranchPullRequest {
    * @param pullRequest The pull request, whose `passed`, `failing` and `pending` count its checks.
    * @param state Where it stands.
    * @param isWaitingForReview Whether none of its reviews approves it or requests changes yet.
+   * @param stateLabel The host's own word for where it stands, such as "Completed", or `null`, the default, for Git's word for `state`.
    * @example
    * ```ts
    * import { GitBranchPullRequest, GitPullRequestRow, GitPullRequestState } from "@noldova/git.window";
@@ -560,7 +566,7 @@ export declare class GitBranchPullRequest {
    *   1, "feature/lanes"), GitPullRequestState.Open, true);
    * ```
    */
-  public static of(pullRequest: GitPullRequestRow, state: GitPullRequestState, isWaitingForReview: boolean): GitBranchPullRequest;
+  public static of(pullRequest: GitPullRequestRow, state: GitPullRequestState, isWaitingForReview: boolean, stateLabel?: string | null): GitBranchPullRequest;
 
   /**
    * No pull request for the branch.
@@ -1058,14 +1064,18 @@ export declare class GitRepositoryLink {
   /** Opens the row's page. */
   public readonly open: () => void;
 
+  /** Whether the row's page is the window's active document, which selects the row in place of Changes or History. */
+  public readonly isActive: Signal<boolean>;
+
   /**
    * Creates a row.
    * @param key The row's key, unique among one host's rows.
    * @param label The row's text.
    * @param icon The row's Material Symbols icon.
    * @param open Opens the row's page.
+   * @param isActive Whether the row's page is the window's active document, such as from `WindowPartTokens.activeDocument` in the page; never, when left out.
    */
-  public constructor(key: string, label: string, icon: string, open: () => void);
+  public constructor(key: string, label: string, icon: string, open: () => void, isActive?: Signal<boolean>);
 }
 
 /**
@@ -1340,29 +1350,20 @@ export declare class GitDetailView<T> {
    * @param view The view's name, a view with instances the module registered.
    * @param instance The view's one instance, which its tab opens with.
    * @param titleOf The tab's title for a choice.
+   * @param isBroughtForward Whether a followed document coming to the front brings the view forward; `false` for a view that stays where the person put
+   * it, which only `showInFront` and `bringForward` open. `true` when left out.
    */
-  public constructor(context: IWindowPartContext, view: string, instance: string, titleOf: (choice: T) => string);
+  public constructor(context: IWindowPartContext, view: string, instance: string, titleOf: (choice: T) => string, isBroughtForward?: boolean);
 
   /**
-   * Adds a document's choice while it is open. While the view is open, the person leaving the followed documents for another kind gives the view's
-   * group its front back with `returnView`, and coming back to one with a choice brings the view forward again with `openView`.
+   * Adds a document's choice while it is open. The document coming to the front with a choice, or showing its first choice while in front, brings the
+   * view to the front of its group with `openView`; a read again that keeps a choice moves nothing. While the view is open, the person leaving the
+   * followed documents for another kind gives the view's group its front back with `returnView`.
    * @param choice What the document chose, or `null` for nothing.
    * @param active Whether the document is the window's active document, such as `WindowPartTokens.activeDocument`.
    * @param injector The document's injector: the document is removed once it is destroyed, and the view reacts in its context.
    */
   public follow(choice: Signal<T | null>, active: Signal<boolean>, injector: Injector): void;
-
-  /**
-   * Opens the view the first time a document in front shows a choice, without moving the focus; later, the person's choice of tab stays.
-   * @param choice The choice, which titles the tab.
-   */
-  public showOnce(choice: T): void;
-
-  /**
-   * Opens the view, without moving the focus, when the person chose while it is closed; while it is open, its tab stays where it is.
-   * @param choice The choice, which titles the tab.
-   */
-  public showChosen(choice: T): void;
 
   /**
    * Opens the view, without moving the focus, for a choice the person made, and while it is open brings its tab to the front of its group again,
@@ -1372,8 +1373,8 @@ export declare class GitDetailView<T> {
   public showInFront(choice: T): void;
 
   /**
-   * Brings the view to the front of its group, without moving the focus: at once while the followed document in front shows a choice, titled for it,
-   * else at the next choice a document in front shows, which `showOnce` then opens even after the first time.
+   * Brings the view to the front of its group, without moving the focus, for the choice of the followed document in front, titled for it; with none,
+   * the next followed document in front with a choice brings it.
    */
   public bringForward(): void;
 

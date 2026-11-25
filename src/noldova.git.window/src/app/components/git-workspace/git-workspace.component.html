@@ -65,6 +65,7 @@ LICENSE file in the root directory of this source tree.
         <span role="columnheader" class="changes-head">{{ resources.changesColumn }}</span>
         <span role="columnheader" class="pull-request-head">{{ resources.pullRequestColumn }}</span>
         <span role="columnheader">{{ resources.checksColumn }}</span>
+        <span role="columnheader" class="open-head">{{ resources.openColumn }}</span>
         <span role="columnheader">{{ resources.fetchedColumn }}</span>
       </div>
       @for (row of rows(); track row.folder) {
@@ -93,7 +94,8 @@ LICENSE file in the root directory of this source tree.
           <span role="cell" class="small pull-request">
             @if (row.pullRequest(); as pullRequest) {
               @let words = around(row.pullRequestText(), pullRequest.label);
-              <span class="link" [title]="resources.formatPullRequestLinkTitle(row.pullRequestText(), pullRequest.title)" (click)="openPullRequest(row, pullRequest)"><span>{{ words[0] }}</span><nol-git-reference-text [text]="words[1]" [folder]="row.folder" [link]="pullRequest.url" /><span>{{ words[2] }}</span></span>
+              @let linkTitle = resources.formatPullRequestLinkTitle(row.pullRequestText(), pullRequest.title);
+              <span class="link" (click)="openPullRequest(row, pullRequest)"><span [title]="linkTitle">{{ words[0] }}</span><nol-git-reference-text [text]="words[1]" [folder]="row.folder" [link]="pullRequest.url" /><span [title]="linkTitle">{{ words[2] }}</span></span>
             }
             @else {
               {{ row.pullRequestText() }}
@@ -105,6 +107,7 @@ LICENSE file in the root directory of this source tree.
             }
             {{ row.checks() }}
           </span>
+          <span role="cell" class="small open" [title]="row.openTitle()">{{ row.open() }}</span>
           <span role="cell" class="small muted fetched">{{ row.fetched() }}</span>
         </div>
       }

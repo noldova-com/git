@@ -92,12 +92,12 @@ class Row {
 }
 
 describe("GitReferenceTextComponent", () => {
-  it("shows a text's words, a reference its host has a look for as the kit's chip named as its host reads it, and one with none as a plain link", async () => {
+  it("shows a text's words, a reference its host has a look for as the kit's chip named as its host reads it, with an empty tooltip so no tooltip around it shows over its card, and one with none as a plain link", async () => {
     const row = new Row();
     await row.fixture.whenStable();
 
-    expect([row.text, row.links.map(t => [t.matches("[nol-link-reference-chip]"), t.textContent, t.getAttribute("href"), t.getAttribute("tabindex")])])
-      .toEqual(["Fixes Bug 12 and #5", [[true, "Bug 12", ISSUE, null], [false, "#5", OTHER, null]]]);
+    expect([row.text, row.links.map(t => [t.matches("[nol-link-reference-chip]"), t.textContent, t.getAttribute("href"), t.getAttribute("tabindex"), t.getAttribute("title")])])
+      .toEqual(["Fixes Bug 12 and #5", [[true, "Bug 12", ISSUE, null, ""], [false, "#5", OTHER, null, null]]]);
   });
 
   it("follows a chip with its title, keeps it out of the tab order when asked, and puts a work item's state after it, a space apart and outside the link", async () => {

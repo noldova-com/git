@@ -38,6 +38,9 @@ export class Resources {
   public static readonly finishedAtExpected: string = "a finish time exactly when the build has finished, no earlier than its start";
   public static readonly colorExpected: string = "a color of six hexadecimal digits";
   public static readonly colorPattern: RegExp = /^[0-9A-Fa-f]{6}$/;
+  public static readonly imageExpected: string = "an SVG image of at most 65536 characters";
+  public static readonly svgPattern: RegExp = /^\s*(?:<\?xml[^>]*\?>\s*)?<svg[\s>]/u;
+  public static readonly maximumImageLength: number = 65_536;
   public static readonly parentExpected: string = "a parent other than the work item itself";
   public static readonly idsScopeExpected: string = "work item ids, each once, exactly for the Ids scope";
   public static readonly amountExpected: string = "a number, zero or more";
@@ -59,8 +62,8 @@ export class Resources {
   public static readonly maximumPullRequestUpdates: number = 100;
   public static readonly pullRequestUpdatesExpected: string = "at most 100 updates";
   public static readonly pullRequestUpdatesMoreExpected: string = "more only after 100 updates";
-  public static readonly maximumPullRequestFiles: number = 1000;
-  public static readonly pullRequestFilesExpected: string = "at most 1000 files";
+  public static readonly maximumPullRequestFiles: number = 5000;
+  public static readonly pullRequestFilesExpected: string = "at most 5000 files";
   public static readonly pullRequestFilesCommitExpected: string = "a head commit for a common commit, files or more";
   public static readonly previousPathExpected: string = "a previous path for a moved file only";
   public static readonly maximumPullRequestConflicts: number = 100;
@@ -142,6 +145,7 @@ export class Resources {
   public static readonly hasConflictsField: string = "hasConflicts";
   public static readonly colorField: string = "color";
   public static readonly iconField: string = "icon";
+  public static readonly imageField: string = "image";
   public static readonly organizationField: string = "organization";
   public static readonly projectField: string = "project";
   public static readonly idField: string = "id";
@@ -151,6 +155,7 @@ export class Resources {
   public static readonly iterationField: string = "iteration";
   public static readonly areaField: string = "area";
   public static readonly parentField: string = "parent";
+  public static readonly changedAtField: string = "changedAt";
   public static readonly scopeField: string = "scope";
   public static readonly idsField: string = "ids";
   public static readonly pointsField: string = "points";

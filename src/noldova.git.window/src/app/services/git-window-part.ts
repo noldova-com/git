@@ -24,6 +24,7 @@ import { GitRebasing } from "./git-rebasing.ts";
 import { GitRecentRepositories } from "./git-recent-repositories.ts";
 import { GitRuntimeClient } from "./git-runtime-client.ts";
 import { GitStatusBar } from "./git-status-bar.ts";
+import { GitStatusFollower } from "./git-status-follower.ts";
 import { GitWorkspaceAcrossViews } from "./git-workspace-across-views.ts";
 import { GitWorkspacePages } from "./git-workspace-pages.ts";
 import { GitWorkspaces } from "./git-workspaces.ts";
@@ -32,6 +33,7 @@ export class GitWindowPart implements IWindowPart {
   private context: IWindowPartContext | null = null;
   private withdrawGravatars: (() => void) | null = null;
   private withdrawStatusBar: (() => void) | null = null;
+  private unfollowStatus: (() => void) | null = null;
   private withdrawDetailViews: (() => void) | null = null;
   private unfollowAccounts: (() => void) | null = null;
 
@@ -61,7 +63,7 @@ export class GitWindowPart implements IWindowPart {
     context.registerDocument(new DocumentContribution(Resources.rebaseDocumentName,
       () => import("../components/git-rebase/git-rebase.component.ts").then(t => t.GitRebaseComponent), ContentPadding.None));
     context.registerView(new ViewContribution(Resources.commandLogViewName, Resources.commandLogLabel, Resources.commandLogIcon, DockSide.Bottom, false,
-      () => import("../components/git-command-log/git-command-log.component.ts").then(t => t.GitCommandLogComponent), ContentPadding.None,
+      () => import("../components/git-command-log/git-command-log.component.ts").then(t => t.GitCommandLogComponent), ContentPadding.Default,
       { hasInstances: true, defaultGroup: Resources.commandLogDefaultGroup, defaultOrder: Resources.commandLogDefaultOrder }));
     context.registerView(new ViewContribution(Resources.commitDetailViewName, Resources.commitDetailLabel, Resources.commitDetailIcon, DockSide.Right, false,
       () => import("../components/git-commit-detail-view/git-commit-detail-view.component.ts").then(t => t.GitCommitDetailViewComponent), ContentPadding.None,
@@ -121,6 +123,7 @@ export class GitWindowPart implements IWindowPart {
       context.registerStatusBarItem(new StatusBarItemContribution(Resources.statusBarItemName, StatusBarSide.Left, GitStatusBar.stateOf(null, null))),
       context.registerStatusBarItem(new StatusBarItemContribution(Resources.fetchedItemName, StatusBarSide.Left, GitStatusBar.fetchedStateOf(null, null, new Date()))),
       context.registerStatusBarItem(new StatusBarItemContribution(Resources.commandItemName, StatusBarSide.Right, GitStatusBar.commandStateOf(null, null))));
+    this.unfollowStatus = GitStatusFollower.follow(context);
   }
 
   public async reconnectAsync(): Promise<boolean> {
@@ -130,6 +133,8 @@ export class GitWindowPart implements IWindowPart {
   public async deactivateAsync(): Promise<void> {
     this.withdrawGravatars?.();
     this.withdrawGravatars = null;
+    this.unfollowStatus?.();
+    this.unfollowStatus = null;
     this.withdrawStatusBar?.();
     this.withdrawStatusBar = null;
     this.withdrawDetailViews?.();

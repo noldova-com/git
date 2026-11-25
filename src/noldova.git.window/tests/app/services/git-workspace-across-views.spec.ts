@@ -25,7 +25,7 @@ describe("GitWorkspaceAcrossViews", () => {
     const context = new FakeWindowPartContext();
     const page = { open: (): void => undefined, openPullRequest: (): void => undefined, openReview: (): void => undefined, readWritten: (): void => undefined };
 
-    GitWorkspaceAcrossViews.of(context).showOnce(new GitWorkspaceAcross("workspace-1", [], [], new GitWorkspaceReviews([], false), page));
+    GitWorkspaceAcrossViews.of(context).showInFront(new GitWorkspaceAcross("workspace-1", [], [], new GitWorkspaceReviews([], false), page));
 
     expect(context.callsOf("openView")).toEqual([["git.workspaceAcross", "selected", "Across repositories"]]);
   });

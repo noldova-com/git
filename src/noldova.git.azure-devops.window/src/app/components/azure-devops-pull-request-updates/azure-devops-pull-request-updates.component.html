@@ -20,7 +20,7 @@ LICENSE file in the root directory of this source tree.
 } @else if (list(); as list) {
   <ng-template #parts let-update>
     <span class="number">{{ resources.formatUpdateTitle(update.number) }}</span>
-    <span class="author">{{ update.author?.login ?? resources.unknownAuthor }}</span>
+    <span class="author">{{ update.author === null ? resources.unknownAuthor : resources.formatPersonName(update.author) }}</span>
     <span class="byline">{{ ageOf(update) }}</span>
     <span class="sha">{{ shortOf(update) }}</span>
   </ng-template>

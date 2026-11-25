@@ -19,17 +19,19 @@ LICENSE file in the root directory of this source tree.
     @if (failure(); as message) {
       <p class="note error" role="alert">{{ message }}</p>
     }
-    <button type="button" class="row changes" [class.sel]="!showsCommit()" [attr.aria-current]="showsCommit() ? null : 'true'" (click)="showChanges()">
+    @let changesSelected = !showsLink() && !showsCommit();
+    @let historySelected = !showsLink() && showsCommit();
+    <button type="button" class="row changes" [class.sel]="changesSelected" [attr.aria-current]="changesSelected ? 'true' : null" (click)="showChanges()">
       <span class="ms">{{ resources.changesIcon }}</span><span class="grow">{{ resources.changesLabel }}</span>
       @if (changes() > 0) {
         <span class="badge">{{ changes() }}</span>
       }
     </button>
-    <button type="button" class="row history" [class.sel]="showsCommit()" [attr.aria-current]="showsCommit() ? 'true' : null" (click)="showHistory(path)">
+    <button type="button" class="row history" [class.sel]="historySelected" [attr.aria-current]="historySelected ? 'true' : null" (click)="showHistory(path)">
       <span class="ms">{{ resources.historyIcon }}</span><span class="grow">{{ resources.historyLabel }}</span>
     </button>
     @for (link of links(); track link.key) {
-      <button type="button" class="row link" (click)="link.open()">
+      <button type="button" class="row link" [class.sel]="link.isActive()" [attr.aria-current]="link.isActive() ? 'true' : null" (click)="link.open()">
         <span class="ms">{{ link.icon }}</span><span class="grow">{{ link.label }}</span>
       </button>
     }
@@ -74,10 +76,10 @@ LICENSE file in the root directory of this source tree.
             <span class="grow" [class.strong]="isCurrent">{{ row.name }}</span>
             @let counts = countsOf(row.branch, isCurrent);
             @if (counts[0] > 0) {
-              <span class="small muted">{{ resources.formatAhead(counts[0]) }}</span>
+              <span class="small count ahead" [title]="resources.formatAheadTitle(counts[0])"><span class="arrow" aria-hidden="true">{{ resources.aheadArrow }}</span>{{ counts[0] }}</span>
             }
             @if (counts[1] > 0) {
-              <span class="small muted">{{ resources.formatBehind(counts[1]) }}</span>
+              <span class="small count behind" [title]="resources.formatBehindTitle(counts[1])"><span class="arrow" aria-hidden="true">{{ resources.behindArrow }}</span>{{ counts[1] }}</span>
             }
           </button>
           <ng-template #branchMenu>
@@ -98,7 +100,7 @@ LICENSE file in the root directory of this source tree.
     <nol-git-agents [folder]="path" />
 
     @if (status()?.remote; as remote) {
-      <nol-git-pull-requests [folder]="path" [remote]="remote" />
+      <nol-git-pull-requests [folder]="path" [remote]="remote" [current]="current()" [canSwitch]="switchable() !== null" (switchTo)="switchTo(path, $event)" />
     }
 
     <div class="row">
@@ -124,10 +126,10 @@ LICENSE file in the root directory of this source tree.
             <svg class="octicon" viewBox="0 0 16 16" aria-hidden="true"><path [attr.d]="resources.branchIconPath" /></svg><span class="grow">{{ row.name }}</span>
             @let remoteCounts = remoteCountsOf(row.branch);
             @if (remoteCounts[0] > 0) {
-              <span class="small muted">{{ resources.formatAhead(remoteCounts[0]) }}</span>
+              <span class="small count ahead" [title]="resources.formatRemoteAheadTitle(remoteCounts[0])"><span class="arrow" aria-hidden="true">{{ resources.aheadArrow }}</span>{{ remoteCounts[0] }}</span>
             }
             @if (remoteCounts[1] > 0) {
-              <span class="small muted">{{ resources.formatBehind(remoteCounts[1]) }}</span>
+              <span class="small count behind" [title]="resources.formatRemoteBehindTitle(remoteCounts[1])"><span class="arrow" aria-hidden="true">{{ resources.behindArrow }}</span>{{ remoteCounts[1] }}</span>
             }
           </button>
         }

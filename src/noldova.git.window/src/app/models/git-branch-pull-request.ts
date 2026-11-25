@@ -29,9 +29,11 @@ export class GitBranchPullRequest {
   public readonly pending: number;
   /** Why the read failed, in the host's words, or null. */
   public readonly failure: string | null;
+  /** The host's own word for where the pull request stands, such as Azure DevOps' "Completed", or null to use Git's word for its state. */
+  public readonly stateLabel: string | null;
 
   private constructor(state: GitPullRequestsState, pullRequest: GitPullRequestRow | null, pullRequestState: GitPullRequestState | null, isWaitingForReview: boolean,
-    counts: readonly [number, number, number], failure: string | null) {
+    counts: readonly [number, number, number], failure: string | null, stateLabel: string | null = null) {
     this.state = state;
     this.pullRequest = pullRequest;
     this.pullRequestState = pullRequestState;
@@ -40,17 +42,20 @@ export class GitBranchPullRequest {
     this.failing = counts[1];
     this.pending = counts[2];
     this.failure = failure;
+    this.stateLabel = stateLabel;
   }
 
   /** A read that runs, keeping what the last one gave, if any, until it ends. */
   public static reading(last: GitBranchPullRequest | null = null): GitBranchPullRequest {
     return last === null ? new GitBranchPullRequest(GitPullRequestsState.Reading, null, null, false, [0, 0, 0], null)
-      : new GitBranchPullRequest(GitPullRequestsState.Reading, last.pullRequest, last.pullRequestState, last.isWaitingForReview, [last.passed, last.failing, last.pending], null);
+      : new GitBranchPullRequest(GitPullRequestsState.Reading, last.pullRequest, last.pullRequestState, last.isWaitingForReview, [last.passed, last.failing, last.pending], null,
+        last.stateLabel);
   }
 
   /** The branch's pull request, with its checks counted on the row. */
-  public static of(pullRequest: GitPullRequestRow, state: GitPullRequestState, isWaitingForReview: boolean): GitBranchPullRequest {
-    return new GitBranchPullRequest(GitPullRequestsState.Ready, pullRequest, state, isWaitingForReview, [pullRequest.passed, pullRequest.failing, pullRequest.pending], null);
+  public static of(pullRequest: GitPullRequestRow, state: GitPullRequestState, isWaitingForReview: boolean, stateLabel: string | null = null): GitBranchPullRequest {
+    return new GitBranchPullRequest(GitPullRequestsState.Ready, pullRequest, state, isWaitingForReview, [pullRequest.passed, pullRequest.failing, pullRequest.pending], null,
+      stateLabel);
   }
 
   /** No pull request for the branch, with its head commit's checks. */

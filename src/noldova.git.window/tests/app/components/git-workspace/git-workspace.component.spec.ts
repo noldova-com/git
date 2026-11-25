@@ -243,11 +243,12 @@ describe("GitWorkspaceComponent", () => {
     expect(rem(row.children[1] ?? row).width).toBeCloseTo(8.75, 2);
     expect(rem(row.children[5] ?? row).width).toBeCloseTo(8.5, 2);
     expect(rem(row.children[6] ?? row).width).toBeCloseTo(5, 2);
-    expect(rem(row.children[7] ?? row).width).toBeCloseTo(5.5, 2);
-    expect(screen.texts(".th [role=columnheader]")).toEqual(["Select", "Repository", "Branch", "Sync", "Changes", "Pull request", "Checks", "Fetched"]);
+    expect(rem(row.children[7] ?? row).width).toBeCloseTo(6.5, 2);
+    expect(rem(row.children[8] ?? row).width).toBeCloseTo(5.5, 2);
+    expect(screen.texts(".th [role=columnheader]")).toEqual(["Select", "Repository", "Branch", "Sync", "Changes", "Pull request", "Checks", "Open", "Fetched"]);
     expect(rem(screen.find(".side .row")).height).toBeCloseTo(1.625, 2);
     expect(rem(screen.find(".filter")).width).toBeCloseTo(14, 2);
-    expect([screen.element.querySelectorAll(".across, aside").length, rem(screen.find("main")).width]).toEqual([0, 89.5]);
+    expect([screen.element.querySelectorAll(".across, aside").length, rem(screen.find("main")).width]).toEqual([0, 90]);
   });
 
   it("opens the Across repositories view once for the page in front with its repositories, keeps them while a document of another kind is, giving the tab back and taking it again, and empties once the page closes",
@@ -587,7 +588,7 @@ describe("GitWorkspaceComponent", () => {
     expect([screen.folders("git.watch"), screen.folders("git.unwatch")]).toEqual([["/work/a"], ["/work/a"]]);
   });
 
-  it("shows each branch's open pull request and its checks once its row is on screen, reads them again when the window takes the focus, and opens one", async () => {
+  it("shows each branch's open pull request, its checks and the repository's open count once its row is on screen, reads them again when the window takes the focus, and opens one", async () => {
     const remote: GitRemote = new GitRemote("origin", "github.com", "example-owner/site", RemoteTransport.Https);
     const list: WritableSignal<GitPullRequestList | null> = signal(null);
     const pull = (number: number, branch: string, failing: number): GitPullRequestRow => new GitPullRequestRow(String(number), `#${number}`, `Change ${number}`,
@@ -628,9 +629,10 @@ describe("GitWorkspaceComponent", () => {
     screen.click(".across .failing button");
     screen.click(".pull-request .link a");
 
-    expect([reading, screen.texts(".pull-request"), screen.texts(".checks"), screen.find(".checks .dot").className, screen.find(".pull-request .link").title,
-      screen.find(".pull-request .link a").getAttribute("href")]).toEqual([["", "None"], ["#214 open", "None"], ["Failing", ""], "dot failed", "#214 open: Change 214",
-      "https://github.com/example-owner/site/pull/214"]);
+    expect([reading, screen.texts(".pull-request"), screen.texts(".checks"), screen.find(".checks .dot").className, [screen.find(".pull-request .link"), ...screen.find(".pull-request .link").querySelectorAll<HTMLElement>(":scope > span")].map(t => t.title),
+      screen.find(".pull-request .link a").getAttribute("href"), screen.texts(".tr:not(.th) .open"), screen.find(".tr:not(.th) .open").title]).toEqual([["", "None"],
+      ["#214 open", "None"], ["Failing", ""], "dot failed", ["", "#214 open: Change 214", "#214 open: Change 214"], "https://github.com/example-owner/site/pull/214", ["2 · 1 failing", ""],
+      "2 open pull requests, 1 with failing checks"]);
     expect([refreshed, opened, links]).toEqual([["/work/site", "/work/site"], ["#214", "#214", "#214", "#214"], ["https://github.com/example-owner/site/pull/214"]]);
   });
 
@@ -681,7 +683,7 @@ describe("GitWorkspaceComponent", () => {
     expect(screen.texts(".across .stacked")).toEqual(["stacks git: #214, then #215: merge in order, #214 first Open"]);
   });
 
-  it("finds a stack in the stack list of a host that reads branches, while its cell, checks and review wait come from the branch's read alone", async () => {
+  it("finds a stack in the stack list of a host that reads branches, while its cell, checks and review wait come from the branch's read alone and its open list only counts", async () => {
     const remote: GitRemote = new GitRemote("origin", "dev.azure.com", "fabrikam/web/_git/site", RemoteTransport.Https);
     const pullOf = (number: number, head: string, base: string, failing: number): GitPullRequestRow => new GitPullRequestRow(`fabrikam/site/${number}`,
       `!${number}`, `Change ${number}`, `https://dev.azure.com/fabrikam/web/_git/site/pullrequest/${number}`, false, 0, 0, failing, 0, head, base);
@@ -705,7 +707,7 @@ describe("GitWorkspaceComponent", () => {
     await screen.untilAsync(() => screen.texts(".pull-request")[0] === "Review !215 · on !214" && screen.has(".across .stacked"));
 
     expect([screen.texts(".checks"), screen.find(".checks .dot").className, screen.texts(".across .stacked"), asked]).toEqual([["Failing"], "dot failed",
-      ["stacks site: !214, then !215: merge in order, !214 first Open"], ["stacks"]]);
+      ["stacks site: !214, then !215: merge in order, !214 first Open"], ["list", "stacks"]]);
   });
 
   it("reports a pull request page the browser couldn't open, for a host with no page of its own", async () => {
@@ -827,7 +829,7 @@ describe("GitWorkspaceComponent", () => {
     screen.context.answer("openLinkAsync", () => Promise.reject(new RangeError("No browser.")));
     screen.all<HTMLElement>(".across .review button")[1]?.click();
 
-    expect(screen.texts(".across .review")).toEqual(["rate_review Review #533 · Change 533 · desktop Review", "rate_review Review #41 · Change 41 · desktop Review"]);
+    expect(screen.texts(".across .review")).toEqual(["rate_review Review #533 Change 533 · desktop Review", "rate_review Review #41 Change 41 · desktop Review"]);
     expect([opened, links]).toEqual([["#533", "#41", "#41"], ["https://github.com/example-owner/desktop/pull/41"]]);
     expect(await handled).toEqual(new RangeError("No browser."));
   });

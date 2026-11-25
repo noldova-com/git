@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import { HostPerson } from "@noldova/git.hosting.protocol";
 import { describe, expect, it } from "vitest";
 
 import { Resources } from "../src/resources.ts";
@@ -23,6 +24,11 @@ describe("The Azure DevOps window part's Resources", () => {
   it("says the account is signed in on this computer, with its name when it has one, and names the account for the Settings search", () => {
     expect([Resources.formatSignedIn("Mona Lisa"), Resources.formatSignedIn(null), Resources.formatAccountNote("monalisa@example.com")])
       .toEqual(["Mona Lisa · signed in on this computer", "Signed in on this computer", "Signed in on this computer as monalisa@example.com"]);
+  });
+
+  it("names a person by the name they show, or without one by their login, a group's by its name alone", () => {
+    expect([new HostPerson("monalisa@example.com", null, null, undefined, "Mona Lisa"), new HostPerson("monalisa@example.com", null, null),
+      new HostPerson("[web]\\Web Team", null, null)].map(t => Resources.formatPersonName(t))).toEqual(["Mona Lisa", "monalisa@example.com", "Web Team"]);
   });
 
   it("writes a pull request's title after its number, as Azure DevOps marks a pull request", () => {

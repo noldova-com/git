@@ -1,6 +1,6 @@
 {
   "name": "@noldova/git.azure-devops.window",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "The Azure DevOps module's window part: its Settings page, where a person signs in to Azure DevOps with a personal access token, sees the account and signs out, and the Git view's row with a branch's pull request and its builds and policies.",
   "type": "module",
   "license": "MIT",

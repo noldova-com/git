@@ -51,13 +51,44 @@ export class AzureApi {
       signal, true);
   }
 
-  private async sendAsync(url: string, token: AzureCredential, write: { readonly method?: string; readonly headers?: Readonly<Record<string, string>>; readonly body?: string },
-    signal: AbortSignal, isWrite: boolean = false): Promise<JsonReader | null> {
+  /**
+   * An image as SVG markup, judged by its text rather than the type Azure DevOps names, or null, telling `dropped` why, when Azure DevOps refuses it or
+   * answers more than {@link Resources.maximumIconBytes} or text that isn't SVG; signed out, it fails as a read does.
+   */
+  public async getSvgAsync(url: string, token: AzureCredential, signal: AbortSignal, dropped: (reason: string) => void): Promise<string | null> {
+    const response: Response = await this.fetchAsync(url, token, {}, Resources.svgAccept, signal);
+    if (Resources.signedOutStatuses.includes(response.status)) {
+      await AzureApi.dropBodyAsync(response);
+      throw AzureApi.failure(FailureCode.Unauthorized, Resources.signedOutMessage);
+    }
+    if (!response.ok) {
+      await AzureApi.dropBodyAsync(response);
+      dropped(Resources.formatIconRefused(response.status));
+      return null;
+    }
+    let text: string | null;
+    try {
+      text = await AzureApi.readCappedAsync(response, Resources.maximumIconBytes);
+    }
+    catch (error) {
+      throw AzureApi.unreachable(error, signal);
+    }
+    signal.throwIfAborted();
+    if (text === null || !Resources.svgPattern.test(text)) {
+      dropped(text === null ? Resources.iconTooLarge : Resources.iconNotSvg);
+      return null;
+    }
+    return text;
+  }
+
+  private async fetchAsync(url: string, token: AzureCredential,
+    write: { readonly method?: string; readonly headers?: Readonly<Record<string, string>>; readonly body?: string }, accept: string,
+    signal: AbortSignal): Promise<Response> {
     let response: Response;
     try {
       response = await this.fetcher(url, {
         ...write,
-        headers: { ...write.headers, [Resources.acceptHeader]: Resources.jsonType, [Resources.authorizationHeader]: token.authorization },
+        headers: { ...write.headers, [Resources.acceptHeader]: accept, [Resources.authorizationHeader]: token.authorization },
         redirect: Resources.manualRedirect,
         signal: AbortSignal.any([signal, AbortSignal.timeout(Resources.requestTimeout)])
       });
@@ -66,6 +97,12 @@ export class AzureApi {
       throw AzureApi.unreachable(error, signal);
     }
     signal.throwIfAborted();
+    return response;
+  }
+
+  private async sendAsync(url: string, token: AzureCredential, write: { readonly method?: string; readonly headers?: Readonly<Record<string, string>>; readonly body?: string },
+    signal: AbortSignal, isWrite: boolean = false): Promise<JsonReader | null> {
+    const response: Response = await this.fetchAsync(url, token, write, Resources.jsonType, signal);
     if (response.status === Resources.notFoundStatus) {
       await AzureApi.dropBodyAsync(response);
       return null;

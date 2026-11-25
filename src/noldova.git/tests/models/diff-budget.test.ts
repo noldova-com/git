@@ -82,7 +82,7 @@ describe("DiffBudget", () => {
     budget.add(file);
     budget.addParsed(new ParsedDiff([], 2, false));
 
-    assert.deepEqual(budget.toDiff().toJson(), { files: [], totalBytes: 0, omittedFiles: 3, truncated: true });
+    assert.deepEqual(budget.toDiff().toJson(), { files: [], totalBytes: 0, omittedFiles: 3, truncated: true, totals: null });
     const parsed = new DiffBudget(100_000, 1_000_000);
     parsed.addParsed(new ParsedDiff([file], 0, false));
     assert.equal(parsed.toDiff().truncated, false);

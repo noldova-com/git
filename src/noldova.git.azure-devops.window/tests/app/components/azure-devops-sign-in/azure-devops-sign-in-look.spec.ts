@@ -196,7 +196,7 @@ describe("AzureDevOpsSignInComponent in the kit's look", () => {
     await page.screenshot({ element: find(root, ".column"), path: `${screenshots}/sign-in-${name}-${mode}.png` });
   });
 
-  it.each(tokenCases)("sets the token field on the title's edge, filling the row up to Sign in, which ends on the section's content edge, in %s mode, %s", async (mode, _name, signIn) => {
+  it.each(tokenCases)("sets the token field on the title's edge, filling the row up to Sign in, which ends on the section's content edge, with the scopes it needs listed under its note, in %s mode, %s", async (mode, _name, signIn) => {
     const fixture = await openAsync(mode, signIn);
     const root: HTMLElement = fixture.nativeElement;
     const section = find(root, "section");
@@ -205,7 +205,9 @@ describe("AzureDevOpsSignInComponent in the kit's look", () => {
     const button = find(row, "button").getBoundingClientRect();
     const title = find(root, "h3").getBoundingClientRect();
     const note = find(root, ".nol-git-azure-devops-token-row + p").getBoundingClientRect();
-    const make = root.querySelector(".nol-git-azure-devops-token-row + p + .nol-git-azure-devops-row button")?.getBoundingClientRect();
+    const scopes = find(root, ".nol-git-azure-devops-token-row + p + ul").getBoundingClientRect();
+    const scope = find(root, ".nol-git-azure-devops-token-row + p + ul li").getBoundingClientRect();
+    const make = root.querySelector(".nol-git-azure-devops-token-row + p + ul + .nol-git-azure-devops-row button")?.getBoundingClientRect();
 
     AppearanceFixture.expectPixels(field.left, title.left);
     AppearanceFixture.expectPixels(button.left - field.right, px(0.5));
@@ -214,8 +216,11 @@ describe("AzureDevOpsSignInComponent in the kit's look", () => {
     expect(field.width).toBeGreaterThan(px(20));
     AppearanceFixture.expectPixels(note.left, title.left);
     AppearanceFixture.expectPixels(note.top - row.getBoundingClientRect().bottom, px(0.1875));
+    AppearanceFixture.expectPixels(scopes.left, title.left);
+    AppearanceFixture.expectPixels(scope.left - title.left, px(1.25));
+    AppearanceFixture.expectPixels(scopes.top - note.bottom, px(0.1875));
     AppearanceFixture.expectPixels(make?.left ?? 0, title.left);
-    AppearanceFixture.expectPixels((make?.top ?? 0) - note.bottom, px(0.5625));
+    AppearanceFixture.expectPixels((make?.top ?? 0) - scopes.bottom, px(0.5625));
   });
 
   it.each(tokenCases)("sets the organization field from the title's edge to the section's content edge, a control gap above the token row, in %s mode, %s", async (mode, _name, signIn) => {
@@ -235,7 +240,7 @@ describe("AzureDevOpsSignInComponent in the kit's look", () => {
   it.each(tokenCases)("titles Sign in with Microsoft under the token page's button, on the title's edge, with its note under it, in %s mode, %s", async (mode, _name, signIn) => {
     const fixture = await openAsync(mode, signIn);
     const root: HTMLElement = fixture.nativeElement;
-    const make = find(root, ".nol-git-azure-devops-token-row + p + .nol-git-azure-devops-row").getBoundingClientRect();
+    const make = find(root, ".nol-git-azure-devops-token-row + p + ul + .nol-git-azure-devops-row").getBoundingClientRect();
     const heading = find(root, "h4");
     const headingBox = heading.getBoundingClientRect();
     const row = find(root, ".nol-git-azure-devops-microsoft-row").getBoundingClientRect();

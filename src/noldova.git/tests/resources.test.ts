@@ -12,9 +12,14 @@ import { describe, test } from "vitest";
 
 import { ConflictKind, FileChange, FileState, LineKind, OperationKind, SigningFormat, UndoMode } from "@noldova/git.protocol";
 
+import { TreeWatch } from "../src/enums/tree-watch.ts";
 import { Resources } from "../src/resources.ts";
 
 describe("Resources", () => {
+  test("watches a whole worktree on Windows and macOS, each folder on Linux, and none on a system it names no watch for", () => {
+    assert.deepEqual(["win32", "darwin", "linux", "aix"].map(t => Resources.treeWatchOf(t)), [TreeWatch.Whole, TreeWatch.Whole, TreeWatch.Folders, TreeWatch.None]);
+  });
+
   test("hold the texts people read", () => {
     assert.equal(Resources.indexLocked, "Another process holds the repository's index.lock. Let it finish, then try again.");
     assert.equal(Resources.outputLimitInvalid, "The output limit must be a whole number of bytes above zero.");

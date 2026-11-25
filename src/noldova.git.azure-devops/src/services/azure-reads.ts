@@ -8,6 +8,7 @@
 
 import { JsonReader, type JsonValue } from "@noldova/context.json";
 import { FailureCode } from "@noldova/desktop.protocol";
+import { type IModuleLog, MethodFailureException } from "@noldova/desktop.runtime";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
 import { BranchPullRequest, type BranchQuery, CheckState, type CommitQuery, FileChangeKind, HostBuild, HostChanges, HostCheck, HostComment, HostCommitComments,
   HostItem, HostPerson, HostPolicy, HostPullRequest, HostPullRequestCommit, HostPullRequestCommits, HostPullRequestConflicts, HostPullRequestFile,
@@ -27,16 +28,22 @@ import { AzureApi } from "./azure-api.ts";
 export class AzureReads {
   private readonly api: AzureApi;
   private readonly signIn: IAzureToken;
+  private readonly log: IModuleLog;
   private readonly types: Map<string, readonly [HostWorkItemType, ReadonlyMap<string, WorkItemCategory>]> = new Map();
   private typesToken: AzureCredential | null = null;
   /** The signed-in person's id in the organization, from its connectionData, with the token it was read with. */
   private reviewer: readonly [AzureCredential, string] | null = null;
 
-  public constructor(api: AzureApi, signIn: IAzureToken) {
+  public constructor(api: AzureApi, signIn: IAzureToken, log: IModuleLog) {
     this.api = api;
     this.signIn = signIn;
+    this.log = log;
   }
 
+  /**
+   * The pull request as an item, with the lines it adds and removes and the files it changes at its latest push, which Azure DevOps gives only file by file;
+   * counts it can't read, or past 5000 files, stay unknown rather than failing the item.
+   */
   public async readReferenceAsync(reference: HostReference, signal: AbortSignal): Promise<HostItem | null> {
     const token: AzureCredential | null = Resources.isOwnReference(reference) ? this.tokenFor(reference.owner) : null;
     if (token === null)
@@ -44,7 +51,11 @@ export class AzureReads {
     const item: HostItem | null = await this.askAsync(token, async () => {
       const pull: JsonReader | null = await this.api.getAsync(Resources.formatPullRequestUrl(reference.owner, reference.repository, reference.number),
         token, signal);
-      return pull === null ? null : AzureApi.read(() => AzureReads.itemOf(reference.owner, pull));
+      if (pull === null)
+        return null;
+      const project: string = AzureApi.read(() => pull.readObject(Resources.repositoryField).readObject(Resources.projectField).readString(Resources.idField));
+      const counts: readonly [number, number, number] | null = await this.readCountsAsync(reference, project, token, signal);
+      return AzureApi.read(() => AzureReads.itemOf(reference.owner, pull, counts));
     });
     return this.signIn.token === token ? item : null;
   }
@@ -60,8 +71,8 @@ export class AzureReads {
         return null;
       const item: HostItem = AzureApi.read(() => AzureReads.itemOf(reference.owner, pull));
       const project: string = AzureApi.read(() => pull.readObject(Resources.repositoryField).readObject(Resources.projectField).readNonBlankString(Resources.idField));
-      const [policies, builds, commitCount, workItems] = await Promise.all([this.readPoliciesAsync(reference.owner, project, reference.number, token, signal),
-        this.readBuildsAsync(reference.owner, project, reference.repository, reference.number, token, signal),
+      const [policies, builds, commitCount, workItems] = await Promise.all([this.readPoliciesAsync(item, project, token, signal),
+        this.readBuildsAsync(item, project, token, signal),
         this.readCommitCountAsync(reference, token, signal), this.readWorkItemLinksAsync(reference, token, signal)]);
       return AzureApi.read(() => new HostPullRequest(item, pull.readObjectArray(Resources.reviewersField).map(AzureReads.reviewerOf),
         policies.map(([policy, , buildId]) => AzureReads.withBuildNumber(policy, buildId, builds)), builds.map(([build]) => build),
@@ -153,24 +164,124 @@ export class AzureReads {
     const token: AzureCredential | null = Resources.isOwnReference(reference) ? this.tokenFor(reference.owner) : null;
     if (token === null)
       return none;
-    const files: HostPullRequestFiles = await this.askAsync(token, async () => {
-      const iterations: JsonReader | null = await this.api.getAsync(Resources.formatPullRequestIterationsUrl(reference.owner, reference.repository, reference.number),
-        token, signal);
-      const latest: HostPullRequestUpdate | undefined = iterations === null ? undefined
-        : AzureApi.read(() => iterations.readObjectArray(Resources.valueField).map(AzureReads.pullRequestUpdateOf)).at(-1);
-      if (latest === undefined)
-        return none;
+    const files: HostPullRequestFiles | null = await this.askAsync(token, () => this.readFilesAsync(reference, token, signal));
+    return this.signIn.token === token && files !== null ? files : none;
+  }
+
+  /**
+   * The files the pull request changes at its latest push, with that push's head and common commits, read `changesPage` changes at a time while a page comes
+   * back full and stopping past `maximumCount`, which `hasMore` says; null when it has no push or Azure DevOps finds none.
+   */
+  private async readFilesAsync(reference: HostReference, token: AzureCredential, signal: AbortSignal): Promise<HostPullRequestFiles | null> {
+    const latest: HostPullRequestUpdate | undefined = await this.readLatestAsync(reference, token, signal);
+    if (latest === undefined)
+      return null;
+    const files: HostPullRequestFile[] = [];
+    let skip: number | null = 0;
+    while (skip !== null && files.length <= HostPullRequestFiles.maximumCount) {
       const answer: JsonReader | null = await this.api.getAsync(Resources.formatPullRequestChangesUrl(reference.owner, reference.repository, reference.number,
-        latest.number, HostPullRequestFiles.maximumCount + 1), token, signal);
+        latest.number, Resources.changesPage, skip), token, signal);
       if (answer === null)
-        return none;
+        return null;
       const entries: readonly JsonReader[] = AzureApi.read(() => answer.readObjectArray(Resources.changeEntriesField));
-      const read: readonly HostPullRequestFile[] = AzureApi.read(() => entries
-        .filter(t => t.readObject(Resources.itemField).readOptionalString(Resources.gitObjectTypeField) !== Resources.treeObjectType).flatMap(AzureReads.pullRequestFilesOf));
-      return new HostPullRequestFiles(latest.sourceCommit, latest.commonCommit, read.slice(0, HostPullRequestFiles.maximumCount),
-        entries.length > HostPullRequestFiles.maximumCount);
-    });
-    return this.signIn.token === token ? files : none;
+      files.push(...AzureApi.read(() => AzureReads.changedFilesOf(entries)));
+      skip = entries.length < Resources.changesPage ? null : skip + Resources.changesPage;
+    }
+    return new HostPullRequestFiles(latest.sourceCommit, latest.commonCommit, files.slice(0, HostPullRequestFiles.maximumCount),
+      files.length > HostPullRequestFiles.maximumCount);
+  }
+
+  /** The pull request's latest push; undefined when it has none or Azure DevOps finds none. */
+  private async readLatestAsync(reference: HostReference, token: AzureCredential, signal: AbortSignal): Promise<HostPullRequestUpdate | undefined> {
+    const iterations: JsonReader | null = await this.api.getAsync(Resources.formatPullRequestIterationsUrl(reference.owner, reference.repository, reference.number),
+      token, signal);
+    return iterations === null ? undefined : AzureApi.read(() => iterations.readObjectArray(Resources.valueField).map(AzureReads.pullRequestUpdateOf)).at(-1);
+  }
+
+  /** The files among a push's changes, leaving out folders. */
+  private static changedFilesOf(entries: readonly JsonReader[]): readonly HostPullRequestFile[] {
+    return entries.filter(t => t.readObject(Resources.itemField).readOptionalString(Resources.gitObjectTypeField) !== Resources.treeObjectType)
+      .flatMap(AzureReads.pullRequestFilesOf);
+  }
+
+  /**
+   * The lines the pull request adds and removes and the files it changes, from each file's line blocks between its common and head commits, asked for
+   * `fileDiffsBatch` files at a time; null past 5000 files, without a common commit, or when Azure DevOps can't answer in time, which the log says why, though a sign-out still fails.
+   */
+  private async readCountsAsync(reference: HostReference, project: string, token: AzureCredential, signal: AbortSignal)
+    : Promise<readonly [number, number, number] | null> {
+    try {
+      const list: HostPullRequestFiles | null = await this.readFilesAsync(reference, token, signal);
+      if (list === null || list.hasMore || list.commonCommit === null || list.sourceCommit === null)
+        return null;
+      const { commonCommit, sourceCommit, files } = list;
+      const batches: (readonly HostPullRequestFile[])[] = [];
+      for (let i = 0; i < files.length; i += Resources.fileDiffsBatch)
+        batches.push(files.slice(i, i + Resources.fileDiffsBatch));
+      const lines: readonly (readonly [number, number])[] = await Promise.all(batches.map(batch =>
+        this.readLinesAsync(reference, project, commonCommit, sourceCommit, batch, token, signal)));
+      return [...AzureReads.sumOf(lines), files.length];
+    }
+    catch (error) {
+      if (!(error instanceof MethodFailureException && Resources.unknownCountFailures.includes(error.failure.code)))
+        throw error;
+      this.log.write(Resources.formatCountsUnknown(reference.number, error.failure.message));
+      return null;
+    }
+  }
+
+  /**
+   * The lines the files add and remove, asked in one request; a batch Azure DevOps refuses is asked again in halves, so one it refuses for its size still counts,
+   * and a single file it refuses fails the count.
+   */
+  private async readLinesAsync(reference: HostReference, project: string, base: string, head: string, files: readonly HostPullRequestFile[], token: AzureCredential,
+    signal: AbortSignal): Promise<readonly [number, number]> {
+    try {
+      const answer: JsonReader | null = await this.api.postAsync(Resources.formatFileDiffsUrl(reference.owner, project, reference.repository), token, {
+        [Resources.baseVersionCommitField]: base, [Resources.targetVersionCommitField]: head, [Resources.fileDiffParamsField]: files.map(AzureReads.fileDiffParamsOf)
+      }, signal);
+      if (answer === null)
+        throw AzureApi.failure(FailureCode.Unavailable, Resources.fileDiffsNotFoundMessage);
+      return AzureApi.read(() => AzureReads.linesOf(answer.readObjectArray(Resources.valueField)));
+    }
+    catch (error) {
+      if (!(error instanceof MethodFailureException && error.failure.code === FailureCode.Unavailable))
+        throw error;
+      if (files.length === 1)
+        throw error;
+      const half: number = Math.ceil(files.length / 2);
+      const halves: readonly (readonly [number, number])[] = await Promise.all([files.slice(0, half), files.slice(half)]
+        .map(t => this.readLinesAsync(reference, project, base, head, t, token, signal)));
+      return AzureReads.sumOf(halves);
+    }
+  }
+
+  private static sumOf(lines: readonly (readonly [number, number])[]): readonly [number, number] {
+    return [lines.reduce((sum, t) => sum + t[0], 0), lines.reduce((sum, t) => sum + t[1], 0)];
+  }
+
+  /** A file as a file diffs request names it: an added file by its path alone, a deleted one by its original path alone, since the other side has none. */
+  private static fileDiffParamsOf(file: HostPullRequestFile): JsonValue {
+    const path: string = Resources.formatAzurePath(file.path);
+    if (file.kind === FileChangeKind.Added)
+      return { [Resources.pathField]: path };
+    if (file.kind === FileChangeKind.Deleted)
+      return { [Resources.originalPathField]: path };
+    return { [Resources.pathField]: path, [Resources.originalPathField]: Resources.formatAzurePath(file.previousPath ?? file.path) };
+  }
+
+  /** The lines added and removed across the files' blocks: an added block's lines in the head, a deleted one's in the base, and an edited one's both. */
+  private static linesOf(files: readonly JsonReader[]): readonly [number, number] {
+    let added: number = 0;
+    let removed: number = 0;
+    for (const block of files.flatMap(t => t.hasField(Resources.lineDiffBlocksField) ? t.readObjectArray(Resources.lineDiffBlocksField) : [])) {
+      const change: string = block.readString(Resources.changeTypeField).toLowerCase();
+      if (change === Resources.addBlock || change === Resources.editBlock)
+        added += block.readInteger(Resources.modifiedLinesCountField);
+      if (change === Resources.deleteBlock || change === Resources.editBlock)
+        removed += block.readInteger(Resources.originalLinesCountField);
+    }
+    return [added, removed];
   }
 
   /** The paths of the files that keep the pull request from merging, at most 100; signed out, or for another host, organization or repository id, none. */
@@ -450,7 +561,10 @@ export class AzureReads {
     const answer: JsonReader | null = await this.api.getAsync(Resources.formatWorkItemTypeUrl(organization, project, name), token, signal);
     if (answer === null)
       throw AzureApi.failure(FailureCode.Unavailable, Resources.unreadableAnswerMessage);
-    const type = AzureApi.read(() => AzureReads.typeOf(answer));
+    const [read, categories] = AzureApi.read(() => AzureReads.typeOf(answer));
+    const image: string | null = await this.api.getSvgAsync(Resources.formatWorkItemIconUrl(organization, read.icon, read.color), token, signal,
+      reason => this.log.write(Resources.formatIconDropped(read.icon, reason)));
+    const type = [new HostWorkItemType(read.name, read.color, read.icon, image), categories] as const;
     if (this.typesToken === token)
       this.types.set(key, type);
     return type;
@@ -458,10 +572,8 @@ export class AzureReads {
 
   private async readChecksAsync(item: HostItem, pull: JsonReader, token: AzureCredential, signal: AbortSignal): Promise<readonly HostCheck[]> {
     const project: string = AzureApi.read(() => pull.readObject(Resources.repositoryField).readObject(Resources.projectField).readNonBlankString(Resources.idField));
-    const { owner, repository: id, number } = item.reference;
-    const [policies, builds] = await Promise.all([this.readPoliciesAsync(owner, project, number, token, signal),
-      this.readBuildsAsync(owner, project, id, number, token, signal)]);
-    return [...builds.map(([build]) => AzureReads.checkOfBuild(build)), ...policies.filter(([, isBuild]) => !isBuild).map(([policy]) => AzureReads.checkOfPolicy(policy))];
+    const [policies, builds] = await Promise.all([this.readPoliciesAsync(item, project, token, signal), this.readBuildsAsync(item, project, token, signal)]);
+    return [...builds.map(([build]) => AzureReads.checkOfBuild(build, item)), ...policies.filter(([, isBuild]) => !isBuild).map(([policy]) => AzureReads.checkOfPolicy(policy))];
   }
 
   private async readCommitCountAsync(reference: HostReference, token: AzureCredential, signal: AbortSignal): Promise<number | null> {
@@ -495,15 +607,23 @@ export class AzureReads {
     return read;
   }
 
-  private async readPoliciesAsync(organization: string, project: string, number: number, token: AzureCredential,
+  /**
+   * The pull request's policies; on one completed or abandoned, a policy Azure DevOps still shows queued or running never ran before it closed and won't
+   * now, so it shows as not applying.
+   */
+  private async readPoliciesAsync(item: HostItem, project: string, token: AzureCredential,
     signal: AbortSignal): Promise<readonly (readonly [HostPolicy, boolean, number | null])[]> {
-    const evaluations: JsonReader | null = await this.api.getAsync(Resources.formatPolicyEvaluationsUrl(organization, project, number), token, signal);
-    return evaluations === null ? [] : AzureApi.read(() => evaluations.readObjectArray(Resources.valueField).map(AzureReads.policyOf));
+    const evaluations: JsonReader | null = await this.api.getAsync(Resources.formatPolicyEvaluationsUrl(item.reference.owner, project, item.reference.number),
+      token, signal);
+    const read = evaluations === null ? [] : AzureApi.read(() => evaluations.readObjectArray(Resources.valueField).map(AzureReads.policyOf));
+    return item.closedAt === null ? read : read.map(([policy, isBuild, buildId]) => [AzureReads.closedPolicyOf(policy), isBuild, buildId] as const);
   }
 
-  private async readBuildsAsync(organization: string, project: string, repository: string, number: number, token: AzureCredential,
+  /** The newest build of each pipeline the pull request ran, as its page shows them, not every run of every push. */
+  private async readBuildsAsync(item: HostItem, project: string, token: AzureCredential,
     signal: AbortSignal): Promise<readonly (readonly [HostBuild, number | null])[]> {
-    const builds: JsonReader | null = await this.api.getAsync(Resources.formatBuildsUrl(organization, project, repository, number), token, signal);
+    const { owner, repository, number } = item.reference;
+    const builds: JsonReader | null = await this.api.getAsync(Resources.formatBuildsUrl(owner, project, repository, number), token, signal);
     return builds === null ? [] : AzureApi.read(() => builds.readObjectArray(Resources.valueField).map(AzureReads.buildOf));
   }
 
@@ -565,7 +685,8 @@ export class AzureReads {
     return new HostReviewRequest(item.reference, item.title, item.url, item.state === ReferenceState.Draft, item.createdAt);
   }
 
-  private static itemOf(organization: string, pull: JsonReader): HostItem {
+  /** The pull request as an item, with the lines it adds and removes and the files it changes when they're given. */
+  private static itemOf(organization: string, pull: JsonReader, counts: readonly [number, number, number] | null = null): HostItem {
     const repository: JsonReader = pull.readObject(Resources.repositoryField);
     const number: number = pull.readInteger(Resources.pullRequestIdField);
     const status: string = pull.readString(Resources.statusField);
@@ -574,7 +695,7 @@ export class AzureReads {
     const closedAt: number | null = state === ReferenceState.Merged || state === ReferenceState.Closed ? Date.parse(pull.readString(Resources.closedDateField))
       : null;
     const creator: JsonReader | null = pull.hasField(Resources.createdByField) ? pull.readObject(Resources.createdByField) : null;
-    const changes: HostChanges = new HostChanges(null, null, null, AzureReads.branchOf(pull.readString(Resources.sourceRefNameField)),
+    const changes: HostChanges = new HostChanges(counts?.[0] ?? null, counts?.[1] ?? null, counts?.[2] ?? null, AzureReads.branchOf(pull.readString(Resources.sourceRefNameField)),
       AzureReads.branchOf(pull.readString(Resources.targetRefNameField)), pull.readObject(Resources.lastMergeSourceCommitField).readString(Resources.commitIdField));
     const url: string = Resources.formatPullRequestPage(organization, repository.readObject(Resources.projectField).readString(Resources.nameField),
       repository.readString(Resources.nameField), number);
@@ -662,7 +783,8 @@ export class AzureReads {
       state, categories.get(state) ?? WorkItemCategory.Proposed, Resources.formatWorkItemPage(organization, project, id),
       fields.hasField(Resources.assignedToField) ? AzureReads.personOf(fields.readObject(Resources.assignedToField)) : null,
       text(Resources.iterationPathField), text(Resources.areaPathField),
-      fields.hasField(Resources.parentField) ? fields.readInteger(Resources.parentField) : null);
+      fields.hasField(Resources.parentField) ? fields.readInteger(Resources.parentField) : null,
+      fields.hasField(Resources.changedDateField) ? Date.parse(fields.readString(Resources.changedDateField)) : null);
   }
 
   private static threadOf(thread: JsonReader): readonly HostThread[] {
@@ -738,9 +860,14 @@ export class AzureReads {
    * The changed file of a change entry: Azure DevOps joins the change types, such as `edit, rename`, names a moved file's old path, and names a deleted file
    * only by that old path; an entry that names no path is left out.
    */
+  /** A text field Azure DevOps may leave out or send as null, as it does for some changes' paths. */
+  private static textOf(reader: JsonReader, name: string): string | undefined {
+    return reader.hasField(name) ? reader.readNullableString(name) ?? undefined : undefined;
+  }
+
   private static pullRequestFilesOf(entry: JsonReader): readonly HostPullRequestFile[] {
-    const current: string | undefined = entry.readObject(Resources.itemField).readOptionalString(Resources.pathField);
-    const original: string | undefined = entry.readOptionalString(Resources.originalPathField);
+    const current: string | undefined = AzureReads.textOf(entry.readObject(Resources.itemField), Resources.pathField);
+    const original: string | undefined = AzureReads.textOf(entry, Resources.originalPathField);
     const named: string | undefined = current ?? original;
     if (named === undefined)
       return [];
@@ -759,8 +886,10 @@ export class AzureReads {
     return path.replace(Resources.leadingSlashesPattern, Resources.emptyText);
   }
 
+  /** A person by their unique name, which signs them in and is often their email address, with the display name they show when it isn't blank. */
   private static personOf(identity: JsonReader): HostPerson {
-    return new HostPerson(identity.readNonBlankString(Resources.uniqueNameField), null, null);
+    const name: string = identity.readOptionalString(Resources.displayNameField)?.trim() ?? "";
+    return new HostPerson(identity.readNonBlankString(Resources.uniqueNameField), null, null, undefined, name.length > 0 ? name : null);
   }
 
   public static reviewerOf(reviewer: JsonReader): HostReviewer {
@@ -773,8 +902,7 @@ export class AzureReads {
   /** A group's unique name is a descriptor, such as "vstfs:///Classification/TeamProject/<id>\Web", so a group goes by its display name, "[Project]\Web", as the people search names it. */
   private static reviewingOf(reviewer: JsonReader): HostPerson {
     const name: string = reviewer.readOptionalString(Resources.displayNameField) ?? "";
-    const isGroup: boolean = reviewer.hasField(Resources.isContainerField) && reviewer.readBoolean(Resources.isContainerField);
-    return isGroup && name.trim().length > 0 ? new HostPerson(name, null, null) : AzureReads.personOf(reviewer);
+    return AzureReads.isGroup(reviewer) && name.trim().length > 0 ? new HostPerson(name, null, null) : AzureReads.personOf(reviewer);
   }
 
   /** A policy, whether it's a build policy, and the id of the build its evaluation ran, from the evaluation's context; null when it ran none. */
@@ -831,16 +959,30 @@ export class AzureReads {
     build.hasField(Resources.idField) ? build.readInteger(Resources.idField) : null];
   }
 
-  private static checkOfBuild(build: HostBuild): HostCheck {
-    return new HostCheck(build.name, build.state, build.url);
+  private static closedPolicyOf(policy: HostPolicy): HostPolicy {
+    return policy.state === PolicyState.Queued || policy.state === PolicyState.Running
+      ? new HostPolicy(policy.name, PolicyState.NotApplicable, policy.isBlocking, policy.url, policy.buildNumber) : policy;
+  }
+
+  /** A build as a check; on a completed or abandoned pull request, one still waiting to start never will, so it counts as not run. */
+  private static checkOfBuild(build: HostBuild, item: HostItem): HostCheck {
+    return new HostCheck(build.name, item.closedAt !== null && build.state === CheckState.Queued ? CheckState.Neutral : build.state, build.url);
   }
 
   private static checkOfPolicy(policy: HostPolicy): HostCheck {
     return new HostCheck(policy.name, Resources.policyChecks[policy.state], policy.url);
   }
 
+  /**
+   * The people's votes, leaving out groups': Azure DevOps copies a member's vote onto each group they voted for, so a group's vote would count that person
+   * again.
+   */
   private static votesOf(pull: JsonReader): readonly number[] {
-    return AzureApi.read(() => pull.readObjectArray(Resources.reviewersField).map(t => t.readInteger(Resources.voteField)));
+    return AzureApi.read(() => pull.readObjectArray(Resources.reviewersField).filter(t => !AzureReads.isGroup(t)).map(t => t.readInteger(Resources.voteField)));
+  }
+
+  private static isGroup(reviewer: JsonReader): boolean {
+    return reviewer.hasField(Resources.isContainerField) && reviewer.readBoolean(Resources.isContainerField);
   }
 
   private static decisionOf(votes: readonly number[]): ReviewDecision {

@@ -959,7 +959,7 @@ export declare class HostReference {
 }
 
 /**
- * A person on a host, such as the author of a pull request or an issue: their login and their avatar.
+ * A person on a host, such as the author of a pull request or an issue: their login, their avatar and the name they show.
  *
  * @example
  * ```ts
@@ -987,12 +987,18 @@ export declare class HostPerson {
   public readonly url: string | null;
 
   /**
+   * The name the person shows on the host, such as "Mona Lisa" for a login that is an email address; null when the host gives none, so a window shows the login.
+   */
+  public readonly name: string | null;
+
+  /**
    * Makes a person from their parts.
    *
    * @param login The login, which isn't blank.
    * @param avatar The avatar as a base64 data address of a PNG, JPEG, GIF or WebP image of at most 64 KiB, or null.
    * @param url The profile page as an https address, or null.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
+   * @param name The name the person shows, which isn't blank, or null, the default.
    * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `login`.
    * @throws {HostingFieldException} With a reader, when a part is out of its range, naming the field by its path, such as `$.login`.
    * @example
@@ -1000,9 +1006,10 @@ export declare class HostPerson {
    * import { HostPerson } from "@noldova/git.hosting.protocol";
    *
    * const person = new HostPerson("monalisa", null, null);
+   * const named = new HostPerson("monalisa@fabrikam.com", null, null, undefined, "Mona Lisa");
    * ```
    */
-  public constructor(login: string, avatar: string | null, url: string | null, reader?: JsonReader);
+  public constructor(login: string, avatar: string | null, url: string | null, reader?: JsonReader, name?: string | null);
 
   /**
    * Reads a person from their JSON.
@@ -1022,7 +1029,7 @@ export declare class HostPerson {
   public static fromJson(value: unknown, path?: string): HostPerson;
 
   /**
-   * Writes the person as JSON: `login`, `avatar` and `url`, each of the last two null when there is none.
+   * Writes the person as JSON: `login`, `avatar` and `url`, each of the last two null when there is none, and `name` only when there is one.
    *
    * @returns The JSON.
    * @example
@@ -3427,9 +3434,15 @@ export declare class HostWorkItemType {
   public readonly color: string;
 
   /**
-   * The name of the type's icon on the host, which a host module's window maps to its own icon.
+   * The name of the type's icon on the host, which a host module's window maps to its own icon when the type has no image.
    */
   public readonly icon: string;
+
+  /**
+   * The icon as the host draws it, SVG markup in the type's color, or null when the host gave none; a window shows it only as an image, where it runs no
+   * script and loads nothing. JSON without the field reads as null.
+   */
+  public readonly image: string | null;
 
   /**
    * Makes a work item type from its parts.
@@ -3437,6 +3450,7 @@ export declare class HostWorkItemType {
    * @param name The name, which isn't blank.
    * @param color Six hexadecimal digits.
    * @param icon A name of letters, digits, `.`, `_` and `-`.
+   * @param image SVG markup of at most 65536 characters, which may start with an XML declaration, or null, the default.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
    * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `color`.
    * @throws {HostingFieldException} With a reader, when a part is out of its range, naming the field by its path, such as `$.color`.
@@ -3447,7 +3461,7 @@ export declare class HostWorkItemType {
    * const type = new HostWorkItemType("Bug", "CC293D", "icon_insect");
    * ```
    */
-  public constructor(name: string, color: string, icon: string, reader?: JsonReader);
+  public constructor(name: string, color: string, icon: string, image?: string | null, reader?: JsonReader);
 
   /**
    * Reads a work item type from its JSON.
@@ -3558,6 +3572,11 @@ export declare class HostWorkItem {
   public readonly parent: number | null;
 
   /**
+   * When the item last changed, in milliseconds since 1970 UTC, or null when the host didn't say; JSON without the field reads as null.
+   */
+  public readonly changedAt: number | null;
+
+  /**
    * Makes a work item from its parts.
    *
    * @param host The host module's id, a name of letters, digits, `.`, `_` and `-`.
@@ -3573,6 +3592,7 @@ export declare class HostWorkItem {
    * @param iteration The iteration path, which isn't blank, or null.
    * @param area The area path, which isn't blank, or null.
    * @param parent The parent's number, above zero and not the item's own, or null.
+   * @param changedAt When it last changed, in milliseconds since 1970 UTC and above zero, or null, the default.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
    * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `parent`.
    * @throws {HostingFieldException} With a reader, when a part is out of its range, naming the field by its path, such as `$.parent`.
@@ -3586,7 +3606,7 @@ export declare class HostWorkItem {
    */
   public constructor(host: string, organization: string, project: string, id: number, type: HostWorkItemType, title: string, state: string,
     category: WorkItemCategory, url: string, assignee: HostPerson | null, iteration: string | null, area: string | null, parent: number | null,
-    reader?: JsonReader);
+    changedAt?: number | null, reader?: JsonReader);
 
   /**
    * Reads a work item from its JSON.
@@ -4531,7 +4551,7 @@ export declare class HostPullRequestFile {
 }
 
 /**
- * The files a pull request changes at its latest push, at most 1000, and whether the host has more, with that push's head commit and the commit its changes count from.
+ * The files a pull request changes at its latest push, at most 5000, and whether the host has more, with that push's head commit and the commit its changes count from.
  *
  * @example
  * ```ts
@@ -4542,7 +4562,7 @@ export declare class HostPullRequestFile {
  */
 export declare class HostPullRequestFiles {
   /**
-   * The most files a list holds: 1000.
+   * The most files a list holds: 5000.
    */
   public static readonly maximumCount: number;
 
@@ -4562,7 +4582,7 @@ export declare class HostPullRequestFiles {
   public readonly files: readonly HostPullRequestFile[];
 
   /**
-   * Whether the host lists more changes than it read; with fewer than 1000 files when the host's list holds entries that aren't files, such as folders.
+   * Whether the host lists more files than the list holds.
    */
   public readonly hasMore: boolean;
 
@@ -4571,7 +4591,7 @@ export declare class HostPullRequestFiles {
    *
    * @param sourceCommit The head commit, 40 hexadecimal digits, or `null` with no common commit and no files.
    * @param commonCommit The commit the changes count from, 40 hexadecimal digits, or `null`.
-   * @param files The files, at most 1000.
+   * @param files The files, at most 5000.
    * @param hasMore Whether there are more, only with a head commit.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
    * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter.

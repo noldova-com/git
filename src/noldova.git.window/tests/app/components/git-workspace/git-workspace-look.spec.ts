@@ -192,7 +192,7 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     await page.screenshot({ element, path: `${screenshots}/git-workspace-${mode}.png` });
   });
 
-  it.each(AppearanceFixture.modes)("draws the Across repositories view at the dock's 22rem with its change card raised 0.75rem in and its rows' icons in their states' colours, in %s mode",
+  it.each(AppearanceFixture.modes)("draws the Across repositories view at the dock's 22rem with no background of its own, its change card raised 0.75rem in, and its rows' icons in their states' colours, in %s mode",
     async mode => {
       AppearanceFixture.apply(DefaultTheme.theme, mode);
       const { page: element, view: panel } = await renderBothAsync();
@@ -207,7 +207,7 @@ describe("GitWorkspaceComponent in the kit's look", () => {
       expect([element.querySelectorAll("nol-git-workspace-across").length, rem(box(across).width), rem(box(card).left - box(panel).left), rem(box(card).top - box(panel).top),
         rem(box(panel).right - box(card).right), panel.scrollWidth <= panel.clientWidth]).toEqual([0, 22, 0.75, 0.75, 0.75, true]);
       expect([getComputedStyle(card).backgroundColor, getComputedStyle(card).borderTopColor, getComputedStyle(card).borderTopLeftRadius, getComputedStyle(panel).backgroundColor])
-        .toEqual([resolve("var(--nol-raised)"), resolve("var(--nol-card-border)"), "6px", resolve("var(--nol-panel)")]);
+        .toEqual([resolve("var(--nol-raised)"), resolve("var(--nol-card-border)"), "6px", "rgba(0, 0, 0, 0)"]);
       expect([getComputedStyle(failing).color, getComputedStyle(behind).color]).toEqual([resolve("var(--nol-status-failed)"), resolve("var(--nol-icon-color)")]);
       expect(rows.map(t => rem(box(t).height))).toEqual(rows.map(() => 1.625));
       expect(rows.map(t => t.innerText.replace(/\s+/gu, " ").trim())).toEqual(["error ui-components feature/kit-0.0.25: one check failing Open",
@@ -302,7 +302,9 @@ describe("GitWorkspaceComponent in the kit's look", () => {
       [".pull-request .link", "#215 open · on #214"], [".fetched", "12 min ago"]];
 
     expect([rem(box(row.children[2] ?? row).width) >= 8, table.scrollWidth - table.clientWidth]).toEqual([true, 0]);
-    expect(cut.map(t => [getComputedStyle(t).textOverflow, t.title.startsWith((t.textContent ?? "").trim())])).toEqual(cut.map(() => ["ellipsis", true]));
+    /* The pull request link leaves its title to its words, so its tooltip never shows over the reference card. */
+    const titleOf = (t: HTMLElement): string => t.matches(".pull-request .link") ? t.querySelector<HTMLElement>(":scope > span")?.title ?? "" : t.title;
+    expect(cut.map(t => [getComputedStyle(t).textOverflow, titleOf(t).startsWith((t.textContent ?? "").trim())])).toEqual(cut.map(() => ["ellipsis", true]));
     expect(widest.map(([selector, text]) => {
       const cell: HTMLElement = row.querySelector<HTMLElement>(selector) ?? row;
       cell.textContent = text;
@@ -310,7 +312,7 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     })).toEqual(widest.map(([, text]) => [text, 0]));
   });
 
-  it.each(AppearanceFixture.modes)("fits the app's narrowest window, 640 by 480 less the title bar and margins, the table at full width with its toolbar wrapping, with nothing clipped, outside it or overlapping, in %s mode",
+  it.each(AppearanceFixture.modes)("fits the app's narrowest window, 640 by 480 less the title bar and margins, the table at full width, flush with the pane and with no card border of its own, its toolbar wrapping, with nothing clipped, outside it or overlapping, in %s mode",
     async mode => {
       AppearanceFixture.apply(DefaultTheme.theme, mode);
       const element: HTMLElement = await renderAsync();
@@ -322,7 +324,10 @@ describe("GitWorkspaceComponent in the kit's look", () => {
 
       await page.screenshot({ element, path: `${screenshots}/git-workspace-narrow-${mode}.png` });
       expect(GitLayout.problemsOf(element).filter(t => !t.startsWith("scrolls sideways: div.table "))).toEqual([]);
-      expect([rem(main.width), rem(main.height), rem(toolbar.height) > 2.25]).toEqual([rem(box(element).width) - 0.5, rem(box(element).height) - 0.5, true]);
+      const panel: CSSStyleDeclaration = getComputedStyle(element.querySelector("main") ?? element);
+      expect([rem(main.width), rem(main.height), rem(main.left - box(element).left), rem(main.top - box(element).top), rem(toolbar.height) > 2.25])
+        .toEqual([rem(box(element).width), rem(box(element).height), 0, 0, true]);
+      expect([panel.borderTopWidth, panel.borderLeftWidth, panel.borderTopLeftRadius, panel.backgroundColor]).toEqual(["0px", "0px", "0px", resolve("var(--nol-panel)")]);
       expect([filter.bottom <= toolbar.bottom, rem(box(element.querySelector(".table")).top - toolbar.bottom)]).toEqual([true, 0]);
     });
 

@@ -8,8 +8,10 @@
 
 import assert from "node:assert/strict";
 
+import { JsonReader } from "@noldova/context.json";
 import { FailureCode } from "@noldova/desktop.protocol";
 import { MethodFailureException } from "@noldova/desktop.runtime";
+import { FakeModuleLog } from "@noldova/desktop.runtime/testing";
 import { BranchPullRequest, BranchQuery, CheckState, CommitQuery, FileChangeKind, HostBuild, HostChanges, HostCheck, HostComment, HostCommitComments, HostItem,
   HostPerson, HostPolicy, HostPullRequest, HostPullRequestCommit, HostPullRequestCommits, HostPullRequestConflicts, HostPullRequestFile, HostPullRequestFiles,
   HostPullRequestHead, HostPullRequestHeads, HostPullRequestList, HostPullRequestRow, HostPullRequestUpdate, HostPullRequestUpdates, HostReference,
@@ -23,7 +25,7 @@ import { FoundPerson } from "../../src/models/found-person.ts";
 import { PeopleQuery } from "../../src/models/people-query.ts";
 import { AzureApi } from "../../src/services/azure-api.ts";
 import { AzureReads } from "../../src/services/azure-reads.ts";
-import { FakeAzure, FakeToken } from "../fixtures/fake-azure.fixture.ts";
+import { FakeAzure, FakeToken, linesOf } from "../fixtures/fake-azure.fixture.ts";
 
 const signal: AbortSignal = new AbortController().signal;
 const repositoryId: string = "3411ebc1-d5aa-464f-9615-0b527bc66719";
@@ -35,12 +37,12 @@ const pullUrl: string = `https://dev.azure.com/fabrikam/_apis/git/repositories/$
 const policiesUrl: string = `https://dev.azure.com/fabrikam/${projectId}/_apis/policy/evaluations?artifactId=`
   + `vstfs%3A%2F%2F%2FCodeReview%2FCodeReviewId%2F${projectId}%2F12&api-version=7.1-preview.1`;
 const buildsUrl: string = `https://dev.azure.com/fabrikam/${projectId}/_apis/build/builds?branchName=refs%2Fpull%2F12%2Fmerge`
-  + `&repositoryId=${repositoryId}&repositoryType=TfsGit&api-version=7.1`;
+  + `&repositoryId=${repositoryId}&repositoryType=TfsGit&maxBuildsPerDefinition=1&queryOrder=queueTimeDescending&api-version=7.1`;
 const commitsUrl: string = `https://dev.azure.com/fabrikam/_apis/git/repositories/${repositoryId}/pullRequests/12/commits?$top=100&api-version=7.1`;
 const pullCommitsUrl: string = `https://dev.azure.com/fabrikam/_apis/git/repositories/${repositoryId}/pullRequests/12/commits?$top=251&api-version=7.1`;
 const pullUpdatesUrl: string = `https://dev.azure.com/fabrikam/_apis/git/repositories/${repositoryId}/pullRequests/12/iterations?api-version=7.1`;
-const pullChangesUrl = (iteration: number): string => `https://dev.azure.com/fabrikam/_apis/git/repositories/${repositoryId}/pullRequests/12/iterations/`
-  + `${String(iteration)}/changes?$top=1001&$compareTo=0&api-version=7.1`;
+const pullChangesUrl = (iteration: number, skip: number = 0): string => `https://dev.azure.com/fabrikam/_apis/git/repositories/${repositoryId}/pullRequests/12/`
+  + `iterations/${String(iteration)}/changes?$top=1000${skip > 0 ? `&$skip=${String(skip)}` : ""}&$compareTo=0&api-version=7.1`;
 const pullConflictsUrl: string = `https://dev.azure.com/fabrikam/_apis/git/repositories/${repositoryId}/pullRequests/12/conflicts?$top=101&api-version=7.1`;
 const linksUrl: string = `https://dev.azure.com/fabrikam/_apis/git/repositories/${repositoryId}/pullRequests/12/workitems?api-version=7.1`;
 const listUrl: string = "https://dev.azure.com/fabrikam/web/_apis/git/repositories/site/pullrequests?searchCriteria.sourceRefName=refs%2Fheads%2Ffeature%2Fsign-in"
@@ -50,6 +52,9 @@ const projectPullUrl = (number: number): string => `https://dev.azure.com/fabrik
 const commitQuery: CommitQuery = new CommitQuery("dev.azure.com", "fabrikam/web/_git/site", commit);
 const otherCommit: string = "7638417db6d59f3c431d3e1f261cc637155684cd";
 const pullIterationsUrl: string = `https://dev.azure.com/fabrikam/_apis/git/repositories/${repositoryId}/pullRequests/12/iterations?api-version=7.1`;
+const fileDiffsUrl: string = `https://dev.azure.com/fabrikam/${projectId}/_apis/git/repositories/${repositoryId}/FileDiffs?api-version=7.1-preview.1`;
+const countedChangesUrl = (skip: number): string => pullChangesUrl(2, skip);
+const noPush = (): Response => new Response(null, { status: 404 });
 const pulledBy = (): Response => FakeAzure.json({ results: [{ [commit]: [{ pullRequestId: 12 }] }, {}] });
 const iterated = (): Response => FakeAzure.json({ value: [{ id: 1, sourceRefCommit: { commitId: otherCommit } }, { id: 2, sourceRefCommit: { commitId: commit } },
   { id: 3, sourceRefCommit: { commitId: commit } }] });
@@ -97,13 +102,16 @@ function asking(vote: number, changes: Readonly<Record<string, unknown>> = {}): 
 }
 
 const item: HostItem = new HostItem(reference, ReferenceKind.PullRequest, ReferenceState.Open, "Add the sign-in page", page,
-  new HostPerson("monalisa@fabrikam.com", null, null), Date.parse("2027-01-15T09:30:00Z"), null, 0,
+  new HostPerson("monalisa@fabrikam.com", null, null, undefined, "Mona Lisa"), Date.parse("2027-01-15T09:30:00Z"), null, 0,
   new HostChanges(null, null, null, "feature/sign-in", "main", commit));
 
 const workItemQuery: WorkItemQuery = new WorkItemQuery("git-azure-devops", "fabrikam", 42);
 const workItemUrl: string = "https://dev.azure.com/fabrikam/_apis/wit/workitems/42?api-version=7.1";
 const typeUrl: string = "https://dev.azure.com/fabrikam/Web%20Site/_apis/wit/workitemtypes/User%20Story?api-version=7.1";
-const story: HostWorkItemType = new HostWorkItemType("User Story", "009CCC", "icon_book");
+const storyIcon: string = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill="#009CCC" d="M2 2h12v12H2z"/></svg>';
+const story: HostWorkItemType = new HostWorkItemType("User Story", "009CCC", "icon_book", storyIcon);
+const iconUrl: string = "https://dev.azure.com/fabrikam/_apis/wit/workitemicons/icon_book?color=009CCC&v=2&api-version=7.1";
+const icon = (body: string = storyIcon, type: string = "image/svg+xml; charset=utf-8"): Response => new Response(body, { headers: { "Content-Type": type } });
 
 function workItem(fields: Readonly<Record<string, unknown>> = {}): Record<string, unknown> {
   return {
@@ -111,7 +119,7 @@ function workItem(fields: Readonly<Record<string, unknown>> = {}): Record<string
     fields: {
       "System.TeamProject": "Web Site", "System.WorkItemType": "User Story", "System.Title": "Sign in with a token", "System.State": "Active",
       "System.AssignedTo": { displayName: "Mona Lisa", uniqueName: "monalisa@fabrikam.com" }, "System.IterationPath": "Web Site\\Sprint 3",
-      "System.AreaPath": "Web Site\\Accounts", "System.Parent": 40, ...fields
+      "System.AreaPath": "Web Site\\Accounts", "System.Parent": 40, "System.ChangedDate": "2027-01-15T09:30:00Z", ...fields
     }
   };
 }
@@ -125,11 +133,11 @@ function workItemType(name: string = "User Story"): Record<string, unknown> {
 }
 
 const storyItem: HostWorkItem = new HostWorkItem("git-azure-devops", "fabrikam", "Web Site", 42, story, "Sign in with a token", "Active",
-  WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/42", new HostPerson("monalisa@fabrikam.com", null, null),
-  "Web Site\\Sprint 3", "Web Site\\Accounts", 40);
+  WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/42", new HostPerson("monalisa@fabrikam.com", null, null, undefined, "Mona Lisa"),
+  "Web Site\\Sprint 3", "Web Site\\Accounts", 40, Date.parse("2027-01-15T09:30:00Z"));
 
 const threadsUrl: string = `https://dev.azure.com/fabrikam/_apis/git/repositories/${repositoryId}/pullRequests/12/threads?api-version=7.1`;
-const monalisa: HostPerson = new HostPerson("monalisa@fabrikam.com", null, null);
+const monalisa: HostPerson = new HostPerson("monalisa@fabrikam.com", null, null, undefined, "Mona Lisa");
 
 function comment(id: number, parent: number, content: string, changes: Readonly<Record<string, unknown>> = {}): Record<string, unknown> {
   return {
@@ -152,22 +160,114 @@ function failureOf(error: unknown): string | null {
 }
 
 describe("AzureReads", () => {
-  it("reads a pull request as an item, with its project's page, its author's name and its branches, and no counts Azure DevOps doesn't give", async () => {
+  it("reads a pull request as an item, with its project's page, its author's name and its branches, and no counts for one Azure DevOps finds no push of", async () => {
     const azure = new FakeAzure();
-    azure.answer(FakeAzure.json(pull()));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    azure.answer(FakeAzure.json(pull()), noPush());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: HostItem | null = await reads.readReferenceAsync(reference, signal);
 
-    assert.deepEqual([read, azure.urls()], [item, [pullUrl]]);
+    assert.deepEqual([read, azure.urls()], [item, [pullUrl, pullIterationsUrl]]);
   });
+
+  it("counts the lines a pull request adds and removes and the files it changes at its latest push, asking for 100 files' line blocks at a time between its "
+    + "common and head commits, a renamed file by both paths, an added one by its path and a deleted one by its original path alone", async () => {
+    const azure = new FakeAzure();
+    const pushes: Response = FakeAzure.json({ value: [{ id: 1, createdDate: "2027-01-15T09:30:00Z", sourceRefCommit: { commitId: otherCommit } },
+      { id: 2, createdDate: "2027-01-15T10:30:00Z", sourceRefCommit: { commitId: commit }, commonRefCommit: { commitId: otherCommit } }] });
+    const entries = [{ item: { path: "/docs", gitObjectType: "tree" }, changeType: "add" }, { item: { path: "/docs/guide.md" }, changeType: "edit, rename",
+      originalPath: "/guide.md" }, { item: { path: "/src/new.ts" }, changeType: "add" }, { item: { path: "/old.md" }, changeType: "delete" },
+    ...Array.from({ length: 98 }, (_, i) => ({ item: { path: `/src/f${String(i)}.ts` }, changeType: "edit" }))];
+    const block = (changeType: string, originalLinesCount: number, modifiedLinesCount: number): object => ({ changeType, originalLineNumberStart: 1, originalLinesCount,
+      modifiedLineNumberStart: 1, modifiedLinesCount });
+    azure.answer(FakeAzure.json(pull()), pushes, FakeAzure.json({ changeEntries: entries }),
+      FakeAzure.json({ count: 4, value: [{ path: "/docs/guide.md", originalPath: "/guide.md", lineDiffBlocks: [block("none", 4, 4), block("add", 0, 3),
+        block("Edit", 2, 5)] }, { path: "/src/new.ts", lineDiffBlocks: [block("add", 0, 10)] }, { originalPath: "/old.md", lineDiffBlocks: [block("delete", 4, 0)] },
+      { path: "/src/f0.ts" }] }),
+      FakeAzure.json({ count: 1, value: [{ path: "/src/f97.ts", lineDiffBlocks: [block("delete", 7, 0)] }] }));
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
+
+    const read: HostItem | null = await reads.readReferenceAsync(reference, signal);
+
+    const posts = azure.requests.slice(3);
+    assert.deepEqual([read?.changes?.additions, read?.changes?.deletions, read?.changes?.changedFiles], [18, 13, 101]);
+    assert.deepEqual([azure.urls(), posts.map(t => t.init.method)], [[pullUrl, pullIterationsUrl, countedChangesUrl(0), fileDiffsUrl, fileDiffsUrl], ["POST", "POST"]]);
+    assert.deepEqual(posts.map(t => t.body), [
+      { baseVersionCommit: otherCommit, targetVersionCommit: commit, fileDiffParams: [{ path: "/docs/guide.md", originalPath: "/guide.md" }, { path: "/src/new.ts" },
+        { originalPath: "/old.md" }, ...Array.from({ length: 97 }, (_, i) => ({ path: `/src/f${String(i)}.ts`, originalPath: `/src/f${String(i)}.ts` }))] },
+      { baseVersionCommit: otherCommit, targetVersionCommit: commit, fileDiffParams: [{ path: "/src/f97.ts", originalPath: "/src/f97.ts" }] }]);
+  });
+
+  it("counts the files of a push past 1000, reading its changes 1000 at a time while a page comes back full", async () => {
+    const azure = new FakeAzure();
+    const pushed: Response = FakeAzure.json({ value: [{ id: 2, createdDate: "2027-01-15T10:30:00Z", sourceRefCommit: { commitId: commit },
+      commonRefCommit: { commitId: otherCommit } }] });
+    const page = (from: number, count: number): Response => FakeAzure.json({ changeEntries: Array.from({ length: count }, (_, i) => ({
+      item: { path: `/f${String(from + i)}.ts` }, changeType: "edit" })) });
+    azure.answer(FakeAzure.json(pull()), pushed, page(0, 1000), page(1000, 500), ...Array.from({ length: 15 }, () => FakeAzure.json({ value: [] })));
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
+
+    const read: HostItem | null = await reads.readReferenceAsync(reference, signal);
+
+    assert.deepEqual([read?.changes?.additions, read?.changes?.deletions, read?.changes?.changedFiles], [0, 0, 1500]);
+    assert.deepEqual(azure.urls(), [pullUrl, pullIterationsUrl, countedChangesUrl(0), countedChangesUrl(1000), ...Array.from({ length: 15 }, () => fileDiffsUrl)]);
+  });
+
+  it("asks for a batch of line blocks Azure DevOps refuses again in halves, so a batch it refuses for its size still counts", async () => {
+    const azure = new FakeAzure();
+    const pushed: Response = FakeAzure.json({ value: [{ id: 2, createdDate: "2027-01-15T10:30:00Z", sourceRefCommit: { commitId: commit },
+      commonRefCommit: { commitId: otherCommit } }] });
+    const lines = (path: string, added: number): object => ({ path, lineDiffBlocks: [{ changeType: "add", originalLinesCount: 0, modifiedLinesCount: added }] });
+    azure.answer(FakeAzure.json(pull()), pushed, FakeAzure.json({ changeEntries: ["/a.ts", "/b.ts", "/c.ts"].map(path => ({ item: { path }, changeType: "edit" })) }),
+      new Response(null, { status: 400 }), FakeAzure.json({ value: [lines("/a.ts", 2), lines("/b.ts", 3)] }), FakeAzure.json({ value: [lines("/c.ts", 4)] }));
+    const log = new FakeModuleLog();
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), log);
+
+    const read: HostItem | null = await reads.readReferenceAsync(reference, signal);
+
+    assert.deepEqual([read?.changes?.additions, read?.changes?.deletions, read?.changes?.changedFiles, linesOf(log)], [9, 0, 3, []]);
+    assert.deepEqual(azure.requests.slice(3).map(t => JsonReader.fromValue(t.body).readObjectArray("fileDiffParams").map(f => f.readString("path"))),
+      [["/a.ts", "/b.ts", "/c.ts"], ["/a.ts", "/b.ts"], ["/c.ts"]]);
+  });
+
+  it("leaves the counts unknown past 5000 files, reading no page after the one that passes them, without a common commit, or when Azure DevOps finds or can't answer a file's line blocks in time, logging why, and still fails a sign-out",
+    async () => {
+      const azure = new FakeAzure();
+      const pushed = (common: boolean): Response => FakeAzure.json({ value: [{ id: 2, createdDate: "2027-01-15T10:30:00Z", sourceRefCommit: { commitId: commit },
+        ...common ? { commonRefCommit: { commitId: otherCommit } } : {} }] });
+      const changed = (count: number): Response => FakeAzure.json({ changeEntries: Array.from({ length: count }, (_, i) => ({ item: { path: `/f${String(i)}.ts` },
+        changeType: "edit" })) });
+      azure.answer(FakeAzure.json(pull()), pushed(true), ...Array.from({ length: 6 }, () => changed(1000)),
+        FakeAzure.json(pull()), pushed(false), changed(1),
+        FakeAzure.json(pull()), pushed(true), new Response(null, { status: 404 }),
+        FakeAzure.json(pull()), pushed(true), changed(1), new Response(null, { status: 404 }),
+        FakeAzure.json(pull()), pushed(true), changed(1), new Response(null, { status: 500 }),
+        FakeAzure.json(pull()), pushed(true), changed(1), FakeAzure.json({ value: [{ path: "/f0.ts", lineDiffBlocks: [{ changeType: 1 }] }] }),
+        FakeAzure.json(pull()), pushed(true), changed(1));
+      azure.fail(new DOMException("The request timed out.", "TimeoutError"));
+      azure.answer(FakeAzure.json(pull()), pushed(true), changed(1), new Response(null, { status: 401 }));
+      const token = new FakeToken();
+      const log = new FakeModuleLog();
+      const reads = new AzureReads(new AzureApi(azure.fetch), token, log);
+
+      const read: (HostItem | null)[] = [];
+      for (let index = 0; index < 7; index++)
+        read.push(await reads.readReferenceAsync(reference, signal));
+      const refused: unknown = await reads.readReferenceAsync(reference, signal).then(() => null, (t: unknown) => t);
+
+      assert.deepEqual(read, read.map(() => item));
+      assert.deepEqual([failureOf(refused), token.refused, azure.requests.length], [FailureCode.Unauthorized, ["azure-token"], 34]);
+      assert.deepEqual(linesOf(log), ["Azure DevOps found no line blocks for the pull request's files.", "Azure DevOps refused the request (500).",
+        "Azure DevOps' answer couldn't be read at $.value.0.lineDiffBlocks.0.changeType.", "Azure DevOps couldn't be reached."]
+        .map(t => `Azure DevOps pull request !12 shows no line and file counts: ${t}`));
+    });
 
   it("reads a draft, a completed pull request as merged and an abandoned one as closed, dated when it closed, and one with no creator", async () => {
     const azure = new FakeAzure();
-    azure.answer(FakeAzure.json(pull({ isDraft: true })), FakeAzure.json(pull({ status: "completed", closedDate: "2027-01-16T10:00:00Z" })),
-      FakeAzure.json(pull({ status: "abandoned", closedDate: "2027-01-17T10:00:00Z", sourceRefName: "feature/raw" })),
-      FakeAzure.json({ ...pull(), createdBy: undefined }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    azure.answer(FakeAzure.json(pull({ isDraft: true })), noPush(), FakeAzure.json(pull({ status: "completed", closedDate: "2027-01-16T10:00:00Z" })), noPush(),
+      FakeAzure.json(pull({ status: "abandoned", closedDate: "2027-01-17T10:00:00Z", sourceRefName: "feature/raw" })), noPush(),
+      FakeAzure.json({ ...pull(), createdBy: undefined }), noPush());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: (HostItem | null)[] = [];
     for (let index = 0; index < 4; index++)
@@ -184,8 +284,8 @@ describe("AzureReads", () => {
   it("reads nothing when signed out, for another host, an organization or repository id it can't name, or a pull request Azure DevOps can't show", async () => {
     const azure = new FakeAzure();
     azure.answer(new Response(null, { status: 404 }), new Response(null, { status: 404 }));
-    const signedIn = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
-    const signedOut = new AzureReads(new AzureApi(azure.fetch), new FakeToken(null));
+    const signedIn = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
+    const signedOut = new AzureReads(new AzureApi(azure.fetch), new FakeToken(null), new FakeModuleLog());
 
     const read: unknown[] = [
       await signedOut.readReferenceAsync(reference, signal), await signedOut.readPullRequestAsync(reference, signal),
@@ -207,13 +307,16 @@ describe("AzureReads", () => {
       FakeAzure.json({ value: [build("completed", "succeeded"), build("inProgress", null)] }), FakeAzure.json({ count: 5, value: Array.from({ length: 5 }, () => ({})) }),
       FakeAzure.json({ value: [{ id: "7521" }, { id: "7499" }] }),
       FakeAzure.json({ value: [workItem({ "System.Title": "Export notes as Markdown files" }), { ...workItem({ "System.WorkItemType": "Bug", "System.State": "Triaged" }), id: 7499 }] }),
-      FakeAzure.json(workItemType()), FakeAzure.json({ ...workItemType("Bug"), color: "CC293D", icon: { id: "icon_insect" } }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+      FakeAzure.json(workItemType()), icon(), FakeAzure.json({ ...workItemType("Bug"), color: "CC293D", icon: { id: "icon_insect" } }), FakeAzure.json({}, 404));
+    const log = new FakeModuleLog();
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), log);
 
     const read: HostPullRequest | null = await reads.readPullRequestAsync(reference, signal);
 
+    assert.deepEqual(linesOf(log), ["Azure DevOps' icon_insect icon isn't shown: Azure DevOps answered 404."]);
+
     assert.deepEqual(read, new HostPullRequest(item, [
-      new HostReviewer(new HostPerson("octocat@fabrikam.com", null, null), 0.5, "Approved with suggestions", true),
+      new HostReviewer(new HostPerson("octocat@fabrikam.com", null, null, undefined, "Octo Cat"), 0.5, "Approved with suggestions", true),
       new HostReviewer(new HostPerson("[Web Site]\\Web Team", null, null), 0, "No vote", false)
     ], [
       new HostPolicy("Minimum number of reviewers", PolicyState.Approved, true, null), new HostPolicy("Build", PolicyState.Running, false, null)
@@ -229,7 +332,7 @@ describe("AzureReads", () => {
     ], "squash"));
     assert.deepEqual(azure.urls(), [pullUrl, policiesUrl, buildsUrl, commitsUrl, linksUrl,
       "https://dev.azure.com/fabrikam/_apis/wit/workitems?ids=7521,7499&fields=System.Title,System.State,System.WorkItemType,System.TeamProject&api-version=7.1",
-      typeUrl, "https://dev.azure.com/fabrikam/Web%20Site/_apis/wit/workitemtypes/Bug?api-version=7.1"]);
+      typeUrl, iconUrl, "https://dev.azure.com/fabrikam/Web%20Site/_apis/wit/workitemtypes/Bug?api-version=7.1", "https://dev.azure.com/fabrikam/_apis/wit/workitemicons/icon_insect?color=CC293D&v=2&api-version=7.1"]);
   });
 
   it("names no auto-complete merge type without auto-complete, without completion options or when the options name none", async () => {
@@ -238,7 +341,7 @@ describe("AzureReads", () => {
     for (const changes of [{ completionOptions: { mergeStrategy: "squash" } }, { autoCompleteSetBy: setBy }, { autoCompleteSetBy: setBy, completionOptions: {
       deleteSourceBranch: true } }])
       azure.answer(FakeAzure.json(pull(changes)), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: readonly (HostPullRequest | null)[] = [await reads.readPullRequestAsync(reference, signal), await reads.readPullRequestAsync(reference, signal),
       await reads.readPullRequestAsync(reference, signal)];
@@ -252,7 +355,7 @@ describe("AzureReads", () => {
     azure.answer(FakeAzure.json(pull({ reviewers: [{ displayName: "[Sample]\\sample_qa", uniqueName: descriptor, isContainer: true, vote: 0 },
       { displayName: " ", uniqueName: descriptor, isContainer: true, vote: 0 }, { displayName: "Octo Cat", uniqueName: "octocat@fabrikam.com", isContainer: false, vote: 0 }] })),
       FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: HostPullRequest | null = await reads.readPullRequestAsync(reference, signal);
 
@@ -271,7 +374,7 @@ describe("AzureReads", () => {
         evaluation("approved", "Minimum number of reviewers", true)
       ] }), FakeAzure.json({ value: [{ ...build("completed", "succeeded"), id: 71, buildNumber: "20261121.4" }, { ...build("inProgress", null), id: 72, buildNumber: "20261121.5" },
         build("inProgress", null)] }), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }));
-      const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+      const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
       const read: HostPullRequest | null = await reads.readPullRequestAsync(reference, signal);
 
@@ -287,7 +390,7 @@ describe("AzureReads", () => {
       FakeAzure.json({ value: [build("notStarted", null, false, false), build("inProgress", null), build("cancelling", null), build("completed", "succeeded"),
         build("completed", "partiallySucceeded"), build("completed", "canceled", true, false), build("completed", "failed"), build("completed", "unknown")] }),
       FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: HostPullRequest | null = await reads.readPullRequestAsync(reference, signal);
 
@@ -305,7 +408,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     azure.answer(FakeAzure.json(pull()), new Response(null, { status: 404 }), new Response(null, { status: 404 }), new Response(null, { status: 404 }),
       new Response(null, { status: 404 }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: HostPullRequest | null = await reads.readPullRequestAsync(reference, signal);
 
@@ -315,10 +418,10 @@ describe("AzureReads", () => {
   it("counts no commits past a page of 100, reads each work item type once, and reads none when the linked items are gone", async () => {
     const azure = new FakeAzure();
     azure.answer(FakeAzure.json(pull()), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }), FakeAzure.json({ value: Array.from({ length: 100 }, () => ({})) }),
-      FakeAzure.json({ value: [{ id: "42" }, { id: "43" }] }), FakeAzure.json({ value: [workItem(), { ...workItem(), id: 43 }] }), FakeAzure.json(workItemType()));
+      FakeAzure.json({ value: [{ id: "42" }, { id: "43" }] }), FakeAzure.json({ value: [workItem(), { ...workItem(), id: 43 }] }), FakeAzure.json(workItemType()), icon());
     azure.answer(FakeAzure.json(pull()), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }),
       FakeAzure.json({ value: [{ id: "44" }] }), new Response(null, { status: 404 }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read = [await reads.readPullRequestAsync(reference, signal), await reads.readPullRequestAsync(reference, signal)];
 
@@ -330,7 +433,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     azure.answer(FakeAzure.json(pull()), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }),
       FakeAzure.json({ value: [{ id: "7521a" }] }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     assert.equal(failureOf(await reads.readPullRequestAsync(reference, signal).then(() => null, (t: unknown) => t)), FailureCode.Unavailable);
   });
@@ -350,7 +453,7 @@ describe("AzureReads", () => {
       { ...thread(10, "active", null, [comment(1, 0, "Gone.")]), isDeleted: true },
       thread(11, "active", null, [comment(1, 0, "  "), comment(2, 0, "Edited away.", { content: undefined })])
     ] }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const threads: readonly HostThread[] = await reads.readPullRequestThreadsAsync(reference, signal);
 
@@ -371,10 +474,10 @@ describe("AzureReads", () => {
   it("answers no threads signed out, for another host, organization or repository id, or a pull request Azure DevOps can't show", async () => {
     const azure = new FakeAzure();
     azure.answer(new Response(null, { status: 404 }));
-    const signedIn = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const signedIn = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: (readonly HostThread[])[] = [
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null)).readPullRequestThreadsAsync(reference, signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null), new FakeModuleLog()).readPullRequestThreadsAsync(reference, signal),
       await signedIn.readPullRequestThreadsAsync(new HostReference("git-github", "octocat", "hello-world", 12), signal),
       await signedIn.readPullRequestThreadsAsync(new HostReference("git-azure-devops", "contoso", repositoryId, 12), signal),
       await signedIn.readPullRequestThreadsAsync(new HostReference("git-azure-devops", "fabrikam", "site", 12), signal),
@@ -390,7 +493,7 @@ describe("AzureReads", () => {
       FakeAzure.json({ value: [thread(1, "active", null, [{ ...comment(1, 0, "Fix"), author: undefined }])] }),
       FakeAzure.json({ value: [thread(1, "active", { filePath: "/a.ts", rightFileStart: { line: 0, offset: 1 } }, [comment(1, 0, "Fix")])] }));
     const token = new FakeToken();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const failures: (string | null)[] = [];
     for (let i = 0; i < 4; i++)
@@ -404,7 +507,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     const token = new FakeToken();
     const release = azure.hold();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const reading = reads.readPullRequestThreadsAsync(reference, signal);
     await azure.askedAsync(1);
@@ -420,7 +523,7 @@ describe("AzureReads", () => {
     azure.answer(FakeAzure.json({ value: [{ commitId: commit, comment: "Fix the sign-in\r\n\r\nLonger text", author: { name: "Mona Lisa", date: at } },
       { commitId: otherCommit, author: { name: "Hubot", date: at } }] }),
     FakeAzure.json({ value: Array.from({ length: 251 }, () => ({ commitId: commit, comment: "Step", author: { name: "Mona Lisa", date: at } })) }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: HostPullRequestCommits[] = [await reads.readPullRequestCommitsAsync(reference, signal), await reads.readPullRequestCommitsAsync(reference, signal)];
 
@@ -433,11 +536,11 @@ describe("AzureReads", () => {
   it("answers no commits signed out, for another host, organization or repository id, or a pull request Azure DevOps can't show", async () => {
     const azure = new FakeAzure();
     azure.answer(new Response(null, { status: 404 }));
-    const signedIn = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const signedIn = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
     const none = new HostPullRequestCommits([], false);
 
     const read: HostPullRequestCommits[] = [
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null)).readPullRequestCommitsAsync(reference, signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null), new FakeModuleLog()).readPullRequestCommitsAsync(reference, signal),
       await signedIn.readPullRequestCommitsAsync(new HostReference("git-github", "octocat", "hello-world", 12), signal),
       await signedIn.readPullRequestCommitsAsync(new HostReference("git-azure-devops", "contoso", repositoryId, 12), signal),
       await signedIn.readPullRequestCommitsAsync(new HostReference("git-azure-devops", "fabrikam", "site", 12), signal),
@@ -453,7 +556,7 @@ describe("AzureReads", () => {
       FakeAzure.json({ value: [{ commitId: commit, comment: "Fix", author: { name: " ", date: "2027-01-15T09:30:00Z" } }] }),
       FakeAzure.json({ value: [{ commitId: commit, comment: "Fix", author: { name: "Mona Lisa", date: "never" } }] }));
     const token = new FakeToken();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const failures: (string | null)[] = [];
     for (let i = 0; i < 4; i++)
@@ -467,7 +570,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     const token = new FakeToken();
     const release = azure.hold();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const reading = reads.readPullRequestCommitsAsync(reference, signal);
     await azure.askedAsync(1);
@@ -484,12 +587,12 @@ describe("AzureReads", () => {
       { id: 1, author: { uniqueName: "monalisa@fabrikam.com" }, createdDate: at, sourceRefCommit: { commitId: otherCommit }, commonRefCommit: { commitId: commit } },
       { id: 2, createdDate: at, sourceRefCommit: { commitId: commit } }] }),
     FakeAzure.json({ value: Array.from({ length: 101 }, (_, i) => ({ id: i + 1, createdDate: at, sourceRefCommit: { commitId: commit } })) }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: HostPullRequestUpdates[] = [await reads.readPullRequestUpdatesAsync(reference, signal), await reads.readPullRequestUpdatesAsync(reference, signal)];
 
     assert.deepEqual(read[0], new HostPullRequestUpdates([new HostPullRequestUpdate(2, null, Date.parse(at), commit, null),
-      new HostPullRequestUpdate(1, monalisa, Date.parse(at), otherCommit, commit)], false));
+      new HostPullRequestUpdate(1, new HostPerson("monalisa@fabrikam.com", null, null), Date.parse(at), otherCommit, commit)], false));
     assert.deepEqual([read[1]?.updates.length, read[1]?.updates[0]?.number, read[1]?.updates[99]?.number, read[1]?.hasMore], [100, 101, 2, true]);
     assert.deepEqual(azure.urls(), [pullUpdatesUrl, pullUpdatesUrl]);
   });
@@ -497,11 +600,11 @@ describe("AzureReads", () => {
   it("answers no pushes signed out, for another host, organization or repository id, or a pull request Azure DevOps can't show", async () => {
     const azure = new FakeAzure();
     azure.answer(new Response(null, { status: 404 }));
-    const signedIn = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const signedIn = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
     const none = new HostPullRequestUpdates([], false);
 
     const read: HostPullRequestUpdates[] = [
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null)).readPullRequestUpdatesAsync(reference, signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null), new FakeModuleLog()).readPullRequestUpdatesAsync(reference, signal),
       await signedIn.readPullRequestUpdatesAsync(new HostReference("git-github", "octocat", "hello-world", 12), signal),
       await signedIn.readPullRequestUpdatesAsync(new HostReference("git-azure-devops", "contoso", repositoryId, 12), signal),
       await signedIn.readPullRequestUpdatesAsync(new HostReference("git-azure-devops", "fabrikam", "site", 12), signal),
@@ -518,7 +621,7 @@ describe("AzureReads", () => {
       FakeAzure.json({ value: [{ id: 1, createdDate: at }] }),
       FakeAzure.json({ value: [{ id: 0, createdDate: at, sourceRefCommit: { commitId: commit } }] }));
     const token = new FakeToken();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const failures: (string | null)[] = [];
     for (let i = 0; i < 4; i++)
@@ -532,7 +635,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     const token = new FakeToken();
     const release = azure.hold();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const reading = reads.readPullRequestUpdatesAsync(reference, signal);
     await azure.askedAsync(1);
@@ -542,8 +645,8 @@ describe("AzureReads", () => {
     assert.deepEqual(await reading, new HostPullRequestUpdates([], false));
   });
 
-  it("reads the files the latest push changes against the target branch, paths and kinds only, leaving out folders, with its commits, keeping 1000 of more, and "
-    + "says there are more when a full list holds folders",
+  it("reads the files the latest push changes against the target branch, paths and kinds only, leaving out folders, with its commits, 1000 changes a page "
+    + "while a page comes back full, keeping 5000 of more",
     async () => {
       const azure = new FakeAzure();
       const at: string = "2027-01-15T09:30:00Z";
@@ -556,10 +659,11 @@ describe("AzureReads", () => {
         { item: { path: "/old.md" }, changeType: "delete" },
         { item: { path: "/docs/guide.md" }, changeType: "edit, rename", originalPath: "/guide.md" },
         { item: { path: "/docs/notes.md" }, changeType: "rename" }] }),
-      pushes(), FakeAzure.json({ changeEntries: Array.from({ length: 1001 }, (_, i) => ({ item: { path: `/f${String(i)}.ts` }, changeType: "edit" })) }),
-      pushes(), FakeAzure.json({ changeEntries: Array.from({ length: 1001 }, (_, i) => ({ item: { path: `/d${String(i)}`, gitObjectType: i < 40 ? "tree" : "blob" },
-        changeType: "add" })) }));
-      const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+      pushes(), ...[0, 1, 2, 3, 4, 5].map(page => FakeAzure.json({ changeEntries: Array.from({ length: page < 5 ? 1000 : 1 },
+        (_, i) => ({ item: { path: `/f${String(page * 1000 + i)}.ts` }, changeType: "edit" })) })),
+      pushes(), FakeAzure.json({ changeEntries: Array.from({ length: 1000 }, (_, i) => ({ item: { path: `/d${String(i)}`, gitObjectType: i < 40 ? "tree" : "blob" },
+        changeType: "add" })) }), FakeAzure.json({ changeEntries: [{ item: { path: "/last.ts" }, changeType: "add" }] }));
+      const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
       const read: HostPullRequestFiles[] = [await reads.readPullRequestChangesAsync(reference, signal), await reads.readPullRequestChangesAsync(reference, signal),
         await reads.readPullRequestChangesAsync(reference, signal)];
@@ -567,36 +671,39 @@ describe("AzureReads", () => {
       assert.deepEqual(read[0], new HostPullRequestFiles(commit, otherCommit, [new HostPullRequestFile("src/new.ts", FileChangeKind.Added, null),
         new HostPullRequestFile("src/app.ts", FileChangeKind.Modified, null), new HostPullRequestFile("old.md", FileChangeKind.Deleted, null),
         new HostPullRequestFile("docs/guide.md", FileChangeKind.Renamed, "guide.md"), new HostPullRequestFile("docs/notes.md", FileChangeKind.Modified, null)], false));
-      assert.deepEqual([read[1]?.files.length, read[1]?.files[999]?.path, read[1]?.hasMore], [1000, "f999.ts", true]);
-      assert.deepEqual([read[2]?.files.length, read[2]?.files[0]?.path, read[2]?.hasMore], [961, "d40", true]);
-      assert.deepEqual(azure.urls(), [pullUpdatesUrl, pullChangesUrl(2), pullUpdatesUrl, pullChangesUrl(2), pullUpdatesUrl, pullChangesUrl(2)]);
+      assert.deepEqual([read[1]?.files.length, read[1]?.files[4999]?.path, read[1]?.hasMore], [5000, "f4999.ts", true]);
+      assert.deepEqual([read[2]?.files.length, read[2]?.files[0]?.path, read[2]?.files.at(-1)?.path, read[2]?.hasMore], [961, "d40", "last.ts", false]);
+      assert.deepEqual(azure.urls(), [pullUpdatesUrl, pullChangesUrl(2), pullUpdatesUrl, ...[0, 1, 2, 3, 4, 5].map(t => pullChangesUrl(2, t * 1000)), pullUpdatesUrl,
+        pullChangesUrl(2), pullChangesUrl(2, 1000)]);
     });
 
-  it("reads a deleted file by its old path when its entry's item names none, and leaves out an entry that names no path", async () => {
+  it("reads a deleted file by its old path when its entry's item names none or sends it as null, and leaves out an entry that names no path", async () => {
     const azure = new FakeAzure();
     azure.answer(FakeAzure.json({ value: [{ id: 2, createdDate: "2027-01-15T09:30:00Z", sourceRefCommit: { commitId: commit } }] }),
       FakeAzure.json({ changeEntries: [
         { item: { path: "/src/app.ts" }, changeType: "edit" },
         { item: { objectId: otherCommit }, changeType: "delete", originalPath: "/src/old.ts" },
+        { item: { objectId: otherCommit, path: null }, changeType: "delete", originalPath: "/src/gone.ts" },
         { item: { objectId: otherCommit }, changeType: "rename", originalPath: "/docs/moved.md" },
         { item: { objectId: otherCommit }, changeType: "edit" }] }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: HostPullRequestFiles = await reads.readPullRequestChangesAsync(reference, signal);
 
     assert.deepEqual(read, new HostPullRequestFiles(commit, null, [new HostPullRequestFile("src/app.ts", FileChangeKind.Modified, null),
-      new HostPullRequestFile("src/old.ts", FileChangeKind.Deleted, null), new HostPullRequestFile("docs/moved.md", FileChangeKind.Modified, null)], false));
+      new HostPullRequestFile("src/old.ts", FileChangeKind.Deleted, null), new HostPullRequestFile("src/gone.ts", FileChangeKind.Deleted, null),
+      new HostPullRequestFile("docs/moved.md", FileChangeKind.Modified, null)], false));
   });
 
   it("answers no files signed out, for another host, organization or repository id, a pull request Azure DevOps can't show, or one with no pushes", async () => {
     const azure = new FakeAzure();
     azure.answer(new Response(null, { status: 404 }), FakeAzure.json({ value: [] }),
       FakeAzure.json({ value: [{ id: 3, createdDate: "2027-01-15T09:30:00Z", sourceRefCommit: { commitId: commit } }] }), new Response(null, { status: 404 }));
-    const signedIn = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const signedIn = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
     const none = new HostPullRequestFiles(null, null, [], false);
 
     const read: HostPullRequestFiles[] = [
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null)).readPullRequestChangesAsync(reference, signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null), new FakeModuleLog()).readPullRequestChangesAsync(reference, signal),
       await signedIn.readPullRequestChangesAsync(new HostReference("git-github", "octocat", "hello-world", 12), signal),
       await signedIn.readPullRequestChangesAsync(new HostReference("git-azure-devops", "contoso", repositoryId, 12), signal),
       await signedIn.readPullRequestChangesAsync(new HostReference("git-azure-devops", "fabrikam", "site", 12), signal),
@@ -615,7 +722,7 @@ describe("AzureReads", () => {
       pushes(), FakeAzure.json({ changeEntries: [{ changeType: "edit" }] }),
       pushes(), FakeAzure.json({ changeEntries: [{ item: { path: "/" }, changeType: "edit" }] }));
     const token = new FakeToken();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const failures: (string | null)[] = [];
     for (let i = 0; i < 4; i++)
@@ -629,7 +736,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     const token = new FakeToken();
     const release = azure.hold();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const reading = reads.readPullRequestChangesAsync(reference, signal);
     await azure.askedAsync(1);
@@ -643,7 +750,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     azure.answer(FakeAzure.json({ value: [{ conflictId: 1, conflictPath: "/src/app.ts", conflictType: "editEdit" }, { conflictId: 2, conflictPath: "/README.md" }] }),
       FakeAzure.json({ value: Array.from({ length: 101 }, (_, i) => ({ conflictId: i, conflictPath: `/f${String(i)}.ts` })) }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: HostPullRequestConflicts[] = [await reads.readPullRequestConflictsAsync(reference, signal),
       await reads.readPullRequestConflictsAsync(reference, signal)];
@@ -656,11 +763,11 @@ describe("AzureReads", () => {
   it("answers no conflicts signed out, for another host, organization or repository id, or a pull request Azure DevOps can't show", async () => {
     const azure = new FakeAzure();
     azure.answer(new Response(null, { status: 404 }));
-    const signedIn = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const signedIn = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
     const none = new HostPullRequestConflicts([], false);
 
     const read: HostPullRequestConflicts[] = [
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null)).readPullRequestConflictsAsync(reference, signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null), new FakeModuleLog()).readPullRequestConflictsAsync(reference, signal),
       await signedIn.readPullRequestConflictsAsync(new HostReference("git-github", "octocat", "hello-world", 12), signal),
       await signedIn.readPullRequestConflictsAsync(new HostReference("git-azure-devops", "contoso", repositoryId, 12), signal),
       await signedIn.readPullRequestConflictsAsync(new HostReference("git-azure-devops", "fabrikam", "site", 12), signal),
@@ -675,7 +782,7 @@ describe("AzureReads", () => {
       const azure = new FakeAzure();
       azure.answer(new Response(null, { status: 401 }), FakeAzure.json({ value: [{ conflictId: 1 }] }));
       const token = new FakeToken();
-      const reads = new AzureReads(new AzureApi(azure.fetch), token);
+      const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
       const failures: (string | null)[] = [];
       for (let i = 0; i < 2; i++)
@@ -695,7 +802,7 @@ describe("AzureReads", () => {
     azure.answer(FakeAzure.json({ value: [pull()] }),
       FakeAzure.json({ value: [evaluation("rejected", "Comment requirements", true), evaluation("running", "Build", true, "0609b952-1397-4640-95ec-e00a01b2c241")] }),
       FakeAzure.json({ value: [build("inProgress", null)] }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: BranchPullRequest = await reads.readBranchPullRequestAsync(new BranchQuery("dev.azure.com", "fabrikam/web/_git/site", "feature/sign-in", null), signal);
 
@@ -708,7 +815,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     for (const status of ["completed", "abandoned"])
       azure.answer(FakeAzure.json({ value: [pull({ status, closedDate: "2027-01-16T10:00:00Z" })] }), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
     const query = new BranchQuery("dev.azure.com", "fabrikam/web/_git/site", "feature/sign-in", null);
 
     const read: BranchPullRequest[] = [await reads.readBranchPullRequestAsync(query, signal), await reads.readBranchPullRequestAsync(query, signal)];
@@ -721,7 +828,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     azure.answer(FakeAzure.json({ queries: [], results: [{ [commit]: [{ pullRequestId: 12 }] }, { [commit]: [{ pullRequestId: 15 }] }] }), FakeAzure.json(pull()),
       FakeAzure.json({ value: [evaluation("approved", "Work items", false)] }), FakeAzure.json({ value: [] }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: BranchPullRequest = await reads.readCommitPullRequestAsync(commitQuery, signal);
 
@@ -730,10 +837,41 @@ describe("AzureReads", () => {
       { queries: [{ type: "commit", items: [commit] }, { type: "lastMergeCommit", items: [commit] }] }]);
   });
 
+  it("counts the approvals of people only, since Azure DevOps copies a person's vote onto each group they voted for, and takes the decision from them", async () => {
+    const group = (name: string, vote: number): Record<string, unknown> => ({ displayName: `[Web Site]\\${name}`, isContainer: true, vote,
+      uniqueName: `vstfs:///Classification/TeamProject/7f3c2a10-0000-0000-0000-000000000003\\${name}` });
+    const reviewers = [{ displayName: "Octo Cat", uniqueName: "octocat@fabrikam.com", vote: 10 }, { displayName: "Mona Lisa", uniqueName: "monalisa@fabrikam.com",
+      vote: 5 }, group("Web Team", 10), group("Leads", 10), group("Reviewers", 5), group("Admins", -10)];
+    const azure = new FakeAzure();
+    azure.answer(FakeAzure.json({ queries: [], results: [{ [commit]: [{ pullRequestId: 12 }] }] }), FakeAzure.json(pull({ reviewers })),
+      FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }));
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
+
+    const read: BranchPullRequest = await reads.readCommitPullRequestAsync(commitQuery, signal);
+
+    assert.deepEqual([read.approvals, read.reviewDecision], [2, ReviewDecision.Approved]);
+  });
+
+  it("shows a completed or abandoned pull request's policies still queued or running, and its builds that never started, as not run, keeping a build still running",
+    async () => {
+      const azure = new FakeAzure();
+      for (const status of ["completed", "abandoned"])
+        azure.answer(FakeAzure.json({ queries: [], results: [{ [commit]: [{ pullRequestId: 12 }] }] }),
+          FakeAzure.json(pull({ status, closedDate: "2027-01-16T10:00:00Z" })),
+          FakeAzure.json({ value: [evaluation("queued", "Status", false), evaluation("running", "Comment requirements", true), evaluation("approved", "Work items", false)] }),
+          FakeAzure.json({ value: [build("notStarted", null, false, false), build("inProgress", null)] }));
+      const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
+
+      const read: BranchPullRequest[] = [await reads.readCommitPullRequestAsync(commitQuery, signal), await reads.readCommitPullRequestAsync(commitQuery, signal)];
+
+      assert.deepEqual(read.map(t => t.checks.map(c => c.state)), [0, 1].map(() => [CheckState.Neutral, CheckState.Running, CheckState.Neutral, CheckState.Neutral,
+        CheckState.Succeeded]));
+    });
+
   it("reads the pull request whose merge made a commit when none holds it", async () => {
     const azure = new FakeAzure();
     azure.answer(FakeAzure.json({ results: [{ [commit]: [] }, { [commit]: [{ pullRequestId: 15 }] }] }), new Response(null, { status: 404 }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: BranchPullRequest = await reads.readCommitPullRequestAsync(commitQuery, signal);
 
@@ -746,11 +884,11 @@ describe("AzureReads", () => {
     const none = new BranchPullRequest(null, []);
 
     const read: BranchPullRequest[] = [
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null)).readCommitPullRequestAsync(commitQuery, signal),
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken()).readCommitPullRequestAsync(new CommitQuery("github.com", "octocat/hello-world", commit), signal),
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken("azure-token", "contoso")).readCommitPullRequestAsync(commitQuery, signal),
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken()).readCommitPullRequestAsync(commitQuery, signal),
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken()).readCommitPullRequestAsync(commitQuery, signal)
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null), new FakeModuleLog()).readCommitPullRequestAsync(commitQuery, signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog()).readCommitPullRequestAsync(new CommitQuery("github.com", "octocat/hello-world", commit), signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken("azure-token", "contoso"), new FakeModuleLog()).readCommitPullRequestAsync(commitQuery, signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog()).readCommitPullRequestAsync(commitQuery, signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog()).readCommitPullRequestAsync(commitQuery, signal)
     ];
 
     assert.deepEqual([read, azure.urls()], [[none, none, none, none, none], [queryUrl, queryUrl]]);
@@ -760,7 +898,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     azure.answer(new Response(null, { status: 401 }), FakeAzure.json({ results: [{ [commit]: [{ pullRequestId: "12" }] }] }));
     const token = new FakeToken();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const failures: (string | null)[] = [];
     for (let i = 0; i < 2; i++)
@@ -782,7 +920,7 @@ describe("AzureReads", () => {
         threadOn(1, said(4)), { id: 5, comments: said(1) }, { id: 6, pullRequestThreadContext: null, comments: said(1) },
         { id: 7, pullRequestThreadContext: {}, comments: said(1) }, { id: 8, pullRequestThreadContext: { iterationContext: null }, comments: said(1) },
         { ...threadOn(2, said(3)), isDeleted: true }] }));
-      const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+      const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
       const read: HostCommitComments = await reads.readCommitCommentsAsync(commitQuery, signal);
 
@@ -795,7 +933,7 @@ describe("AzureReads", () => {
     azure.answer(pulledBy(), FakeAzure.json(pull()), iterated(), FakeAzure.json({ value: [threadOn(2, said(101))] }), pulledBy(), FakeAzure.json(pull()), iterated(),
       FakeAzure.json({ value: [threadOn(1, said(2))] }), FakeAzure.json({ results: [{}, {}] }), pulledBy(), FakeAzure.json(pull()), new Response(null, { status: 404 }),
       FakeAzure.json({ value: [] }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: HostCommitComments[] = [];
     for (let i = 0; i < 4; i++)
@@ -807,12 +945,12 @@ describe("AzureReads", () => {
   it("answers no comments without asking Azure DevOps when signed out or for another organization or host, and none for a token that changed", async () => {
     const azure = new FakeAzure();
     const token = new FakeToken();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
     const release = azure.hold();
 
-    const read: HostCommitComments[] = [await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null)).readCommitCommentsAsync(commitQuery, signal),
+    const read: HostCommitComments[] = [await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null), new FakeModuleLog()).readCommitCommentsAsync(commitQuery, signal),
       await reads.readCommitCommentsAsync(new CommitQuery("github.com", "octocat/hello-world", commit), signal),
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken("azure-token", "contoso")).readCommitCommentsAsync(commitQuery, signal)];
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken("azure-token", "contoso"), new FakeModuleLog()).readCommitCommentsAsync(commitQuery, signal)];
     const reading = reads.readCommitCommentsAsync(commitQuery, signal);
     await azure.askedAsync(1);
     token.answer("token", AzureCredential.ofToken("other-token"));
@@ -826,7 +964,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     azure.answer(new Response(null, { status: 401 }), pulledBy(), FakeAzure.json(pull()), FakeAzure.json({ value: [{ id: 2 }] }), FakeAzure.json({ value: [] }));
     const token = new FakeToken();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const failures: (string | null)[] = [];
     for (let i = 0; i < 2; i++)
@@ -843,7 +981,7 @@ describe("AzureReads", () => {
         FakeAzure.json({ value: [evaluation("queued", "Status", false), evaluation("approved", "Work items", false), evaluation("notApplicable", "Merge strategy", false)] }),
         FakeAzure.json({ value: [] }));
     }
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: BranchPullRequest[] = [await reads.readBranchPullRequestAsync(query, signal), await reads.readBranchPullRequestAsync(query, signal)];
 
@@ -858,10 +996,10 @@ describe("AzureReads", () => {
     const none = new BranchPullRequest(null, []);
 
     const read: BranchPullRequest[] = [
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null)).readBranchPullRequestAsync(query, signal),
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken()).readBranchPullRequestAsync(new BranchQuery("github.com", "octocat/hello-world", "main", null), signal),
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken()).readBranchPullRequestAsync(query, signal),
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken()).readBranchPullRequestAsync(query, signal)
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null), new FakeModuleLog()).readBranchPullRequestAsync(query, signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog()).readBranchPullRequestAsync(new BranchQuery("github.com", "octocat/hello-world", "main", null), signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog()).readBranchPullRequestAsync(query, signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog()).readBranchPullRequestAsync(query, signal)
     ];
 
     assert.deepEqual([read, azure.requests.length], [[none, none, none, none], 2]);
@@ -871,7 +1009,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     azure.answer(new Response(null, { status: 401 }), FakeAzure.json(pull({ title: " " })), FakeAzure.json({ value: "none" }));
     const token = new FakeToken();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const failures: (string | null)[] = [
       failureOf(await reads.readReferenceAsync(reference, signal).then(() => null, (t: unknown) => t)),
@@ -890,7 +1028,7 @@ describe("AzureReads", () => {
     azure.answer(FakeAzure.json({ value: [pull(), draft] }),
       FakeAzure.json({ value: [evaluation("rejected", "Comment requirements", true), evaluation("running", "Build", true, "0609b952-1397-4640-95ec-e00a01b2c241")] }),
       FakeAzure.json({ value: [build("completed", "succeeded")] }), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const list: HostPullRequestList = await reads.readPullRequestsAsync(new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site"), signal);
 
@@ -906,7 +1044,7 @@ describe("AzureReads", () => {
     const draft = pull({ pullRequestId: 13, isDraft: true, title: "Try the new layout", sourceRefName: "refs/heads/layout/grid", targetRefName: "refs/heads/feature/sign-in" });
     const pullsOf = (count: number): Response => FakeAzure.json({ value: Array.from({ length: count }, (_t, index) => pull({ pullRequestId: index + 1 })) });
     azure.answer(FakeAzure.json({ value: [pull(), draft] }), pullsOf(101), pullsOf(100));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
     const query = new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site");
 
     const lists = [await reads.readPullRequestHeadsAsync(query, signal), await reads.readPullRequestHeadsAsync(query, signal),
@@ -924,7 +1062,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     const token = new FakeToken();
     const release = azure.hold();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
     const query = new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site");
 
     const reading = reads.readPullRequestHeadsAsync(query, signal);
@@ -933,10 +1071,10 @@ describe("AzureReads", () => {
     release(FakeAzure.json({ value: [pull()] }));
     const changed = await reading;
     azure.answer(new Response(null, { status: 404 }));
-    const lists = [await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null)).readPullRequestHeadsAsync(query, signal),
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken()).readPullRequestHeadsAsync(new RepositoryQuery("github.com", "octocat/hello-world"), signal),
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken()).readPullRequestHeadsAsync(new RepositoryQuery("dev.azure.com", "contoso/web/_git/site"), signal),
-      changed, await new AzureReads(new AzureApi(azure.fetch), new FakeToken()).readPullRequestHeadsAsync(new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/gone"), signal)];
+    const lists = [await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null), new FakeModuleLog()).readPullRequestHeadsAsync(query, signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog()).readPullRequestHeadsAsync(new RepositoryQuery("github.com", "octocat/hello-world"), signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog()).readPullRequestHeadsAsync(new RepositoryQuery("dev.azure.com", "contoso/web/_git/site"), signal),
+      changed, await new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog()).readPullRequestHeadsAsync(new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/gone"), signal)];
 
     assert.deepEqual([lists, azure.requests.length], [[HostPullRequestHeads.signedOut(), new HostPullRequestHeads([], false), new HostPullRequestHeads([], false),
       HostPullRequestHeads.signedOut(), new HostPullRequestHeads([], false)], 2]);
@@ -946,7 +1084,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     azure.answer(new Response(null, { status: 401 }), FakeAzure.json({ value: [pull({ title: " " })] }), FakeAzure.json({ value: [pull({ sourceRefName: "refs/heads/" })] }));
     const token = new FakeToken();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
     const query = new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site");
 
     const failures = [failureOf(await reads.readPullRequestHeadsAsync(query, signal).then(() => null, (t: unknown) => t)),
@@ -960,7 +1098,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     azure.answer(FakeAzure.json({ value: Array.from({ length: 21 }, (_t, index) => pull({ pullRequestId: index + 1 })) }),
       ...Array.from({ length: 40 }, () => FakeAzure.json({ value: [] })), new Response(null, { status: 404 }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
     const query = new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site");
 
     const lists = [await reads.readPullRequestsAsync(query, signal), await reads.readPullRequestsAsync(new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/gone"), signal)];
@@ -973,15 +1111,15 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     const token = new FakeToken();
     const release = azure.hold();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const reading = reads.readPullRequestsAsync(new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site"), signal);
     await azure.askedAsync(1);
     token.answer("token", AzureCredential.ofToken("other-token"));
     release(FakeAzure.json({ value: [] }));
-    const lists = [await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null)).readPullRequestsAsync(new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site"), signal),
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken()).readPullRequestsAsync(new RepositoryQuery("github.com", "octocat/hello-world"), signal),
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken()).readPullRequestsAsync(new RepositoryQuery("dev.azure.com", "contoso/web/_git/site"), signal),
+    const lists = [await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null), new FakeModuleLog()).readPullRequestsAsync(new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site"), signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog()).readPullRequestsAsync(new RepositoryQuery("github.com", "octocat/hello-world"), signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog()).readPullRequestsAsync(new RepositoryQuery("dev.azure.com", "contoso/web/_git/site"), signal),
       await reading];
 
     assert.deepEqual([lists, azure.requests.length], [[HostPullRequestList.signedOut(), new HostPullRequestList([], false), new HostPullRequestList([], false),
@@ -992,7 +1130,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     azure.answer(new Response(null, { status: 401 }), FakeAzure.json({ value: [pull({ title: " " })] }), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }));
     const token = new FakeToken();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
     const query = new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site");
 
     const failures = [failureOf(await reads.readPullRequestsAsync(query, signal).then(() => null, (t: unknown) => t)),
@@ -1005,7 +1143,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     azure.answer(connection(), FakeAzure.json({ value: [asking(0), asking(10, { pullRequestId: 13 }), asking(0, { pullRequestId: 14, isDraft: true,
       title: "Try the new layout", creationDate: "2027-01-16T08:00:00Z" }), pull({ pullRequestId: 15 })] }), FakeAzure.json({ value: [] }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
     const query = new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site");
 
     const lists = [await reads.readReviewRequestsAsync(query, signal), await reads.readReviewRequestsAsync(query, signal)];
@@ -1021,7 +1159,7 @@ describe("AzureReads", () => {
     azure.answer(connection(), FakeAzure.json({ value: Array.from({ length: 101 }, (_t, index) => asking(0, { pullRequestId: index + 1 })) }),
       new Response(null, { status: 404 }), connection(), FakeAzure.json({ value: [] }));
     const token = new FakeToken();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
     const query = new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site");
 
     const lists = [await reads.readReviewRequestsAsync(query, signal), await reads.readReviewRequestsAsync(new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/gone"),
@@ -1037,17 +1175,17 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     const token = new FakeToken();
     const release = azure.hold();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const reading = reads.readReviewRequestsAsync(new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site"), signal);
     await azure.askedAsync(1);
     token.answer("token", AzureCredential.ofToken("other-token"));
     release(connection());
     azure.answer(FakeAzure.json({ value: [asking(0)] }));
-    const lists = [await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null)).readReviewRequestsAsync(new RepositoryQuery("dev.azure.com",
+    const lists = [await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null), new FakeModuleLog()).readReviewRequestsAsync(new RepositoryQuery("dev.azure.com",
       "fabrikam/web/_git/site"), signal),
-    await new AzureReads(new AzureApi(azure.fetch), new FakeToken()).readReviewRequestsAsync(new RepositoryQuery("github.com", "octocat/hello-world"), signal),
-    await new AzureReads(new AzureApi(azure.fetch), new FakeToken()).readReviewRequestsAsync(new RepositoryQuery("dev.azure.com", "contoso/web/_git/site"), signal),
+    await new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog()).readReviewRequestsAsync(new RepositoryQuery("github.com", "octocat/hello-world"), signal),
+    await new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog()).readReviewRequestsAsync(new RepositoryQuery("dev.azure.com", "contoso/web/_git/site"), signal),
     await reading];
 
     assert.deepEqual([lists, azure.requests.length], [[HostReviewRequestList.signedOut(), new HostReviewRequestList([], false), new HostReviewRequestList([], false),
@@ -1058,7 +1196,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     azure.answer(new Response(null, { status: 401 }), FakeAzure.json({ authenticatedUser: { id: " " } }), new Response(null, { status: 404 }));
     const token = new FakeToken();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
     const query = new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site");
 
     const failures = [failureOf(await reads.readReviewRequestsAsync(query, signal).then(() => null, (t: unknown) => t)),
@@ -1080,7 +1218,7 @@ describe("AzureReads", () => {
     FakeAzure.json(pull()), FakeAzure.json({ value: [limit({ useSquashMerge: false, allowSquash: true })] }),
     FakeAzure.json(pull()), FakeAzure.json({ value: [evaluation("approved", "Minimum number of reviewers", true)] }),
     FakeAzure.json(pull()), new Response(null, { status: 404 }), new Response(null, { status: 404 }), FakeAzure.json(pull({ repository: {} })));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const types: unknown[] = [];
     for (let attempt = 0; attempt < 8; attempt++)
@@ -1098,15 +1236,15 @@ describe("AzureReads", () => {
     const token = new FakeToken();
     const release = azure.hold();
     azure.answer(FakeAzure.json({ value: [] }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const reading = reads.readMergeTypesAsync(reference, signal);
     await azure.askedAsync(1);
     token.answer("token", AzureCredential.ofToken("other-token"));
     release(FakeAzure.json(pull()));
-    const read = [await reading, await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null)).readMergeTypesAsync(reference, signal),
+    const read = [await reading, await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null), new FakeModuleLog()).readMergeTypesAsync(reference, signal),
       await reads.readMergeTypesAsync(new HostReference("git-github", "octocat", "hello-world", 12), signal),
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken("azure-token", "contoso")).readMergeTypesAsync(reference, signal)];
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken("azure-token", "contoso"), new FakeModuleLog()).readMergeTypesAsync(reference, signal)];
 
     assert.deepEqual([read, azure.requests.length], [[null, null, null, null], 2]);
   });
@@ -1117,7 +1255,8 @@ describe("AzureReads", () => {
     const release = azure.hold();
     const releaseFull = azure.hold();
     const releaseBranch = azure.hold();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    azure.answer(noPush());
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const reading = reads.readReferenceAsync(reference, signal);
     const readingFull = reads.readPullRequestAsync(reference, signal);
@@ -1133,19 +1272,19 @@ describe("AzureReads", () => {
 
   it("reads a work item with its type's name, colour and icon, its state's category, its page, assignee, iteration, area and parent", async () => {
     const azure = new FakeAzure();
-    azure.answer(FakeAzure.json(workItem()), FakeAzure.json(workItemType()));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    azure.answer(FakeAzure.json(workItem()), FakeAzure.json(workItemType()), icon());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: HostWorkItem | null = await reads.readWorkItemAsync(workItemQuery, signal);
 
-    assert.deepEqual([read, azure.urls()], [storyItem, [workItemUrl, typeUrl]]);
+    assert.deepEqual([read, azure.urls()], [storyItem, [workItemUrl, typeUrl, iconUrl]]);
   });
 
-  it("reads a work item with no assignee, iteration, area or parent, and one whose state its type doesn't list as proposed", async () => {
+  it("reads a work item with no assignee, iteration, area, parent or change time, and one whose state its type doesn't list as proposed", async () => {
     const azure = new FakeAzure();
     azure.answer(FakeAzure.json(workItem({ "System.AssignedTo": undefined, "System.IterationPath": undefined, "System.AreaPath": undefined,
-      "System.Parent": undefined, "System.State": "Triaged" })), FakeAzure.json(workItemType()));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+      "System.Parent": undefined, "System.ChangedDate": undefined, "System.State": "Triaged" })), FakeAzure.json(workItemType()), icon());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: HostWorkItem | null = await reads.readWorkItemAsync(workItemQuery, signal);
 
@@ -1155,10 +1294,10 @@ describe("AzureReads", () => {
 
   it("reads each type of a project once for an account, in any letter case, and again for another account", async () => {
     const azure = new FakeAzure();
-    azure.answer(FakeAzure.json(workItem()), FakeAzure.json(workItemType()), FakeAzure.json(workItem({ "System.WorkItemType": "user story" })),
-      FakeAzure.json(workItem()), FakeAzure.json(workItemType()));
+    azure.answer(FakeAzure.json(workItem()), FakeAzure.json(workItemType()), icon(), FakeAzure.json(workItem({ "System.WorkItemType": "user story" })),
+      FakeAzure.json(workItem()), FakeAzure.json(workItemType()), icon());
     const token = new FakeToken();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const first = await reads.readWorkItemAsync(workItemQuery, signal);
     const again = await reads.readWorkItemAsync(workItemQuery, signal);
@@ -1166,16 +1305,16 @@ describe("AzureReads", () => {
     const other = await reads.readWorkItemAsync(workItemQuery, signal);
 
     assert.deepEqual([first, again, other], [storyItem, storyItem, storyItem]);
-    assert.deepEqual(azure.urls(), [workItemUrl, typeUrl, workItemUrl, workItemUrl, typeUrl]);
+    assert.deepEqual(azure.urls(), [workItemUrl, typeUrl, iconUrl, workItemUrl, workItemUrl, typeUrl, iconUrl]);
   });
 
   it("answers null signed out, for another host's or organization's query and for a work item Azure DevOps doesn't show", async () => {
     const azure = new FakeAzure();
     azure.answer(new Response(null, { status: 404 }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: (HostWorkItem | null)[] = [
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null)).readWorkItemAsync(workItemQuery, signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null), new FakeModuleLog()).readWorkItemAsync(workItemQuery, signal),
       await reads.readWorkItemAsync(new WorkItemQuery("git-github", "fabrikam", 42), signal),
       await reads.readWorkItemAsync(new WorkItemQuery("git-azure-devops", "fab_rikam", 42), signal),
       await reads.readWorkItemAsync(workItemQuery, signal)
@@ -1187,26 +1326,26 @@ describe("AzureReads", () => {
   it("signs out the token refused for a work item, and fails as Unavailable on a type it can't find or an unreadable item or type", async () => {
     const azure = new FakeAzure();
     azure.answer(new Response(null, { status: 401 }), FakeAzure.json(workItem()), new Response(null, { status: 404 }),
-      FakeAzure.json(workItem({ "System.Title": " " })), FakeAzure.json(workItemType()), FakeAzure.json({ id: 42 }),
+      FakeAzure.json(workItem({ "System.Title": " " })), FakeAzure.json(workItemType()), icon(), FakeAzure.json({ id: 42 }),
       FakeAzure.json(workItem({ "System.WorkItemType": "Bug" })), FakeAzure.json({ ...workItemType("Bug"), color: "blue" }));
     const token = new FakeToken();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const failures: (string | null)[] = [];
     for (let attempt = 0; attempt < 5; attempt++)
       failures.push(failureOf(await reads.readWorkItemAsync(workItemQuery, signal).then(() => null, (t: unknown) => t)));
 
     assert.deepEqual([failures, token.refused, azure.requests.length], [[FailureCode.Unauthorized, FailureCode.Unavailable, FailureCode.Unavailable,
-      FailureCode.Unavailable, FailureCode.Unavailable], ["azure-token"], 8]);
+      FailureCode.Unavailable, FailureCode.Unavailable], ["azure-token"], 9]);
   });
 
   it("drops a work item read for a token that changed while it was read, and keeps no type read for the old token", async () => {
     const azure = new FakeAzure();
     azure.answer(FakeAzure.json(workItem()));
     const releaseType = azure.hold();
-    azure.answer(FakeAzure.json(workItem()), FakeAzure.json(workItemType()), FakeAzure.json(workItem()));
+    azure.answer(FakeAzure.json(workItem()), FakeAzure.json(workItemType()), icon(), icon(), FakeAzure.json(workItem()));
     const token = new FakeToken();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const reading = reads.readWorkItemAsync(workItemQuery, signal);
     await azure.askedAsync(2);
@@ -1217,14 +1356,14 @@ describe("AzureReads", () => {
     const again = await reads.readWorkItemAsync(workItemQuery, signal);
 
     assert.deepEqual([dropped, other, again], [null, storyItem, storyItem]);
-    assert.deepEqual(azure.urls(), [workItemUrl, typeUrl, workItemUrl, typeUrl, workItemUrl]);
+    assert.deepEqual(azure.urls(), [workItemUrl, typeUrl, workItemUrl, typeUrl, iconUrl, iconUrl, workItemUrl]);
   });
 
   it("asks nothing for another organization than the token's, so its refusal never signs the token out, and reads its own in any letter case", async () => {
     const azure = new FakeAzure();
-    azure.answer(FakeAzure.json(pull()));
+    azure.answer(FakeAzure.json(pull()), noPush());
     const token = new FakeToken("azure-token", "Fabrikam");
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
     const other: HostReference = new HostReference("git-azure-devops", "contoso", repositoryId, 12);
 
     const read = [await reads.readReferenceAsync(other, signal), await reads.readPullRequestAsync(other, signal),
@@ -1232,7 +1371,7 @@ describe("AzureReads", () => {
       await reads.readWorkItemAsync(new WorkItemQuery("git-azure-devops", "contoso", 42), signal),
       await reads.readReferenceAsync(reference, signal)];
 
-    assert.deepEqual([read, azure.urls(), token.refused], [[null, null, new BranchPullRequest(null, []), null, item], [pullUrl], []]);
+    assert.deepEqual([read, azure.urls(), token.refused], [[null, null, new BranchPullRequest(null, []), null, item], [pullUrl, pullIterationsUrl], []]);
   });
 });
 
@@ -1253,8 +1392,8 @@ function relation(rel: string, url: string): Record<string, unknown> {
 
 function itemOf(id: number, title: string, parent: number | null): HostWorkItem {
   return new HostWorkItem("git-azure-devops", "fabrikam", "Web Site", id, story, title, "Active", WorkItemCategory.InProgress,
-    `https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/${id}`, new HostPerson("monalisa@fabrikam.com", null, null), "Web Site\\Sprint 3",
-    "Web Site\\Accounts", parent);
+    `https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/${id}`, new HostPerson("monalisa@fabrikam.com", null, null, undefined, "Mona Lisa"), "Web Site\\Sprint 3",
+    "Web Site\\Accounts", parent, Date.parse("2027-01-15T09:30:00Z"));
 }
 
 function bare(item: HostWorkItem): HostWorkItemDetail {
@@ -1280,8 +1419,8 @@ describe("AzureReads, work items", () => {
       batched(42, { "Microsoft.VSTS.Scheduling.StoryPoints": 5, "Microsoft.VSTS.Scheduling.Size": 8, "Microsoft.VSTS.Common.StackRank": 1000.5,
         "Microsoft.VSTS.Common.AcceptanceCriteria": "<div>Readers see a due date &amp; a note.</div><div><br></div><ul><li>48 h</li><li>2&nbsp;h</li></ul>" },
       linked)), found(batched(40, { "System.Title": "Export all notes", "System.Parent": undefined,
-      "Microsoft.VSTS.Common.AcceptanceCriteria": "<p> </p>" }, [])), FakeAzure.json(workItemType()));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+      "Microsoft.VSTS.Common.AcceptanceCriteria": "<p> </p>" }, [])), FakeAzure.json(workItemType()), icon());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: readonly HostWorkItemDetail[] = await reads.readWorkItemsAsync(mine, signal).then(t => t.items);
 
@@ -1289,7 +1428,7 @@ describe("AzureReads, work items", () => {
       new HostWorkItemDetail(storyItem, 5, null, null, 1000.5, "Readers see a due date & a note.\n\n48 h\n2 h", [43],
         [new HostReference("git-azure-devops", "fabrikam", repositoryId, 752)], 2, ["users/kim/42-sign-in"]),
       new HostWorkItemDetail(itemOf(43, "Export the note", 42), 3, 4, 2.5, 20, null, [], [], 0, [])]);
-    assert.deepEqual(azure.urls(), [typesUrl, wiqlUrl, batchUrl, batchUrl, typeUrl]);
+    assert.deepEqual(azure.urls(), [typesUrl, wiqlUrl, batchUrl, batchUrl, typeUrl, iconUrl]);
     assert.deepEqual([azure.requests[1]?.init.method, azure.requests[1]?.header("Content-Type"), azure.requests[1]?.body, azure.requests[2]?.body,
       azure.requests[3]?.body], ["POST", "application/json", { query: "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND "
       + "[System.AssignedTo] = @Me AND [System.State] NOT IN ('Closed', 'Removed') ORDER BY [System.ChangedDate] DESC" },
@@ -1300,7 +1439,7 @@ describe("AzureReads, work items", () => {
     const azure = new FakeAzure();
     const ids: readonly number[] = Array.from({ length: 201 }, (_, index) => index + 1);
     azure.answer(found(), new Response(null, { status: 404 }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read = await reads.readWorkItemsAsync(new WorkItemsQuery("git-azure-devops", "fabrikam", "Web Site", WorkItemScope.Ids, ids), signal);
 
@@ -1312,7 +1451,7 @@ describe("AzureReads, work items", () => {
     const azure = new FakeAzure();
     azure.answer(types(), listed(...Array.from({ length: 200 }, (_, index) => index + 1)), found(), types(), listed(...Array.from({ length: 199 }, (_, index) => index + 1)),
       found());
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: readonly HostWorkItemList[] = [await reads.readWorkItemsAsync(mine, signal), await reads.readWorkItemsAsync(mine, signal)];
 
@@ -1322,7 +1461,7 @@ describe("AzureReads, work items", () => {
   it("asks for every state of the person's work items when Azure DevOps doesn't show the project's types", async () => {
     const azure = new FakeAzure();
     azure.answer(new Response(null, { status: 404 }), listed());
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: HostWorkItemList = await reads.readWorkItemsAsync(mine, signal);
 
@@ -1333,10 +1472,10 @@ describe("AzureReads, work items", () => {
   it("answers no work items signed out, for another host's or organization's query, a query Azure DevOps doesn't show, or none found", async () => {
     const azure = new FakeAzure();
     azure.answer(types(), new Response(null, { status: 404 }), types(), listed());
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: readonly (readonly HostWorkItemDetail[])[] = [
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null)).readWorkItemsAsync(mine, signal).then(t => t.items),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null), new FakeModuleLog()).readWorkItemsAsync(mine, signal).then(t => t.items),
       await reads.readWorkItemsAsync(new WorkItemsQuery("git-github", "fabrikam", "Web Site", WorkItemScope.Mine, []), signal).then(t => t.items),
       await reads.readWorkItemsAsync(new WorkItemsQuery("git-azure-devops", "fab_rikam", "Web Site", WorkItemScope.Mine, []), signal).then(t => t.items),
       await reads.readWorkItemsAsync(new WorkItemsQuery("git-azure-devops", "contoso", "Web Site", WorkItemScope.Mine, []), signal).then(t => t.items),
@@ -1356,10 +1495,10 @@ describe("AzureReads, work items", () => {
       types(), listed(42), found({ fields: {} }),
       types(), listed(42), found({ ...batched(42), fields: { "System.TeamProject": " " } }),
       types(), listed(42), found({ ...batched(42), fields: { "System.TeamProject": "Web Site" } }),
-      types(), listed(42), found(batched(42, lone, [relation("System.LinkTypes.Hierarchy-Forward", childUrl("4x"))])), FakeAzure.json(workItemType()),
+      types(), listed(42), found(batched(42, lone, [relation("System.LinkTypes.Hierarchy-Forward", childUrl("4x"))])), FakeAzure.json(workItemType()), icon(),
       types(), listed(42), found(batched(42, { ...lone, "Microsoft.VSTS.Scheduling.StoryPoints": -1 })));
     const token = new FakeToken();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const failures: (string | null)[] = [];
     for (let i = 0; i < 9; i++)
@@ -1372,9 +1511,9 @@ describe("AzureReads, work items", () => {
   it("drops work items read for a token that changed while they were read", async () => {
     const azure = new FakeAzure();
     const release = azure.hold();
-    azure.answer(listed(42), found(batched(42, { "System.Parent": undefined }, [])), FakeAzure.json(workItemType()));
+    azure.answer(listed(42), found(batched(42, { "System.Parent": undefined }, [])), FakeAzure.json(workItemType()), icon());
     const token = new FakeToken();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const reading = reads.readWorkItemsAsync(mine, signal).then(t => t.items);
     await azure.askedAsync(1);
@@ -1394,7 +1533,7 @@ describe("AzureReads, work items", () => {
 
     const failures: unknown[] = [];
     for (const azure of [queried, batched])
-      failures.push(await new AzureReads(new AzureApi(azure.fetch), token).readWorkItemsAsync(mine, signal).then(t => t.items).then(() => null,
+      failures.push(await new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog()).readWorkItemsAsync(mine, signal).then(t => t.items).then(() => null,
         (t: unknown) => t instanceof MethodFailureException ? [t.failure.code, t.failure.message] : t));
 
     const refused = [FailureCode.Unavailable, "Azure DevOps refused the request (403)."];
@@ -1413,7 +1552,7 @@ describe("AzureReads, people", () => {
     azure.answer(FakeAzure.json({ value: [{ subjectKind: "Group", descriptor: "vssgp.R3JvdXA", displayName: "Web Team",
       principalName: "[Web Site]\\Web Team" },
       ...Array.from({ length: 11 }, (_, i) => subject(i))] }));
-    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken());
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const found: readonly FoundPerson[] = await reads.searchPeopleAsync(peopleQuery, signal);
 
@@ -1427,9 +1566,9 @@ describe("AzureReads, people", () => {
     const azure = new FakeAzure();
     azure.answer(new Response(null, { status: 404 }));
 
-    const found = [await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null)).searchPeopleAsync(peopleQuery, signal),
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken("azure-token", "contoso")).searchPeopleAsync(peopleQuery, signal),
-      await new AzureReads(new AzureApi(azure.fetch), new FakeToken()).searchPeopleAsync(peopleQuery, signal)];
+    const found = [await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null), new FakeModuleLog()).searchPeopleAsync(peopleQuery, signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken("azure-token", "contoso"), new FakeModuleLog()).searchPeopleAsync(peopleQuery, signal),
+      await new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog()).searchPeopleAsync(peopleQuery, signal)];
 
     assert.deepEqual([found, azure.urls()], [[[], [], []], [subjectQueryUrl]]);
   });
@@ -1438,7 +1577,7 @@ describe("AzureReads, people", () => {
     const azure = new FakeAzure();
     azure.answer(new Response(null, { status: 401 }), FakeAzure.json({ value: [subject(1, " ")] }), FakeAzure.json({ value: [{ ...subject(1), subjectKind: " " }] }));
     const token = new FakeToken();
-    const reads = new AzureReads(new AzureApi(azure.fetch), token);
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
 
     const failures: (string | null)[] = [];
     for (let i = 0; i < 3; i++)
@@ -1462,8 +1601,8 @@ describe("AzureReads, people", () => {
     });
 
     const messageOf = (error: unknown): readonly [string, string] | null => error instanceof MethodFailureException ? [error.failure.code, error.failure.message] : null;
-    const cannotRead = messageOf(await new AzureReads(new AzureApi(azure.fetch), scoped).searchPeopleAsync(peopleQuery, signal).then(() => null, (t: unknown) => t));
-    const signedOut = messageOf(await new AzureReads(new AzureApi(azure.fetch), revoked).searchPeopleAsync(peopleQuery, signal).then(() => null, (t: unknown) => t));
+    const cannotRead = messageOf(await new AzureReads(new AzureApi(azure.fetch), scoped, new FakeModuleLog()).searchPeopleAsync(peopleQuery, signal).then(() => null, (t: unknown) => t));
+    const signedOut = messageOf(await new AzureReads(new AzureApi(azure.fetch), revoked, new FakeModuleLog()).searchPeopleAsync(peopleQuery, signal).then(() => null, (t: unknown) => t));
 
     assert.deepEqual([cannotRead, signedOut, scoped.refused, revoked.refused], [[FailureCode.Unauthorized, "The Azure DevOps token can't read the organization's people; it needs the Graph (Read) scope."],
       [FailureCode.Unauthorized, "Sign in to Azure DevOps first."], ["azure-token"], ["azure-token"]]);

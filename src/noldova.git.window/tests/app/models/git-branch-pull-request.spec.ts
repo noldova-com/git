@@ -37,6 +37,13 @@ describe("GitBranchPullRequest", () => {
       ]);
   });
 
+  it("holds the host's own word for the pull request's state, keeps it while the host reads again, and has none when the host gives none", () => {
+    const completed: GitBranchPullRequest = GitBranchPullRequest.of(row, GitPullRequestState.Merged, false, "Completed");
+
+    expect([completed.stateLabel, GitBranchPullRequest.reading(completed).stateLabel, GitBranchPullRequest.of(row, GitPullRequestState.Merged, false).stateLabel,
+      GitBranchPullRequest.reading().stateLabel]).toEqual(["Completed", "Completed", null, null]);
+  });
+
   it("says the person is signed out, with nothing counted", () => {
     expect(partsOf(GitBranchPullRequest.signedOut())).toEqual([GitPullRequestsState.SignedOut, null, null, false, 0, 0, 0, null]);
   });
