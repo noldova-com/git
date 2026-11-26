@@ -32,3 +32,5 @@ jobs:
       targets: ${{ github.event_name != 'pull_request' && 'linux-x64 linux-arm64 windows-x64 windows-arm64 macos-x64 macos-arm64' || 'linux-x64 windows-x64 macos-arm64' }}
       publishes: true
       timeout-minutes: 20
+      shards: ${{ github.event_name != 'pull_request' && 'windows-arm64=3 macos-x64=2' || '' }}
+      shard-outputs: ${{ github.event_name != 'pull_request' && '_build/vitest-blob' || '' }}
