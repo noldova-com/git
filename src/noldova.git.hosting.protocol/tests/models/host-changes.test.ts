@@ -53,7 +53,7 @@ describe("HostChanges", () => {
     assert.throws(() => HostChanges.fromJson({ ...json, commits: 1 }), HostingFieldException);
     assert.throws(() => HostChanges.fromJson({ ...json, commits: 1 }), { name: "HostingFieldException", field: "$.commits" });
     assert.throws(() => HostChanges.fromJson({ ...json, additions: -1 }, "$.changes"), { name: "HostingFieldException", field: "$.changes.additions" });
-    assert.throws(() => HostChanges.fromJson({ ...json, deletions: Number.MAX_SAFE_INTEGER + 1 }), { name: "HostingFieldException", field: "$.deletions" });
+    assert.throws(() => HostChanges.fromJson({ ...json, deletions: Number.MAX_SAFE_INTEGER + 1 }), { name: "JsonException", path: "$.deletions" });
     assert.throws(() => HostChanges.fromJson({ ...json, headCommit: commit.toUpperCase() }), { name: "HostingFieldException", field: "$.headCommit" });
     assert.throws(() => HostChanges.fromJson({ ...json, changedFiles: 1.5 }), { name: "JsonException", path: "$.changedFiles" });
   });
