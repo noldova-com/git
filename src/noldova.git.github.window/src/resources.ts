@@ -7,6 +7,7 @@
  */
 
 import { CheckState, type ReferenceKind, type ReferenceState, SignInFailure } from "@noldova/git.hosting.protocol";
+import type { IconName } from "@noldova/ui.components.angular";
 
 export class Resources {
   public static readonly settingsPage: string = "git-github.account";
@@ -17,16 +18,16 @@ export class Resources {
   public static readonly accountTitle: string = "Account";
   public static readonly signedOutNote: string = "Sign in to see pull requests, their checks, and issue and pull request links in replies. Git works without it.";
   public static readonly signIn: string = "Sign in to GitHub";
-  public static readonly signInIcon: string = "login";
+  public static readonly signInIcon: IconName = "login";
   public static readonly copyCode: string = "Copy code";
-  public static readonly copyIcon: string = "content_copy";
+  public static readonly copyIcon: IconName = "content_copy";
   public static readonly openAgain: string = "Open the page again";
-  public static readonly openIcon: string = "open_in_new";
+  public static readonly openIcon: IconName = "open_in_new";
   public static readonly cancel: string = "Cancel";
   public static readonly signOut: string = "Sign out";
-  public static readonly signOutIcon: string = "logout";
+  public static readonly signOutIcon: IconName = "logout";
   public static readonly manageAccess: string = "Manage access on GitHub";
-  public static readonly failureIcon: string = "error";
+  public static readonly failureIcon: IconName = "error";
   public static readonly repositoryScope: string = "repo";
   public static readonly withRepositories: string = "Signed in on this computer · access to your repositories";
   public static readonly withoutRepositories: string = "Signed in on this computer · no access to your repositories";

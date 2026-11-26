@@ -7,6 +7,7 @@
  */
 
 import type { ConflictKind, DiffScopeKind, FileState, OperationKind } from "@noldova/git.protocol";
+import type { IconName } from "@noldova/ui.components.angular";
 
 import { GitFileGroupKind } from "./app/enums/git-file-group-kind.ts";
 
@@ -19,7 +20,7 @@ export class Resources {
 
   public static readonly viewName: string = "git.view";
   public static readonly viewTitle: string = "Git";
-  public static readonly viewIcon: string = "account_tree";
+  public static readonly viewIcon: IconName = "account_tree";
   public static readonly viewDefaultGroup: number = 0;
   public static readonly viewDefaultOrder: number = 20;
   public static readonly getGitAddress: string = "https://git-scm.com/downloads";
@@ -31,28 +32,28 @@ export class Resources {
   public static readonly shortHeadLength: number = 7;
 
   public static readonly branchIconPath: string = "M9.5 3.25a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.493 2.493 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25Zm-6 0a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Zm8.25-.75a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z";
-  public static readonly menuClosedIcon: string = "expand_more";
-  public static readonly menuOpenIcon: string = "expand_less";
-  public static readonly pushIcon: string = "arrow_upward";
-  public static readonly pullIcon: string = "arrow_downward";
-  public static readonly publishIcon: string = "cloud_upload";
-  public static readonly stageIcon: string = "add";
-  public static readonly unstageIcon: string = "remove";
-  public static readonly commitIcon: string = "check";
-  public static readonly expandIcon: string = "expand_more";
-  public static readonly collapseIcon: string = "expand_less";
-  public static readonly wrapIcon: string = "wrap_text";
-  public static readonly mergeIcon: string = "merge";
-  public static readonly failureIcon: string = "error";
-  public static readonly plainRemoteIcon: string = "dns";
-  public static readonly noFolderIcon: string = "folder_off";
-  public static readonly folderUnreadableIcon: string = "lock";
-  public static readonly gitMissingIcon: string = "error";
-  public static readonly gitTooOldIcon: string = "warning";
-  public static readonly watchFailedIcon: string = "sync_problem";
-  public static readonly openLinkIcon: string = "open_in_new";
-  public static readonly createBranchIcon: string = "add";
-  public static readonly currentBranchIcon: string = "check";
+  public static readonly menuClosedIcon: IconName = "keyboard_arrow_down";
+  public static readonly menuOpenIcon: IconName = "keyboard_arrow_up";
+  public static readonly pushIcon: IconName = "arrow_upward";
+  public static readonly pullIcon: IconName = "arrow_downward";
+  public static readonly publishIcon: IconName = "cloud_upload";
+  public static readonly stageIcon: IconName = "add";
+  public static readonly unstageIcon: IconName = "remove";
+  public static readonly commitIcon: IconName = "check";
+  public static readonly expandIcon: IconName = "keyboard_arrow_down";
+  public static readonly collapseIcon: IconName = "keyboard_arrow_up";
+  public static readonly wrapIcon: IconName = "wrap_text";
+  public static readonly mergeIcon: IconName = "merge";
+  public static readonly failureIcon: IconName = "error";
+  public static readonly plainRemoteIcon: IconName = "dns";
+  public static readonly noFolderIcon: IconName = "folder_off";
+  public static readonly folderUnreadableIcon: IconName = "lock";
+  public static readonly gitMissingIcon: IconName = "error";
+  public static readonly gitTooOldIcon: IconName = "warning";
+  public static readonly watchFailedIcon: IconName = "sync_problem";
+  public static readonly openLinkIcon: IconName = "open_in_new";
+  public static readonly createBranchIcon: IconName = "add";
+  public static readonly currentBranchIcon: IconName = "check";
 
   public static readonly switchBranchLabel: string = "Switch or create a branch";
   public static readonly publishLabel: string = "Publish branch";
