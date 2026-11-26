@@ -10,7 +10,7 @@
         @if (active.base === null) {
           <p class="base-note">{{ resources.noBaseNote }}</p>
         } @else {
-          <noldova-code-text class="base-text" [text]="active.base" [tokenizer]="shown.tokenizer" />
+          <noldova-code-text class="base-text" [text]="active.base" [language]="shown.language" />
         }
       </div>
     }

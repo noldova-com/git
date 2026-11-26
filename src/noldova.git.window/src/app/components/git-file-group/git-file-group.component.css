@@ -299,7 +299,7 @@ button.line {
   color: var(--nol-code-keyword);
 }
 
-.token-control {
+.token-keyword-control {
   color: var(--nol-code-control);
 }
 
@@ -323,7 +323,7 @@ button.line {
   color: var(--nol-code-variable);
 }
 
-.token-regex {
+.token-string-regexp {
   color: var(--nol-code-regex);
 }
 

@@ -68,7 +68,7 @@ export class Resources {
   public static readonly corePrefix: string = "@noldova/desktop.";
   public static readonly contextPrefix: string = "@noldova/context.";
   public static readonly uiKitName: string = "@noldova/ui.components.angular";
-  public static readonly editorName: string = "@noldova/editor.angular";
+  public static readonly editorPrefix: string = "@noldova/code.editor";
   public static readonly cdkName: string = "@angular/cdk";
   public static readonly cdkConsequence: string = "so the UI kit's overlays and focus handling and the app's would run from different ones";
   public static readonly cdkRemedy: string = "Install the version the UI kit pins, so npm keeps one copy.";
@@ -262,10 +262,10 @@ export class Resources {
   public static readonly windowManifestName: string = "the window package's manifest";
   public static readonly rangeAlternative: string = " or a range of the form >=<lowest> <first refused>";
   public static readonly peerRangeAlternative: string = ", or a range of the form >=<lowest> <first refused>,";
-  public static readonly rangedPrefixes: readonly string[] = [Resources.corePrefix, Resources.contextPrefix];
-  public static readonly rangedNames: readonly string[] = [Resources.uiKitName, Resources.editorName];
-  public static readonly peerPrefixes: readonly string[] = [Resources.angularPrefix, Resources.corePrefix, Resources.contextPrefix];
-  public static readonly peerNames: readonly string[] = [Resources.uiKitName, Resources.editorName];
+  public static readonly rangedPrefixes: readonly string[] = [Resources.corePrefix, Resources.contextPrefix, Resources.editorPrefix];
+  public static readonly rangedNames: readonly string[] = [Resources.uiKitName];
+  public static readonly peerPrefixes: readonly string[] = [Resources.angularPrefix, Resources.corePrefix, Resources.contextPrefix, Resources.editorPrefix];
+  public static readonly peerNames: readonly string[] = [Resources.uiKitName];
   public static readonly archiveManifestEntry: string = `${Resources.archiveFolder}${Resources.pathSeparator}${Resources.manifestFile}`;
   public static readonly declarationImportReplacement: string = `$1${Resources.javaScriptExtension}"`;
   public static readonly toolNamePattern: RegExp = new RegExp(`^[a-z][a-z0-9_]{0,${Resources.maximumToolNameLength - 1}}$`);
@@ -736,7 +736,7 @@ export class Resources {
   }
 
   public static formatWindowPeerInvalid(name: string): string {
-    return `The window package's manifest's peerDependencies may hold only context's packages and the editor, each as >=<lowest> <first refused> to the next minor below 1.0 `
+    return `The window package's manifest's peerDependencies may hold only context's packages and the editor's, each as >=<lowest> <first refused> to the next minor below 1.0 `
       + `or the next major from 1.0, which ${name} isn't.`;
   }
 

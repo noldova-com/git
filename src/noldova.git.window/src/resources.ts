@@ -133,6 +133,7 @@ export class Resources {
   public static readonly addedPrefix: string = "+";
   public static readonly removedPrefix: string = "-";
   public static readonly contextPrefix: string = " ";
+  public static readonly tokenClassPrefix: string = "token-";
   public static readonly listCut: string = "Git listed only part of this folder's changes.";
   public static formatUncheckedLfs(count: number): string {
     return count === 1

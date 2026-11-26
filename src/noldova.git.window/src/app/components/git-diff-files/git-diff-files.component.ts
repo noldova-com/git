@@ -68,7 +68,7 @@ export class GitDiffFilesComponent {
     for (const row of this.rows()) {
       const rows: readonly GitDiffRow[] | undefined = lines.get(row.key);
       if (!row.isFolder && !Object.isUndefined(rows))
-        codes.set(row.key, GitCodeSpan.rowsOf(rows, this.colors.tokenizerOf(row.key)));
+        codes.set(row.key, GitCodeSpan.rowsOf(rows, this.colors.tokenizerOf(row.key), this.colors.tokenTypes));
     }
     return codes;
   });

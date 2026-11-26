@@ -9,10 +9,11 @@
 import { type DebugElement, ErrorHandler, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import { By } from "@angular/platform-browser";
+import { ConflictChoice, MergeEditorComponent } from "@noldova/code.editor.merge.angular";
+import { TextMateHighlighter } from "@noldova/code.editor.textmate";
 import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
-import { MergeEditorComponent, ShikiLineTokenizer } from "@noldova/editor.angular";
 import {
   ConflictKind, ConflictResolution, FailureCode, FileState, GitConflict, GitMarkerCheck, GitOperation, GitPrediction, type GitStatus, type JsonValue, OperationKind,
   PredictionOutcome, type StatusEntry
@@ -280,7 +281,7 @@ describe("GitConflictsComponent", () => {
     await Wait.until(() => (screen.editor()?.unresolvedCount() ?? 0) > 0);
     const held: boolean = screen.find<HTMLButtonElement>(".mark-resolved").disabled;
 
-    screen.editor()?.acceptAll("Theirs");
+    screen.editor()?.acceptAll(ConflictChoice.Theirs);
     await Wait.until(() => !screen.find<HTMLButtonElement>(".mark-resolved").disabled);
     const text: string | null = screen.editor()?.result() ?? null;
     screen.find<HTMLButtonElement>(".mark-resolved").click();
@@ -291,8 +292,8 @@ describe("GitConflictsComponent", () => {
   });
 
   it.each([
-    ["both sides of every conflict, in either order", "both", ["BothOursFirst", "BothTheirsFirst"]],
-    ["both sides of one conflict and theirs of the other", "edited", ["BothOursFirst", "Theirs"]]
+    ["both sides of every conflict, in either order", "both", [ConflictChoice.BothOursFirst, ConflictChoice.BothTheirsFirst]],
+    ["both sides of one conflict and theirs of the other", "edited", [ConflictChoice.BothOursFirst, ConflictChoice.Theirs]]
   ] as const)("notes a file resolved in the merge editor with %s as %s, writing the editor's text either way", async (_, note, choices) => {
     let status: GitStatus = statusOf([conflictEntry("a.ts")], "f1");
     const screen: Screen = Screen.render({
@@ -349,7 +350,7 @@ describe("GitConflictsComponent", () => {
     screen.find<HTMLButtonElement>(".previous").click();
     await screen.untilAsync(() => title() !== second);
     const back: string | undefined = title();
-    screen.editor()?.accept(0, "Ours");
+    screen.editor()?.accept(0, ConflictChoice.Ours);
     await screen.untilAsync(() => note()[0] !== before[0]);
 
     expect(heads).toEqual([["Ours", "onto main · 3b9f001"], ["Theirs", "your commit c4d2e17"], ["Result", "editable · conflict 1 open, conflict 2 open"]]);
@@ -385,7 +386,7 @@ describe("GitConflictsComponent", () => {
     await Wait.until(() => screen.texts(".progress").length > 0);
     const before: readonly string[] = screen.texts(".file .progress");
 
-    screen.editor()?.accept(0, "Theirs");
+    screen.editor()?.accept(0, ConflictChoice.Theirs);
     await Wait.until(() => screen.texts(".progress")[0] === "1 of 2");
 
     expect([before, screen.texts(".file.selected .progress"), screen.texts(".file:not(.selected) .progress")]).toEqual([["0 of 2"], ["1 of 2"], []]);
@@ -409,7 +410,7 @@ describe("GitConflictsComponent", () => {
     screen.editor()?.nextConflict();
     await screen.untilAsync(() => head()[0] !== first[0]);
     const second: readonly string[] = head();
-    screen.editor()?.accept(1, "Theirs");
+    screen.editor()?.accept(1, ConflictChoice.Theirs);
     await screen.untilAsync(() => head()[1] !== second[1]);
 
     expect([before, first, second, head()]).toEqual([
@@ -637,7 +638,7 @@ describe("GitConflictsComponent", () => {
 
   it("colors the open file's code by its language in the merge editor, its base and a one-sided file's ours, loads one tokenizer a language, and leaves a file no language fits plain",
     async () => {
-      const created = vi.spyOn(ShikiLineTokenizer, "createAsync");
+      const created = vi.spyOn(TextMateHighlighter.prototype, "createAsync");
       onTestFinished(() => created.mockRestore());
       const screen: Screen = Screen.render({ "git.status": statusOf([conflictEntry("a.ts"), conflictEntry("b.ts", ConflictKind.DeletedByThem), conflictEntry("c.cobol")], "f1").toJson() },
         GitFixtures.folder, ["git.conflict"]);
@@ -665,46 +666,9 @@ describe("GitConflictsComponent", () => {
       await openAsync(2, "c.cobol");
 
       expect([merged, oneSided]).toEqual([[["const"], ["const"]], ["const"]]);
-      expect([created.mock.calls, keywords(".sides").length, screen.texts(".nol-merge-editor-side:first-child .nol-code-editor-line").join(" ")])
-        .toEqual([[["typescript"]], 0, expect.stringContaining("const ours_c_cobol")]);
+      expect([created.mock.calls.map(t => t[0].id), keywords(".sides").length, screen.texts(".nol-merge-editor-side:first-child .nol-code-editor-line").join(" ")])
+        .toEqual([["typescript"], 0, expect.stringContaining("const ours_c_cobol")]);
     });
-
-  it("leaves a file plain when its tokenizer loads after the file was left, and reports a tokenizer that fails to load", async () => {
-    const handled: unknown[] = [];
-    let finish: (tokenizer: ShikiLineTokenizer | null) => void = () => undefined;
-    const late: Promise<ShikiLineTokenizer | null> = new Promise(resolve => {
-      finish = resolve;
-    });
-    const broken: Error = new Error("The grammar didn't load.");
-    const real: ShikiLineTokenizer | null = await ShikiLineTokenizer.createAsync("typescript");
-    const created = vi.spyOn(ShikiLineTokenizer, "createAsync").mockReturnValueOnce(late).mockRejectedValueOnce(broken);
-    onTestFinished(() => created.mockRestore());
-    const screen: Screen = Screen.render({ "git.status": statusOf([conflictEntry("a.ts"), conflictEntry("c.cobol"), conflictEntry("d.py")], "f1").toJson() },
-      GitFixtures.folder, ["git.conflict"]);
-    vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.push(error));
-    const conflictOf = (path: string): JsonValue =>
-      new GitConflict(path, ConflictKind.BothModified, OperationKind.Merge, "b\n", "const ours = 1;\n", "const theirs = 2;\n", "const ours = 1;\n", "main", "feature", null, null, false, false).toJson();
-    const tokens = (): number => screen.element.querySelectorAll("[class*='-token-']").length;
-    await Wait.until(() => screen.requested("git.conflict").length === 1);
-
-    await screen.held.answerAsync("git.conflict", conflictOf("a.ts"));
-    await Wait.until(() => created.mock.calls.length === 1);
-    screen.find<HTMLButtonElement>(".file.conflicted:nth-of-type(2)").click();
-    await Wait.until(() => screen.requested("git.conflict").length === 2);
-    await screen.held.answerAsync("git.conflict", conflictOf("c.cobol"));
-    await screen.untilAsync(() => screen.texts(".file.selected .name").join() === "c.cobol" && (screen.element.querySelector(".sides")?.textContent ?? "").includes("ours = 1"));
-    finish(real);
-    await late;
-    await screen.fixture.whenStable();
-    const afterLate: number = tokens();
-    screen.find<HTMLButtonElement>(".file.conflicted:nth-of-type(3)").click();
-    await Wait.until(() => screen.requested("git.conflict").length === 3);
-    await screen.held.answerAsync("git.conflict", conflictOf("d.py"));
-    await Wait.until(() => handled.length === 1);
-    await screen.fixture.whenStable();
-
-    expect([afterLate, handled, tokens()]).toEqual([0, [broken], 0]);
-  });
 
   it("reports a resolution, a continue or an abort that fails other than by Git's refusal", async () => {
     const handled: unknown[] = [];

@@ -68,8 +68,8 @@ LICENSE file in the root directory of this source tree.
           }
           @if (merges()) {
             <noldova-merge-editor #editor class="merge" [base]="conflict.base" [ours]="conflict.ours" [theirs]="conflict.theirs" [merged]="conflict.merged"
-              [oursLabel]="conflict.oursLabel" [theirsLabel]="conflict.theirsLabel" [readOnly]="state.busy()" [toolbar]="false" [panels]="true" [showBase]="showsBase()" [tokenizer]="tokenizer()"
-              (conflictsChange)="conflictStates.set($event); conflictCount.set($event.length); unresolved.set(editor.result() === null ? null : editor.unresolvedCount())"
+              [oursLabel]="conflict.oursLabel" [theirsLabel]="conflict.theirsLabel" [readOnly]="state.busy()" [toolbar]="false" [panels]="true" [showBase]="showsBase()" [language]="language()"
+              (conflictsChange)="conflictStates.set($event.toArray()); conflictCount.set($event.count()); unresolved.set(editor.result() === null ? null : editor.unresolvedCount())"
               (markersFailed)="unresolved.set(null)">
               <div nolMergeOursHead class="pane-head ours">
                 <span class="bar" aria-hidden="true"></span><span class="strong">{{ resources.oursLabel }}</span><span class="muted label side-label"><span class="side-name">{{ conflict.oursLabel }}</span>@if (resources.formatSideCommit(conflict.oursLabel, conflict.oursCommit); as commit) {<span class="side-commit">{{ commit }}</span>}</span>
@@ -114,7 +114,7 @@ LICENSE file in the root directory of this source tree.
                 @if (!hasOurs()) {
                   <p class="pane-note">{{ resources.deletedOnThisSide }}</p>
                 } @else if (conflict.ours !== null) {
-                  <noldova-code-text class="code" [text]="conflict.ours" [tokenizer]="tokenizer()" />
+                  <noldova-code-text class="code" [text]="conflict.ours" [language]="language()" />
                 }
               </section>
               <section class="pane theirs" [attr.aria-label]="resources.theirsLabel">
@@ -127,7 +127,7 @@ LICENSE file in the root directory of this source tree.
                 @if (!hasTheirs()) {
                   <p class="pane-note">{{ resources.deletedOnThisSide }}</p>
                 } @else if (conflict.theirs !== null) {
-                  <noldova-code-text class="code" [text]="conflict.theirs" [tokenizer]="tokenizer()" />
+                  <noldova-code-text class="code" [text]="conflict.theirs" [language]="language()" />
                 }
               </section>
             </div>

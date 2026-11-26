@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { ShikiLineTokenizer } from "@noldova/editor.angular";
+import { TextMateTokenizer } from "@noldova/code.editor.textmate";
 import { GitCommit, GitCommitDetail, GitGraphCommit, LineKind } from "@noldova/git.protocol";
 import { DefaultTheme } from "@noldova/ui.components.angular";
 import { AppearanceFixture } from "@noldova/ui.components.angular/testing";
@@ -46,7 +46,7 @@ describe("GitCommitDetailComponent's diff colors", () => {
   });
 
   it("colors an open file's diff as the editor does, its signs plain and its lines on their backgrounds, and reads no file in a closed folder", async () => {
-    const read = vi.spyOn(ShikiLineTokenizer.prototype, "tokenizeLine");
+    const read = vi.spyOn(TextMateTokenizer.prototype, "tokenizeLine");
     onTestFinished(() => read.mockRestore());
     const view: GitViewFixture = await showAsync("src/services/reader.ts", [new FixtureLine(LineKind.Context, "const a = 1;"), new FixtureLine(LineKind.Removed, "/* old"), new FixtureLine(LineKind.Added, "let b = 2;")]);
     const lines = (): readonly HTMLElement[] => view.all(".diff > div:not(.meta-line)");

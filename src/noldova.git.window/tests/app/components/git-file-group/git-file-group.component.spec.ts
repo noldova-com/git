@@ -9,9 +9,9 @@
 import { ErrorHandler } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { By } from "@angular/platform-browser";
+import { TextMateTokenizer } from "@noldova/code.editor.textmate";
 import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
-import { ShikiLineTokenizer } from "@noldova/editor.angular";
 import { ConflictKind, FailureCode, FileState, GitDiff, GitJournal, LineCounts, LineKind, type StatusEntry } from "@noldova/git.protocol";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { userEvent } from "vitest/browser";
@@ -324,7 +324,7 @@ describe("GitFileGroupComponent", () => {
   });
 
   it("colors an open diff's code as the editor does, its signs plain and its lines on their added and removed backgrounds, reading only the open diff's lines", async () => {
-    const read = vi.spyOn(ShikiLineTokenizer.prototype, "tokenizeLine");
+    const read = vi.spyOn(TextMateTokenizer.prototype, "tokenizeLine");
     onTestFinished(() => read.mockRestore());
     const view: GitViewFixture = await GitViewFixture.renderAsync({
       ...GitFixtures.watching,

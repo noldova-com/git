@@ -8,8 +8,8 @@
 
 import { Injector, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import { ActiveConflict, ConflictState } from "@noldova/code.editor.merge.angular";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
-import { ActiveConflict, ConflictState } from "@noldova/editor.angular";
 import { describe, expect, it } from "vitest";
 
 import { GitConflictDetailComponent } from "../../../../src/app/components/git-conflict-detail/git-conflict-detail.component.ts";

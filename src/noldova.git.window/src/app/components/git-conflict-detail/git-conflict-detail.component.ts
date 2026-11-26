@@ -7,8 +7,8 @@
  */
 
 import { Component, inject, input, type InputSignal, type Signal } from "@angular/core";
+import { CodeTextComponent } from "@noldova/code.editor.angular";
 import { WindowPartTokens } from "@noldova/desktop.window";
-import { CodeTextComponent } from "@noldova/editor.angular";
 
 import type { GitConflictDetail } from "../../models/git-conflict-detail.ts";
 import { Resources } from "../../../resources.ts";

@@ -67,7 +67,7 @@ export class GitFileGroupComponent {
     for (const item of this.items()) {
       const rows: readonly GitDiffRow[] | undefined = Object.isNull(item.row) ? undefined : diffs.get(item.row.key);
       if (!Object.isNull(item.row) && !Object.isUndefined(rows) && open.has(item.row.key))
-        codes.set(item.row.key, GitCodeSpan.rowsOf(rows, this.colors.tokenizerOf(item.row.path)));
+        codes.set(item.row.key, GitCodeSpan.rowsOf(rows, this.colors.tokenizerOf(item.row.path), this.colors.tokenTypes));
     }
     return codes;
   });
@@ -111,7 +111,7 @@ export class GitFileGroupComponent {
   }
 
   protected codesOf(row: GitFileRow): readonly (readonly GitCodeSpan[])[] {
-    return this.codes().get(row.key) ?? GitCodeSpan.rowsOf(this.rowsOf(row), null);
+    return this.codes().get(row.key) ?? GitCodeSpan.rowsOf(this.rowsOf(row), null, this.colors.tokenTypes);
   }
 
   protected chosenOf(row: GitFileRow): ReadonlySet<number> {

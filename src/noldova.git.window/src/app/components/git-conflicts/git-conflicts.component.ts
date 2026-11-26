@@ -7,12 +7,13 @@
  */
 
 import { Component, computed, DestroyRef, effect, ErrorHandler, inject, Injector, input, type InputSignal, type Signal, signal, untracked, viewChild, type WritableSignal } from "@angular/core";
+import { CodeTextComponent } from "@noldova/code.editor.angular";
+import { type ActiveConflict, ConflictState, MergeEditorComponent } from "@noldova/code.editor.merge.angular";
 import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import {
   ConflictKind, ConflictResolution, FileState, type GitConflict, type GitMarkerCheck, type GitOperation, type GitPrediction, type GitStatus, OperationKind, PredictionAction
 } from "@noldova/git.protocol";
-import { type ActiveConflict, CodeTextComponent, ConflictState, MergeEditorComponent, type ShikiLineTokenizer } from "@noldova/editor.angular";
 import { ButtonComponent, ButtonVariant, ToolbarButtonComponent } from "@noldova/ui.components.angular";
 
 import { GitResolvedBy } from "../../enums/git-resolved-by.ts";
@@ -85,7 +86,7 @@ export class GitConflictsComponent {
   protected readonly unresolved: WritableSignal<number | null> = signal<number | null>(null);
   protected readonly conflictStates: WritableSignal<readonly ConflictState[]> = signal<readonly ConflictState[]>([]);
   protected readonly resultNote: Signal<string> = computed(() => Resources.formatResultNote(this.conflictStates().map(t => t !== ConflictState.Unresolved)));
-  protected readonly tokenizer: Signal<ShikiLineTokenizer | null> = computed(() => this.colors.tokenizerOf(this.current()));
+  protected readonly language: Signal<string | null> = computed(() => this.colors.languageOf(this.current()));
   protected readonly showsBase: WritableSignal<boolean> = signal(false);
   protected readonly conflictCount: WritableSignal<number> = signal(0);
   protected readonly fileProgress: Signal<string> = computed(() => {
@@ -99,7 +100,7 @@ export class GitConflictsComponent {
   private readonly leftoverMarkers: WritableSignal<readonly string[] | null> = signal<readonly string[] | null>(null);
   private readonly markerFailure: WritableSignal<string | null> = signal<string | null>(null);
   private readonly detail: Signal<GitConflictDetail | null> = computed(() => Object.isNull(this.current()) ? null
-    : new GitConflictDetail(this.activeConflict(), this.tokenizer(), this.leftoverMarkers(), this.markerFailure()));
+    : new GitConflictDetail(this.activeConflict(), this.language(), this.leftoverMarkers(), this.markerFailure()));
   protected readonly showsAllClean: WritableSignal<boolean> = signal(false);
   protected readonly progress: Signal<string> = computed(() =>
     Resources.formatResolvedCount(this.resolved().length, this.resolved().length + this.conflicted().length));

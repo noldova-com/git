@@ -9,10 +9,10 @@
 import { signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import { By } from "@angular/platform-browser";
+import { MergeEditorComponent } from "@noldova/code.editor.merge.angular";
 import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
-import { MergeEditorComponent } from "@noldova/editor.angular";
 import { ConflictKind, FileState, GitConflict, GitMarkerCheck, GitOperation, OperationKind } from "@noldova/git.protocol";
 import { DefaultTheme } from "@noldova/ui.components.angular";
 import { AppearanceFixture } from "@noldova/ui.components.angular/testing";

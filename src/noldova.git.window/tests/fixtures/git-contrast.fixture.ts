@@ -40,8 +40,8 @@ export class GitContrast {
   ].map(text => new FixtureLine(kind, text)));
 
   public static readonly belowText: Readonly<Record<string, readonly string[]>> = {
-    Light: ["added comment", "added control", "added number", "added type", "removed comment", "removed control", "removed number", "removed type"],
-    Dark: ["added comment", "added regex", "removed regex"]
+    Light: ["added comment", "added keyword-control", "added number", "added type", "removed comment", "removed keyword-control", "removed number", "removed type"],
+    Dark: ["added comment", "added string-regexp", "removed string-regexp"]
   };
 
   private static readonly canvas: HTMLCanvasElement = Object.assign(document.createElement("canvas"), { width: 1, height: 1 });

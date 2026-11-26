@@ -202,7 +202,7 @@ class DeclarationCheck {
       return;
     }
     for (const [name, needed] of Object.entries(peers)) {
-      const range: VersionRange | null = typeof needed === "string" && (name.startsWith(Resources.contextPrefix) || name === Resources.editorName) ? VersionRange.parse(needed) : null;
+      const range: VersionRange | null = typeof needed === "string" && (name.startsWith(Resources.contextPrefix) || name.startsWith(Resources.editorPrefix)) ? VersionRange.parse(needed) : null;
       if (range === null || !range.isWritten())
         this.problems.push(Resources.formatWindowPeerInvalid(name));
       else

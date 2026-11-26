@@ -6,18 +6,18 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import type { ActiveConflict, ShikiLineTokenizer } from "@noldova/editor.angular";
+import type { ActiveConflict } from "@noldova/code.editor.merge.angular";
 
 export class GitConflictDetail {
   public readonly active: ActiveConflict | null;
-  public readonly tokenizer: ShikiLineTokenizer | null;
+  public readonly language: string | null;
   public readonly leftoverMarkers: readonly string[] | null;
   public readonly markerFailure: string | null;
 
-  public constructor(active: ActiveConflict | null, tokenizer: ShikiLineTokenizer | null, leftoverMarkers: readonly string[] | null,
+  public constructor(active: ActiveConflict | null, language: string | null, leftoverMarkers: readonly string[] | null,
     markerFailure: string | null) {
     this.active = active;
-    this.tokenizer = tokenizer;
+    this.language = language;
     this.leftoverMarkers = leftoverMarkers;
     this.markerFailure = markerFailure;
   }

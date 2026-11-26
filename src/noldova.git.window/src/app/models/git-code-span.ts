@@ -7,14 +7,11 @@
  */
 
 import "@noldova/context.core";
-import type { ILineTokenizer } from "@noldova/editor.angular";
+import { type ILineTokenizer, type ITokenizerState, type LineTokens, type TokenTypeRegistry, TokenStyles } from "@noldova/code.editor";
 
 import { GitDiffRowKind } from "../enums/git-diff-row-kind.ts";
 import { Resources } from "../../resources.ts";
 import type { GitDiffRow } from "./git-diff-row.ts";
-
-type TokenizerState = ILineTokenizer["initialState"];
-type LineTokens = ReturnType<ILineTokenizer["tokenizeLine"]>;
 
 export class GitCodeSpan {
   public readonly text: string;
@@ -25,11 +22,11 @@ export class GitCodeSpan {
     this.className = className;
   }
 
-  public static rowsOf(rows: readonly GitDiffRow[], tokenizer: ILineTokenizer | null): readonly (readonly GitCodeSpan[])[] {
+  public static rowsOf(rows: readonly GitDiffRow[], tokenizer: ILineTokenizer | null, tokenTypes: TokenTypeRegistry): readonly (readonly GitCodeSpan[])[] {
     if (Object.isNull(tokenizer))
       return rows.map(t => [new GitCodeSpan(t.text)]);
-    let older: TokenizerState = tokenizer.initialState;
-    let newer: TokenizerState = tokenizer.initialState;
+    let older: ITokenizerState = tokenizer.initialState;
+    let newer: ITokenizerState = tokenizer.initialState;
     return rows.map(row => {
       if (row.kind === GitDiffRowKind.Meta) {
         older = tokenizer.initialState;
@@ -43,17 +40,17 @@ export class GitCodeSpan {
         newer = tokens.endState;
       if (row.kind !== GitDiffRowKind.Added)
         older = tokens.endState;
-      return [new GitCodeSpan(sign), ...GitCodeSpan.spansOf(code, tokens)];
+      return [new GitCodeSpan(sign), ...GitCodeSpan.spansOf(code, tokens, tokenTypes)];
     });
   }
 
-  private static spansOf(code: string, tokens: LineTokens): readonly GitCodeSpan[] {
+  private static spansOf(code: string, tokens: LineTokens, tokenTypes: TokenTypeRegistry): readonly GitCodeSpan[] {
     const spans: GitCodeSpan[] = [];
     let at: number = 0;
     for (const token of tokens.tokens) {
       if (token.start > at)
         spans.push(new GitCodeSpan(code.slice(at, token.start)));
-      spans.push(new GitCodeSpan(code.slice(token.start, token.end), `token-${token.kind.toLowerCase()}`));
+      spans.push(new GitCodeSpan(code.slice(token.start, token.end), TokenStyles.classesOf(tokenTypes, token.type, token.modifiers, Resources.tokenClassPrefix).toArray().join(" ")));
       at = token.end;
     }
     if (at < code.length)
