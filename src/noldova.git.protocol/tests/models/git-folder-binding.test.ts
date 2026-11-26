@@ -26,7 +26,7 @@ describe("GitFolderBinding", () => {
     assert.throws(() => new GitFolderBinding("repo"),
       { name: "ProtocolFieldException", field: "git.folder", message: "The field git.folder is invalid: expected an absolute path of at most 4096 characters." });
     assert.throws(() => GitFolderBinding.fromBindings({ "git.folder": `/${"a".repeat(4096)}` }, "$.bindings"), { name: "ProtocolFieldException", field: "$.bindings.git.folder" });
-    assert.throws(() => GitFolderBinding.fromBindings({ "terminal.folder": "/tmp" }), { name: "JsonException", path: "$.git.folder" });
+    assert.throws(() => GitFolderBinding.fromBindings({ "terminal.folder": "/tmp" }), { name: "JsonException", path: '$["git.folder"]' });
     assert.throws(() => GitFolderBinding.fromBindings({ "git.folder": 1 }), { name: "JsonException" });
     assert.throws(() => GitFolderBinding.fromBindings([]), { name: "JsonException" });
   });

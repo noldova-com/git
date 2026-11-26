@@ -9,6 +9,7 @@
 import "@noldova/context.core";
 import { CheckState, type HostPerson, type HostWorkItemType, PolicyState, ReferenceState, SignInFailure, WorkItemCategory } from "@noldova/git.hosting.protocol";
 import { GitCounts } from "@noldova/git.window";
+import type { IconName } from "@noldova/ui.components.angular";
 
 import { WorkItemFacet } from "./app/enums/work-item-facet.ts";
 import { MergeTypeChoice } from "./app/models/merge-type-choice.ts";
@@ -54,13 +55,13 @@ export class Resources {
   public static readonly reviewersTitle: string = "Reviewers";
   public static readonly noReviewers: string = "No reviewers.";
   public static readonly addReviewerLabel: string = "Add reviewer";
-  public static readonly addReviewerIcon: string = "person_add";
-  public static readonly searchIcon: string = "search";
+  public static readonly addReviewerIcon: IconName = "person_add";
+  public static readonly searchIcon: IconName = "search";
   public static readonly reviewerSearchLabel: string = "Find a person or group to add as a reviewer";
   public static readonly reviewerSearchPlaceholder: string = "Name or email";
   public static readonly reviewerResultsLabel: string = "People and groups found";
   public static readonly noPeopleFound: string = "No one matches.";
-  public static readonly groupIcon: string = "groups";
+  public static readonly groupIcon: IconName = "groups";
   public static readonly groupLabel: string = "Group";
   public static readonly searchUnanswered: string = "Azure DevOps didn't answer. Type again to search.";
   public static readonly minimumPeopleQuery: number = 3;
@@ -76,11 +77,11 @@ export class Resources {
   public static readonly groupEnd: string = "]";
   public static readonly into: string = "into";
   public static readonly autoComplete: string = "Completes by itself once its policies pass";
-  public static readonly autoCompleteIcon: string = "schedule";
+  public static readonly autoCompleteIcon: IconName = "schedule";
   public static readonly unknownAuthor: string = "Someone";
-  public static readonly approvedVoteIcon: string = "check";
-  public static readonly waitingVoteIcon: string = "schedule";
-  public static readonly rejectedVoteIcon: string = "close";
+  public static readonly approvedVoteIcon: IconName = "check";
+  public static readonly waitingVoteIcon: IconName = "schedule";
+  public static readonly rejectedVoteIcon: IconName = "close";
   public static readonly openDateFormat: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
   public static readonly accountId: string = "git-azure-devops.account";
   public static readonly hostName: string = "Azure DevOps";
@@ -93,7 +94,7 @@ export class Resources {
   public static readonly accountTitle: string = "Account";
   public static readonly signedOutNote: string = "Sign in to see pull requests, their checks and their reviewers' votes. Git works without it.";
   public static readonly signIn: string = "Sign in";
-  public static readonly signInIcon: string = "login";
+  public static readonly signInIcon: IconName = "login";
   public static readonly signInWithMicrosoft: string = "Sign in with Microsoft";
   public static readonly microsoftNote: string = "Your organization's admin may need to approve this app.";
   public static readonly microsoftTitle: string = "Or sign in with Microsoft";
@@ -111,10 +112,10 @@ export class Resources {
   /** The scopes a token needs for what the module reads and writes: pull requests and their votes and comments, work items, people's pictures and checks' builds. */
   public static readonly tokenScopes: readonly string[] = ["Code (Read & write)", "Work Items (Read & write)", "Graph (Read)", "Build (Read)"];
   public static readonly makeToken: string = "Make a token on Azure DevOps";
-  public static readonly openIcon: string = "open_in_new";
+  public static readonly openIcon: IconName = "open_in_new";
   public static readonly signOut: string = "Sign out";
-  public static readonly signOutIcon: string = "logout";
-  public static readonly failureIcon: string = "error";
+  public static readonly signOutIcon: IconName = "logout";
+  public static readonly failureIcon: IconName = "error";
   public static readonly signedIn: string = "Signed in on this computer";
   public static readonly signInUnanswered: string = "Azure DevOps' sign-in didn't answer.";
   public static readonly linkNotOpened: string = "The page couldn't be opened.";
@@ -145,9 +146,9 @@ export class Resources {
   public static readonly resetVote: VoteChoice = new VoteChoice(0, "Reset vote");
   public static readonly approveVote: number = 10;
   public static readonly approveAction: string = "Approve";
-  public static readonly approveIcon: string = "check";
+  public static readonly approveIcon: IconName = "check";
   public static readonly moreVotesLabel: string = "More votes";
-  public static readonly moreVotesIcon: string = "expand_more";
+  public static readonly moreVotesIcon: IconName = "keyboard_arrow_down";
   public static readonly votesGoAsYou: string = "Votes and comments go to Azure DevOps as you.";
   public static readonly ownVoteNone: string = "none yet";
   public static readonly completeTitle: string = "Complete";
@@ -164,7 +165,7 @@ export class Resources {
   public static readonly commitMessageTitle: string = "Commit message";
   public static readonly maximumMergeMessageLength: number = 4000;
   public static readonly completeWorkItemsLabel: string = "Complete linked work items after merging";
-  public static readonly blockingIcon: string = "error";
+  public static readonly blockingIcon: IconName = "error";
   public static readonly completeMergeAction: string = "Complete merge";
   public static readonly setAutoCompleteAction: string = "Set auto-complete";
   public static readonly cancelAutoCompleteAction: string = "Cancel auto-complete";
@@ -173,8 +174,8 @@ export class Resources {
   public static readonly autoCompleteThen: string = "Auto-complete then merges it without you.";
   public static readonly checksLabel: string = "Checks";
   public static readonly ariaTrue: string = "true";
-  public static readonly signedOutIcon: string = "key";
-  public static readonly noPullRequestIcon: string = "merge";
+  public static readonly signedOutIcon: IconName = "key";
+  public static readonly noPullRequestIcon: IconName = "merge";
   public static readonly referenceProtocol: string = "https:";
   public static readonly webProtocols: readonly string[] = ["https:", "http:"];
   public static readonly schemeMark: string = "://";
@@ -241,7 +242,7 @@ export class Resources {
     [ReferenceState.ClosedDone]: "Abandoned",
     [ReferenceState.ClosedNotPlanned]: "Abandoned"
   };
-  public static readonly stateIcons: Readonly<Record<ReferenceState, string>> = {
+  public static readonly stateIcons: Readonly<Record<ReferenceState, IconName>> = {
     [ReferenceState.Open]: "merge",
     [ReferenceState.Draft]: "draft",
     [ReferenceState.Merged]: "check_circle",
@@ -250,7 +251,7 @@ export class Resources {
     [ReferenceState.ClosedNotPlanned]: "block"
   };
   /** The pull request page's state icons: the board's dot for an active pull request, the rows' own icons otherwise. */
-  public static readonly pullRequestStateIcons: Readonly<Record<ReferenceState, string>> = { ...Resources.stateIcons, [ReferenceState.Open]: "radio_button_checked" };
+  public static readonly pullRequestStateIcons: Readonly<Record<ReferenceState, IconName>> = { ...Resources.stateIcons, [ReferenceState.Open]: "radio_button_checked" };
   public static readonly stateColors: Readonly<Record<ReferenceState, string>> = {
     [ReferenceState.Open]: "var(--nol-status-ok)",
     [ReferenceState.Draft]: "var(--nol-text-muted)",
@@ -266,7 +267,7 @@ export class Resources {
     [CheckState.Succeeded]: "Passed",
     [CheckState.Neutral]: "Neutral"
   };
-  public static readonly checkIcons: Readonly<Record<CheckState, string>> = {
+  public static readonly checkIcons: Readonly<Record<CheckState, IconName>> = {
     [CheckState.Failed]: "cancel",
     [CheckState.Running]: "progress_activity",
     [CheckState.Queued]: "schedule",
@@ -381,7 +382,7 @@ export class Resources {
     [PolicyState.Rejected]: "Failed",
     [PolicyState.NotApplicable]: "Doesn't apply"
   };
-  public static readonly policyIcons: Readonly<Record<PolicyState, string>> = {
+  public static readonly policyIcons: Readonly<Record<PolicyState, IconName>> = {
     [PolicyState.Queued]: "schedule",
     [PolicyState.Running]: "progress_activity",
     [PolicyState.Approved]: "check_circle",
@@ -403,16 +404,16 @@ export class Resources {
     [CheckState.Neutral]: "var(--nol-text-muted)"
   };
 
-  public static readonly workItemIcons: ReadonlyMap<string, string> = new Map([
+  public static readonly workItemIcons: ReadonlyMap<string, IconName> = new Map<string, IconName>([
     ["icon_book", "menu_book"],
     ["icon_insect", "bug_report"],
     ["icon_clipboard", "assignment"],
     ["icon_crown", "workspace_premium"],
-    ["icon_trophy", "emoji_events"],
+    ["icon_trophy", "trophy"],
     ["icon_list", "list"],
     ["icon_check_box", "check_box"]
   ]);
-  public static readonly workItemFallbackIcon: string = "description";
+  public static readonly workItemFallbackIcon: IconName = "description";
 
   public static workItemIconOf(icon: string): string {
     return Resources.workItemIcons.get(icon) ?? Resources.workItemFallbackIcon;
@@ -423,8 +424,8 @@ export class Resources {
     return Object.isNull(type.image) ? null : Resources.svgImagePrefix + encodeURIComponent(type.image);
   }
 
-  public static readonly expandIcon: string = "expand_more";
-  public static readonly collapsedIcon: string = "chevron_right";
+  public static readonly expandIcon: IconName = "keyboard_arrow_down";
+  public static readonly collapsedIcon: IconName = "chevron_right";
 
   public static formatExpand(isCollapsed: boolean, title: string): string {
     return `${isCollapsed ? "Expand" : "Collapse"} ${title}`;
@@ -599,7 +600,7 @@ export class Resources {
   public static readonly branchIdParameter: string = "id";
   public static readonly branchTitleParameter: string = "title";
   public static readonly branchActionLabel: string = "Create a branch";
-  public static readonly branchActionGlyph: string = "call_split";
+  public static readonly branchActionGlyph: IconName = "call_split";
   public static readonly branchNameLabel: string = "Name";
   public static readonly createBranch: string = "Create and switch";
   public static readonly newBranch: string = "Create branch";
@@ -737,7 +738,7 @@ export class Resources {
     return `Show ${subject} in the history`;
   }
   public static readonly newWorkItem: string = "New work item";
-  public static readonly newWorkItemIcon: string = "add";
+  public static readonly newWorkItemIcon: IconName = "add";
   public static readonly idColumn: string = "ID";
   public static readonly titleColumn: string = "Title";
   public static readonly stateColumn: string = "State";
@@ -756,10 +757,10 @@ export class Resources {
   public static readonly tasksTitle: string = "Tasks";
   public static readonly developmentTitle: string = "Development";
   public static readonly noDevelopment: string = "No branch, pull request or commit is linked yet.";
-  public static readonly branchIcon: string = "alt_route";
-  public static readonly pullRequestIcon: string = "merge";
-  public static readonly commitIcon: string = "commit";
-  public static readonly policyWarningIcon: string = "error";
+  public static readonly branchIcon: IconName = "alt_route";
+  public static readonly pullRequestIcon: IconName = "merge";
+  public static readonly commitIcon: IconName = "commit";
+  public static readonly policyWarningIcon: IconName = "error";
   public static readonly categoryColors: Readonly<Record<WorkItemCategory, string>> = {
     [WorkItemCategory.Proposed]: "var(--nol-text-muted)",
     [WorkItemCategory.InProgress]: "var(--nol-accent)",
@@ -840,10 +841,10 @@ export class Resources {
   public static readonly openWorkItemsTitle: string = "Open my work items";
   public static readonly noProjectNotification: string = "git-azure-devops.noProject";
   public static readonly noProjectForWorkItems: string = "Open an Azure DevOps repository in Git to see your work items.";
-  public static readonly workItemsIcon: string = "checklist";
+  public static readonly workItemsIcon: IconName = "checklist";
   public static readonly myWorkItemsTitle: string = "My work items";
   public static readonly workItemFacets: readonly WorkItemFacet[] = Object.values(WorkItemFacet);
-  public static readonly filterIcon: string = "filter_list";
+  public static readonly filterIcon: IconName = "filter_list";
   public static readonly workItemsCapped: string = "Azure DevOps answered its first 200 work items, so the list and its filters cover only those.";
   public static readonly workItemsReading: string = "Reading your work items on Azure DevOps.";
   public static readonly workItemsUnanswered: string = "Azure DevOps didn't answer, so your work items couldn't be read.";
@@ -865,7 +866,7 @@ export class Resources {
   /** The view beside Git that shows the work item chosen in the document in front, and its one instance. */
   public static readonly workItemView: string = "git-azure-devops.workItemDetail";
   public static readonly workItemViewInstance: string = "selected";
-  public static readonly workItemViewIcon: string = "assignment";
+  public static readonly workItemViewIcon: IconName = "assignment";
   /** A place in Git's group of the right dock. */
   public static readonly workItemViewOrder: number = 40;
   public static readonly noWorkItemChosen: string = "Select a work item to see it here.";

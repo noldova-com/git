@@ -42,7 +42,7 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
     expect(page.texts(".kind")).toEqual(["menu_book User Story 7521 open_in_new"]);
     expect(page.texts(".detail-title")).toEqual(["Export notes as Markdown files"]);
     expect(page.texts(".fields")).toEqual(["State Active Assigned K kim@fabrikam.test Iteration Sample Project\\Sprint 17 Area Sample Project\\Notes app"
-      + " Points 5 Parent emoji_events 7490 Markdown export"]);
+      + " Points 5 Parent trophy 7490 Markdown export"]);
     expect(page.texts(".acceptance")).toEqual(["Acceptance criteria Readers see a due date 48 h and 2 h before it is due."]);
     expect(page.texts(".section")).toEqual([
       "Tasks 6 h of 14 h left assignment 7530 Note card with tag chips 0 h assignment 7531 Local times from settings 2 h"

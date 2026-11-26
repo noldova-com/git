@@ -59,7 +59,7 @@ describe("GitCommitDetailComponent", () => {
     expect(view.texts(".parents .mono")).toEqual(["ddddddd", "eeeeeee"]);
     expect(view.all(".parents button").map(t => t.title)).toEqual(["Show ddddddd in the history", "Show eeeeeee in the history"]);
     expect(view.texts(".files-header .caps, .files-header .added, .files-header .removed")).toEqual(["1 file changed", "+2", "−1"]);
-    expect(partsOf(view, ".file-row")).toEqual(["expand_more folder src/services", "reader.ts +2 −1 M"]);
+    expect(partsOf(view, ".file-row")).toEqual(["keyboard_arrow_down folder src/services", "reader.ts +2 −1 M"]);
     expect(view.all(".file-row:not(.folder)").map(t => [t.firstElementChild?.tagName, (t.firstElementChild?.getBoundingClientRect().height ?? 0) > 0]))
       .toEqual([["NOL-FILE-BADGE", true]]);
     expect(view.requested("git.diff")).toEqual([{ folder: GitFixtures.folder, scope: { kind: "Range", from: "d".repeat(40), to: "c".repeat(40) } }]);
@@ -571,6 +571,6 @@ describe("GitCommitDetailComponent", () => {
     const explain: HTMLButtonElement = view.find<HTMLButtonElement>(".explain");
 
     expect([off, explain.textContent?.trim(), explain.disabled, explain.title, view.find(".actions").lastElementChild === explain])
-      .toEqual([[0, true], "auto_awesomeExplain", true, "Not built yet", true]);
+      .toEqual([[0, true], "stars_2Explain", true, "Not built yet", true]);
   });
 });

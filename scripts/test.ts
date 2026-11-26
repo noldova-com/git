@@ -32,12 +32,44 @@ class Test {
   private readonly runner: ProcessRunner = new ProcessRunner();
 
   public async runAsync(values: readonly string[]): Promise<number> {
-    const options: readonly string[] = values.filter(t => t.startsWith(Resources.optionPrefix));
+    const repeatAt: number = values.indexOf(Resources.repeatOption);
+    const rest: readonly string[] = repeatAt === -1 ? values : [...values.slice(0, repeatAt), ...values.slice(repeatAt + 2)];
+    if (rest.includes(Resources.repeatOption)) {
+      console.error(Resources.repeatOnce);
+      return Resources.failureExitCode;
+    }
+    const count: string = repeatAt === -1 ? String(Resources.defaultRepeat) : values[repeatAt + 1] ?? "";
+    if (!Resources.wholeNumberPattern.test(count)) {
+      console.error(Resources.repeatValue);
+      return Resources.failureExitCode;
+    }
+    const repeat: number = Number(count);
+    const options: readonly string[] = rest.filter(t => t.startsWith(Resources.optionPrefix));
     const unknown: readonly string[] = options.filter(t => !Test.options.includes(t));
     if (unknown.length > 0) {
       console.error(Resources.formatUnknownTestOptions(Test.options, unknown));
       return Resources.failureExitCode;
     }
+    const checked: number = await this.runStepsAsync(Test.checks, Test.root);
+    if (checked !== Resources.successExitCode)
+      return checked;
+    for (let run = 1; run <= repeat; run++) {
+      if (repeat > 1)
+        process.stdout.write(Resources.formatRunHeading(run, repeat));
+      const ran: number = await this.runTestsAsync(rest, options);
+      if (ran !== Resources.successExitCode) {
+        if (repeat > 1)
+          process.stdout.write(Resources.formatRepeatStopped(run, repeat));
+        return ran;
+      }
+    }
+    if (repeat > 1)
+      process.stdout.write(Resources.formatAllRunsPassed(repeat));
+    return Resources.successExitCode;
+  }
+
+  /** Runs the tests the filters choose, or the whole suite without filters, once the checks have passed. */
+  private async runTestsAsync(values: readonly string[], options: readonly string[]): Promise<number> {
     const rootTests: readonly string[] = [
       ...Resources.vitestRun,
       ...(options.includes(Resources.skipTestDetails) ? [Resources.dotReporter] : []),
@@ -48,18 +80,18 @@ class Test {
     const rootFilters: readonly string[] = paths.filter(t => !Test.windowFolders.some(w => t.startsWith(w)));
     const windowSpecs: readonly string[] = paths.filter(t => Test.windowFolders.some(w => t.startsWith(w)));
     if (filters.length > 0 && windowSpecs.length === 0)
-      return await this.runStepsAsync([...Test.checks, [...rootTests, ...Test.noGates, ...rootFilters]], Test.root);
+      return await this.runStepsAsync([[...rootTests, ...Test.noGates, ...rootFilters]], Test.root);
     if (filters.length === 0) {
       const timed: readonly string[] = [...rootTests, ...(options.includes(Resources.skipTestDetails) ? [] : [Resources.defaultReporter]), ...Resources.testTimesReporter];
       // Every window package runs even after a failure before it, so one run shows every failing package; the first failure is the exit code.
-      const ran: number[] = [await this.runStepsAsync([...Test.checks, timed, [Resources.testTimeCheckScript]], Test.root)];
+      const ran: number[] = [await this.runStepsAsync([timed, [Resources.testTimeCheckScript]], Test.root)];
       for (const folder of Test.windowFolders)
         ran.push(await this.runWindowAsync(folder, null));
       ran.push(await this.runStepsAsync([[Resources.installedPackageScript]], Test.root));
       return ran.find(t => t !== Resources.successExitCode) ?? Resources.successExitCode;
     }
     const rootSteps: (readonly string[])[] = rootFilters.length === 0 ? [] : [[...rootTests, ...Test.noGates, ...rootFilters]];
-    const ran: number = await this.runStepsAsync([...Test.checks, ...rootSteps], Test.root);
+    const ran: number = await this.runStepsAsync(rootSteps, Test.root);
     if (ran !== Resources.successExitCode)
       return ran;
     for (const folder of Test.windowFolders) {

@@ -521,7 +521,7 @@ describe("AzureWrites, work items", () => {
       failures.push(failureOf(await writes.updateWorkItemAsync(update, signal).then(() => null, (t: unknown) => t)));
 
     const unreadable = [FailureCode.Unavailable, "Azure DevOps' answer couldn't be read."];
-    assert.deepEqual(failures, [[FailureCode.NotFound, "Azure DevOps doesn't show this work item."], unreadable, [FailureCode.Unavailable, "Azure DevOps' answer couldn't be read at $.authenticatedUser.properties.Account."], [FailureCode.Unavailable, "Azure DevOps' answer couldn't be read at $.fields.System.TeamProject."]]);
+    assert.deepEqual(failures, [[FailureCode.NotFound, "Azure DevOps doesn't show this work item."], unreadable, [FailureCode.Unavailable, "Azure DevOps' answer couldn't be read at $.authenticatedUser.properties.Account."], [FailureCode.Unavailable, `Azure DevOps' answer couldn't be read at $.fields["System.TeamProject"].`]]);
   });
 
   it("says the token can't write work items when Azure DevOps refuses the change, and reports a refused account or type read so the sign-in checks the token", async () => {

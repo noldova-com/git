@@ -51,7 +51,7 @@ describe("GitAgentsComponent", () => {
     const state: DOMRect = mounted.element.querySelector(".run .state")?.getBoundingClientRect() ?? new DOMRect();
     const states: Element[] = [...mounted.element.querySelectorAll(".run .state")];
 
-    expect([texts(mounted.element, ".section .toggle"), texts(mounted.element, ".section .worktrees")]).toEqual([["expand_more Agents"], ["3 worktrees"]]);
+    expect([texts(mounted.element, ".section .toggle"), texts(mounted.element, ".section .worktrees")]).toEqual([["keyboard_arrow_down Agents"], ["3 worktrees"]]);
     expect(texts(mounted.element, ".run")).toEqual([
       "smart_toy Blame gutter progress_activity", "smart_toy Flaky watch test pan_tool", "smart_toy Docs check_circle", "smart_toy Lint error"
     ]);

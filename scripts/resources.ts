@@ -238,6 +238,11 @@ export class Resources {
   public static readonly optionPrefix: string = "--";
   public static readonly skipTestDetails: string = "--skip-test-details";
   public static readonly skipCoverageDetails: string = "--skip-coverage-details";
+  public static readonly repeatOption: string = "--repeat";
+  public static readonly repeatValue: string = "--repeat takes a whole number from 1.";
+  public static readonly repeatOnce: string = "--repeat may be given only once.";
+  public static readonly defaultRepeat: number = 1;
+  public static readonly wholeNumberPattern: RegExp = /^[1-9][0-9]*$/u;
   public static readonly dotReporter: string = "--reporter=dot";
   public static readonly skipFullCoverage: string = "--coverage.skipFull";
   public static readonly noCoverage: string = "--coverage=false";
@@ -279,8 +284,8 @@ export class Resources {
   public static readonly repositoryPlace: string = "the repository";
   public static readonly fixturePlace: string = "the fixture app";
   public static readonly fixtureContextRangeFile: string = "src/noldova.git.window/package.json";
-  public static readonly fixtureContextPackages: readonly string[] = ["@noldova/context.core", "@noldova/context.exceptions", "@noldova/context.json",
-    "@noldova/context.text"];
+  public static readonly fixtureContextPackages: readonly string[] = ["@noldova/context.collections", "@noldova/context.core", "@noldova/context.exceptions",
+    "@noldova/context.json", "@noldova/context.text"];
   public static readonly fixturePeers: readonly string[] = ["@noldova/desktop.runtime", "@noldova/desktop.protocol", "@types/node"];
   public static readonly fixtureWorkPrefix: string = "noldova-git-fixture-";
   public static readonly fixtureRemoveRetries: number = 3;
@@ -621,7 +626,19 @@ export class Resources {
   }
 
   public static formatUnknownTestOptions(options: readonly string[], unknown: readonly string[]): string {
-    return `npm test takes ${options.join(" and ")}, then any test files, not ${unknown.join(Resources.listSeparator)}.`;
+    return `npm test takes ${options.join(", ")} and ${Resources.repeatOption} <count>, then any test files, not ${unknown.join(Resources.listSeparator)}.`;
+  }
+
+  public static formatRunHeading(run: number, repeat: number): string {
+    return `${Resources.lineEnd}Run ${String(run)} of ${String(repeat)}${Resources.lineEnd}`;
+  }
+
+  public static formatRepeatStopped(run: number, repeat: number): string {
+    return `${Resources.lineEnd}Run ${String(run)} of ${String(repeat)} failed; the repeats stop there.${Resources.lineEnd}`;
+  }
+
+  public static formatAllRunsPassed(repeat: number): string {
+    return `${Resources.lineEnd}All ${String(repeat)} runs passed.${Resources.lineEnd}`;
   }
 
   public static formatUnlistedSlowFile(file: string, milliseconds: number): string {

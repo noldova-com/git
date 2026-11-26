@@ -27,9 +27,9 @@ describe("AzureDevOpsWorkItemComponent", () => {
 
       expect(page.requests.payloads[0]).toEqual(mineQuery().toJson());
       expect(page.texts(".item")).toEqual([
-        "workspace_premium 7402 expand_more Note sharing and sync Active Sprint 17 none",
-        "emoji_events 7490 expand_more Markdown export Active Sprint 17 1 child",
-        "menu_book 7521 expand_more Export notes as Markdown files Active Sprint 17 !752",
+        "workspace_premium 7402 keyboard_arrow_down Note sharing and sync Active Sprint 17 none",
+        "trophy 7490 keyboard_arrow_down Markdown export Active Sprint 17 1 child",
+        "menu_book 7521 keyboard_arrow_down Export notes as Markdown files Active Sprint 17 !752",
         "assignment 7531 Read local times from the app settings Active Sprint 17 1 commit",
         "assignment 7532 Tag filter ignores case in note titles New Sprint 17 none",
         "description 7511 Note due dates show UTC times Resolved — !479"

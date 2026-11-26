@@ -150,7 +150,7 @@ describe("GitRepositoryComponent", () => {
     await domAsync(() => remoteRows().length === 1);
 
     expect(closed).toEqual(["chevron_right cloud origin 3"]);
-    expect(opened).toEqual(["expand_more cloud origin 3", "expand_more folder team", "a", "b", "main"]);
+    expect(opened).toEqual(["keyboard_arrow_down cloud origin 3", "keyboard_arrow_down folder team", "a", "b", "main"]);
     expect(insets).toEqual([1.875, 3.25, 4.625, 4.625, 3.25]);
     expect(expanded).toEqual(["true", "true", null, null, null]);
   });
@@ -378,7 +378,7 @@ describe("GitRepositoryComponent", () => {
     await domAsync(() => currentOf(element)[1] === "a");
 
     expect(closed).toEqual(["chevron_right folder team", "feature"]);
-    expect(opened).toEqual(["expand_more folder team", "chevron_right folder deep", "a", "feature"]);
+    expect(opened).toEqual(["keyboard_arrow_down folder team", "chevron_right folder deep", "a", "feature"]);
     expect(insets).toEqual([1.875, 3.25, 3.25, 1.875]);
     expect(currentInset).toBe(1.875);
     expect([before, titles()]).toEqual([["team/", "team/deep/", "team/a", "feature", "main"], ["team/", "team/deep/", "team/a", "feature", "main"]]);

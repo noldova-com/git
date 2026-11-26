@@ -10,6 +10,7 @@ import "@noldova/context.core";
 import { type ConflictKind, type DiffScopeKind, type FileChange, type FileState, type GitPrediction, type OperationKind, PredictionOutcome, type RebaseAction, type RebaseCheckOutcome,
   RemoteTransport, SignatureState, type SigningFormat } from "@noldova/git.protocol";
 import { FileChangeKind, ThreadStatus } from "@noldova/git.hosting.protocol";
+import type { IconName } from "@noldova/ui.components.angular";
 
 import { GitPullRequestState } from "./app/enums/git-pull-request-state.ts";
 import { GitAgentState } from "./app/enums/git-agent-state.ts";
@@ -31,19 +32,19 @@ export class Resources {
 
   public static readonly viewName: string = "git.view";
   public static readonly viewTitle: string = "Git";
-  public static readonly viewIcon: string = "account_tree";
+  public static readonly viewIcon: IconName = "account_tree";
   public static readonly viewDefaultGroup: number = 0;
   public static readonly viewDefaultOrder: number = 20;
   public static readonly accountsPage: string = "git.accounts";
   public static readonly accountsTitle: string = "Accounts and hosts";
   public static readonly accountsIntro: string = "Tokens stay in the system's secure store. Each host's features appear only where that host has them.";
   public static readonly addAccount: string = "Add an account";
-  public static readonly addAccountIcon: string = "add";
-  public static readonly manageAccountIcon: string = "more_horiz";
+  public static readonly addAccountIcon: IconName = "add";
+  public static readonly manageAccountIcon: IconName = "more_horiz";
   public static readonly noHosts: string = "No host module is on, so there is no account to add.";
   public static readonly featuresTitle: string = "What each host can do";
-  public static readonly featureYesIcon: string = "check";
-  public static readonly featureNoIcon: string = "remove";
+  public static readonly featureYesIcon: IconName = "check";
+  public static readonly featureNoIcon: IconName = "remove";
   public static readonly featureYes: string = "Yes";
   public static readonly featureNo: string = "No";
   public static readonly accountInput: string = "account";
@@ -72,33 +73,33 @@ export class Resources {
   public static readonly shortHeadLength: number = 7;
 
   public static readonly branchIconPath: string = "M9.5 3.25a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.493 2.493 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25Zm-6 0a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Zm8.25-.75a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z";
-  public static readonly menuClosedIcon: string = "expand_more";
-  public static readonly menuOpenIcon: string = "expand_less";
-  public static readonly pushIcon: string = "arrow_upward";
-  public static readonly pullIcon: string = "arrow_downward";
-  public static readonly publishIcon: string = "cloud_upload";
-  public static readonly stageIcon: string = "add";
-  public static readonly unstageIcon: string = "remove";
-  public static readonly discardIcon: string = "undo";
+  public static readonly menuClosedIcon: IconName = "keyboard_arrow_down";
+  public static readonly menuOpenIcon: IconName = "keyboard_arrow_up";
+  public static readonly pushIcon: IconName = "arrow_upward";
+  public static readonly pullIcon: IconName = "arrow_downward";
+  public static readonly publishIcon: IconName = "cloud_upload";
+  public static readonly stageIcon: IconName = "add";
+  public static readonly unstageIcon: IconName = "remove";
+  public static readonly discardIcon: IconName = "undo";
   public static readonly discardLabel: string = "Discard";
   public static readonly discardTitle: string = "Discard changes?";
   public static readonly undoLabel: string = "Undo";
-  public static readonly discardedIcon: string = "restore_page";
-  public static readonly commitIcon: string = "check";
-  public static readonly expandIcon: string = "expand_more";
-  public static readonly collapseIcon: string = "expand_less";
-  public static readonly wrapIcon: string = "wrap_text";
-  public static readonly mergeIcon: string = "merge";
-  public static readonly failureIcon: string = "error";
-  public static readonly plainRemoteIcon: string = "dns";
-  public static readonly noFolderIcon: string = "folder_off";
-  public static readonly folderUnreadableIcon: string = "lock";
-  public static readonly gitMissingIcon: string = "error";
-  public static readonly gitTooOldIcon: string = "warning";
-  public static readonly watchFailedIcon: string = "sync_problem";
-  public static readonly openLinkIcon: string = "open_in_new";
-  public static readonly createBranchIcon: string = "add";
-  public static readonly currentBranchIcon: string = "check";
+  public static readonly discardedIcon: IconName = "restore_page";
+  public static readonly commitIcon: IconName = "check";
+  public static readonly expandIcon: IconName = "keyboard_arrow_down";
+  public static readonly collapseIcon: IconName = "keyboard_arrow_up";
+  public static readonly wrapIcon: IconName = "wrap_text";
+  public static readonly mergeIcon: IconName = "merge";
+  public static readonly failureIcon: IconName = "error";
+  public static readonly plainRemoteIcon: IconName = "dns";
+  public static readonly noFolderIcon: IconName = "folder_off";
+  public static readonly folderUnreadableIcon: IconName = "lock";
+  public static readonly gitMissingIcon: IconName = "error";
+  public static readonly gitTooOldIcon: IconName = "warning";
+  public static readonly watchFailedIcon: IconName = "sync_problem";
+  public static readonly openLinkIcon: IconName = "open_in_new";
+  public static readonly createBranchIcon: IconName = "add";
+  public static readonly currentBranchIcon: IconName = "check";
 
   public static readonly switchBranchLabel: string = "Switch or create a branch";
   public static readonly publishLabel: string = "Publish branch";
@@ -447,7 +448,7 @@ export class Resources {
   public static readonly graphLoadAhead: number = 200;
   public static readonly openHistoryCommand: string = "git.openHistory";
   public static readonly openHistoryTitle: string = "Open history";
-  public static readonly historyIcon: string = "history";
+  public static readonly historyIcon: IconName = "history";
   public static readonly graphColorCount: number = 8;
   public static readonly graphRowPixels: number = 28;
   public static readonly centringRenders: number = 5;
@@ -475,10 +476,10 @@ export class Resources {
   public static readonly historyListLabel: string = "Commits";
   public static readonly arrowDownKey: string = "ArrowDown";
   public static readonly arrowUpKey: string = "ArrowUp";
-  public static readonly localBranchIcon: string = "computer";
-  public static readonly remoteBranchIcon: string = "cloud";
-  public static readonly tagIcon: string = "sell";
-  public static readonly detachedHeadIcon: string = "adjust";
+  public static readonly localBranchIcon: IconName = "computer";
+  public static readonly remoteBranchIcon: IconName = "cloud";
+  public static readonly tagIcon: IconName = "sell";
+  public static readonly detachedHeadIcon: IconName = "adjust";
   public static readonly headRevision: string = "HEAD";
   public static readonly listSeparator: string = ", ";
   public static readonly rowChipLimit: number = 2;
@@ -513,7 +514,7 @@ export class Resources {
     [GitHistoryAction.Stash]: "Stash",
     [GitHistoryAction.Terminal]: "Terminal"
   };
-  public static readonly historyActionIcons: Readonly<Record<GitHistoryAction, string>> = {
+  public static readonly historyActionIcons: Readonly<Record<GitHistoryAction, IconName>> = {
     [GitHistoryAction.UndoCommit]: "undo",
     [GitHistoryAction.Redo]: "redo",
     [GitHistoryAction.Fetch]: "download",
@@ -536,7 +537,7 @@ export class Resources {
 
   public static readonly repositoryViewName: string = "git.repository";
   public static readonly repositoryViewTitle: string = "Repository";
-  public static readonly repositoryViewIcon: string = "folder";
+  public static readonly repositoryViewIcon: IconName = "folder";
   public static readonly repositoryViewDefaultGroup: number = 0;
   public static readonly repositoryViewDefaultOrder: number = 10;
   public static readonly workspacesViewName: string = "git.workspaces";
@@ -554,10 +555,10 @@ export class Resources {
   public static readonly newBranchLabel: string = "New branch";
   public static readonly remotesLabel: string = "Remotes";
   public static readonly agentsLabel: string = "Agents";
-  public static readonly agentIcon: string = "smart_toy";
+  public static readonly agentIcon: IconName = "smart_toy";
   public static readonly agentsEmpty: string = "No agents work in this repository";
   /** Each run state's icon and its spoken name, as the artboard draws them. */
-  public static readonly agentStateIcons: Readonly<Record<GitAgentState, string>> = {
+  public static readonly agentStateIcons: Readonly<Record<GitAgentState, IconName>> = {
     [GitAgentState.Working]: "progress_activity",
     [GitAgentState.WaitingForYou]: "pan_tool",
     [GitAgentState.Done]: "check_circle",
@@ -576,12 +577,12 @@ export class Resources {
   public static readonly goToLine: string = "Go to line";
   public static readonly commentsTitle: string = "Comments";
   public static readonly noComments: string = "No comments yet.";
-  public static readonly unfoldIcon: string = "unfold_more";
+  public static readonly unfoldIcon: IconName = "unfold_more";
   public static readonly threadData: string = "thread";
   public static readonly replyLabel: string = "Reply to this thread";
   public static readonly replyPlaceholder: string = "Write a reply in Markdown";
   public static readonly replyAction: string = "Reply";
-  public static readonly threadIcon: string = "forum";
+  public static readonly threadIcon: IconName = "forum";
   public static readonly resolveThread: string = "Resolve";
   public static readonly reactivateThread: string = "Reactivate";
   public static readonly autoCompleteResolveConfirm: string = "This is the last open thread of a pull request that completes by itself, so resolving it may merge it at once.";
@@ -614,27 +615,27 @@ export class Resources {
   public static readonly stashesLabel: string = "Stashes";
   public static readonly worktreesLabel: string = "Worktrees";
   public static readonly submodulesLabel: string = "Submodules";
-  public static readonly folderIcon: string = "folder";
-  public static readonly syncIcon: string = "sync";
-  public static readonly changesIcon: string = "edit_note";
-  public static readonly sectionOpenIcon: string = "expand_more";
-  public static readonly sectionClosedIcon: string = "chevron_right";
-  public static readonly remoteIcon: string = "cloud";
+  public static readonly folderIcon: IconName = "folder";
+  public static readonly syncIcon: IconName = "sync";
+  public static readonly changesIcon: IconName = "edit_note";
+  public static readonly sectionOpenIcon: IconName = "keyboard_arrow_down";
+  public static readonly sectionClosedIcon: IconName = "chevron_right";
+  public static readonly remoteIcon: IconName = "cloud";
   /** A side panel row's start inset, in rem. */
   public static readonly rowInsetRem: number = 0.5;
   /** The local branch tree's folders open and close by keys under this, apart from the sections' and remotes' keys. */
   public static readonly localTreeKey: string = "refs/heads/";
   /** How far each level of the branch trees steps in, in rem: an icon and the gap after it. */
   public static readonly treeStepRem: number = 1.375;
-  public static readonly worktreeIcon: string = "account_tree";
-  public static readonly stashIcon: string = "inventory_2";
-  public static readonly submoduleIcon: string = "folder_special";
+  public static readonly worktreeIcon: IconName = "account_tree";
+  public static readonly stashIcon: IconName = "inventory_2";
+  public static readonly submoduleIcon: IconName = "folder_special";
   public static readonly repositoryLoading: string = "Reading the repository…";
   public static readonly switchingLabel: string = "Switching";
-  public static readonly switchingIcon: string = "progress_activity";
+  public static readonly switchingIcon: IconName = "progress_activity";
 
   public static readonly suggestLabel: string = "Suggest";
-  public static readonly suggestIcon: string = "auto_awesome";
+  public static readonly suggestIcon: IconName = "stars_2";
   public static readonly amendLabel: string = "Amend the last commit";
   public static readonly amendCommitLabel: string = "Amend commit";
   public static readonly amendTitle: string = "Replace the last commit with its changes and the staged ones, under this message";
@@ -646,7 +647,7 @@ export class Resources {
   }
 
   public static readonly statusBarItemName: string = "git.branch";
-  public static readonly statusBarBranchIcon: string = "call_split";
+  public static readonly statusBarBranchIcon: IconName = "call_split";
   public static readonly fetchedItemName: string = "git.fetched";
   public static readonly commandItemName: string = "git.lastCommand";
   public static readonly commandLogViewName: string = "git.commands";
@@ -654,16 +655,16 @@ export class Resources {
   public static readonly commandLogDefaultOrder: number = 20;
   public static readonly openCommandLogCommand: string = "git.openCommandLog";
   public static readonly openCommandLogTitle: string = "Open the command log";
-  public static readonly commandLogIcon: string = "receipt_long";
+  public static readonly commandLogIcon: IconName = "receipt_long";
   /** Opens a repository's Conflicts screen, for another module's page, such as a pull request's conflicts. */
   public static readonly openConflictsCommand: string = "git.openConflicts";
   public static readonly openConflictsTitle: string = "Open conflicts";
   public static readonly commandLogLabel: string = "Command log";
   public static readonly commandLogHint: string = "The git commands your writes in this repository ran since the app started, newest first.";
   public static readonly commandLogEmpty: string = "No git commands yet: each write you make here shows its command as it runs.";
-  public static readonly commandDoneIcon: string = "check_circle";
-  public static readonly commandFailedIcon: string = "error";
-  public static readonly commandStoppedIcon: string = "do_not_disturb_on";
+  public static readonly commandDoneIcon: IconName = "check_circle";
+  public static readonly commandFailedIcon: IconName = "error";
+  public static readonly commandStoppedIcon: IconName = "do_not_disturb_on";
   /** How much of the last command the status bar shows before an ellipsis. */
   public static readonly commandItemLength: number = 60;
 
@@ -770,12 +771,12 @@ export class Resources {
 
   public static readonly commitIdLength: number = 12;
   public static readonly copyIdLabel: string = "Copy commit id";
-  public static readonly copyIcon: string = "content_copy";
+  public static readonly copyIcon: IconName = "content_copy";
   public static readonly moreActionsLabel: string = "More actions";
-  public static readonly moreIcon: string = "more_horiz";
+  public static readonly moreIcon: IconName = "more_horiz";
   public static readonly createBranchHereLabel: string = "Create branch here";
   public static readonly createTagHereLabel: string = "Create tag here";
-  public static readonly branchMenuIcon: string = "call_split";
+  public static readonly branchMenuIcon: IconName = "call_split";
   public static readonly parentLabel: string = "Parent";
   /** Leads the labels on the commit, after its parents. */
   public static readonly inLabel: string = "· In";
@@ -785,20 +786,20 @@ export class Resources {
   }
   public static readonly noParent: string = "None: the first commit";
   public static readonly cherryPickLabel: string = "Cherry-pick";
-  public static readonly cherryPickIcon: string = "copy_all";
+  public static readonly cherryPickIcon: IconName = "copy_all";
   public static readonly revertLabel: string = "Revert";
   public static readonly predictedPathsShown: number = 3;
-  public static readonly revertIcon: string = "undo";
+  public static readonly revertIcon: IconName = "undo";
   public static readonly branchHereLabel: string = "Branch here";
   public static readonly explainLabel: string = "Explain";
-  public static readonly explainIcon: string = "auto_awesome";
+  public static readonly explainIcon: IconName = "stars_2";
   public static readonly fileLayoutLabel: string = "Show files as";
   public static readonly fileLayoutLabels: Readonly<Record<GitFileLayout, string>> = {
     [GitFileLayout.Tree]: "Tree",
     [GitFileLayout.Folders]: "Folders",
     [GitFileLayout.List]: "List"
   };
-  public static readonly fileLayoutIcons: Readonly<Record<GitFileLayout, string>> = {
+  public static readonly fileLayoutIcons: Readonly<Record<GitFileLayout, IconName>> = {
     [GitFileLayout.Tree]: "account_tree",
     [GitFileLayout.Folders]: "folder_open",
     [GitFileLayout.List]: "list"
@@ -829,14 +830,14 @@ export class Resources {
   public static readonly tagHereTitle: string = "Make a tag at this commit";
   public static readonly tagNameLabel: string = "New tag name";
   public static readonly switchLabel: string = "Switch to branch";
-  public static readonly switchIcon: string = "swap_horiz";
+  public static readonly switchIcon: IconName = "swap_horiz";
   public static readonly openInBrowserLabel: string = "Open in browser";
   public static readonly copyLinkLabel: string = "Copy link";
-  public static readonly copyLinkIcon: string = "link";
+  public static readonly copyLinkIcon: IconName = "link";
   public static readonly renameLabel: string = "Rename…";
-  public static readonly renameIcon: string = "edit";
+  public static readonly renameIcon: IconName = "edit";
   public static readonly deleteLabel: string = "Delete";
-  public static readonly deleteIcon: string = "delete";
+  public static readonly deleteIcon: IconName = "delete";
   public static readonly cherryPickTitle: string = "Apply this commit's change onto the current branch as a new commit";
   public static readonly revertTitle: string = "Make a new commit on the current branch that undoes this commit's change";
   public static readonly authoredFormat: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" };
@@ -855,7 +856,7 @@ export class Resources {
   }
 
   public static readonly peopleSeparator: string = " · ";
-  public static readonly signatureIcons: Readonly<Record<SignatureState, string>> = { Verified: "verified", Unverified: "gpp_maybe", None: "remove_moderator" };
+  public static readonly signatureIcons: Readonly<Record<SignatureState, IconName>> = { Verified: "verified", Unverified: "gpp_maybe", None: "remove_moderator" };
 
   /** A signed commit's signature line; an unsigned commit has none. */
   public static formatSignature(state: SignatureState, signer: string | null): string {
@@ -863,8 +864,8 @@ export class Resources {
     return state === SignatureState.Verified ? `Signed${by}, verified against the keys you trust` : `Signed${by}, but the signature isn't verified`;
   }
 
-  public static readonly commitPullRequestIcon: string = "alt_route";
-  public static readonly commitCommentsIcon: string = "forum";
+  public static readonly commitPullRequestIcon: IconName = "alt_route";
+  public static readonly commitCommentsIcon: IconName = "forum";
 
   /** The row that opens a commit's review comments on its host, with a "+" when the host's answer was cut. */
   public static formatCommitComments(count: number, isCapped: boolean): string {
@@ -907,17 +908,17 @@ export class Resources {
   public static readonly conflictsDocumentName: string = "git.conflicts";
   public static readonly conflictsTitle: string = "Conflicts";
   public static readonly conflictFilesLabel: string = "Files in the operation";
-  public static readonly conflictIcon: string = "warning";
+  public static readonly conflictIcon: IconName = "warning";
   public static readonly resolvedTitle: string = "Resolved";
-  public static readonly resolvedIcon: string = "check_circle";
+  public static readonly resolvedIcon: IconName = "check_circle";
   public static readonly mergedCleanlyTitle: string = "Merged cleanly";
-  public static readonly cleanFileIcon: string = "description";
+  public static readonly cleanFileIcon: IconName = "description";
   public static readonly commitDetailLabel: string = "Commit";
   /** The Commit view, beside the documents, which shows the commit the history document in front chose. */
   public static readonly commitDetailViewName: string = "git.commitView";
   /** The Commit view's one instance, which every history document shows its commit in. */
   public static readonly commitDetailViewInstance: string = "selected";
-  public static readonly commitDetailIcon: string = "commit";
+  public static readonly commitDetailIcon: IconName = "commit";
   /** In the right dock's first group, after the Git panel and the hosts' detail views, before the Conflict view. */
   public static readonly commitDetailDefaultGroup: number = 0;
   public static readonly commitDetailDefaultOrder: number = 45;
@@ -936,7 +937,7 @@ export class Resources {
   public static readonly rebasePreviewViewName: string = "git.rebasePreview";
   /** The Rebase preview view's one instance, which every rebase document shows its preview in. */
   public static readonly rebasePreviewViewInstance: string = "selected";
-  public static readonly rebasePreviewIcon: string = "low_priority";
+  public static readonly rebasePreviewIcon: IconName = "low_priority";
   /** In the right dock's first group, after the Conflict view. */
   public static readonly rebasePreviewDefaultGroup: number = 0;
   public static readonly rebasePreviewDefaultOrder: number = 60;
@@ -945,7 +946,7 @@ export class Resources {
   public static readonly workspaceAcrossViewName: string = "git.workspaceAcross";
   /** The Across repositories view's one instance, which every workspace page shows its repositories in. */
   public static readonly workspaceAcrossViewInstance: string = "selected";
-  public static readonly workspaceAcrossIcon: string = "hub";
+  public static readonly workspaceAcrossIcon: IconName = "hub";
   /** In the right dock's first group, after the Rebase preview view. */
   public static readonly workspaceAcrossDefaultGroup: number = 0;
   public static readonly workspaceAcrossDefaultOrder: number = 70;
@@ -965,23 +966,23 @@ export class Resources {
   public static readonly takeTheirsLabel: string = "Take all theirs";
   public static readonly deleteFileLabel: string = "Delete the file";
   public static readonly resultLabel: string = "Result";
-  public static readonly resultIcon: string = "edit";
+  public static readonly resultIcon: IconName = "edit";
   public static readonly showBaseLabel: string = "Show base";
-  public static readonly baseIcon: string = "history";
+  public static readonly baseIcon: IconName = "history";
   /** The base pane's note: the version both sides started from. */
   public static readonly baseNote: string = "where both sides started";
   public static readonly previousConflictLabel: string = "Previous";
-  public static readonly previousConflictIcon: string = "arrow_upward";
+  public static readonly previousConflictIcon: IconName = "arrow_upward";
   public static readonly nextConflictLabel: string = "Next conflict";
-  public static readonly nextConflictIcon: string = "arrow_downward";
+  public static readonly nextConflictIcon: IconName = "arrow_downward";
   public static readonly markResolvedLabel: string = "Mark resolved";
   public static readonly deletedOnThisSide: string = "This side deleted the file.";
   public static readonly reusedNote: string = "Git reused a recorded resolution of this conflict. Check it before you keep it.";
   public static readonly binaryNote: string = "This file is binary: keep one side's whole file.";
   public static readonly noOperation: string = "No merge, rebase, cherry-pick or revert is in progress.";
   public static readonly otherFolderNote: string = "Open this folder in the Git panel to resolve its conflicts.";
-  public static readonly abortOperationIcon: string = "close";
-  public static readonly continueOperationIcon: string = "check";
+  public static readonly abortOperationIcon: IconName = "close";
+  public static readonly continueOperationIcon: IconName = "check";
 
   public static readonly abortLabels: Readonly<Record<OperationKind, string>> = {
     Merge: "Abort merge", Rebase: "Abort rebase", CherryPick: "Abort cherry-pick", Revert: "Abort revert"
@@ -1110,17 +1111,17 @@ export class Resources {
   public static readonly dragType: string = "text/plain";
   /** A transparent image the rebase screen drags in place of the browser's picture of the row, since it draws the row's card itself. */
   public static readonly blankDragImage: string = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
-  public static readonly checkingIcon: string = "progress_activity";
+  public static readonly checkingIcon: IconName = "progress_activity";
   public static readonly okTone: string = "ok";
   public static readonly warningTone: string = "warning";
   public static readonly mutedTone: string = "muted";
-  public static readonly warningIcon: string = "warning";
+  public static readonly warningIcon: IconName = "warning";
   public static readonly rebaseTitle: string = "Rebase";
-  public static readonly rebaseIcon: string = "low_priority";
-  public static readonly dropRebaseIcon: string = "low_priority";
-  public static readonly dropRequestIcon: string = "alt_route";
-  public static readonly dropCleanIcon: string = "check_circle";
-  public static readonly dropCheckingIcon: string = "progress_activity";
+  public static readonly rebaseIcon: IconName = "low_priority";
+  public static readonly dropRebaseIcon: IconName = "low_priority";
+  public static readonly dropRequestIcon: IconName = "alt_route";
+  public static readonly dropCleanIcon: IconName = "check_circle";
+  public static readonly dropCheckingIcon: IconName = "progress_activity";
   public static readonly dropChecking: string = "Checking for conflicts…";
   public static readonly dropClean: string = "No conflicts predicted";
   public static readonly dropUpToDate: string = "Already merged";
@@ -1187,12 +1188,12 @@ export class Resources {
   public static readonly rebaseScreenLabel: string = "Interactive rebase";
   public static readonly rebaseHint: string = "Drag a row or press Alt+↑ and Alt+↓ to reorder. P, R, E, S, F and D set a row's action. Each row is checked against the commits before it, so you see a conflict before you start.";
   public static readonly tidyUpLabel: string = "Tidy up for review";
-  public static readonly tidyUpIcon: string = "auto_awesome";
+  public static readonly tidyUpIcon: IconName = "stars_2";
   public static readonly actionColumn: string = "Action";
   public static readonly commitColumn: string = "Commit";
   public static readonly messageColumn: string = "Message";
   public static readonly checkColumn: string = "Check";
-  public static readonly dragIcon: string = "drag_indicator";
+  public static readonly dragIcon: IconName = "drag_indicator";
   public static readonly rebaseActionTitles: Readonly<Record<RebaseAction, string>> = {
     Pick: "Pick", Reword: "Reword", Edit: "Edit", Squash: "Squash", Fixup: "Fixup", Drop: "Drop"
   };
@@ -1210,8 +1211,8 @@ export class Resources {
   public static readonly droppedRefused: string = "nothing before it to fold into";
   /** The most places the advice after the summary tries for the conflicting row, nearest first, one check each. */
   public static readonly advicePlaces: number = 20;
-  public static readonly checkIcons: Readonly<Record<RebaseCheckOutcome, string>> = {
-    Clean: "check_circle", Conflicts: "warning", Folded: "merge_type", Dropped: "remove_circle_outline", Unavailable: "help"
+  public static readonly checkIcons: Readonly<Record<RebaseCheckOutcome, IconName>> = {
+    Clean: "check_circle", Conflicts: "warning", Folded: "merge_type", Dropped: "do_not_disturb_on", Unavailable: "help"
   };
   public static readonly moveStackedLabel: string = "Move stacked branches with it";
   public static readonly foldFixupsLabel: string = "Fold fixup! commits into their targets";
@@ -1221,7 +1222,7 @@ export class Resources {
   public static readonly runTestsLabel: string = "Run the tests after each commit";
   public static readonly runTestsNote: string = "stops at the first commit that fails";
   public static readonly startRebaseLabel: string = "Start rebase";
-  public static readonly startIcon: string = "play_arrow";
+  public static readonly startIcon: IconName = "play_arrow";
   public static readonly nowLabel: string = "Now";
   public static readonly afterLabel: string = "After";
   public static readonly movedTooLabel: string = "moved too";
@@ -1302,14 +1303,14 @@ export class Resources {
   /** The page of the repositories opened lately: its tab, heading and entry beside the workspaces. */
   public static readonly dashboardTitle: string = "Dashboard";
   public static readonly openDashboardTitle: string = "Open dashboard";
-  public static readonly dashboardIcon: string = "dashboard";
-  public static readonly workspaceIcon: string = "workspaces";
-  public static readonly addIcon: string = "add";
-  public static readonly fetchAllIcon: string = "download";
-  public static readonly moveUpIcon: string = "arrow_upward";
-  public static readonly moveDownIcon: string = "arrow_downward";
-  public static readonly removeIcon: string = "close";
-  public static readonly filterIcon: string = "filter_list";
+  public static readonly dashboardIcon: IconName = "dashboard";
+  public static readonly workspaceIcon: IconName = "workspaces";
+  public static readonly addIcon: IconName = "add";
+  public static readonly fetchAllIcon: IconName = "download";
+  public static readonly moveUpIcon: IconName = "arrow_upward";
+  public static readonly moveDownIcon: IconName = "arrow_downward";
+  public static readonly removeIcon: IconName = "close";
+  public static readonly filterIcon: IconName = "filter_list";
   public static readonly workspacesHeading: string = "Workspaces";
   public static readonly newWorkspaceTitle: string = "New workspace";
   public static readonly renameWorkspaceTitle: string = "Rename workspace";
@@ -1419,9 +1420,9 @@ export class Resources {
   public static readonly needsYouHeading: string = "Needs you";
   public static readonly agentsAtWorkHeading: string = "Agents at work";
   public static readonly nothingNeedsYou: string = "Nothing across these repositories needs you.";
-  public static readonly sharedBranchIcon: string = "link";
-  public static readonly behindIcon: string = "sync_problem";
-  public static readonly reviewIcon: string = "rate_review";
+  public static readonly sharedBranchIcon: IconName = "link";
+  public static readonly behindIcon: IconName = "sync_problem";
+  public static readonly reviewIcon: IconName = "rate_review";
   public static readonly openLabel: string = "Open";
   public static readonly reviewLabel: string = "Review";
   public static readonly pushAllLabel: string = "Push all";
@@ -1432,9 +1433,9 @@ export class Resources {
   public static readonly bulkNoUpstream: string = "it has no upstream on its remote";
   public static readonly bulkBranchChanged: string = "its branch, upstream or remote changed since you confirmed";
   public static readonly bulkNotBehind: string = "it is no longer only behind its upstream";
-  public static readonly stackIcon: string = "stacks";
+  public static readonly stackIcon: IconName = "stacks";
   public static readonly bulkBranchNameRefused: string = "Git doesn't take that branch name";
-  public static readonly newBranchIcon: string = "call_split";
+  public static readonly newBranchIcon: IconName = "call_split";
   public static readonly newBranchText: string = "Each repository gets the branch at its current commit and switches to it:";
   public static readonly branchNameRefused: string = "Git doesn't take this as a branch name.";
 

@@ -67,7 +67,7 @@ describe("GitFileGroupComponent", () => {
     const folders: readonly string[] = lines();
     const folderIcons: readonly string[] = icons();
     await view.chooseAsync("nol-git-file-group:nth-of-type(2) .layout button", "Tree");
-    await view.untilAsync(() => lines().includes("expand_more folder app/deep"));
+    await view.untilAsync(() => lines().includes("keyboard_arrow_down folder app/deep"));
     const tree: readonly string[] = lines();
     const insets: readonly number[] = [
       insetOf("nol-git-file-group:nth-of-type(2) li:nth-child(3) .folder", ".material-symbols-rounded:nth-child(2)"),
@@ -80,14 +80,14 @@ describe("GitFileGroupComponent", () => {
     const closed: readonly string[] = lines();
     await view.chooseAsync(".layout button", "List");
 
-    expect(folders).toEqual(["expand_more folder src", "s.ts", "a.ts", "expand_more folder docs", "c.md", "expand_more folder src", "b.ts",
-      "expand_more folder src/app/deep", "d.ts", "z.ts"]);
-    expect(tree).toEqual(["expand_more folder src", "s.ts", "a.ts", "expand_more folder docs", "c.md", "expand_more folder src", "expand_more folder app/deep", "d.ts",
+    expect(folders).toEqual(["keyboard_arrow_down folder src", "s.ts", "a.ts", "keyboard_arrow_down folder docs", "c.md", "keyboard_arrow_down folder src", "b.ts",
+      "keyboard_arrow_down folder src/app/deep", "d.ts", "z.ts"]);
+    expect(tree).toEqual(["keyboard_arrow_down folder src", "s.ts", "a.ts", "keyboard_arrow_down folder docs", "c.md", "keyboard_arrow_down folder src", "keyboard_arrow_down folder app/deep", "d.ts",
       "b.ts", "z.ts"]);
     expect(insets).toEqual([1.625, 3, 3, 1.625]);
     expect([folderIcons, treeIcons]).toEqual([["folder_open", "folder_open"], ["account_tree", "account_tree"]]);
     expect(view.all(".layout button").map(t => t.getAttribute("aria-label"))).toEqual(["Show files as", "Show files as"]);
-    expect(closed).toEqual(["expand_more folder src", "s.ts", "a.ts", "expand_more folder docs", "c.md", "chevron_right folder src", "z.ts"]);
+    expect(closed).toEqual(["keyboard_arrow_down folder src", "s.ts", "a.ts", "keyboard_arrow_down folder docs", "c.md", "chevron_right folder src", "z.ts"]);
     expect(lines()).toEqual(["src/s.ts", "src/a.ts", "z.ts", "docs/c.md", "src/b.ts", "src/app/deep/d.ts"]);
   });
 

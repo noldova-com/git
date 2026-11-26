@@ -183,7 +183,7 @@ describe("GitCommitCardComponent", () => {
     await view.untilAsync(() => view.all(".suggest").length === 1);
     const suggest: HTMLButtonElement = view.find<HTMLButtonElement>(".suggest");
 
-    expect([off, view.texts(".suggest"), suggest.disabled, suggest.title]).toEqual([[0, 1], ["auto_awesomeSuggest"], true, "Not built yet"]);
+    expect([off, view.texts(".suggest"), suggest.disabled, suggest.title]).toEqual([[0, 1], ["stars_2Suggest"], true, "Not built yet"]);
   });
   it.each([
     [SigningFormat.Ssh, "Signed with SSH key"],

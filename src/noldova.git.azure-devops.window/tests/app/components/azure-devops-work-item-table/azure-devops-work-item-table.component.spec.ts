@@ -162,8 +162,8 @@ describe("AzureDevOpsWorkItemTableComponent", () => {
     const outer = [ids(), toggles()];
     click("7490");
 
-    expect(first).toEqual([["7490", "7521", "7540", "7522", "7530"], [["1", "true", "Collapse Markdown export", "expand_more"],
-      ["2", "true", "Collapse Export notes as Markdown files", "expand_more"], ["3", null, null, null], ["2", null, null, null], ["1", null, null, null]]]);
+    expect(first).toEqual([["7490", "7521", "7540", "7522", "7530"], [["1", "true", "Collapse Markdown export", "keyboard_arrow_down"],
+      ["2", "true", "Collapse Export notes as Markdown files", "keyboard_arrow_down"], ["3", null, null, null], ["2", null, null, null], ["1", null, null, null]]]);
     expect([inner, outer, ids(), chosen]).toEqual([["7490", "7521", "7522", "7530"],
       [["7490", "7530"], [["1", "false", "Expand Markdown export", "chevron_right"], ["1", null, null, null]]], ["7490", "7521", "7522", "7530"], []]);
   });

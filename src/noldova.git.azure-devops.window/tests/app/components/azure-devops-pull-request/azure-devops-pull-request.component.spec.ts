@@ -270,7 +270,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
       [AzureDevOpsNames.readMergeTypesMethod, AzureDevOpsNames.readPullRequestChangesMethod, AzureDevOpsNames.readPullRequestThreadsMethod,
         AzureDevOpsNames.readPullRequestUpdatesMethod, AzureDevOpsNames.readSignInMethod].sort(), [null, null], [reference.toJson()], [reference.toJson()]]);
     expect(page.texts(".title-line")).toEqual(["radio_button_checked Active !752 Export notes as Markdown from the shared notes list open_in_new Open in Azure DevOps"]);
-    expect(page.texts(".vote-line")).toEqual(["Your vote: Rejected. Votes and comments go to Azure DevOps as you. check Approve expand_more"]);
+    expect(page.texts(".vote-line")).toEqual(["Your vote: Rejected. Votes and comments go to Azure DevOps as you. check Approve keyboard_arrow_down"]);
     expect(page.texts(".meta")).toEqual([`M monalisa@fabrikam.test wants to merge users/monalisa/7521-export-notes into main · 5 commits · opened ${opened}`
       + " schedule Completes by itself once its policies pass"]);
     expect(page.texts(".tab")).toEqual(["Overview", "Files 0", "Updates 0", "Commits 5", "Conflicts"]);
