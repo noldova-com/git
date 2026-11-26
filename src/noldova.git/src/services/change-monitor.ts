@@ -177,10 +177,15 @@ export class ChangeMonitor {
     }
   }
 
-  /** Whether a change in the worktree's own git folder refreshes it; a changed index also makes the ignore check forget the worktree's answers. */
+  /**
+   * Whether a change in the worktree's own git folder refreshes it; a changed index also makes the ignore check forget the worktree's answers, and the
+   * watch of each folder ask again about the folders it skipped, as a file added there is shown.
+   */
   private acceptsGitFile(watched: WatchedWorktree, name: string): boolean {
-    if (name === Resources.indexFile)
+    if (name === Resources.indexFile) {
       this.ignored.forgetIndex(watched.folders.top);
+      watched.folderTree?.recheck();
+    }
     return Resources.watchedGitFiles.includes(name);
   }
 

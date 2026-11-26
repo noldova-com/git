@@ -870,6 +870,33 @@ describe("ChangeMonitor", () => {
       assert.deepEqual([whileHidden, starts.mock.calls.length, closedOnHide, closes.mock.calls.length, changes.length, unnamed.milliseconds], [0, 2, 1, 2, 2, DEBOUNCE]);
     });
 
+    test("watches a folder git ignored once a file added there changes the index, so an edit of that file refreshes the worktree at once", async () => {
+      await repository.writeAsync(".gitignore", "bin/\n");
+      await mkdir(path.join(repository.folder, "bin"));
+      await repository.writeAsync("bin/keep.dll", "kept\n");
+      const starts = vi.spyOn(FolderTreeWatch.prototype, "startAsync");
+      const bin = path.join(repository.folder, "bin");
+      const isBinWatched = (): boolean => vi.mocked(watch).mock.calls.some(t => t[0] === bin);
+      monitor.watch(KEY, repository.folder, folders());
+      await startedAsync();
+      monitor.setVisible(KEY, true);
+      await fireNextAsync(DEBOUNCE);
+      await untilChangesAsync(1);
+      await starts.mock.results[0]?.value;
+      const before = isBinWatched();
+
+      await repository.runGitAsync(["add", "--force", "bin/keep.dll"]);
+      await fireNextAsync(DEBOUNCE);
+      await untilChangesAsync(2);
+      while (!isBinWatched())
+        await new Promise<void>(resolve => setImmediate(resolve));
+      await repository.writeAsync("bin/keep.dll", "edited\n");
+      await fireNextAsync(DEBOUNCE);
+      await untilChangesAsync(3);
+
+      assert.deepEqual([before, changes.length, lines], [false, 3, []]);
+    });
+
     test("checks a shown worktree every few seconds when it has more folders than the module watches or a folder's watch fails, logging why", async () => {
       const starts = vi.spyOn(FolderTreeWatch.prototype, "startAsync");
       const limit = Resources.treeFoldersLimit;

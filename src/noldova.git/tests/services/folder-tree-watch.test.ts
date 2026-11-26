@@ -45,6 +45,8 @@ describe("FolderTreeWatch", () => {
   let listeners: (() => boolean)[];
   /** The error code a folder's watch fails with as it starts, by the folder relative to the worktree, or null to start it. */
   let refusing: (folder: string) => string | null;
+  /** The ignore check of the watch `create` made last. */
+  let paths: IgnoredPaths;
 
   beforeAll(async () => {
     template = await RepositoryFixture.createAsync();
@@ -88,7 +90,8 @@ describe("FolderTreeWatch", () => {
       return watcher;
     });
     create = () => {
-      const created = new FolderTreeWatch(repository.folder, repository.folder, new IgnoredPaths(new ProgramRunner(supervisor.context)), name => {
+      paths = new IgnoredPaths(new ProgramRunner(supervisor.context));
+      const created = new FolderTreeWatch(repository.folder, repository.folder, paths, name => {
         names.push(name);
         hear();
       }, error => {
@@ -167,15 +170,18 @@ describe("FolderTreeWatch", () => {
     }
   };
   /**
-   * Removes a folder until no watch is left in it or under it: on macOS the shared event stream can lose the removal under load, so the watches of the
-   * folders around it never hear it, and making the folder again and removing it gives them another event to hear.
+   * Removes a folder and waits until no watch is left in it or under it. On macOS only, where the module watches the whole tree at once, it removes the
+   * folder again while a watch is left, as the shared event stream can lose the removal under load; elsewhere one removal must drop every watch.
    */
   const removedAsync = async (folder: string): Promise<void> => {
     const isWatched = (): boolean => live().some(t => t === folder || t.startsWith(`${folder}/`));
-    for (let round = 0; isWatched(); round++) {
-      if (round > 0)
-        await mkdir(path.join(repository.folder, folder), { recursive: true });
-      await rm(path.join(repository.folder, folder), { recursive: true, force: true });
+    const isLossy = process.platform === "darwin";
+    for (let round = 0; round === 0 || isWatched(); round++) {
+      if (round === 0 || isLossy) {
+        if (round > 0)
+          await mkdir(path.join(repository.folder, folder), { recursive: true });
+        await rm(path.join(repository.folder, folder), { recursive: true, force: true });
+      }
       await new Promise<void>(resolve => setImmediate(resolve));
       await checkedAsync();
     }
@@ -196,7 +202,7 @@ describe("FolderTreeWatch", () => {
     return { folders, answers };
   };
 
-  test("watches the worktree and each folder in it git doesn't ignore, never the git folder or an ignored one, and names a changed file by its path, looking at what a name is only once it is renamed, and never for the git folder", async () => {
+  test("watches the worktree and each folder in it git doesn't ignore, never the git folder or an ignored one, and names a changed file by its path, looking at what a name is only once it is renamed, never for the git folder, and keeping one watch of a folder renamed in place", async () => {
     await tree.startAsync();
     const watched = live();
     await heardAsync("src/deep/a.txt");
@@ -204,8 +210,13 @@ describe("FolderTreeWatch", () => {
     openedOf("").watcher.emit("change", "change", null);
     openedOf("").watcher.emit("change", "change", "a.txt");
     openedOf("").watcher.emit("change", "rename", ".git");
+    const named = names.slice(-3);
+    const unlooked = vi.mocked(stat).mock.calls.length - looked;
+    openedOf("").watcher.emit("change", "rename", "src");
+    await checkedAsync();
 
-    assert.deepEqual([watched, names.slice(-3), vi.mocked(stat).mock.calls.length - looked, failures], [["", "src", "src/deep"], [null, "a.txt", ".git"], 0, []]);
+    assert.deepEqual([watched, named, unlooked, vi.mocked(stat).mock.calls.length - looked, live(), failures],
+      [["", "src", "src/deep"], [null, "a.txt", ".git"], 0, 1, ["", "src", "src/deep"], []]);
   });
 
   test("watches a folder made later unless git ignores it, and drops the watches of a folder removed", async () => {
@@ -301,6 +312,26 @@ describe("FolderTreeWatch", () => {
     await new Promise<void>(resolve => setImmediate(resolve));
 
     assert.deepEqual([afterGone, failures.map(String), names.includes("src/late.txt")], [["", "src"], ["Error: The folder failed."], false]);
+  });
+
+  test("asks git again about the folders it skipped once told the index changed, watching one that holds a tracked file with its own tree, and forgets those in a folder removed", async () => {
+    const asked = askedOf();
+    await tree.startAsync();
+    const before = live();
+    tree.recheck();
+    await repository.writeAsync("bin/keep.dll", "kept\n");
+    await repository.runGitAsync(["add", "--force", "bin/keep.dll"]);
+    paths.forgetIndex(repository.folder);
+    tree.recheck();
+    await untilAsync(() => live().includes("bin"));
+    const added = live();
+    await heardAsync("bin/keep.dll");
+    await removedAsync("bin");
+    tree.recheck();
+    tree.close();
+    tree.recheck();
+
+    assert.deepEqual([before, added, asked.folders.some(t => t.includes("bin/obj")), failures], [["", "src", "src/deep"], ["", "bin", "src", "src/deep"], true, []]);
   });
 
   test("skips a folder gone before its watch starts, and fails the start on any other error watching one", async () => {

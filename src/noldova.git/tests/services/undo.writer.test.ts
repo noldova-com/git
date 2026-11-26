@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 import assert from "node:assert/strict";
+import { realpath } from "node:fs/promises";
 import path from "node:path";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
@@ -18,6 +19,7 @@ import type { GitFailureException } from "../../src/exceptions/git-failure.excep
 import { UndoDuringOperationException } from "../../src/exceptions/undo-during-operation.exception.ts";
 import { UndoMovedException } from "../../src/exceptions/undo-moved.exception.ts";
 import { UndoNotPossibleException } from "../../src/exceptions/undo-not-possible.exception.ts";
+import { UndoBranchCheckedOutException } from "../../src/exceptions/undo-branch-checked-out.exception.ts";
 import { UndoOtherWorktreeException } from "../../src/exceptions/undo-other-worktree.exception.ts";
 import { UndoUnknownException } from "../../src/exceptions/undo-unknown.exception.ts";
 import type { IGitWrite } from "../../src/interfaces/i-git-write.ts";
@@ -373,5 +375,27 @@ describe("UndoWriter", () => {
 
     assert.deepEqual([heads, await repository.runGitAsync(["branch", "--list", "at-side"]), (await repository.runGitAsync(["-C", other, "rev-parse", "HEAD"])).trim(), await statusOf()],
       [[made, made], "", made, "A  c.txt\n"]);
+  });
+
+  test("refuses to undo a branch one worktree made at a commit while another has it checked out, naming that worktree, and undoes it once that worktree has left it", async () => {
+    const other = path.join(path.dirname(repository.folder), "other");
+    await repository.runGitAsync(["worktree", "add", "--quiet", "--detach", other, "HEAD"]);
+    const otherFolders = await new RepositoryReader(runner, new GitVersionReader(runner)).readAsync(other);
+    await writes.runAsync(otherFolders, (await statuses.readAsync(otherFolders)).fingerprint, new BranchAtWriter(runner, "side-copy", await idOf("HEAD")), null);
+    const made = journal.read(otherFolders.commonGitFolder).entries.at(-1);
+    assert.ok(made !== undefined);
+    await repository.runGitAsync(["switch", "--quiet", "side-copy"]);
+    const undoInOtherAsync = async (): Promise<void> => {
+      await writes.runAsync(otherFolders, (await statuses.readAsync(otherFolders)).fingerprint, new UndoWriter(runner, snapshots, journal, store, made.id), null);
+    };
+
+    const refusal: unknown = await undoInOtherAsync().then(() => null, (error: unknown) => error);
+    const kept = await repository.runGitAsync(["branch", "--list", "side-copy"]);
+    await repository.runGitAsync(["switch", "--quiet", "main"]);
+    await undoInOtherAsync();
+
+    assert.ok(refusal instanceof UndoBranchCheckedOutException);
+    assert.deepEqual([refusal.branch, await realpath(refusal.worktree), refusal.code, kept, await repository.runGitAsync(["branch", "--list", "side-copy"])],
+      ["side-copy", await realpath(repository.folder), FailureCode.Refused, "* side-copy\n", ""]);
   });
 });

@@ -11,6 +11,7 @@ import { type IPermissionDetail, type IPermissionRequest, PermissionDetailKind, 
 import { GitNames, type GitJournalEntry, type GitRefMove, type GitStatus, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
+import { UndoBranchCheckedOutException } from "../exceptions/undo-branch-checked-out.exception.ts";
 import { UndoDuringOperationException } from "../exceptions/undo-during-operation.exception.ts";
 import { UndoMovedException } from "../exceptions/undo-moved.exception.ts";
 import { UndoNotPossibleException } from "../exceptions/undo-not-possible.exception.ts";
@@ -29,6 +30,7 @@ import { FilePresence } from "./file-presence.ts";
 import type { Journal } from "./journal.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 import type { RefSnapshotReader } from "./ref-snapshot.reader.ts";
+import { WorktreesReader } from "./worktrees.reader.ts";
 
 /**
  * Undoes a write the journal recorded, only while everything it would put back is still where the write left it: the index's tree, or the
@@ -44,6 +46,7 @@ export class UndoWriter implements IGitWrite {
   private readonly snapshots: RefSnapshotReader;
   private readonly journal: Journal;
   private readonly checkpoints: CheckpointStore;
+  private readonly worktrees: WorktreesReader;
   private readonly id: string;
 
   public readonly method: string = GitNames.undoMethod;
@@ -54,6 +57,7 @@ export class UndoWriter implements IGitWrite {
     this.snapshots = snapshots;
     this.journal = journal;
     this.checkpoints = checkpoints;
+    this.worktrees = new WorktreesReader(runner);
     this.id = id;
   }
 
@@ -83,26 +87,40 @@ export class UndoWriter implements IGitWrite {
       this.journal.remove(folders.commonGitFolder, entry.id);
       return;
     }
+    const rename = UndoWriter.renameBackOf(entry);
+    const head = UndoWriter.headMoveOf(entry);
+    const rest = rename !== null ? []
+      : entry.undo === UndoMode.Mixed || entry.undo === UndoMode.Keep ? entry.moves.filter(t => t !== head)
+      : entry.undo === UndoMode.Switch ? entry.moves.filter(t => t.name !== Resources.headRevision)
+      : entry.moves;
+    await this.refuseCheckedOutAsync(folders, rest, signal);
     if (entry.undo === UndoMode.Index)
       await this.runGitAsync(folders, [...Resources.readTreeArguments, String(entry.indexBefore)], signal);
     if (entry.undo === UndoMode.Checkpoint)
       await this.checkpoints.restoreAsync(folders.top, String(entry.checkpoint), entry.paths, signal);
-    let rest = entry.moves;
-    const rename = UndoWriter.renameBackOf(entry);
-    if (rename !== null) {
+    if (rename !== null)
       await this.runGitAsync(folders, rename, signal);
-      rest = [];
-    } else if (entry.undo === UndoMode.Mixed || entry.undo === UndoMode.Keep) {
-      const head = UndoWriter.headMoveOf(entry);
+    else if (entry.undo === UndoMode.Mixed || entry.undo === UndoMode.Keep)
       await this.runGitAsync(folders, [...Resources.resetArguments, Resources.resetOptionOf(entry.undo), UndoWriter.resetTargetOf(head)], signal);
-      rest = rest.filter(t => t !== head);
-    } else if (entry.undo === UndoMode.Switch) {
+    else if (entry.undo === UndoMode.Switch)
       await this.runGitAsync(folders, UndoWriter.switchBackOf(entry, now), signal);
-      rest = rest.filter(t => t.name !== Resources.headRevision);
-    }
     if (rest.length > 0)
       await this.runGitAsync(folders, Resources.updateRefsArguments, signal, rest.map(t => UndoWriter.commandOf(t)).join(""));
     this.journal.remove(folders.commonGitFolder, entry.id);
+  }
+
+  /**
+   * Refuses to delete or move a branch that another worktree has checked out, as `update-ref` doesn't look at other worktrees the way `git branch` does:
+   * it would leave that worktree on a branch that is gone, or on another commit under its files.
+   */
+  private async refuseCheckedOutAsync(folders: RepositoryFolders, moves: readonly GitRefMove[], signal?: AbortSignal): Promise<void> {
+    const branches = moves.filter(t => t.name.startsWith(Resources.branchRefsPrefix)).map(t => t.name.slice(Resources.branchRefsPrefix.length));
+    if (branches.length === 0)
+      return;
+    const here = path.resolve(folders.top);
+    for (const worktree of (await this.worktrees.readAsync(folders.top, signal)).worktrees)
+      if (worktree.branch !== null && branches.includes(worktree.branch) && path.relative(path.resolve(worktree.path), here) !== "")
+        throw new UndoBranchCheckedOutException(worktree.branch, worktree.path);
   }
 
   /**

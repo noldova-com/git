@@ -8,7 +8,7 @@
 
 import type { Signal } from "@angular/core";
 
-/** A pull request's page that's open: its document's instance, the pull request's key, and whether it's the window's active document. */
+/** A pull request's page that's open: its document's instance, which is the pull request's key, and whether it's the window's active document. */
 export class FollowedPullRequestPage {
   public readonly instance: Signal<string>;
   public readonly active: Signal<boolean>;

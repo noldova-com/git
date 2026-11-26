@@ -16,7 +16,8 @@ import type { IgnoredPaths } from "./ignored-paths.ts";
 /**
  * Watches each folder of a worktree that git doesn't ignore, on a system whose file watch covers one folder, not a tree: it walks the tree a level at a
  * time, asking git once a level which of its folders it ignores, so a build's output or a package folder takes no watch, and it adds a folder made later
- * and drops one removed. A changed ignore file walks the tree again, as it can change which folders git ignores.
+ * and drops one removed. A changed ignore file walks the tree again, as it can change which folders git ignores, and a changed index asks again about
+ * the folders it skipped, as a file added there makes git stop ignoring its folder.
  */
 export class FolderTreeWatch {
   private readonly worktree: string;
@@ -25,6 +26,8 @@ export class FolderTreeWatch {
   private readonly onChange: (name: string | null) => void;
   private readonly onFailed: (error: unknown) => void;
   private readonly watchers: Map<string, FSWatcher> = new Map();
+  /** The folders a walk found git ignores, so gave no watch, relative to the worktree with `/`. */
+  private readonly skipped: Set<string> = new Set();
   private readonly stop: AbortController = new AbortController();
   private walks: Promise<void> = Promise.resolve();
 
@@ -50,11 +53,18 @@ export class FolderTreeWatch {
     }
   }
 
+  /** Asks git again about the folders it skipped as ignored, once the index changed, and watches each one git no longer ignores, with its tree. */
+  public recheck(): void {
+    if (!this.stop.signal.aborted)
+      this.follow(this.serially(() => this.recheckAsync()));
+  }
+
   public close(): void {
     this.stop.abort();
     for (const watcher of this.watchers.values())
       watcher.close();
     this.watchers.clear();
+    this.skipped.clear();
   }
 
   /** Watches a folder and the folders under it that git doesn't ignore, a level at a time, failing once that would pass the limit. */
@@ -67,6 +77,8 @@ export class FolderTreeWatch {
         this.add(folder);
       const children = (await Promise.all(level.map(t => this.childrenAsync(t)))).flat();
       const ignored = await this.ignored.ignoredFoldersAsync(this.top, children, this.stop.signal);
+      for (const folder of children.filter(t => ignored.has(t)))
+        this.skipped.add(folder);
       level = children.filter(t => !ignored.has(t) && !this.watchers.has(t));
     }
   }
@@ -89,6 +101,7 @@ export class FolderTreeWatch {
    */
   private add(folder: string): void {
     this.stop.signal.throwIfAborted();
+    this.skipped.delete(folder);
     let watcher: FSWatcher;
     try {
       watcher = watch(path.join(this.worktree, folder), { persistent: false }, (event, name) => this.note(folder, event, name));
@@ -125,14 +138,29 @@ export class FolderTreeWatch {
     });
     if (!isFolder) {
       for (const [folder, watcher] of this.watchers)
-        if (folder === changed || folder.startsWith(`${changed}/`)) {
+        if (FolderTreeWatch.isIn(folder, changed)) {
           watcher.close();
           this.watchers.delete(folder);
         }
+      for (const folder of [...this.skipped].filter(t => FolderTreeWatch.isIn(t, changed)))
+        this.skipped.delete(folder);
       return;
     }
-    if (!this.watchers.has(changed) && !(await this.ignored.ignoredFoldersAsync(this.top, [changed], this.stop.signal)).has(changed))
+    if (this.watchers.has(changed))
+      return;
+    if ((await this.ignored.ignoredFoldersAsync(this.top, [changed], this.stop.signal)).has(changed))
+      this.skipped.add(changed);
+    else
       await this.addTreeAsync(changed);
+  }
+
+  private async recheckAsync(): Promise<void> {
+    const skipped = [...this.skipped];
+    if (skipped.length === 0)
+      return;
+    const ignored = await this.ignored.ignoredFoldersAsync(this.top, skipped, this.stop.signal);
+    for (const folder of skipped.filter(t => !ignored.has(t)))
+      await this.addTreeAsync(folder);
   }
 
   /** Walks the tree again from its top, as a changed ignore file can ignore a watched folder or stop ignoring one. */
@@ -141,6 +169,7 @@ export class FolderTreeWatch {
     for (const watcher of this.watchers.values())
       watcher.close();
     this.watchers.clear();
+    this.skipped.clear();
     await this.addTreeAsync("");
   }
 
@@ -172,6 +201,11 @@ export class FolderTreeWatch {
       this.close();
       this.onFailed(error);
     });
+  }
+
+  /** Whether a folder is the given one or inside it. */
+  private static isIn(folder: string, outer: string): boolean {
+    return folder === outer || folder.startsWith(`${outer}/`);
   }
 
   private static join(folder: string, name: string): string {

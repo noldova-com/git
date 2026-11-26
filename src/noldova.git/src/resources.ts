@@ -1090,6 +1090,10 @@ export class Resources {
     return `The worktree was removed, but git kept its branch ${branch}, which holds commits that aren't merged.`;
   }
 
+  public static formatUndoBranchCheckedOut(branch: string, worktree: string): string {
+    return `The branch ${branch} is checked out in the worktree ${worktree}, so undoing the write would change that worktree's files; switch it to another branch first.`;
+  }
+
   public static formatWorktreeBranchCheckedOut(branch: string): string {
     return `The branch ${branch} is already checked out in another worktree.`;
   }
