@@ -71,28 +71,28 @@ describe("GitLastWriteUndo", () => {
   const callsOf = (context: FakeWindowPartContext, method: string): number => context.callsOf("requestAsync").filter(t => t[0] === method).length;
   const logs = (context: FakeWindowPartContext): readonly unknown[] => context.callsOf("log").map(t => t[0]);
 
-  it("greys Undo until the journal's newest write can be undone, then undoes it based on the status read with it and reaches the write before", async () => {
-    const journals: JsonValue[] = [journalOf(write("5", UndoMode.Index), write("6", UndoMode.None)), journalOf(write("5", UndoMode.Index), write("6", UndoMode.Index)),
-      journalOf(write("5", UndoMode.Index))];
-    const statuses: string[] = ["f1", "f2", "f3"];
+  it("greys Undo while the journal's newest write can't be undone, then undoes it based on the status read with it and reaches the write before", async () => {
+    const journals: JsonValue[] = [journalOf(write("5", UndoMode.Index)), journalOf(write("5", UndoMode.Index), write("6", UndoMode.None)),
+      journalOf(write("5", UndoMode.Index), write("6", UndoMode.Index)), journalOf(write("5", UndoMode.Index))];
+    const statuses: string[] = ["f1", "f2", "f3", "f4"];
     const { context, provider, provide } = setUp();
     GitFixtures.answerWith(context, { "git.status": () => statusOf(statuses.shift() ?? "f9"), "git.journal": () => journals.shift() ?? journalOf(), "git.undo": null });
     provide();
     const undo: IUndoProvider | null = provider();
-    await Wait.until(() => callsOf(context, "git.journal") === 1);
-    await Promise.resolve();
-    const before: boolean | undefined = undo?.canUndo();
+    await Wait.until(() => undo?.canUndo() === true);
 
     context.raiseEvent("git.changed", { folder: "/elsewhere" });
+    context.raiseEvent("git.changed", { folder: GitFixtures.folder });
+    await Wait.until(() => undo?.canUndo() === false);
     context.raiseEvent("git.changed", { folder: GitFixtures.folder });
     await Wait.until(() => undo?.canUndo() === true);
     const running: Promise<void> | undefined = undo?.undoAsync();
     const whileRunning: boolean | undefined = undo?.canUndo();
     await running;
-    await Wait.until(() => callsOf(context, "git.journal") === 3 && undo?.canUndo() === true);
+    await Wait.until(() => callsOf(context, "git.journal") === 4 && undo?.canUndo() === true);
 
-    expect([before, whileRunning, callsOf(context, "git.journal"), context.activeCallsOf("provideUndo").length]).toEqual([false, false, 3, 1]);
-    expect(undoCalls(context)).toEqual([{ folder: GitFixtures.folder, id: "6", basedOn: "f2" }]);
+    expect([whileRunning, callsOf(context, "git.journal"), context.activeCallsOf("provideUndo").length]).toEqual([false, 4, 1]);
+    expect(undoCalls(context)).toEqual([{ folder: GitFixtures.folder, id: "6", basedOn: "f3" }]);
   });
 
   it("asks nothing for a second Undo before the journal is read again, and reads it again after an undo Git refuses, whose failure the window reports", async () => {
@@ -143,8 +143,7 @@ describe("GitLastWriteUndo", () => {
     await held.answerAsync("git.journal", journalOf());
     left(journalOf(write("6", UndoMode.Index)));
     failedLate(new Error("Too late."));
-    await Promise.resolve();
-    await Promise.resolve();
+    await Wait.drainedAsync();
 
     expect([none, undo?.canUndo()]).toEqual([[false, 0], false]);
     expect(logs(context)).toEqual([Resources.formatUndoReadFailed(GitFixtures.folder, "Error: The runtime went away.")]);

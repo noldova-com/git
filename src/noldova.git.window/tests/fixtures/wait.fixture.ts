@@ -13,4 +13,15 @@ export class Wait {
     while (!check())
       await new Promise<void>(resolve => setTimeout(resolve, Wait.POLL_INTERVAL));
   }
+
+  public static drainedAsync(): Promise<void> {
+    const channel: MessageChannel = new MessageChannel();
+    return new Promise<void>(resolve => {
+      channel.port1.onmessage = (): void => {
+        channel.port1.close();
+        resolve();
+      };
+      channel.port2.postMessage(null);
+    });
+  }
 }
