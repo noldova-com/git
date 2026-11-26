@@ -30,7 +30,8 @@
             ],
             "providersFile": "tests/test-providers.ts",
             "setupFiles": [
-              "tests/kit-stylesheet.setup.ts"
+              "tests/kit-stylesheet.setup.ts",
+              "tests/git-viewing.setup.ts"
             ],
             "watch": false,
             "coverage": true,
