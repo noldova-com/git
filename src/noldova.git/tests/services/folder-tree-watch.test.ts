@@ -327,11 +327,17 @@ describe("FolderTreeWatch", () => {
     const added = live();
     await heardAsync("bin/keep.dll");
     await removedAsync("bin");
+    const removed = asked.folders.length;
     tree.recheck();
+    // Walks run one at a time, so the walk a changed ignore file starts asks only once the recheck before it has: its first question comes first.
+    await heardAsync(".gitignore");
+    await untilAsync(() => asked.folders.length > removed);
+    const afterRemoved = asked.folders[removed];
     tree.close();
     tree.recheck();
 
-    assert.deepEqual([before, added, asked.folders.some(t => t.includes("bin/obj")), failures], [["", "src", "src/deep"], ["", "bin", "src", "src/deep"], true, []]);
+    assert.deepEqual([before, added, asked.folders.some(t => t.includes("bin/obj")), afterRemoved, failures],
+      [["", "src", "src/deep"], ["", "bin", "src", "src/deep"], true, ["src"], []]);
   });
 
   test("skips a folder gone before its watch starts, and fails the start on any other error watching one", async () => {
