@@ -20,6 +20,7 @@ import { GitPullRequests } from "../../../../src/app/services/git-pull-requests.
 import { GitRebaseTarget, GitRebasing } from "../../../../src/app/services/git-rebasing.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
+import { Wait } from "../../../fixtures/wait.fixture.ts";
 
 /** A mounted history, with the errors it reported. */
 class MountedHistory {
@@ -64,14 +65,14 @@ describe("GitHistoryComponent branch drops", () => {
     chip(element, to).dispatchEvent(dropped);
     return [over.defaultPrevented, dropped.defaultPrevented];
   };
-  const until = (done: () => boolean): Promise<boolean> => vi.waitUntil(done, { timeout: 5000 });
+  const until = (done: () => boolean): Promise<void> => Wait.until(done);
   /** The element's text, its children's texts apart by a space. */
   const text = (element: HTMLElement, selector: string): string => {
     const found: Element | null = element.querySelector(selector);
     const parts: string[] = Object.isNull(found) ? [] : found.children.length === 0 ? [found.textContent ?? ""] : [...found.children].map(t => t.textContent ?? "");
     return parts.map(t => t.trim()).filter(t => t.length > 0).join(" ");
   };
-  const readyAsync = (element: HTMLElement, context: FakeWindowPartContext): Promise<boolean> =>
+  const readyAsync = (element: HTMLElement, context: FakeWindowPartContext): Promise<void> =>
     until(() => element.querySelectorAll(".chip").length > 0 && context.callsOf("requestAsync").some(t => t[0] === "git.status"));
 
   it("drags only branch chips, drops on another branch's chip, and merges the dropped branch into the current one on its status", async () => {

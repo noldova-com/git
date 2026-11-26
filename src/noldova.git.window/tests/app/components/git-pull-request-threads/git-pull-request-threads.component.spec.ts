@@ -28,8 +28,8 @@ const PUBLISHED: number = Date.UTC(2026, 10, 20, 12);
 const UNANSWERED: string = "Example didn't answer. Try again to read the comments.";
 const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752);
 const other: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 7);
-const monalisa: HostPerson = new HostPerson("monalisa@fabrikam.com", null, null);
-const octocat: HostPerson = new HostPerson("octocat@fabrikam.com", null, null);
+const monalisa: HostPerson = new HostPerson("monalisa@fabrikam.test", null, null);
+const octocat: HostPerson = new HostPerson("octocat@fabrikam.test", null, null);
 const onLine: HostThread = new HostThread(1, ThreadStatus.Active, "/src/notes-export.ts", 42, [
   new HostComment(1, null, octocat, PUBLISHED, "Should this respect **local times**?"),
   new HostComment(2, 1, monalisa, PUBLISHED + 60_000, "Yes, it will.")
@@ -156,9 +156,9 @@ describe("GitPullRequestThreadsComponent", () => {
     expect([threads.requests.methods, threads.requests.payloads]).toEqual([[TestPullRequestHost.threadsMethod], [reference.toJson()]]);
     expect(threads.texts(".threads-head")).toEqual(["Comments 2 open threads"]);
     expect(threads.texts(".thread-head")).toEqual(["forum Active comment on notes-export.ts, line 42 Go to line", "forum Pending comment"]);
-    expect(threads.texts(".comment")).toEqual([`O octocat@fabrikam.com ${date(PUBLISHED)} Should this respect local times ?`,
-      `M monalisa@fabrikam.com ${date(PUBLISHED + 60_000)} Yes, it will.`, `M monalisa@fabrikam.com ${date(PUBLISHED)} Ready once CI passes.`,
-      `O octocat@fabrikam.com ${date(PUBLISHED)} Waiting on design.`]);
+    expect(threads.texts(".comment")).toEqual([`O octocat@fabrikam.test ${date(PUBLISHED)} Should this respect local times ?`,
+      `M monalisa@fabrikam.test ${date(PUBLISHED + 60_000)} Yes, it will.`, `M monalisa@fabrikam.test ${date(PUBLISHED)} Ready once CI passes.`,
+      `O octocat@fabrikam.test ${date(PUBLISHED)} Waiting on design.`]);
     expect([...threads.element.querySelectorAll(".comment")].map(t => t.classList.contains("reply"))).toEqual([false, true, false, false]);
     expect([...threads.element.querySelectorAll(".thread-state")].map(t => t.classList.contains("open"))).toEqual([true, true]);
   });
@@ -172,7 +172,7 @@ describe("GitPullRequestThreadsComponent", () => {
 
     expect([threads.texts(".threads-head"), threads.texts(".thread-head")]).toEqual([["Comments 1 open thread"], ["forum Active comment on notes-export.ts, line 42 Go to line",
       "forum Resolved comment on README.md"]]);
-    expect(folded).toEqual(["unfold_more octocat@fabrikam.com Typo in the heading. 2 comments"]);
+    expect(folded).toEqual(["unfold_more octocat@fabrikam.test Typo in the heading. 2 comments"]);
     expect([threads.element.querySelector(".fold"), threads.texts(".comment").length]).toEqual([null, 4]);
   });
 
@@ -313,7 +313,7 @@ describe("GitPullRequestThreadsComponent", () => {
     expect([closed, focused, empty, blank, asked]).toEqual([[null, ["Reply"]], true, true, true, [TestPullRequestHost.threadsMethod]]);
     expect([threads.requests.methods.slice(1), threads.requests.payloads.slice(1)]).toEqual([[TestPullRequestHost.replyMethod],
       [{ reference: reference.toJson(), thread: 1, parent: 1, body: "Done in **the next** commit." }]]);
-    expect(threads.texts(".comment-main .name")).toEqual(["octocat@fabrikam.com", "monalisa@fabrikam.com", "monalisa@fabrikam.com"]);
+    expect(threads.texts(".comment-main .name")).toEqual(["octocat@fabrikam.test", "monalisa@fabrikam.test", "monalisa@fabrikam.test"]);
     expect([threads.element.querySelector("textarea"), threads.texts(".start-reply"), threads.element.querySelector("[role=alert]")]).toEqual([null, ["Reply"], null]);
   });
 
@@ -490,6 +490,6 @@ describe("GitPullRequestThreadsComponent", () => {
 
     await threads.untilAsync(() => !Object.isNull(threads.element.querySelector(".comment nol-avatar img")));
 
-    expect([...new Set(threads.host.askedPeople)]).toEqual(["fabrikam/monalisa@fabrikam.com"]);
+    expect([...new Set(threads.host.askedPeople)]).toEqual(["fabrikam/monalisa@fabrikam.test"]);
   });
 });

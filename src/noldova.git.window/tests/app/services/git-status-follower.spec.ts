@@ -19,6 +19,7 @@ import { GitStatusBar } from "../../../src/app/services/git-status-bar.ts";
 import { GitStatusFollower } from "../../../src/app/services/git-status-follower.ts";
 import { GitFixtures } from "../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../fixtures/git-held-requests.fixture.ts";
+import { Wait } from "../../fixtures/wait.fixture.ts";
 
 /** Two command log reads held open, the earlier one asked first, each answered when the test chooses. */
 class LogReads {
@@ -34,7 +35,7 @@ class LogReads {
 describe("GitStatusFollower", () => {
   const at: string = "2026-11-22T18:05:00Z";
   const logOf = (...lines: readonly string[]): JsonValue => new GitCommandLog(lines.map((t, i) => new GitCommand(String(i + 1), at, t, 0, 40))).toJson();
-  const until = (done: () => boolean): Promise<boolean> => vi.waitUntil(done, { timeout: 5000 });
+  const until = (done: () => boolean): Promise<void> => Wait.until(done);
   const answers = { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson() };
 
   /** The branch and command items, the folder Git shows, and a context that answers as `answers` says; following starts once `follow` runs. */

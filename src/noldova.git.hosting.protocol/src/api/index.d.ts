@@ -1006,7 +1006,7 @@ export declare class HostPerson {
    * import { HostPerson } from "@noldova/git.hosting.protocol";
    *
    * const person = new HostPerson("monalisa", null, null);
-   * const named = new HostPerson("monalisa@fabrikam.com", null, null, undefined, "Mona Lisa");
+   * const named = new HostPerson("monalisa@fabrikam.test", null, null, undefined, "Mona Lisa");
    * ```
    */
   public constructor(login: string, avatar: string | null, url: string | null, reader?: JsonReader, name?: string | null);
@@ -1476,7 +1476,7 @@ export declare class AuthorQuery {
  * ```ts
  * import { PersonQuery } from "@noldova/git.hosting.protocol";
  *
- * const query = new PersonQuery("dev.azure.com", "fabrikam", "monalisa@fabrikam.com");
+ * const query = new PersonQuery("dev.azure.com", "fabrikam", "monalisa@fabrikam.test");
  * console.log(query.toJson());
  * ```
  */
@@ -1509,7 +1509,7 @@ export declare class PersonQuery {
    * ```ts
    * import { PersonQuery } from "@noldova/git.hosting.protocol";
    *
-   * const query = new PersonQuery("dev.azure.com", "fabrikam", "monalisa@fabrikam.com");
+   * const query = new PersonQuery("dev.azure.com", "fabrikam", "monalisa@fabrikam.test");
    * ```
    */
   public constructor(host: string, path: string, login: string, reader?: JsonReader);
@@ -1526,7 +1526,7 @@ export declare class PersonQuery {
    * ```ts
    * import { PersonQuery } from "@noldova/git.hosting.protocol";
    *
-   * const query = PersonQuery.fromJson({ host: "dev.azure.com", path: "fabrikam", login: "monalisa@fabrikam.com" });
+   * const query = PersonQuery.fromJson({ host: "dev.azure.com", path: "fabrikam", login: "monalisa@fabrikam.test" });
    * ```
    */
   public static fromJson(value: unknown, path?: string): PersonQuery;
@@ -1539,7 +1539,7 @@ export declare class PersonQuery {
    * ```ts
    * import { PersonQuery } from "@noldova/git.hosting.protocol";
    *
-   * console.log(new PersonQuery("dev.azure.com", "fabrikam", "monalisa@fabrikam.com").toJson());
+   * console.log(new PersonQuery("dev.azure.com", "fabrikam", "monalisa@fabrikam.test").toJson());
    * ```
    */
   public toJson(): JsonObject;
@@ -3263,7 +3263,7 @@ export declare class HostWorkItemLink {
  * ```ts
  * import { HostComment, HostPerson } from "@noldova/git.hosting.protocol";
  *
- * const comment = new HostComment(1, null, new HostPerson("monalisa@fabrikam.com", null, null), 1_800_000_000_000, "Should this respect local times?");
+ * const comment = new HostComment(1, null, new HostPerson("monalisa@fabrikam.test", null, null), 1_800_000_000_000, "Should this respect local times?");
  * ```
  */
 export declare class HostComment {
@@ -3307,7 +3307,7 @@ export declare class HostComment {
    * ```ts
    * import { HostComment, HostPerson } from "@noldova/git.hosting.protocol";
    *
-   * const reply = new HostComment(2, 1, new HostPerson("octocat@fabrikam.com", null, null), 1_800_000_060_000, "Yes, fixed.");
+   * const reply = new HostComment(2, 1, new HostPerson("octocat@fabrikam.test", null, null), 1_800_000_060_000, "Yes, fixed.");
    * ```
    */
   public constructor(id: number, parent: number | null, author: HostPerson, publishedAt: number, body: string, reader?: JsonReader);
@@ -3324,7 +3324,7 @@ export declare class HostComment {
    * ```ts
    * import { HostComment } from "@noldova/git.hosting.protocol";
    *
-   * const comment = HostComment.fromJson({ id: 1, parent: null, author: { login: "monalisa@fabrikam.com", avatar: null, url: null },
+   * const comment = HostComment.fromJson({ id: 1, parent: null, author: { login: "monalisa@fabrikam.test", avatar: null, url: null },
    *   publishedAt: 1_800_000_000_000, body: "Should this respect local times?" });
    * ```
    */
@@ -3352,7 +3352,7 @@ export declare class HostComment {
  * import { HostComment, HostPerson, HostThread, ThreadStatus } from "@noldova/git.hosting.protocol";
  *
  * const thread = new HostThread(7, ThreadStatus.Active, "/src/notes-export.ts", 42,
- *   [new HostComment(1, null, new HostPerson("monalisa@fabrikam.com", null, null), 1_800_000_000_000, "Should this respect local times?")]);
+ *   [new HostComment(1, null, new HostPerson("monalisa@fabrikam.test", null, null), 1_800_000_000_000, "Should this respect local times?")]);
  * ```
  */
 export declare class HostThread {
@@ -3398,7 +3398,7 @@ export declare class HostThread {
    * import { HostComment, HostPerson, HostThread, ThreadStatus } from "@noldova/git.hosting.protocol";
    *
    * const thread = new HostThread(8, ThreadStatus.Resolved, null, null,
-   *   [new HostComment(1, null, new HostPerson("octocat@fabrikam.com", null, null), 1_800_000_000_000, "Ready once CI passes.")]);
+   *   [new HostComment(1, null, new HostPerson("octocat@fabrikam.test", null, null), 1_800_000_000_000, "Ready once CI passes.")]);
    * ```
    */
   public constructor(id: number, state: ThreadStatus, path: string | null, line: number | null, comments: readonly HostComment[], reader?: JsonReader);
@@ -3417,7 +3417,7 @@ export declare class HostThread {
    * import { HostThread } from "@noldova/git.hosting.protocol";
    *
    * const thread = HostThread.fromJson({ id: 8, state: "Active", path: null, line: null, comments: [{ id: 1, parent: null,
-   *   author: { login: "octocat@fabrikam.com", avatar: null, url: null }, publishedAt: 1_800_000_000_000, body: "Ready once CI passes." }] });
+   *   author: { login: "octocat@fabrikam.test", avatar: null, url: null }, publishedAt: 1_800_000_000_000, body: "Ready once CI passes." }] });
    * ```
    */
   public static fromJson(value: unknown, path?: string): HostThread;

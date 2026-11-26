@@ -26,6 +26,7 @@ import { GitResolving } from "../../../../src/app/services/git-resolving.ts";
 import { GitViewStateService } from "../../../../src/app/services/git-view-state.service.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
+import { Wait } from "../../../fixtures/wait.fixture.ts";
 
 describe("GitConflictsComponent", () => {
   // As the runtime sends a merge: the merge head's id, and git's prepared message naming the branch.
@@ -149,7 +150,7 @@ describe("GitConflictsComponent", () => {
       "git.conflict": new GitConflict("c.ts", ConflictKind.BothModified, OperationKind.Merge, "b\n", "ours c\n", "theirs c\n", "m\n", "main", "feature", null, null, false, false).toJson()
     });
 
-    await vi.waitUntil(() => screen.sides().length > 0);
+    await Wait.until(() => screen.sides().length > 0);
 
     expect(screen.texts(".operation-text")).toEqual(["Merging feature into main · 0 of 2 files resolved"]);
     expect([labelOf(screen.find(".abort")), screen.find<HTMLButtonElement>(".abort").disabled]).toEqual(["Abort merge", false]);
@@ -170,7 +171,7 @@ describe("GitConflictsComponent", () => {
       "git.conflict": new GitConflict("c.ts", ConflictKind.BothModified, OperationKind.Merge, "b\n", "ours c\n", "theirs c\n", "m\n", "main", "feature", null, null, false, false).toJson()
     });
     screen.element.style.height = "30rem";
-    await vi.waitUntil(() => screen.sides().length > 0);
+    await Wait.until(() => screen.sides().length > 0);
     const host: DOMRect = screen.element.getBoundingClientRect();
     const operation: DOMRect = screen.element.querySelector(".operation")?.getBoundingClientRect() ?? host;
     const body: DOMRect = screen.element.querySelector(".body")?.getBoundingClientRect() ?? host;
@@ -281,11 +282,11 @@ describe("GitConflictsComponent", () => {
     const screen: Screen = Screen.render({
       "git.status": statusOf([conflictEntry("a.ts")], "f1").toJson(), "git.conflict": marked.toJson(), "git.resolveConflict": null
     });
-    await vi.waitUntil(() => (screen.editor()?.unresolvedCount() ?? 0) > 0);
+    await Wait.until(() => (screen.editor()?.unresolvedCount() ?? 0) > 0);
     const held: boolean = screen.find<HTMLButtonElement>(".mark-resolved").disabled;
 
     screen.editor()?.acceptAll("Theirs");
-    await vi.waitUntil(() => !screen.find<HTMLButtonElement>(".mark-resolved").disabled);
+    await Wait.until(() => !screen.find<HTMLButtonElement>(".mark-resolved").disabled);
     const text: string | null = screen.editor()?.result() ?? null;
     screen.find<HTMLButtonElement>(".mark-resolved").click();
     await GitFixtures.untilAsync(() => !screen.state.busy() && screen.requested("git.resolveConflict").length === 1);
@@ -307,10 +308,10 @@ describe("GitConflictsComponent", () => {
         return null;
       }
     });
-    await vi.waitUntil(() => screen.editor()?.unresolvedCount() === 2);
+    await Wait.until(() => screen.editor()?.unresolvedCount() === 2);
 
     choices.forEach((choice, index) => screen.editor()?.accept(index, choice));
-    await vi.waitUntil(() => !screen.find<HTMLButtonElement>(".mark-resolved").disabled);
+    await Wait.until(() => !screen.find<HTMLButtonElement>(".mark-resolved").disabled);
     screen.find<HTMLButtonElement>(".mark-resolved").click();
     await screen.untilAsync(() => screen.texts(".file.resolved .note").length === 1);
 
@@ -339,7 +340,7 @@ describe("GitConflictsComponent", () => {
     });
     const note = (): readonly string[] => screen.texts(".result .label");
     const title = (): string | undefined => screen.texts(".detail-title")[0];
-    await vi.waitUntil(() => screen.texts(".progress").length > 0);
+    await Wait.until(() => screen.texts(".progress").length > 0);
     const heads: readonly (readonly string[])[] = [".nol-merge-editor-side:first-child", ".nol-merge-editor-side:last-child", ".nol-merge-editor-output"]
       .map(card => screen.texts(`${card} > .pane-head .strong, ${card} > .pane-head .label`));
     const before: readonly string[] = note();
@@ -367,7 +368,7 @@ describe("GitConflictsComponent", () => {
       "git.status": statusOf([conflictEntry("a.ts")], "f1").toJson(),
       "git.conflict": new GitConflict("a.ts", ConflictKind.BothModified, OperationKind.Merge, "b\n", "ours\n", "theirs\n", twice, "main", "feature", null, null, false, false).toJson()
     });
-    await vi.waitUntil(() => screen.texts(".progress").length > 0);
+    await Wait.until(() => screen.texts(".progress").length > 0);
     const show: HTMLButtonElement = screen.find<HTMLButtonElement>(".show-base");
     const before: readonly (string | null)[] = [show.getAttribute("aria-pressed"), show.textContent.trim(), screen.element.querySelector(".nol-merge-editor-base")?.tagName ?? null];
 
@@ -386,11 +387,11 @@ describe("GitConflictsComponent", () => {
       "git.status": statusOf([conflictEntry("a.ts"), conflictEntry("b.ts")], "f1").toJson(),
       "git.conflict": new GitConflict("a.ts", ConflictKind.BothModified, OperationKind.Merge, "b\n", "ours\n", "theirs\n", twice, "main", "feature", null, null, false, false).toJson()
     });
-    await vi.waitUntil(() => screen.texts(".progress").length > 0);
+    await Wait.until(() => screen.texts(".progress").length > 0);
     const before: readonly string[] = screen.texts(".file .progress");
 
     screen.editor()?.accept(0, "Theirs");
-    await vi.waitUntil(() => screen.texts(".progress")[0] === "1 of 2");
+    await Wait.until(() => screen.texts(".progress")[0] === "1 of 2");
 
     expect([before, screen.texts(".file.selected .progress"), screen.texts(".file:not(.selected) .progress")]).toEqual([["0 of 2"], ["1 of 2"], []]);
   });
@@ -404,7 +405,7 @@ describe("GitConflictsComponent", () => {
     });
     const head = (): readonly string[] => [...screen.texts(".detail-title"), ...screen.texts(".detail-lines"),
       ...screen.all(".base-text").map(t => [...t.querySelectorAll(".nol-code-text-line")].map(u => u.textContent).join(" "))];
-    await vi.waitUntil(() => screen.texts(".progress").length > 0);
+    await Wait.until(() => screen.texts(".progress").length > 0);
     const before: readonly string[] = head();
 
     screen.editor()?.nextConflict();
@@ -427,7 +428,7 @@ describe("GitConflictsComponent", () => {
       "git.conflict": new GitConflict("a.ts", ConflictKind.BothAdded, OperationKind.Merge, null, "ours\n", "theirs\n",
         "<<<<<<< main\nours\n=======\ntheirs\n>>>>>>> feature\n", "main", "feature", null, null, false, false).toJson()
     });
-    await vi.waitUntil(() => screen.texts(".progress").length > 0);
+    await Wait.until(() => screen.texts(".progress").length > 0);
 
     screen.editor()?.nextConflict();
     await screen.untilAsync(() => screen.texts(".base-note").length > 0);
@@ -459,7 +460,7 @@ describe("GitConflictsComponent", () => {
     });
     await screen.untilAsync(() => screen.texts(".markers .check-text").length > 0);
     screen.find<HTMLButtonElement>(".file.conflicted:nth-of-type(2)").click();
-    await vi.waitUntil(() => screen.requested("git.conflict").length > 1);
+    await Wait.until(() => screen.requested("git.conflict").length > 1);
 
     expect([screen.context.callsOf("openView"), screen.context.callsOf("showView")]).toEqual([[["git.conflictDetail", "selected", "Conflict"]], []]);
   });
@@ -541,7 +542,7 @@ describe("GitConflictsComponent", () => {
   it("lists the first two files merged cleanly with a row that shows the rest", async () => {
     const clean: readonly StatusEntry[] = ["d.ts", "e.ts", "f.ts", "g.ts"].map(t => GitFixtures.entry(t, FileState.Modified, FileState.Unmodified));
     const screen: Screen = Screen.render({ "git.status": statusOf([conflictEntry("a.ts"), ...clean], "f1").toJson(), "git.conflict": marked.toJson() });
-    await vi.waitUntil(() => screen.texts(".file.more").length > 0);
+    await Wait.until(() => screen.texts(".file.more").length > 0);
     const first: readonly string[] = [...screen.texts(".file.clean .name"), ...screen.texts(".file.more .name")];
 
     screen.find<HTMLButtonElement>(".file.more").click();
@@ -617,14 +618,14 @@ describe("GitConflictsComponent", () => {
       new GitConflict(path, ConflictKind.BothModified, OperationKind.Merge, "base", `ours ${path}`, "theirs", "merged", "main", "feature", null, null, false, false).toJson();
     const pickAsync = async (index: number, reads: number): Promise<void> => {
       screen.find<HTMLButtonElement>(`.file.conflicted:nth-of-type(${index + 1})`).click();
-      await vi.waitUntil(() => screen.requested("git.conflict").length === reads);
+      await Wait.until(() => screen.requested("git.conflict").length === reads);
     };
-    await vi.waitUntil(() => screen.requested("git.conflict").length === 1);
+    await Wait.until(() => screen.requested("git.conflict").length === 1);
 
     await pickAsync(1, 2);
     await screen.held.answerAsync("git.conflict", GitFixtures.failure(FailureCode.Git, null, "Git couldn't read a.ts."));
     await screen.held.answerAsync("git.conflict", conflictOf("b.ts"));
-    await vi.waitUntil(() => screen.sides().length > 0);
+    await Wait.until(() => screen.sides().length > 0);
     const afterFailure: readonly (string | null)[] = [screen.sides()[0] ?? null, ...screen.texts(".sides .failure")];
     screen.find<HTMLButtonElement>(".file.selected").click();
     await pickAsync(0, 3);
@@ -632,7 +633,7 @@ describe("GitConflictsComponent", () => {
     await screen.held.answerAsync("git.conflict", conflictOf("a.ts"));
     await screen.held.answerAsync("git.conflict", conflictOf("b.ts"));
     await GitFixtures.untilAsync(() => !screen.state.busy());
-    await vi.waitUntil(() => screen.sides().length > 0);
+    await Wait.until(() => screen.sides().length > 0);
 
     expect(afterFailure).toEqual(["ours b.ts"]);
     expect([screen.sides()[0], screen.texts(".file.selected .name")]).toEqual(["ours b.ts", ["b.ts"]]);
@@ -654,7 +655,7 @@ describe("GitConflictsComponent", () => {
       const openAsync = async (index: number, path: string, kind: ConflictKind = ConflictKind.BothModified): Promise<void> => {
         if (index > 0)
           screen.find<HTMLButtonElement>(`.file.conflicted:nth-of-type(${index + 1})`).click();
-        await vi.waitUntil(() => screen.requested("git.conflict").length === index + 1);
+        await Wait.until(() => screen.requested("git.conflict").length === index + 1);
         await screen.held.answerAsync("git.conflict", conflictOf(path, kind));
         await screen.untilAsync(() => (screen.element.querySelector(".sides")?.textContent ?? "").includes(`ours_${path.replace(".", "_")}`));
       };
@@ -689,12 +690,12 @@ describe("GitConflictsComponent", () => {
     const conflictOf = (path: string): JsonValue =>
       new GitConflict(path, ConflictKind.BothModified, OperationKind.Merge, "b\n", "const ours = 1;\n", "const theirs = 2;\n", "const ours = 1;\n", "main", "feature", null, null, false, false).toJson();
     const tokens = (): number => screen.element.querySelectorAll("[class*='-token-']").length;
-    await vi.waitUntil(() => screen.requested("git.conflict").length === 1);
+    await Wait.until(() => screen.requested("git.conflict").length === 1);
 
     await screen.held.answerAsync("git.conflict", conflictOf("a.ts"));
-    await vi.waitUntil(() => created.mock.calls.length === 1);
+    await Wait.until(() => created.mock.calls.length === 1);
     screen.find<HTMLButtonElement>(".file.conflicted:nth-of-type(2)").click();
-    await vi.waitUntil(() => screen.requested("git.conflict").length === 2);
+    await Wait.until(() => screen.requested("git.conflict").length === 2);
     await screen.held.answerAsync("git.conflict", conflictOf("c.cobol"));
     await screen.untilAsync(() => screen.texts(".file.selected .name").join() === "c.cobol" && (screen.element.querySelector(".sides")?.textContent ?? "").includes("ours = 1"));
     finish(real);
@@ -702,9 +703,9 @@ describe("GitConflictsComponent", () => {
     await screen.fixture.whenStable();
     const afterLate: number = tokens();
     screen.find<HTMLButtonElement>(".file.conflicted:nth-of-type(3)").click();
-    await vi.waitUntil(() => screen.requested("git.conflict").length === 3);
+    await Wait.until(() => screen.requested("git.conflict").length === 3);
     await screen.held.answerAsync("git.conflict", conflictOf("d.py"));
-    await vi.waitUntil(() => handled.length === 1);
+    await Wait.until(() => handled.length === 1);
     await screen.fixture.whenStable();
 
     expect([afterLate, handled, tokens()]).toEqual([0, [broken], 0]);
@@ -722,14 +723,14 @@ describe("GitConflictsComponent", () => {
     await screen.untilAsync(() => !Object.isNull(screen.element.querySelector(".take-ours")));
 
     screen.find<HTMLButtonElement>(".take-ours").click();
-    await vi.waitUntil(() => handled.length === 1);
+    await Wait.until(() => handled.length === 1);
     entries = [];
     await screen.state.refreshAsync();
     await screen.untilAsync(() => !screen.find<HTMLButtonElement>(".continue").disabled);
     screen.find<HTMLButtonElement>(".continue").click();
-    await vi.waitUntil(() => handled.length === 2);
+    await Wait.until(() => handled.length === 2);
     screen.find<HTMLButtonElement>(".abort").click();
-    await vi.waitUntil(() => handled.length === 3);
+    await Wait.until(() => handled.length === 3);
 
     expect(handled).toEqual([broken, broken, broken]);
     expect([GitResolving.resolutionsOf(GitFixtures.folder).size, screen.texts(":scope > .failure")]).toEqual([0, []]);
@@ -741,7 +742,7 @@ describe("GitConflictsComponent", () => {
       "git.status": statusOf([conflictEntry(deep), GitFixtures.entry("top.ts", FileState.Modified, FileState.Unmodified)], "f1").toJson(),
       "git.conflict": new GitConflict(deep, ConflictKind.BothModified, OperationKind.Merge, "b\n", "o\n", "t\n", "m\n", "main", "feature", null, null, false, false).toJson()
     });
-    await vi.waitUntil(() => screen.sides().length > 0);
+    await Wait.until(() => screen.sides().length > 0);
     const row: HTMLElement = screen.find(".file.conflicted");
     row.style.width = "26rem";
     const name: HTMLElement = screen.find(".file.conflicted .name");

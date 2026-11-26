@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Component, computed, effect, inject, Injector, input, type InputSignal, PendingTasks, type Signal, signal, untracked, type WritableSignal } from "@angular/core";
+import { Component, computed, DestroyRef, effect, inject, Injector, input, type InputSignal, PendingTasks, type Signal, signal, untracked, type WritableSignal } from "@angular/core";
 import "@noldova/context.core";
 import { type IWindowPartContext, RuntimeRequestException, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
@@ -32,6 +32,7 @@ import { WorkItemsPlace } from "../../models/work-items-place.ts";
 import { AzureDevOpsPages } from "../../services/azure-devops-pages.ts";
 import { AzureDevOpsPullRequestHost } from "../../services/azure-devops-pull-request-host.ts";
 import { AzureDevOpsReferenceSource } from "../../services/azure-devops-reference-source.ts";
+import { PullRequestPages } from "../../services/pull-request-pages.ts";
 import { PullRequestSelection } from "../../services/pull-request-selection.ts";
 import { AzureDevOpsPullRequestUpdatesComponent } from "../azure-devops-pull-request-updates/azure-devops-pull-request-updates.component.ts";
 import { AzureDevOpsPersonAvatarComponent } from "../azure-devops-person-avatar/azure-devops-person-avatar.component.ts";
@@ -104,7 +105,9 @@ export class AzureDevOpsPullRequestComponent {
   public readonly instance: InputSignal<string> = input.required<string>();
 
   public constructor() {
-    PullRequestSelection.of(this.context).follow(this.choice, inject(WindowPartTokens.activeDocument), inject(Injector));
+    const active: Signal<boolean> = inject(WindowPartTokens.activeDocument);
+    PullRequestSelection.of(this.context).follow(this.choice, active, inject(Injector));
+    inject(DestroyRef).onDestroy(PullRequestPages.follow(this.instance, active));
     effect(onCleanup => {
       this.attempt();
       const reference: HostReference | null = this.reference();

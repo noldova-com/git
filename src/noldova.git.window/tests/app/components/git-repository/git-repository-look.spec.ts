@@ -15,8 +15,8 @@ import { GitBranchTrack, GitCommit, GitGraph, GitGraphCommit, GitRef, GitRemote,
 import { DefaultTheme } from "@noldova/ui.components.angular";
 import { AppearanceFixture } from "@noldova/ui.components.angular/testing";
 import type {} from "@vitest/browser-playwright";
-import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
-import { page } from "vitest/browser";
+import { afterEach, describe, expect, it, onTestFinished } from "vitest";
+import { page, userEvent } from "vitest/browser";
 
 import { GitHistoryComponent } from "../../../../src/app/components/git-history/git-history.component.ts";
 import { GitRepositoryComponent } from "../../../../src/app/components/git-repository/git-repository.component.ts";
@@ -28,6 +28,7 @@ import { GitRepositoryLinks } from "../../../../src/app/services/git-repository-
 import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
+import { Wait } from "../../../fixtures/wait.fixture.ts";
 
 describe("GitRepositoryComponent in the kit's look", () => {
   const screenshots: string = "../../../../../../_build/window/screenshots";
@@ -117,6 +118,31 @@ describe("GitRepositoryComponent in the kit's look", () => {
       rem(spinner.top + spinner.height / 2 - reading.top - reading.height / 2)]).toEqual([0, 0, 0, 0, 0]);
   });
 
+  it.each(AppearanceFixture.modes)("draws Fetch all and New branch as the kit's icon buttons, ending at one edge, and leaves a section's title unlit under the pointer, in %s mode",
+    async mode => {
+      AppearanceFixture.apply(DefaultTheme.theme, mode);
+      const element: HTMLElement = await renderAsync();
+      const fetchAll: HTMLElement | null = element.querySelector(".fetch-all");
+      const newBranch: HTMLElement | null = element.querySelector(".new-branch");
+      const headings: HTMLElement[] = [...element.querySelectorAll<HTMLElement>(".row.heading")];
+      // The kit's icon button takes its pointer target, the larger of its own size and the pointer's, which a probe measures.
+      const probe: HTMLElement = document.body.appendChild(document.createElement("div"));
+      probe.style.width = "var(--nol-icon-button-target)";
+      const kit: number = rem(box(probe).width);
+      probe.remove();
+      const fills: string[] = [];
+      for (const heading of headings) {
+        await userEvent.hover(heading.querySelector(".caps") ?? heading);
+        fills.push(getComputedStyle(heading).backgroundColor);
+      }
+      await userEvent.unhover(document.body);
+
+      expect([fetchAll?.hasAttribute("nol-icon-button"), newBranch?.hasAttribute("nol-icon-button")]).toEqual([true, true]);
+      expect([rem(box(fetchAll).width), rem(box(fetchAll).height), rem(box(newBranch).width), rem(box(newBranch).height)]).toEqual([kit, kit, kit, kit]);
+      expect(rem(box(newBranch).right - box(fetchAll).right)).toBe(0);
+      expect([headings.length, new Set(fills)]).toEqual([6, new Set(["rgba(0, 0, 0, 0)"])]);
+    });
+
   it.each(AppearanceFixture.modes)("indents a pull request's dot and title as a branch row's icon and name, under its section title's text, in %s mode", async mode => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
     const element: HTMLElement = await renderAsync();
@@ -202,14 +228,14 @@ describe("GitRepositoryComponent in the kit's look", () => {
     onTestFinished(() => element.remove());
     const row: HTMLElement | null = element.querySelector<HTMLElement>("button.row.history");
     const changes: HTMLElement | null = element.querySelector<HTMLElement>("button.row.changes");
-    await vi.waitUntil(() => Object.isNull(GitViewing.branch()) && !Object.isNull(historyElement.querySelector("[role=option]")), { timeout: 5000 });
+    await Wait.until(() => Object.isNull(GitViewing.branch()) && !Object.isNull(historyElement.querySelector("[role=option]")));
     const probe: HTMLElement = document.createElement("div");
     probe.style.background = "var(--nol-selected)";
     element.append(probe);
     onTestFinished(() => probe.remove());
 
     row?.click();
-    await vi.waitUntil(() => row?.classList.contains("sel") === true, { timeout: 5000 });
+    await Wait.until(() => row?.classList.contains("sel") === true);
     await page.screenshot({ element, path: `${screenshots}/git-repository-history-${mode}.png` });
 
     expect([getComputedStyle(row ?? element).backgroundColor, getComputedStyle(changes ?? element).backgroundColor === getComputedStyle(row ?? element).backgroundColor])

@@ -91,6 +91,44 @@ describe("IgnoredPaths", () => {
     assert.equal(await ignored.hasShownAsync(repository.folder, ["kept.log"]), true);
   });
 
+  test("shows a tracked file in a folder a rule ignores, as git's status does, but not an untracked one beside it, nor one in another such folder", async () => {
+    await mkdir(path.join(repository.folder, "bin"));
+    await repository.writeAsync("bin/kept.dll", "kept\n");
+    await repository.runGitAsync(["add", "--force", "bin/kept.dll"]);
+
+    const answers = [await ignored.hasShownAsync(repository.folder, ["bin/kept.dll"]), await ignored.hasShownAsync(repository.folder, ["bin/new.dll"]),
+      await ignored.hasShownAsync(repository.folder, ["deep/bin/a.dll"])];
+
+    assert.deepEqual(answers, [true, false, false]);
+  });
+
+  test("keeps each worktree's answers apart, so a folder one ignores isn't taken as ignored in another", async () => {
+    const other = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => other.disposeAsync());
+
+    const answers = [await ignored.hasShownAsync(repository.folder, ["bin/a.dll"]), await ignored.hasShownAsync(other.folder, ["bin/a.dll"]),
+      [...await ignored.ignoredFoldersAsync(other.folder, ["bin"])]];
+
+    assert.deepEqual(answers, [false, true, []]);
+  });
+
+  test("forgets only a worktree's own answers once its index changes, so a file added under an ignored folder shows", async () => {
+    const other = await RepositoryFixture.createAsync(template);
+    cleanUps.add(() => other.disposeAsync());
+    await other.writeAsync(".gitignore", "bin/\n");
+    await mkdir(path.join(repository.folder, "bin"));
+    await repository.writeAsync("bin/kept.dll", "kept\n");
+    const before = [await ignored.hasShownAsync(repository.folder, ["bin/kept.dll"]), await ignored.hasShownAsync(other.folder, ["bin/a.dll"])];
+    await repository.runGitAsync(["add", "--force", "bin/kept.dll"]);
+    const stale = await ignored.hasShownAsync(repository.folder, ["bin/kept.dll"]);
+    const asked = checks.length;
+
+    ignored.forgetIndex(repository.folder);
+    const after = [await ignored.hasShownAsync(repository.folder, ["bin/kept.dll"]), await ignored.hasShownAsync(other.folder, ["bin/b.dll"])];
+
+    assert.deepEqual([before, stale, after, checks.length - asked], [[false, false], false, [true, false], 1]);
+  });
+
   test("throws git's failure, and a cut-short answer, as a failed check", async () => {
     runner.failing = "check-ignore";
     runner.failingCode = 128;
@@ -103,7 +141,7 @@ describe("IgnoredPaths", () => {
 
   test("starts over once it would remember too many folders, so a folder it knew is asked about again", async () => {
     await ignored.hasShownAsync(repository.folder, ["bin/out.dll"]);
-    const many = await ignored.hasShownAsync(repository.folder, Array.from({ length: 5_001 }, (_, i) => `f${i}/a.ts`));
+    const many = await ignored.hasShownAsync(repository.folder, Array.from({ length: 10_001 }, (_, i) => `f${i}/a.ts`));
     const asked = checks.length;
     const again = await ignored.hasShownAsync(repository.folder, ["bin/again.dll"]);
 

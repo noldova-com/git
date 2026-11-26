@@ -198,13 +198,15 @@ export class GitHistoryComponent {
     return GitAvatars.imageOf(this.instance(), row.graph.shown.email, row.graph.commit.id);
   }
 
-  /** Selects the clicked row, and brings the Commit view to the front of its group for its commit. */
+  /** Selects the clicked row, and brings the Commit view to the front of its group for its commit, or the Git view for the changes row. */
   protected select(row: GitHistoryRow): void {
     this.notLoaded.set(null);
     GitViewing.branch.set(null);
     this.show(row.id);
     const shown: GitCommitView | null = GitViewing.commitOf(this.instance());
-    if (!Object.isNull(shown))
+    if (Object.isNull(shown))
+      this.context.showView(Resources.viewName);
+    else
       GitCommitDetails.of(this.context).showInFront(shown);
   }
 

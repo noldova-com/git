@@ -26,7 +26,7 @@ function statusAt(head: string | null, remote: GitRemote | null = azure): GitSta
 }
 
 const graph: GitGraph = new GitGraph([new GitGraphCommit(new GitCommit("a".repeat(40), [], "Mona Lisa", "2026-11-22T10:00:00Z", "Fold tag case #7532"),
-  "kim@fabrikam.com", [])], false);
+  "kim@fabrikam.test", [])], false);
 const messages: GitMessageReferences = new GitMessageReferences([new GitMessageReference("a".repeat(40), [7400])], false);
 
 describe("AzureDevOpsLinkedCommits", () => {

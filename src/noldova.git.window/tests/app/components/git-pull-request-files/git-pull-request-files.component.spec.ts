@@ -13,7 +13,7 @@ import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { FileChangeKind, HostPullRequestFile, HostPullRequestFiles, HostReference } from "@noldova/git.hosting.protocol";
 import { DiffFile, DiffHunk, DiffLine, DiffScope, DiffScopeKind, DiffTotals, FileChange, GitCommitDetailParams, GitDiff, GitDiffParams, GitFetchParams, GitNames, GitRemote,
   GitStatus, LineKind, RemoteTransport } from "@noldova/git.protocol";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { GitPullRequestFilesComponent } from "../../../../src/app/components/git-pull-request-files/git-pull-request-files.component.ts";
 import { GitFileLine } from "../../../../src/app/models/git-file-line.ts";
@@ -21,6 +21,7 @@ import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { TestPullRequestHost } from "../../../fixtures/test-pull-request-host.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
+import { Wait } from "../../../fixtures/wait.fixture.ts";
 
 const REPOSITORY: string = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
 const URL: string = "https://example.com/fabrikam/site/pulls/752";
@@ -109,7 +110,7 @@ class Tab {
     this.create();
     this.reveal(line);
     await this.requests.askedAsync(5);
-    await vi.waitUntil(() => this.unrevealed.length > 0 || !Object.isNull(this.element.querySelector(".marked-line")));
+    await Wait.until(() => this.unrevealed.length > 0 || !Object.isNull(this.element.querySelector(".marked-line")));
     return this;
   }
 
@@ -156,9 +157,9 @@ describe("GitPullRequestFilesComponent", () => {
     await tab.openAsync();
     const choose = async (label: string): Promise<string[]> => {
       await tab.clickAsync("button.layout");
-      await vi.waitUntil(() => !Object.isNull(document.querySelector("button[nol-menu-item]")));
+      await Wait.until(() => !Object.isNull(document.querySelector("button[nol-menu-item]")));
       [...document.querySelectorAll<HTMLElement>("button[nol-menu-item]")].find(t => t.textContent.includes(label))?.click();
-      await vi.waitUntil(() => Object.isNull(document.querySelector("button[nol-menu-item]")));
+      await Wait.until(() => Object.isNull(document.querySelector("button[nol-menu-item]")));
       await tab.settleAsync();
       return tab.texts(".row .path");
     };
@@ -347,7 +348,7 @@ describe("GitPullRequestFilesComponent", () => {
     const marked = [tab.element.querySelector(".file-row.open")?.getAttribute("title"), tab.marked()];
 
     tab.reveal(new GitFileLine("src/app.ts", 42));
-    await vi.waitUntil(() => tab.marked()[0] !== "+const b = 2;");
+    await Wait.until(() => tab.marked()[0] !== "+const b = 2;");
 
     expect(marked).toEqual(["src/app.ts", ["+const b = 2;"]]);
     expect([tab.marked(), tab.unrevealed]).toEqual([[" export { a, b };"], []]);
@@ -359,7 +360,7 @@ describe("GitPullRequestFilesComponent", () => {
     away.requests.answer(TestPullRequestHost.changesMethod, changed.toJson());
     away.create();
     away.reveal(line);
-    await vi.waitUntil(() => away.unrevealed.length > 0);
+    await Wait.until(() => away.unrevealed.length > 0);
     await away.settleAsync();
     TestBed.resetTestingModule();
     const elsewhere = new GitFileLine("src/new.ts", 1);
@@ -371,7 +372,7 @@ describe("GitPullRequestFilesComponent", () => {
     failed.requests.fail(TestPullRequestHost.changesMethod, new WindowFailure("The runtime stopped."));
     failed.create();
     failed.reveal(line);
-    await vi.waitUntil(() => failed.unrevealed.length > 0);
+    await Wait.until(() => failed.unrevealed.length > 0);
     await failed.settleAsync();
 
     expect([away.unrevealed, missing.unrevealed, missing.element.querySelector(".file-row.open"), unread.unrevealed, failed.unrevealed])
@@ -392,7 +393,7 @@ describe("GitPullRequestFilesComponent", () => {
     const waiting = [tab.element.querySelector(".file-row.open"), tab.unrevealed.length];
 
     release(appDiff.toJson());
-    await vi.waitUntil(() => tab.marked().length > 0);
+    await Wait.until(() => tab.marked().length > 0);
 
     expect([waiting, tab.marked(), tab.unrevealed]).toEqual([[null, 0], ["+const b = 2;"], []]);
   });

@@ -53,7 +53,7 @@ describe("BranchRequest", () => {
   });
 
   it("takes the owner from a login's part before its first @, in lower case with a dash for every run of other characters, or none when nothing is left", () => {
-    const owners = ["Mona.Lisa@fabrikam.com", "kim@one@two", "FABRIKAM\\Kim", "--kim--", "Привет@fabrikam.com", "@fabrikam.com"].map(t => BranchRequest.ownerOf(t));
+    const owners = ["Mona.Lisa@fabrikam.test", "kim@one@two", "FABRIKAM\\Kim", "--kim--", "Привет@fabrikam.test", "@fabrikam.test"].map(t => BranchRequest.ownerOf(t));
 
     expect(owners).toEqual(["mona-lisa", "kim", "fabrikam-kim", "kim", null, null]);
   });

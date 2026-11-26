@@ -85,4 +85,10 @@ export interface IGitPullRequests {
 
   /** Opens a pull request in the host's own page and answers true; false, or no such member, opens its page in the browser. */
   open?(folder: string, row: GitPullRequestRow): boolean;
+
+  /**
+   * Whether the pull request's own page, opened by {@link open}, is the window's active document, so the panel shows its row selected. The panel reads it
+   * in its template, so the host answers from signals. Without this member, no row shows selected.
+   */
+  isShown?(folder: string, row: GitPullRequestRow): boolean;
 }

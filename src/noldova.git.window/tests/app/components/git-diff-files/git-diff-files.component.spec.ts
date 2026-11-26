@@ -18,6 +18,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { GitDiffFilesComponent } from "../../../../src/app/components/git-diff-files/git-diff-files.component.ts";
 import { GitFileLayout } from "../../../../src/app/enums/git-file-layout.ts";
 import { FixtureLine, GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
+import { Wait } from "../../../fixtures/wait.fixture.ts";
 
 /** The rendered files, with the answers still to give the diff reads. */
 class OpenedFiles {
@@ -67,7 +68,7 @@ describe("GitDiffFilesComponent outside the Git view", () => {
     fixture.componentRef.setInput("layout", layout);
     fixture.autoDetectChanges();
     const element: HTMLElement = fixture.nativeElement;
-    await vi.waitUntil(() => !Object.isNull(element.querySelector(".file-row")));
+    await Wait.until(() => !Object.isNull(element.querySelector(".file-row")));
     const listed = [...element.querySelectorAll(".file-row")].map(t => t.getAttribute("title"));
     layout.set(GitFileLayout.Folders);
     await fixture.whenStable();
@@ -88,10 +89,10 @@ describe("GitDiffFilesComponent outside the Git view", () => {
     fixture.autoDetectChanges();
     const element: HTMLElement = fixture.nativeElement;
     const header = (): string[] => [...element.querySelectorAll(".files-header > span")].map(t => t.textContent.trim());
-    await vi.waitUntil(() => !Object.isNull(element.querySelector(".file-row")));
+    await Wait.until(() => !Object.isNull(element.querySelector(".file-row")));
     const cut: string[] = header();
     fixture.componentRef.setInput("scope", new DiffScope(DiffScopeKind.Range, "1".repeat(40), "9".repeat(40)));
-    await vi.waitUntil(() => diffs.length === 0 && !Object.isNull(element.querySelector(".file-row")));
+    await Wait.until(() => diffs.length === 0 && !Object.isNull(element.querySelector(".file-row")));
 
     expect([cut, header()]).toEqual([["2391 files changed", "+14214", "−13074"], ["1 file changed", "+1", "−1"]]);
   });
@@ -106,7 +107,7 @@ describe("GitDiffFilesComponent outside the Git view", () => {
     fixture.componentRef.setInput("scope", new DiffScope(DiffScopeKind.Range, "0".repeat(40), "9".repeat(40)));
     fixture.autoDetectChanges();
     const element: HTMLElement = fixture.nativeElement;
-    await vi.waitUntil(() => !Object.isNull(element.querySelector(".file-row:not(.folder)")));
+    await Wait.until(() => !Object.isNull(element.querySelector(".file-row:not(.folder)")));
     const row: Element | null = element.querySelector(".file-row:not(.folder)");
 
     expect([row?.querySelector(".grow")?.textContent, row?.getAttribute("title")])
@@ -134,7 +135,7 @@ describe("GitDiffFilesComponent outside the Git view", () => {
       fixture.componentRef.setInput("folder", GitFixtures.folder);
       fixture.componentRef.setInput("scope", new DiffScope(DiffScopeKind.Range, "0".repeat(40), "9".repeat(40)));
       fixture.autoDetectChanges();
-      await vi.waitUntil(() => fixture.componentInstance.isRead());
+      await Wait.until(() => fixture.componentInstance.isRead());
       return new OpenedFiles(fixture, answers);
     }
 
@@ -148,10 +149,10 @@ describe("GitDiffFilesComponent outside the Git view", () => {
       const holds = [fixture.componentInstance.holds("src/app.ts"), fixture.componentInstance.holds("src/new.ts")];
 
       fixture.componentInstance.reveal("src/app.ts", 21);
-      await vi.waitUntil(() => scrolled.length > 0);
+      await Wait.until(() => scrolled.length > 0);
       const first = [element.querySelector(".marked-line")?.textContent, scrolled.map(t => t.classList.contains("marked-line"))];
       fixture.componentInstance.reveal("src/app.ts", 3);
-      await vi.waitUntil(() => scrolled.length > 1);
+      await Wait.until(() => scrolled.length > 1);
 
       expect([holds, first]).toEqual([[true, false], ["+three", [true]]]);
       expect([...element.querySelectorAll(".marked-line")].map(t => t.textContent)).toEqual([" one"]);
@@ -165,14 +166,14 @@ describe("GitDiffFilesComponent outside the Git view", () => {
       });
       const element: HTMLElement = fixture.nativeElement;
       fixture.componentInstance.reveal("src/app.ts", 4);
-      await vi.waitUntil(() => scrolled.length > 0);
+      await Wait.until(() => scrolled.length > 0);
       const missed = [element.querySelector(".marked-line"), scrolled.map(t => t.getAttribute("title"))];
       fixture.componentInstance.reveal("src/app.ts", 22);
-      await vi.waitUntil(() => scrolled.length > 1);
+      await Wait.until(() => scrolled.length > 1);
       const marked: boolean = !Object.isNull(element.querySelector(".marked-line"));
 
       fixture.componentRef.setInput("scope", new DiffScope(DiffScopeKind.Range, "1".repeat(40), "9".repeat(40)));
-      await vi.waitUntil(() => answers.length === 0 && fixture.componentInstance.isRead());
+      await Wait.until(() => answers.length === 0 && fixture.componentInstance.isRead());
 
       expect([missed, marked, element.querySelector(".marked-line"), element.querySelector(".file-row.open")]).toEqual([[null, ["src/app.ts"]], true, null, null]);
     });

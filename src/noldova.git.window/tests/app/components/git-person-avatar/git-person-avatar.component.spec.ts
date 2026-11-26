@@ -24,10 +24,10 @@ const given: string = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAI
   selector: "nol-git-people",
   imports: [GitPersonAvatarComponent],
   template: `<div class="list">
-    <nol-git-person-avatar class="mona" [host]="host" [reference]="reference" login="monalisa@fabrikam.com" [size]="small" />
-    <nol-git-person-avatar class="given" [host]="host" [reference]="reference" login="hubot@fabrikam.com" [image]="given" />
+    <nol-git-person-avatar class="mona" [host]="host" [reference]="reference" login="monalisa@fabrikam.test" [size]="small" />
+    <nol-git-person-avatar class="given" [host]="host" [reference]="reference" login="hubot@fabrikam.test" [image]="given" />
     <div class="gap"></div>
-    <nol-git-person-avatar class="below" [host]="host" [reference]="reference" login="octocat@fabrikam.com" />
+    <nol-git-person-avatar class="below" [host]="host" [reference]="reference" login="octocat@fabrikam.test" />
   </div>`,
   styles: [".list { display: flex; flex-direction: column; height: 10rem; overflow: auto; } .gap { flex: none; height: 50rem; }"]
 })
@@ -78,7 +78,7 @@ describe("GitPersonAvatarComponent", () => {
     await untilAsync(() => !Object.isNull(imageOf(root, ".mona")));
 
     expect([imageOf(root, ".mona"), imageOf(root, ".given"), imageOf(root, ".below"), [...new Set(PeopleComponent.host.askedPeople)]])
-      .toEqual([picture, given, null, ["fabrikam/monalisa@fabrikam.com"]]);
+      .toEqual([picture, given, null, ["fabrikam/monalisa@fabrikam.test"]]);
   });
 
   it("asks for a person's picture once they're scrolled into view, showing their initials until then", async () => {
@@ -90,6 +90,6 @@ describe("GitPersonAvatarComponent", () => {
 
     await untilAsync(() => !Object.isNull(imageOf(root, ".below")));
     expect([initials, imageOf(root, ".below"), [...new Set(PeopleComponent.host.askedPeople)]])
-      .toEqual([true, picture, ["fabrikam/monalisa@fabrikam.com", "fabrikam/octocat@fabrikam.com"]]);
+      .toEqual([true, picture, ["fabrikam/monalisa@fabrikam.test", "fabrikam/octocat@fabrikam.test"]]);
   });
 });

@@ -93,7 +93,7 @@ describe("AzureDevOpsBranchComponent", () => {
       t.signIn = BranchDialogData.signedOut();
     }));
     const unnamed = await new BranchDialog().openAsync(readsWith(t => {
-      t.signIn = BranchDialogData.signedIn("Привет@fabrikam.com");
+      t.signIn = BranchDialogData.signedIn("Привет@fabrikam.test");
     }));
 
     expect([signedOut.field.value, signedOut.texts.includes("From the pattern users/{you}/{id}-{title}"), unnamed.field.value])

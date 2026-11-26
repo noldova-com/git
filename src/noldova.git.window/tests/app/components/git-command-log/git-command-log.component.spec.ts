@@ -17,6 +17,7 @@ import { GitCommandLogComponent } from "../../../../src/app/components/git-comma
 import { GitRuntimeClient } from "../../../../src/app/services/git-runtime-client.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
+import { Wait } from "../../../fixtures/wait.fixture.ts";
 
 /** A mounted command log, with the errors it reported and the folder the views show. */
 class MountedLog {
@@ -47,7 +48,7 @@ describe("GitCommandLogComponent", () => {
     fixture.autoDetectChanges();
     return new MountedLog(fixture, fixture.nativeElement, handled, shown);
   };
-  const until = (done: () => boolean): Promise<boolean> => vi.waitUntil(done, { timeout: 5000 });
+  const until = (done: () => boolean): Promise<void> => Wait.until(done);
   const rows = (element: HTMLElement): string[][] =>
     [...element.querySelectorAll(".command")].map(row => [...row.children].map(t => (t.children.length === 0 ? [t] : [...t.children]).map(u => (u.textContent ?? "").trim()).join(" ")));
   const requests = (context: FakeWindowPartContext): readonly (readonly unknown[])[] => context.callsOf("requestAsync").filter(t => t[0] !== "git.status");

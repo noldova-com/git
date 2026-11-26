@@ -18,12 +18,11 @@ import type { GitPullRequestList } from "../../models/git-pull-request-list.ts";
 import type { GitPullRequestRow } from "../../models/git-pull-request-row.ts";
 import { GitPullRequests } from "../../services/git-pull-requests.ts";
 import { Resources } from "../../../resources.ts";
-import { GitReferenceTextComponent } from "../git-reference-text/git-reference-text.component.ts";
 
 /** The repository panel's Pull requests section: the open pull requests of the current branch's remote, from the host that claims it. */
 @Component({
   selector: "nol-git-pull-requests",
-  imports: [ContextMenuTriggerDirective, GitReferenceTextComponent, MenuComponent, MenuItemComponent, MenuSeparatorComponent],
+  imports: [ContextMenuTriggerDirective, MenuComponent, MenuItemComponent, MenuSeparatorComponent],
   templateUrl: "./git-pull-requests.component.html",
   styleUrl: "./git-pull-requests.component.css",
   host: { "(window:focus)": "refresh()" }
@@ -85,6 +84,12 @@ export class GitPullRequestsComponent {
 
   protected noteOf(row: GitPullRequestRow): string {
     return Resources.formatPullRequestNote(row.failing, row.pending, row.approvals, row.isDraft);
+  }
+
+  /** Whether the pull request's own page in the host is the window's active document, so its row shows selected. */
+  protected isShown(row: GitPullRequestRow): boolean {
+    const host: IGitPullRequests | null = this.host();
+    return !Object.isNull(host) && this.attempt(() => host.isShown?.(this.folder(), row) === true, false);
   }
 
   /** Opens the pull request in the host's own page when it has one, else its page in the browser. */

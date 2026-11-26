@@ -37,7 +37,7 @@ const ALL: JsonValue = ["noFastForward", "squash", "rebase", "rebaseMerge"];
 function pullRequestOf(number: number = 752, policies: readonly HostPolicy[] = [], workItems: readonly number[] = [7521, 7499], isAutoComplete: boolean = false):
   HostPullRequest {
   const item = new HostItem(new HostReference("git-azure-devops", "fabrikam", REPOSITORY, number), ReferenceKind.PullRequest, ReferenceState.Open,
-    "Export notes as Markdown files", URL, new HostPerson("monalisa@fabrikam.com", null, null), 1_800_000_000_000, null, 0, changes);
+    "Export notes as Markdown files", URL, new HostPerson("monalisa@fabrikam.test", null, null), 1_800_000_000_000, null, 0, changes);
   return new HostPullRequest(item, [], policies, [], isAutoComplete, "", 5, workItems.map(t => new HostWorkItemLink(t, "Export notes", story, "Active", WorkItemCategory.InProgress, URL)));
 }
 

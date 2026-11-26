@@ -9,9 +9,10 @@
 import { Component, computed, DestroyRef, effect, ErrorHandler, inject, signal, type Signal, untracked, type WritableSignal } from "@angular/core";
 import "@noldova/context.core";
 import { type IWindowPartContext, WindowPartTokens } from "@noldova/desktop.window";
-import { ContextMenuTriggerDirective, DialogService, MenuComponent, MenuItemComponent, MenuSeparatorComponent, SpinnerComponent, TextFieldComponent } from "@noldova/ui.components.angular";
+import { ContextMenuTriggerDirective, DialogService, IconButtonComponent, MenuComponent, MenuItemComponent, MenuSeparatorComponent, SpinnerComponent, TextFieldComponent,
+  TooltipDirective } from "@noldova/ui.components.angular";
 import { FormsModule } from "@angular/forms";
-import type { GitBranches, GitBranchTrack, GitRemote, GitRemoteTracks, GitRepositoryItems, GitStatus, GitWorktrees } from "@noldova/git.protocol";
+import type { GitBranches, GitBranchTrack, GitRemote, GitRemoteTracks, GitRepositoryItems, GitStatus, GitTag, GitWorktrees } from "@noldova/git.protocol";
 
 import type { GitBranchRow } from "../../models/git-branch-row.ts";
 import type { GitRepositoryLink } from "../../models/git-repository-link.ts";
@@ -33,8 +34,8 @@ import { GitTrackCounts } from "../../models/git-track-counts.ts";
 /** The repository's side panel: its name and folder, its changes and history, its host modules' rows, and its branches, agents, pull requests, remotes, tags, stashes, worktrees and submodules. */
 @Component({
   selector: "nol-git-repository",
-  imports: [ContextMenuTriggerDirective, FormsModule, GitAgentsComponent, GitPullRequestsComponent, MenuComponent, MenuItemComponent, MenuSeparatorComponent, SpinnerComponent,
-    TextFieldComponent],
+  imports: [ContextMenuTriggerDirective, FormsModule, GitAgentsComponent, GitPullRequestsComponent, IconButtonComponent, MenuComponent, MenuItemComponent, MenuSeparatorComponent,
+    SpinnerComponent, TextFieldComponent, TooltipDirective],
   templateUrl: "./git-repository.component.html",
   styleUrl: "./git-repository.component.css"
 })
@@ -145,6 +146,17 @@ export class GitRepositoryComponent {
   protected isViewed(branch: string, isRemote: boolean): boolean {
     const view: GitBranchView | null = GitViewing.branchOf(this.folder());
     return !Object.isNull(view) && view.branch === branch && view.isRemote === isRemote;
+  }
+
+  protected isTagViewed(tag: GitTag): boolean {
+    const view: GitBranchView | null = GitViewing.branchOf(this.folder());
+    return !Object.isNull(view) && view.branch === "" && view.commitId === tag.id;
+  }
+
+  /** Shows a tag in the history, at the commit it points at. */
+  protected viewTag(folder: string, tag: GitTag): void {
+    GitViewing.branch.set(new GitBranchView(folder, "", false, tag.id));
+    this.history(folder);
   }
 
   /** Shows a branch in the history, at its newest commit, without switching to it. */

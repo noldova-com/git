@@ -19,6 +19,7 @@ import type { IGitPullRequests } from "../../../../src/app/interfaces/i-git-pull
 import { GitPullRequestList } from "../../../../src/app/models/git-pull-request-list.ts";
 import { GitPullRequestRow } from "../../../../src/app/models/git-pull-request-row.ts";
 import { GitPullRequests } from "../../../../src/app/services/git-pull-requests.ts";
+import { Wait } from "../../../fixtures/wait.fixture.ts";
 
 describe("GitPullRequestsComponent", () => {
   const remoteOf = (path: string = "example-owner/example-repository"): GitRemote => new GitRemote("origin", "github.com", path, RemoteTransport.Https);
@@ -75,11 +76,11 @@ describe("GitPullRequestsComponent", () => {
     expect(texts(mounted.element, ".section .host")).toEqual(["GitHub · 20+"]);
     expect(texts(mounted.element, ".pull-request")).toHaveLength(20);
     expect(texts(mounted.element, ".pull-request").slice(0, 6)).toEqual([
-      "#1 Change 1 2 failing", "#2 Change 2 checks running", "#3 Change 3 1 review", "#4 Change 4 2 reviews", "#5 Change 5 Draft", "#6 Change 6"
+      "#1 · Change 1 2 failing", "#2 · Change 2 checks running", "#3 · Change 3 1 review", "#4 · Change 4 2 reviews", "#5 · Change 5 Draft", "#6 · Change 6"
     ]);
     expect([...mounted.element.querySelectorAll(".pull-request .dot")].slice(0, 6).map(t => t.className)).toEqual(["dot failed", "dot pending", "dot ok", "dot none", "dot none", "dot none"]);
     expect([rem(row.height), rem(dot.width), rem(dot.height), rem(dot.left - row.left), rem(title.left - row.left)]).toEqual([1.625, 0.5, 0.5, 1.875, 3.25]);
-    expect([mounted.element.querySelector(".pull-request")?.getAttribute("title"), mounted.element.querySelector(".pull-request .title nol-git-reference-text span[title]")?.getAttribute("title")])
+    expect([mounted.element.querySelector(".pull-request")?.getAttribute("title"), mounted.element.querySelector(".pull-request .title")?.getAttribute("title")])
       .toEqual([null, "Change 1"]);
   });
 
@@ -131,7 +132,7 @@ describe("GitPullRequestsComponent", () => {
     notes.push(texts(mounted.element, ".link"));
     await click(mounted, ".link");
 
-    expect(notes).toEqual([["Reading pull requests…"], ["Reading pull requests…"], ["#7 Change 7"], ["No open pull requests"], ["Sign in to see pull requests"]]);
+    expect(notes).toEqual([["Reading pull requests…"], ["Reading pull requests…"], ["#7 · Change 7"], ["No open pull requests"], ["Sign in to see pull requests"]]);
     expect(mounted.context.callsOf("runCommandAsync")).toEqual([["desktop.openSettings", { page: "git-github.account" }]]);
   });
 
@@ -172,20 +173,20 @@ describe("GitPullRequestsComponent", () => {
     const menuOf = async (row: Element | undefined): Promise<HTMLButtonElement[]> => {
       const box: DOMRect = row?.getBoundingClientRect() ?? new DOMRect();
       row?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: box.left + 4, clientY: box.top + 4, button: 2 }));
-      await vi.waitUntil(() => !Object.isNull(document.querySelector("[nol-menu-item]")));
+      await Wait.until(() => !Object.isNull(document.querySelector("[nol-menu-item]")));
       return [...document.querySelectorAll<HTMLButtonElement>("[nol-menu-item]")];
     };
     const choose = async (row: Element | undefined, action: string): Promise<void> => {
       (await menuOf(row)).find(t => t.dataset["action"] === action)?.click();
-      await vi.waitUntil(() => Object.isNull(document.querySelector("[nol-menu-item]")));
+      await Wait.until(() => Object.isNull(document.querySelector("[nol-menu-item]")));
     };
     const close = async (): Promise<void> => {
       document.querySelector("[nol-menu-item]")?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true, cancelable: true }));
-      await vi.waitUntil(() => Object.isNull(document.querySelector("[nol-menu-item]")));
+      await Wait.until(() => Object.isNull(document.querySelector("[nol-menu-item]")));
     };
     const isOff = (item: HTMLButtonElement): boolean => item.disabled || item.getAttribute("aria-disabled") === "true";
 
-    it("offers Switch to branch, Open in browser and Copy link on the whole row, its link too, the switch off until the panel can switch and on the current branch's own", async () => {
+    it("offers Switch to branch, Open in browser and Copy link on the whole row, the switch off until the panel can switch and on the current branch's own", async () => {
       const mounted: IMounted = await mount();
       const switched: string[] = [];
       mounted.fixture.componentInstance.switchTo.subscribe(t => switched.push(t));
@@ -201,17 +202,8 @@ describe("GitPullRequestsComponent", () => {
       await mounted.fixture.whenStable();
       const ownIsOff: boolean = isOff((await menuOf(rows[1]))[0] ?? document.createElement("button"));
       await close();
-
-      const onLink: (string | undefined)[] = (await menuOf(rows[0]?.querySelector("a") ?? undefined)).map(t => t.dataset["action"]);
-      await close();
-      // The window's own link menu opens only for a right-click nothing handled, so the row's menu taking it keeps that one shut.
-      const linkClick = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, button: 2 });
-      rows[0]?.querySelector("a")?.dispatchEvent(linkClick);
-      await vi.waitUntil(() => !Object.isNull(document.querySelector("[nol-menu-item]")));
-      await close();
       await choose(rows[0], "switch");
 
-      expect([onLink, linkClick.defaultPrevented]).toEqual([["switch", "open", "copy"], true]);
       expect(before).toEqual([["switch", true], ["open", false], ["copy", false]]);
       expect(beforeTexts.map(t => t.endsWith("Switch to branch") || t.endsWith("Open in browser") || t.endsWith("Copy link"))).toEqual([true, true, true]);
       expect([ownIsOff, switched]).toEqual([true, ["change-1"]]);
@@ -229,7 +221,7 @@ describe("GitPullRequestsComponent", () => {
       await choose(row, "open");
       await choose(row, "copy");
       await choose(row, "copy");
-      await vi.waitUntil(() => mounted.handled.length > 0);
+      await Wait.until(() => mounted.handled.length > 0);
 
       expect([mounted.context.callsOf("openLinkAsync"), writes.mock.calls, mounted.handled.map(t => String(t))]).toEqual([
         [["https://github.com/example-owner/example-repository/pull/1", { place: LinkPlace.System }]],
@@ -239,22 +231,37 @@ describe("GitPullRequestsComponent", () => {
     });
   });
 
-  it("makes each row's number the link to its pull request, whose click opens it once as the row's does, and keeps the whole row a click target", async () => {
-    const opened: string[] = [];
-    const mounted: IMounted = await mount({ open: (folder, row) => opened.push(`${folder} ${row.key}`) > 0 });
+  it("makes each row one button with no link in it, selected while the host says its pull request's page is in front, in the panel's selection colour", async () => {
+    const shown: WritableSignal<string | null> = signal<string | null>(null);
+    const mounted: IMounted = await mount({ open: () => true, isShown: (folder, row) => folder === "/work/site" && row.key === shown() });
+    mounted.list.set(GitPullRequestList.ready([rowOf(1), rowOf(2)]));
+    await mounted.fixture.whenStable();
+    const rows: HTMLElement[] = [...mounted.element.querySelectorAll<HTMLElement>(".pull-request")];
+    const looks = (): readonly unknown[] => rows.map(t => [t.classList.contains("sel"), t.getAttribute("aria-current"), getComputedStyle(t).backgroundColor]);
+    const before: readonly unknown[] = looks();
+    shown.set("pull-2");
+    await mounted.fixture.whenStable();
+    const selected: string = getComputedStyle(document.documentElement).getPropertyValue("--nol-selected").trim();
+    const probe: HTMLElement = document.body.appendChild(document.createElement("div"));
+    probe.style.background = selected;
+    const colour: string = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+
+    expect([rows.map(t => [t.tagName, t.getAttribute("type"), t.querySelectorAll("a").length]), before, looks()]).toEqual([
+      [["BUTTON", "button", 0], ["BUTTON", "button", 0]],
+      [[false, null, "rgba(0, 0, 0, 0)"], [false, null, "rgba(0, 0, 0, 0)"]],
+      [[false, null, "rgba(0, 0, 0, 0)"], [true, "true", colour]]
+    ]);
+  });
+
+  it("shows no row selected for a host whose isShown throws, and reports it", async () => {
+    const mounted: IMounted = await mount({ isShown: () => {
+      throw new Error("shown failed");
+    } });
     mounted.list.set(GitPullRequestList.ready([rowOf(1)]));
     await mounted.fixture.whenStable();
-    const row: HTMLElement | null = mounted.element.querySelector<HTMLElement>(".pull-request");
-    const link: HTMLAnchorElement | null = mounted.element.querySelector<HTMLAnchorElement>(".pull-request a");
 
-    link?.click();
-    await mounted.fixture.whenStable();
-    const linkOpened: readonly string[] = [...opened];
-    row?.click();
-    await mounted.fixture.whenStable();
-
-    expect([row?.tagName, Object.isNull(row) ? null : getComputedStyle(row).cursor, link?.getAttribute("href"), link?.textContent, linkOpened, opened]).toEqual([
-      "DIV", "pointer", "https://github.com/example-owner/example-repository/pull/1", "#1", ["/work/site pull-1"], ["/work/site pull-1", "/work/site pull-1"]]);
+    expect([mounted.element.querySelector(".pull-request")?.classList.contains("sel"), mounted.handled.map(t => String(t)).includes("Error: shown failed")]).toEqual([false, true]);
   });
 
   it("opens the page in the browser for a host with no page of its own, and reports a link or a sign-in the window couldn't open", async () => {
@@ -267,7 +274,7 @@ describe("GitPullRequestsComponent", () => {
     mounted.list.set(GitPullRequestList.signedOut());
     await mounted.fixture.whenStable();
     await click(mounted, ".link");
-    await vi.waitUntil(() => mounted.handled.length === 2, { timeout: 5000 });
+    await Wait.until(() => mounted.handled.length === 2);
 
     expect([mounted.context.callsOf("openLinkAsync").map(t => t[0]), mounted.handled.map(String)]).toEqual([
       ["https://github.com/example-owner/example-repository/pull/3"], ["Error: no browser", "Error: no settings"]

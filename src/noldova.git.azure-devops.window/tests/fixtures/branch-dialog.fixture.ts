@@ -71,7 +71,7 @@ export class BranchDialogData {
 export class BranchDialogReads {
   public status: JsonValue = BranchDialogData.statusOf(BranchDialogData.azure).toJson();
   public branches: JsonValue = BranchDialogData.branchesOf("main", BranchDialogData.parentBranch, "release");
-  public signIn: JsonValue = BranchDialogData.signedIn("Mona.Lisa@fabrikam.com");
+  public signIn: JsonValue = BranchDialogData.signedIn("Mona.Lisa@fabrikam.test");
   public item: JsonValue = BranchDialogData.itemOf(7521);
   public parents: JsonValue = BranchDialogData.parentsOf("users/kim/gone", BranchDialogData.parentBranch);
 }

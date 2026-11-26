@@ -21,10 +21,10 @@ import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixt
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
 const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", "3f2504e0-4f89-11d3-9a0c-0305e82c3301", 752);
-const mona = { descriptor: "aad.TW9uYQ", name: "Mona Lisa", login: "monalisa@fabrikam.com", isGroup: false };
-const octocat = { descriptor: "aad.T2N0bw", name: "Octocat", login: "Octocat@fabrikam.com", isGroup: false };
+const mona = { descriptor: "aad.TW9uYQ", name: "Mona Lisa", login: "monalisa@fabrikam.test", isGroup: false };
+const octocat = { descriptor: "aad.T2N0bw", name: "Octocat", login: "Octocat@fabrikam.test", isGroup: false };
 const team = { descriptor: "vssgp.V2Vi", name: "Web Team", login: "[Web Site]\\Web Team", isGroup: true };
-const added: HostReviewer = new HostReviewer(new HostPerson("monalisa@fabrikam.com", null, null), 0, "No vote", false);
+const added: HostReviewer = new HostReviewer(new HostPerson("monalisa@fabrikam.test", null, null), 0, "No vote", false);
 
 function wordsOf(node: Node): string {
   const words: string[] = [];
@@ -108,7 +108,7 @@ class Search {
 
 describe("AzureDevOpsAddReviewerComponent", () => {
   it("focuses its field and searches from the third character, listing each person or group found, a group marked as one, but those already reviewers", async () => {
-    const search = await new Search().openAsync(["octocat@fabrikam.com"]);
+    const search = await new Search().openAsync(["octocat@fabrikam.test"]);
     search.requests.answer(AzureDevOpsNames.searchPeopleMethod, [mona, octocat, team]);
     const focused: boolean = document.activeElement === search.field;
 
@@ -118,11 +118,11 @@ describe("AzureDevOpsAddReviewerComponent", () => {
 
     expect([focused, asked, search.requests.methods, search.requests.payloads]).toEqual([true, 0, [AzureDevOpsNames.searchPeopleMethod],
       [{ reference: reference.toJson(), query: "mon" }]]);
-    expect(search.texts(".person")).toEqual(["M Mona Lisa monalisa@fabrikam.com", "W Web Team groups Group [Web Site]\\Web Team"]);
+    expect(search.texts(".person")).toEqual(["M Mona Lisa monalisa@fabrikam.test", "W Web Team groups Group [Web Site]\\Web Team"]);
   });
 
   it("says when no one matches, and shows nothing again below three characters", async () => {
-    const search = await new Search().openAsync(["monalisa@fabrikam.com"]);
+    const search = await new Search().openAsync(["monalisa@fabrikam.test"]);
     search.requests.answer(AzureDevOpsNames.searchPeopleMethod, [mona], []);
 
     await search.typeAsync("mona");

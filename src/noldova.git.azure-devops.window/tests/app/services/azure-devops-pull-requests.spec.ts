@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import type { Signal } from "@angular/core";
+import { signal, type Signal } from "@angular/core";
 import "@noldova/context.core";
 import { FailureCode } from "@noldova/desktop.protocol";
 import { RuntimeRequestException } from "@noldova/desktop.window";
@@ -20,6 +20,7 @@ import { GitBranchPullRequest, GitCommitComments, GitPullRequestList, GitPullReq
 import { describe, expect, it } from "vitest";
 
 import { AzureDevOpsPullRequests } from "../../../src/app/services/azure-devops-pull-requests.ts";
+import { PullRequestPages } from "../../../src/app/services/pull-request-pages.ts";
 import { RequestAnswers } from "../../fixtures/request-answers.fixture.ts";
 import { UnhandledRejections } from "../../fixtures/unhandled-rejections.fixture.ts";
 import { Wait } from "../../fixtures/wait.fixture.ts";
@@ -191,6 +192,16 @@ describe("AzureDevOpsPullRequests", () => {
     expect(host.context.callsOf("log")).toEqual([]);
   });
 
+  it("says a row is shown while its pull request's page is the active document", () => {
+    const host = new Host();
+    const before: boolean = host.pullRequests.isShown(FOLDER, shown);
+    const unfollow = PullRequestPages.follow(signal(shown.key), signal(true));
+    const front: boolean = host.pullRequests.isShown(FOLDER, shown);
+    unfollow();
+
+    expect([before, front, host.pullRequests.isShown(FOLDER, shown)]).toEqual([false, true, false]);
+  });
+
   it("opens a row in its pull request document, titled by its label and title, and leaves a row it can't name to the browser", () => {
     const host = new Host();
 
@@ -205,7 +216,7 @@ describe("AzureDevOpsPullRequests", () => {
 const HEAD: string = "6dcb09b5b57875f334f61aebed695e2e4193db5e";
 const BRANCH_UNANSWERED: string = "Azure DevOps didn't answer. Its pull request reads again when the window takes the focus.";
 const COMMIT_UNANSWERED: string = "Azure DevOps didn't answer. Its pull request reads again when the commit opens again.";
-const signedIn = HostSignIn.signedIn(new HostAccount("monalisa@fabrikam.com", "Mona Lisa", null, [])).toJson();
+const signedIn = HostSignIn.signedIn(new HostAccount("monalisa@fabrikam.test", "Mona Lisa", null, [])).toJson();
 const checks: readonly HostCheck[] = [new HostCheck("site-ci", CheckState.Succeeded, null), new HostCheck("Comment requirements", CheckState.Failed, null),
   new HostCheck("Build", CheckState.Running, null), new HostCheck("Status", CheckState.Neutral, null)];
 

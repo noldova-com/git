@@ -12,7 +12,7 @@ import { describe, it } from "vitest";
 
 import { HostComment, HostingFieldException, HostPerson, HostThread, ThreadStatus } from "../../src/api/index.ts";
 
-const octocat: HostPerson = new HostPerson("octocat@fabrikam.com", null, null);
+const octocat: HostPerson = new HostPerson("octocat@fabrikam.test", null, null);
 const comment: HostComment = new HostComment(1, null, octocat, 1_800_000_000_000, "Should this respect local times?");
 const reply: HostComment = new HostComment(2, 1, octocat, 1_800_000_060_000, "Yes, fixed.");
 

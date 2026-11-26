@@ -74,7 +74,7 @@ export class WriteRunner {
         throw error;
       return;
     }
-    this.journal.record(folders.commonGitFolder, write.method, write.undo, before, after, write.checkpoint ?? null);
+    this.journal.record(folders.commonGitFolder, folders.gitFolder, write.method, write.undo, before, after, write.checkpoint ?? null);
   }
 
   private async askAsync(

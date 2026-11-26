@@ -41,7 +41,7 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
     expect(page.requests.payloads.slice(1)).toEqual([childrenQuery([7530, 7531, 7532]).toJson(), pr482.toJson()]);
     expect(page.texts(".kind")).toEqual(["menu_book User Story 7521 open_in_new"]);
     expect(page.texts(".detail-title")).toEqual(["Export notes as Markdown files"]);
-    expect(page.texts(".fields")).toEqual(["State Active Assigned K kim@fabrikam.com Iteration Sample Project\\Sprint 17 Area Sample Project\\Notes app"
+    expect(page.texts(".fields")).toEqual(["State Active Assigned K kim@fabrikam.test Iteration Sample Project\\Sprint 17 Area Sample Project\\Notes app"
       + " Points 5 Parent emoji_events 7490 Markdown export"]);
     expect(page.texts(".acceptance")).toEqual(["Acceptance criteria Readers see a due date 48 h and 2 h before it is due."]);
     expect(page.texts(".section")).toEqual([
@@ -245,7 +245,7 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
       const page = new Page().answerMine();
       page.requests.answer(GitNames.statusMethod, azureStatus.toJson());
       page.requests.answer(GitNames.graphMethod, new GitGraph([new GitGraphCommit(new GitCommit("d".repeat(40), [], "Mona Lisa", "2025-01-05T12:00:00Z",
-        "Guard AB#7699 behind #7402"), "kim@fabrikam.com", [])], false).toJson());
+        "Guard AB#7699 behind #7402"), "kim@fabrikam.test", [])], false).toJson());
       page.requests.answer(GitNames.messageReferencesMethod, noMessages);
       const release = page.requests.hold(AzureDevOpsNames.readWorkItemsMethod);
       await page.openAsync();

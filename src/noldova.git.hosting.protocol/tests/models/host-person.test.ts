@@ -33,10 +33,10 @@ describe("HostPerson", () => {
   });
 
   it("takes the name the person shows and writes it in its JSON only when there is one", () => {
-    const named: HostPerson = new HostPerson("monalisa@fabrikam.com", null, null, undefined, "Mona Lisa");
+    const named: HostPerson = new HostPerson("monalisa@fabrikam.test", null, null, undefined, "Mona Lisa");
 
     assert.deepEqual([named.name, named.toJson(), HostPerson.fromJson(named.toJson()), HostPerson.fromJson({ login: "monalisa", avatar: null, url: null }).name],
-      ["Mona Lisa", { login: "monalisa@fabrikam.com", avatar: null, url: null, name: "Mona Lisa" }, named, null]);
+      ["Mona Lisa", { login: "monalisa@fabrikam.test", avatar: null, url: null, name: "Mona Lisa" }, named, null]);
   });
 
   it("takes a PNG, JPEG, GIF or WebP avatar as a base64 data address of up to 64 KiB", () => {

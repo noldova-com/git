@@ -702,6 +702,7 @@ export class Resources {
   public static readonly rebasePlanMoved: string = "The branch has moved since its rebase plan was read, so its steps no longer match the commits to rebase; read the plan again.";
   public static readonly rebaseRangeArguments: readonly string[] = ["rev-list", "--no-merges", "--right-only"];
   public static readonly undoMoved: string = "Something the write changed has moved since, so undoing it would lose that change.";
+  public static readonly undoOtherWorktree: string = "The write was made in another worktree of this repository, so it can only be undone there.";
   /** The checkpoints module's service, which a discard takes a checkpoint through when the app includes the module. */
   public static readonly checkpointsService: string = "checkpoints.service";
   public static readonly checkpointsMethods: readonly string[] = ["captureAsync", "previewRestoreAsync", "restoreAsync"];

@@ -13,7 +13,7 @@ import { LinkedHistory } from "../../../src/app/models/linked-history.ts";
 import { SubjectPart } from "../../../src/app/models/subject-part.ts";
 
 function commitOf(id: string, subject: string): GitGraphCommit {
-  return new GitGraphCommit(new GitCommit(id.repeat(40), [], "Mona Lisa", "2026-11-22T10:00:00Z", subject), "kim@fabrikam.com", []);
+  return new GitGraphCommit(new GitCommit(id.repeat(40), [], "Mona Lisa", "2026-11-22T10:00:00Z", subject), "kim@fabrikam.test", []);
 }
 
 const commits: readonly GitGraphCommit[] = [

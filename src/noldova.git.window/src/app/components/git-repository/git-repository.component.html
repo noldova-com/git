@@ -12,8 +12,8 @@ LICENSE file in the root directory of this source tree.
     <div class="row head">
       <span class="ms">{{ resources.folderIcon }}</span>
       <div class="strong grow name">{{ resources.formatHistoryTitle(path) }}</div>
-      <button type="button" class="tb fetch-all" [disabled]="writableStatus === null" [title]="resources.fetchAllRemotesTitle" [attr.aria-label]="resources.fetchAllLabel"
-        (click)="writableStatus !== null && fetchAll(path, writableStatus)"><span class="ms">{{ resources.syncIcon }}</span></button>
+      <button type="button" nol-icon-button class="fetch-all" [icon]="resources.syncIcon" [label]="resources.fetchAllLabel" [nolTooltip]="resources.fetchAllRemotesTitle"
+        [disabled]="writableStatus === null" (click)="writableStatus !== null && fetchAll(path, writableStatus)"></button>
       <div class="small muted grow path" [title]="path">{{ path }}</div>
     </div>
     @if (failure(); as message) {
@@ -36,13 +36,13 @@ LICENSE file in the root directory of this source tree.
       </button>
     }
 
-    <div class="row section">
+    <div class="row heading section">
       <button type="button" class="toggle" [attr.aria-expanded]="isOpen(resources.branchesLabel)" (click)="toggle(resources.branchesLabel)">
         <span class="ms">{{ isOpen(resources.branchesLabel) ? resources.sectionOpenIcon : resources.sectionClosedIcon }}</span>
         <span class="caps grow">{{ resources.branchesLabel }}</span>
       </button>
-      <button type="button" class="tb new-branch" [disabled]="writableStatus === null" [title]="resources.newBranchLabel" [attr.aria-label]="resources.newBranchLabel"
-        (click)="writableStatus !== null && newBranchAsync(path, writableStatus)"><span class="ms">{{ resources.createBranchIcon }}</span></button>
+      <button type="button" nol-icon-button class="new-branch" [icon]="resources.createBranchIcon" [label]="resources.newBranchLabel" [nolTooltip]="resources.newBranchLabel"
+        [disabled]="writableStatus === null" (click)="writableStatus !== null && newBranchAsync(path, writableStatus)"></button>
     </div>
     @if (isOpen(resources.branchesLabel)) {
       @if (isReading()) {
@@ -103,7 +103,7 @@ LICENSE file in the root directory of this source tree.
       <nol-git-pull-requests [folder]="path" [remote]="remote" [current]="current()" [canSwitch]="switchable() !== null" (switchTo)="switchTo(path, $event)" />
     }
 
-    <div class="row">
+    <div class="row heading">
       <button type="button" class="toggle" [attr.aria-expanded]="isOpen(resources.remotesLabel)" (click)="toggle(resources.remotesLabel)">
         <span class="ms">{{ isOpen(resources.remotesLabel) ? resources.sectionOpenIcon : resources.sectionClosedIcon }}</span>
         <span class="caps grow">{{ resources.remotesLabel }}</span>
@@ -136,7 +136,7 @@ LICENSE file in the root directory of this source tree.
       }
     }
 
-    <div class="row">
+    <div class="row heading">
       <button type="button" class="toggle" [attr.aria-expanded]="isOpen(resources.tagsLabel)" (click)="toggle(resources.tagsLabel)">
         <span class="ms">{{ isOpen(resources.tagsLabel) ? resources.sectionOpenIcon : resources.sectionClosedIcon }}</span>
         <span class="caps grow">{{ resources.tagsLabel }}</span>
@@ -147,8 +147,8 @@ LICENSE file in the root directory of this source tree.
     </div>
     @if (isOpen(resources.tagsLabel)) {
       @for (tag of items()?.tags ?? []; track tag.name) {
-        <div class="row nested" tabindex="0" [title]="tag.name" [nolContextMenuTriggerFor]="tagMenu">
-          <span class="ms">{{ resources.tagIcon }}</span><span class="grow">{{ tag.name }}</span></div>
+        <button type="button" class="row nested" [class.sel]="isTagViewed(tag)" [attr.aria-current]="isTagViewed(tag) ? 'true' : null" [title]="tag.name"
+          (click)="viewTag(path, tag)" [nolContextMenuTriggerFor]="tagMenu"><span class="ms">{{ resources.tagIcon }}</span><span class="grow">{{ tag.name }}</span></button>
         <ng-template #tagMenu>
           @if (switchable(); as status) {
             <nol-menu>
@@ -159,7 +159,7 @@ LICENSE file in the root directory of this source tree.
       }
     }
 
-    <div class="row">
+    <div class="row heading">
       <button type="button" class="toggle" [attr.aria-expanded]="isOpen(resources.stashesLabel)" (click)="toggle(resources.stashesLabel)">
         <span class="ms">{{ isOpen(resources.stashesLabel) ? resources.sectionOpenIcon : resources.sectionClosedIcon }}</span>
         <span class="caps grow">{{ resources.stashesLabel }}</span>
@@ -174,7 +174,7 @@ LICENSE file in the root directory of this source tree.
       }
     }
 
-    <div class="row">
+    <div class="row heading">
       <button type="button" class="toggle" [attr.aria-expanded]="isOpen(resources.worktreesLabel)" (click)="toggle(resources.worktreesLabel)">
         <span class="ms">{{ isOpen(resources.worktreesLabel) ? resources.sectionOpenIcon : resources.sectionClosedIcon }}</span>
         <span class="caps grow">{{ resources.worktreesLabel }}</span>
@@ -190,7 +190,7 @@ LICENSE file in the root directory of this source tree.
     }
 
 
-    <div class="row">
+    <div class="row heading">
       <button type="button" class="toggle" [attr.aria-expanded]="isOpen(resources.submodulesLabel)" (click)="toggle(resources.submodulesLabel)">
         <span class="ms">{{ isOpen(resources.submodulesLabel) ? resources.sectionOpenIcon : resources.sectionClosedIcon }}</span>
         <span class="caps grow">{{ resources.submodulesLabel }}</span>

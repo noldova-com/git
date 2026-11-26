@@ -268,6 +268,11 @@ export class Resources {
     return count > Resources.shownPullRequests ? `${hostName} · ${Resources.shownPullRequests}+` : hostName;
   }
 
+  /** A pull request's row in the repository panel: its label, then its title. */
+  public static formatPullRequestRowText(label: string, title: string): string {
+    return `${label}${Resources.peopleSeparator}${title}`;
+  }
+
   /** A pull request's note: its failing checks, else that checks run, else its reviews, else that it is a draft, else nothing. */
   public static formatPullRequestNote(failing: number, pending: number, approvals: number, isDraft: boolean): string {
     if (failing > 0)

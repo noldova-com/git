@@ -70,7 +70,7 @@ const unlinked: Linked = new Linked([], [], 0, []);
 const unplanned: Planned = new Planned(null, null, null);
 
 export function itemOf(id: number, type: HostWorkItemType, title: string, state: string, category: WorkItemCategory, parent: number | null): HostWorkItem {
-  return new HostWorkItem(HOST, "fabrikam", PROJECT, id, type, title, state, category, urlOf(id), new HostPerson("kim@fabrikam.com", null, null),
+  return new HostWorkItem(HOST, "fabrikam", PROJECT, id, type, title, state, category, urlOf(id), new HostPerson("kim@fabrikam.test", null, null),
     "Sample Project\\Sprint 17", "Sample Project\\Notes app", parent);
 }
 
@@ -117,7 +117,7 @@ export const githubStatus: GitStatus = new GitStatus("main", null, null, [], fal
 
 function commitOf(id: string, subject: string, minutesAgo: number): GitGraphCommit {
   const authoredAt: string = new Date(NOW - minutesAgo * 60_000).toISOString().replace(/\.\d{3}Z$/u, "Z");
-  return new GitGraphCommit(new GitCommit(id.repeat(40), [], "Mona Lisa", authoredAt, subject), "kim@fabrikam.com", []);
+  return new GitGraphCommit(new GitCommit(id.repeat(40), [], "Mona Lisa", authoredAt, subject), "kim@fabrikam.test", []);
 }
 
 export const history: GitGraph = new GitGraph([commitOf("a", "Fold the tag case in the note list filter #7532", 12), commitOf("b", "Read local times AB#7531 and AB#7402", 125),

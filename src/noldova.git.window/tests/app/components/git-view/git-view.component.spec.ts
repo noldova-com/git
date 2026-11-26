@@ -28,6 +28,7 @@ import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts"
 import { GitViewFixture } from "../../../fixtures/git-view.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
+import { Wait } from "../../../fixtures/wait.fixture.ts";
 
 describe("GitViewComponent", () => {
   it("says there is no folder until the app gives one", async () => {
@@ -175,7 +176,7 @@ describe("GitViewComponent", () => {
 
     expect([button.textContent?.trim(), Math.round(banner.right - button.getBoundingClientRect().right) >= 0]).toEqual(["Abort cherry-pick", true]);
     button.click();
-    await vi.waitUntil(() => handled.length === 1);
+    await Wait.until(() => handled.length === 1);
     expect(handled).toEqual(["Error: abort broke"]);
 
     abort = null;

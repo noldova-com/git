@@ -17,7 +17,7 @@ describe("PullRequestChoice", () => {
     const pullRequest: HostPullRequest = new HostPullRequest(new HostItem(reference, ReferenceKind.PullRequest, ReferenceState.Open, "Export notes",
       "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/752", null, 1, null, 0,
       HostChanges.uncounted("users/kim/export-notes", "main", "0123456789abcdef0123456789abcdef01234567")), [], [], [], false, "", null, []);
-    const reviewer: HostReviewer = new HostReviewer(new HostPerson("octocat@fabrikam.com", null, null), 1, "Approved", true);
+    const reviewer: HostReviewer = new HostReviewer(new HostPerson("octocat@fabrikam.test", null, null), 1, "Approved", true);
     const calls: unknown[] = [];
     const choice: PullRequestChoice = new PullRequestChoice(pullRequest, [reviewer], 1_700_000_000_000,
       { changed: t => calls.push(["changed", t]), added: t => calls.push(["added", t.person.login]) });
@@ -26,6 +26,6 @@ describe("PullRequestChoice", () => {
     choice.actions.added(reviewer);
 
     expect([choice.pullRequest, choice.reviewers, choice.readAt, calls]).toEqual([pullRequest, [reviewer], 1_700_000_000_000,
-      [["changed", null], ["added", "octocat@fabrikam.com"]]]);
+      [["changed", null], ["added", "octocat@fabrikam.test"]]]);
   });
 });

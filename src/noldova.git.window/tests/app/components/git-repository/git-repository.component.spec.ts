@@ -19,12 +19,14 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { GitRepositoryComponent } from "../../../../src/app/components/git-repository/git-repository.component.ts";
 import { GitAgentState } from "../../../../src/app/enums/git-agent-state.ts";
 import { GitAgentRow } from "../../../../src/app/models/git-agent-row.ts";
+import type { GitBranchView } from "../../../../src/app/models/git-branch-view.ts";
 import { GitRepositoryLink } from "../../../../src/app/models/git-repository-link.ts";
 import { GitPullRequestList } from "../../../../src/app/models/git-pull-request-list.ts";
 import { GitPullRequestRow } from "../../../../src/app/models/git-pull-request-row.ts";
 import { GitAgents } from "../../../../src/app/services/git-agents.ts";
 import { GitPullRequests } from "../../../../src/app/services/git-pull-requests.ts";
 import { GitRepositoryLinks } from "../../../../src/app/services/git-repository-links.ts";
+import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 
@@ -194,6 +196,32 @@ describe("GitRepositoryComponent", () => {
     expect(counts).toEqual(["Tags 2", "Stashes 1", "Submodules 1"]);
     expect([...element.querySelectorAll(".row.nested[title]")].map(t => t.getAttribute("title")).filter(t => ["v2", "v1", "On main: tidy", "vendor/lib"].includes(t ?? "")))
       .toEqual(["v2", "v1", "On main: tidy", "vendor/lib"]);
+  });
+
+  it("shows a tag's commit in History on its click, its row selected until another row is, as a branch's is", async () => {
+    const tagged: string = "0123456789abcdef0123456789abcdef01234567";
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    new GitHeldRequests(context, [], {
+      ...answers,
+      "git.repositoryItems": new GitRepositoryItems([new GitTag("v2", tagged), new GitTag("v1", "f".repeat(40))], [], [], false).toJson()
+    });
+    GitFixtures.setUp(context);
+    context.allow("openDocument");
+    const fixture: ComponentFixture<GitRepositoryComponent> = TestBed.createComponent(GitRepositoryComponent);
+    fixture.autoDetectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    const tags = (): HTMLElement[] => [...element.querySelectorAll<HTMLElement>(".row.nested")].filter(t => ["v2", "v1"].includes(t.getAttribute("title") ?? ""));
+    await domAsync(() => [...element.querySelectorAll<HTMLElement>(".toggle")].some(t => (t.textContent ?? "").includes("Tags")));
+    [...element.querySelectorAll<HTMLElement>(".toggle")].find(t => (t.textContent ?? "").includes("Tags"))?.click();
+    await domAsync(() => tags().length === 2);
+    const looks = (): readonly unknown[] => tags().map(t => [t.tagName, t.classList.contains("sel"), t.getAttribute("aria-current")]);
+    const before: readonly unknown[] = looks();
+    tags()[0]?.click();
+    await fixture.whenStable();
+    const view: GitBranchView | null = GitViewing.branchOf(GitFixtures.folder);
+
+    expect([before, looks(), view?.commitId, view?.branch, context.callsOf("openDocument").at(-1)?.[0]]).toEqual([
+      [["BUTTON", false, null], ["BUTTON", false, null]], [["BUTTON", true, "true"], ["BUTTON", false, null]], tagged, "", "git.history"]);
   });
 
   it("shows each local branch's commits ahead and behind its upstream, the current branch's from the status", async () => {

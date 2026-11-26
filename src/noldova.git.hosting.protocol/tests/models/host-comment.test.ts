@@ -12,7 +12,7 @@ import { describe, it } from "vitest";
 
 import { HostComment, HostingFieldException, HostPerson } from "../../src/api/index.ts";
 
-const monalisa: HostPerson = new HostPerson("monalisa@fabrikam.com", null, null);
+const monalisa: HostPerson = new HostPerson("monalisa@fabrikam.test", null, null);
 const PUBLISHED: number = 1_800_000_000_000;
 
 describe("HostComment", () => {

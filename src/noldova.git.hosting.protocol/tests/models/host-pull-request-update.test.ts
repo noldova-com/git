@@ -15,13 +15,13 @@ import { HostingFieldException, HostPerson, HostPullRequestUpdate } from "../../
 const SOURCE: string = "9fceb02d0ae598e95dc970b74767f19372d61af8";
 const COMMON: string = "0123456789abcdef0123456789abcdef01234567";
 const AT: number = Date.UTC(2026, 10, 23, 10);
-const kim: HostPerson = new HostPerson("kim@fabrikam.com", null, null);
+const kim: HostPerson = new HostPerson("kim@fabrikam.test", null, null);
 
 describe("HostPullRequestUpdate", () => {
   it("returns its number, author, time and commits as JSON that reads back the same, without an author or common commit too", () => {
     const bare = new HostPullRequestUpdate(2, null, AT, SOURCE, null);
 
-    assert.deepEqual(new HostPullRequestUpdate(3, kim, AT, SOURCE, COMMON).toJson(), { number: 3, author: { login: "kim@fabrikam.com", avatar: null, url: null },
+    assert.deepEqual(new HostPullRequestUpdate(3, kim, AT, SOURCE, COMMON).toJson(), { number: 3, author: { login: "kim@fabrikam.test", avatar: null, url: null },
       createdAt: AT, sourceCommit: SOURCE, commonCommit: COMMON });
     assert.deepEqual(HostPullRequestUpdate.fromJson(JSON.parse(JSON.stringify(bare.toJson()))), bare);
     assert.deepEqual(HostPullRequestUpdate.fromJson(new HostPullRequestUpdate(3, kim, AT, SOURCE, COMMON).toJson()).author, kim);

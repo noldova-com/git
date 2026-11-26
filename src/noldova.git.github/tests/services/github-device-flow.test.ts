@@ -327,7 +327,7 @@ describe("GitHubDeviceFlow", () => {
 
   it("follows no redirect, so the device code and the token stay with GitHub, refusing a code, a poll or an account GitHub redirects", async () => {
     const github = new FakeGitHub();
-    const away = { Location: "https://login.fabrikam.com/oauth" };
+    const away = { Location: "https://login.fabrikam.test/oauth" };
     github.answer(FakeGitHub.json({}, 307, away), FakeGitHub.json({}, 308, away), FakeGitHub.json({}, 302, away));
     const flow = new GitHubDeviceFlow(github.fetch, unread());
     const signal = new AbortController().signal;

@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 import assert from "node:assert/strict";
+import path from "node:path";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
@@ -17,6 +18,7 @@ import type { GitFailureException } from "../../src/exceptions/git-failure.excep
 import { UndoDuringOperationException } from "../../src/exceptions/undo-during-operation.exception.ts";
 import { UndoMovedException } from "../../src/exceptions/undo-moved.exception.ts";
 import { UndoNotPossibleException } from "../../src/exceptions/undo-not-possible.exception.ts";
+import { UndoOtherWorktreeException } from "../../src/exceptions/undo-other-worktree.exception.ts";
 import { UndoUnknownException } from "../../src/exceptions/undo-unknown.exception.ts";
 import type { IGitWrite } from "../../src/interfaces/i-git-write.ts";
 import { RefSnapshot } from "../../src/models/ref-snapshot.ts";
@@ -218,7 +220,7 @@ describe("UndoWriter", () => {
 
   test("refuses a write that can't be undone, an entry whose branch is checked out no more, and any undo while a cherry-pick stops on a conflict", async () => {
     const now = await snapshots.readAsync(folders, false);
-    const none = journal.record(folders.commonGitFolder, GitNames.pushMethod, UndoMode.None, now, now);
+    const none = journal.record(folders.commonGitFolder, folders.gitFolder, GitNames.pushMethod, UndoMode.None, now, now);
     await refusedAsync(undoAsync(none), UndoNotPossibleException, FailureCode.Refused);
 
     const commit = await commitAsync("c.txt");
@@ -236,16 +238,16 @@ describe("UndoWriter", () => {
     const head = await idOf("HEAD");
     const now = await snapshots.readAsync(folders, false);
     const unborn = new RefSnapshot("main", null, new Map([...now.refs].filter(([name]) => name !== "refs/heads/main")), null);
-    const kept = journal.record(folders.commonGitFolder, GitNames.pullMethod, UndoMode.Keep, unborn, now);
+    const kept = journal.record(folders.commonGitFolder, folders.gitFolder, GitNames.pullMethod, UndoMode.Keep, unborn, now);
     assert.deepEqual(kept.moves.map(t => [t.name, t.before, t.after]), [["refs/heads/main", null, head]]);
     await refusedAsync(undoAsync(kept), UndoNotPossibleException, FailureCode.Refused);
-    const unmoved = journal.record(folders.commonGitFolder, GitNames.pullMethod, UndoMode.Mixed, now, now);
+    const unmoved = journal.record(folders.commonGitFolder, folders.gitFolder, GitNames.pullMethod, UndoMode.Mixed, now, now);
     await refusedAsync(undoAsync(unmoved), UndoNotPossibleException, FailureCode.Refused);
 
     await repository.runGitAsync(["switch", "--quiet", "--orphan", "fresh"]);
     const orphan = await snapshots.readAsync(folders, false);
     const detached = new RefSnapshot(null, null, orphan.refs, null);
-    const switched = journal.record(folders.commonGitFolder, GitNames.switchBranchMethod, UndoMode.Switch, detached, orphan);
+    const switched = journal.record(folders.commonGitFolder, folders.gitFolder, GitNames.switchBranchMethod, UndoMode.Switch, detached, orphan);
     await refusedAsync(undoAsync(switched), UndoNotPossibleException, FailureCode.Refused);
   });
 
@@ -253,14 +255,14 @@ describe("UndoWriter", () => {
     await repository.runGitAsync(["tag", "gone"]);
     const tagged = await snapshots.readAsync(folders, true);
     await repository.runGitAsync(["tag", "--delete", "gone"]);
-    const deleted = journal.record(folders.commonGitFolder, GitNames.resetMethod, UndoMode.Refs, tagged, await snapshots.readAsync(folders, true));
+    const deleted = journal.record(folders.commonGitFolder, folders.gitFolder, GitNames.resetMethod, UndoMode.Refs, tagged, await snapshots.readAsync(folders, true));
 
     await undoAsync(deleted);
 
     assert.equal(await idOf("refs/tags/gone"), await idOf("HEAD"));
     const now = await snapshots.readAsync(folders, true);
     const missing = new RefSnapshot(now.branch, now.head, now.refs, "0".repeat(40));
-    const staged = journal.record(folders.commonGitFolder, GitNames.stageMethod, UndoMode.Index, missing, now);
+    const staged = journal.record(folders.commonGitFolder, folders.gitFolder, GitNames.stageMethod, UndoMode.Index, missing, now);
     await refusedAsync(undoAsync(staged), GitFailedException, FailureCode.Unavailable);
   });
 
@@ -280,7 +282,7 @@ describe("UndoWriter", () => {
   test("puts the refs back when a rename's entry moved no branch to rename back", async () => {
     const before = await snapshots.readAsync(folders, true);
     await repository.runGitAsync(["tag", "made"]);
-    const entry = journal.record(folders.commonGitFolder, GitNames.renameBranchMethod, UndoMode.Refs, before, await snapshots.readAsync(folders, true));
+    const entry = journal.record(folders.commonGitFolder, folders.gitFolder, GitNames.renameBranchMethod, UndoMode.Refs, before, await snapshots.readAsync(folders, true));
 
     await undoAsync(entry);
 
@@ -349,5 +351,27 @@ describe("UndoWriter", () => {
     const request = await new UndoWriter(runner, snapshots, journal, store, discard.id).requestAsync(folders, await statuses.readAsync(folders), null);
 
     assert.deepEqual(request?.details, [{ label: "Paths", kind: PermissionDetailKind.Code, value: "a.txt" }]);
+  });
+
+  test("undoes a write that moved HEAD only in its own worktree, though another worktree of the repository is detached at the same commit, and a branch made at a commit from either", async () => {
+    await repository.runGitAsync(["switch", "--quiet", "--detach"]);
+    const other = path.join(path.dirname(repository.folder), "other");
+    await repository.runGitAsync(["worktree", "add", "--quiet", "--detach", other, "HEAD"]);
+    const otherFolders = await new RepositoryReader(runner, new GitVersionReader(runner)).readAsync(other);
+    const commit = await commitAsync("c.txt");
+    const made = await idOf("HEAD");
+    await repository.runGitAsync(["-C", other, "switch", "--quiet", "--detach", made]);
+    const at = await writeAsync(new BranchAtWriter(runner, "at-side", await idOf("side")));
+    const undoInAsync = async (where: RepositoryFolders, entry: GitJournalEntry): Promise<void> => {
+      await writes.runAsync(where, (await statuses.readAsync(where)).fingerprint, new UndoWriter(runner, snapshots, journal, store, entry.id), null);
+    };
+
+    await refusedAsync(undoInAsync(otherFolders, commit), UndoOtherWorktreeException, FailureCode.Refused);
+    const heads = [(await repository.runGitAsync(["-C", other, "rev-parse", "HEAD"])).trim(), await idOf("HEAD")];
+    await undoInAsync(otherFolders, at);
+    await undoAsync(commit);
+
+    assert.deepEqual([heads, await repository.runGitAsync(["branch", "--list", "at-side"]), (await repository.runGitAsync(["-C", other, "rev-parse", "HEAD"])).trim(), await statusOf()],
+      [[made, made], "", made, "A  c.txt\n"]);
   });
 });

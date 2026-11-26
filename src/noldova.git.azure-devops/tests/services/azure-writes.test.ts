@@ -53,14 +53,14 @@ const reply: ThreadReply = new ThreadReply(reference, 3, 1, "Fixed in **the next
 const resolve: ThreadChange = new ThreadChange(reference, 3, ThreadStatus.Resolved);
 const threadUrl: string = `https://dev.azure.com/fabrikam/_apis/git/repositories/${repositoryId}/pullRequests/12/threads/3?api-version=7.1`;
 const commentsUrl: string = `https://dev.azure.com/fabrikam/_apis/git/repositories/${repositoryId}/pullRequests/12/threads/3/comments?api-version=7.1`;
-const posted = (): Response => FakeAzure.json({ id: 2, parentCommentId: 1, author: { displayName: "Mona Lisa", uniqueName: "monalisa@fabrikam.com" },
+const posted = (): Response => FakeAzure.json({ id: 2, parentCommentId: 1, author: { displayName: "Mona Lisa", uniqueName: "monalisa@fabrikam.test" },
   content: "Fixed in **the next** commit.", publishedDate: "2027-01-15T10:05:00Z", lastUpdatedDate: "2027-01-15T10:05:00Z", commentType: "text" });
 
 const personId: string = "d6245f20-2af8-44f4-9451-8107cb2767db";
 const approve: PullRequestVote = new PullRequestVote(reference, 10);
 const reviewerUrl: string = `https://dev.azure.com/fabrikam/_apis/git/repositories/${repositoryId}/pullRequests/12/reviewers/${personId}?api-version=7.1`;
 const connection = (): Response => FakeAzure.json({ authenticatedUser: { id: personId, providerDisplayName: "Mona Lisa" } });
-const voted = (vote: number): Response => FakeAzure.json({ id: personId, displayName: "Mona Lisa", uniqueName: "monalisa@fabrikam.com", vote, isRequired: true });
+const voted = (vote: number): Response => FakeAzure.json({ id: personId, displayName: "Mona Lisa", uniqueName: "monalisa@fabrikam.test", vote, isRequired: true });
 
 function failureOf(error: unknown): readonly string[] | null {
   return error instanceof MethodFailureException ? [error.failure.code, error.failure.message] : null;
@@ -148,7 +148,7 @@ describe("AzureWrites", () => {
     const comment: HostComment = await writes.replyToThreadAsync(reply, signal);
 
     const post = azure.requests[0];
-    assert.deepEqual(comment, new HostComment(2, 1, new HostPerson("monalisa@fabrikam.com", null, null, undefined, "Mona Lisa"), Date.parse("2027-01-15T10:05:00Z"),
+    assert.deepEqual(comment, new HostComment(2, 1, new HostPerson("monalisa@fabrikam.test", null, null, undefined, "Mona Lisa"), Date.parse("2027-01-15T10:05:00Z"),
       "Fixed in **the next** commit."));
     assert.deepEqual([azure.urls(), post?.init.method, post?.header("Content-Type"), post?.body], [[commentsUrl], "POST", "application/json",
       { content: "Fixed in **the next** commit.", parentCommentId: 1, commentType: 1 }]);
@@ -204,7 +204,7 @@ describe("AzureWrites", () => {
 
     const reviewers: HostReviewer[] = [await writes.voteAsync(approve, signal), await writes.voteAsync(new PullRequestVote(reference, -5), signal)];
 
-    const mona = new HostPerson("monalisa@fabrikam.com", null, null, undefined, "Mona Lisa");
+    const mona = new HostPerson("monalisa@fabrikam.test", null, null, undefined, "Mona Lisa");
     assert.deepEqual(reviewers, [new HostReviewer(mona, 1, "Approved", true), new HostReviewer(mona, -0.5, "Waiting for the author", true)]);
     const puts = [azure.requests[1], azure.requests[3]].map(t => [t?.init.method, t?.header("Content-Type"), t?.body]);
     assert.deepEqual([azure.urls(), azure.requests.map(t => t.init.method), puts], [[connectionUrl, reviewerUrl, connectionUrl, reviewerUrl],
@@ -460,14 +460,14 @@ const updateUrl: string = "https://dev.azure.com/fabrikam/_apis/wit/workitems/42
 const typeUrl: string = "https://dev.azure.com/fabrikam/Web%20Site/_apis/wit/workitemtypes/Bug?api-version=7.1";
 const iconUrl: string = "https://dev.azure.com/fabrikam/_apis/wit/workitemicons/icon_insect?color=CC293D&v=2&api-version=7.1";
 const noIcon = (): Response => new Response(null, { status: 404 });
-const profile = (properties: Readonly<Record<string, unknown>> = { Account: { $value: "monalisa@fabrikam.com" } }): Response =>
+const profile = (properties: Readonly<Record<string, unknown>> = { Account: { $value: "monalisa@fabrikam.test" } }): Response =>
   FakeAzure.json({ authenticatedUser: { providerDisplayName: "Mona Lisa", properties } });
 const changed = (): Response => FakeAzure.json({ id: 42, fields: { "System.TeamProject": "Web Site", "System.WorkItemType": "Bug", "System.Title": "Fix the sign-in",
-  "System.State": "Active", "System.AssignedTo": { displayName: "Mona Lisa", uniqueName: "monalisa@fabrikam.com" } }, relations: [] });
+  "System.State": "Active", "System.AssignedTo": { displayName: "Mona Lisa", uniqueName: "monalisa@fabrikam.test" } }, relations: [] });
 const bugType = (): Response => FakeAzure.json({ name: "Bug", color: "CC293D", icon: { id: "icon_insect" }, states: [{ name: "Active", category: "InProgress" }] });
 const detail: HostWorkItemDetail = new HostWorkItemDetail(new HostWorkItem("git-azure-devops", "fabrikam", "Web Site", 42,
   new HostWorkItemType("Bug", "CC293D", "icon_insect"), "Fix the sign-in", "Active", WorkItemCategory.InProgress,
-  "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/42", new HostPerson("monalisa@fabrikam.com", null, null, undefined, "Mona Lisa"), null, null, null), null, null, null, null,
+  "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/42", new HostPerson("monalisa@fabrikam.test", null, null, undefined, "Mona Lisa"), null, null, null), null, null, null, null,
 null, [], [], 0, []);
 const update: WorkItemUpdate = new WorkItemUpdate("git-azure-devops", "fabrikam", 42, "Active", true);
 
@@ -481,7 +481,7 @@ describe("AzureWrites, work items", () => {
     const patch = azure.requests[1];
     assert.deepEqual([answer, azure.urls()], [detail, [connectionUrl, updateUrl, typeUrl, iconUrl]]);
     assert.deepEqual([patch?.init.method, patch?.header("Content-Type"), patch?.body], ["PATCH", "application/json-patch+json", [
-      { op: "add", path: "/fields/System.State", value: "Active" }, { op: "add", path: "/fields/System.AssignedTo", value: "monalisa@fabrikam.com" }]]);
+      { op: "add", path: "/fields/System.State", value: "Active" }, { op: "add", path: "/fields/System.AssignedTo", value: "monalisa@fabrikam.test" }]]);
   });
 
   it("only moves the state, or only assigns, when the update asks for one", async () => {
@@ -493,7 +493,7 @@ describe("AzureWrites, work items", () => {
     await writes.updateWorkItemAsync(new WorkItemUpdate("git-azure-devops", "fabrikam", 42, null, true), signal);
 
     assert.deepEqual([azure.urls(), azure.requests[0]?.body, azure.requests[4]?.body], [[updateUrl, typeUrl, iconUrl, connectionUrl, updateUrl], [{ op: "add", path: "/fields/System.State", value: "Active" }],
-    [{ op: "add", path: "/fields/System.AssignedTo", value: "monalisa@fabrikam.com" }]]);
+    [{ op: "add", path: "/fields/System.AssignedTo", value: "monalisa@fabrikam.test" }]]);
   });
 
   it("refuses as signed out with no token, for another host's work item or one in another organization than the token's, asking nothing", async () => {
@@ -546,7 +546,7 @@ const storageKeyUrl: string = "https://vssps.dev.azure.com/fabrikam/_apis/graph/
 const reviewersUrl: string = `https://dev.azure.com/fabrikam/_apis/git/repositories/${repositoryId}/pullRequests/12/reviewers?api-version=7.1`;
 const storageKey = (): Response => FakeAzure.json({ value: personId });
 const added = (id: string = personId.toUpperCase()): Response => FakeAzure.json({ count: 2, value: [
-  { id: "0b5c9e4e-7e3a-4bd8-8bd5-1c0d6f3a3c52", uniqueName: "octocat@fabrikam.com", vote: 10 }, { id, uniqueName: "monalisa@fabrikam.com", vote: 0 }] });
+  { id: "0b5c9e4e-7e3a-4bd8-8bd5-1c0d6f3a3c52", uniqueName: "octocat@fabrikam.test", vote: 10 }, { id, uniqueName: "monalisa@fabrikam.test", vote: 0 }] });
 
 describe("AzureWrites, reviewers", () => {
   it("reads the person's id from their descriptor and adds them as an optional reviewer with no vote, answering their entry", async () => {
@@ -556,7 +556,7 @@ describe("AzureWrites, reviewers", () => {
 
     const reviewer: HostReviewer = await writes.addReviewerAsync(addition, signal);
 
-    assert.deepEqual(reviewer, new HostReviewer(new HostPerson("monalisa@fabrikam.com", null, null), 0, "No vote", false));
+    assert.deepEqual(reviewer, new HostReviewer(new HostPerson("monalisa@fabrikam.test", null, null), 0, "No vote", false));
     assert.deepEqual([azure.urls(), azure.requests.map(t => t.init.method), azure.requests[1]?.header("Content-Type"), azure.requests[1]?.body],
       [[storageKeyUrl, reviewersUrl], [undefined, "POST"], "application/json", [{ id: personId }]]);
   });

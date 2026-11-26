@@ -49,7 +49,7 @@ class DocumentComponent {
 const URL: string = "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/752";
 const item: HostItem = new HostItem(new HostReference("git-azure-devops", "fabrikam", "site", 752), ReferenceKind.PullRequest, ReferenceState.Open,
   "Export notes as Markdown from the shared notes list, with a title long enough to run past the header's width so the header cuts it short", URL,
-  new HostPerson("monalisa@fabrikam.com", null, null), 1_800_000_000_000, null, 0,
+  new HostPerson("monalisa@fabrikam.test", null, null), 1_800_000_000_000, null, 0,
   HostChanges.uncounted("users/monalisa/7521-export-notes", "main", "0123456789abcdef0123456789abcdef01234567"));
 const pullRequestWith = (reviewers: readonly HostReviewer[]): HostPullRequest => new HostPullRequest(item, reviewers,
   [new HostPolicy("Minimum number of reviewers", PolicyState.Approved, true, null), new HostPolicy("Comment requirements", PolicyState.Rejected, true, null)],
@@ -57,7 +57,7 @@ const pullRequestWith = (reviewers: readonly HostReviewer[]): HostPullRequest =>
   true, "Readers see **due dates** before they pass.", 5,
   [new HostWorkItemLink(7521, "Export notes as Markdown files", new HostWorkItemType("User Story", "009CCC", "icon_book"), "Active",
     WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/web/_workitems/edit/7521")]);
-const pullRequest: HostPullRequest = pullRequestWith([new HostReviewer(new HostPerson("octocat@fabrikam.com", null, null), 1, "Approved", true)]);
+const pullRequest: HostPullRequest = pullRequestWith([new HostReviewer(new HostPerson("octocat@fabrikam.test", null, null), 1, "Approved", true)]);
 
 const picture: string = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 
@@ -68,14 +68,14 @@ async function openAsync(mode: ThemeMode, width: number = 60, shown: HostPullReq
   const requests = new RequestAnswers(context);
   requests.answer(AzureDevOpsNames.readPullRequestMethod, shown.toJson());
   requests.answer(AzureDevOpsNames.readPullRequestThreadsMethod, new HostPullRequestThreads(threads, false).toJson());
-  requests.answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedIn(new HostAccount("monalisa@fabrikam.com", "Mona Lisa", null, [])).toJson());
+  requests.answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedIn(new HostAccount("monalisa@fabrikam.test", "Mona Lisa", null, [])).toJson());
   requests.answer(AzureDevOpsNames.readMergeTypesMethod, ["squash", "rebase"]);
   requests.otherwise(AzureDevOpsNames.readPullRequestChangesMethod, new HostPullRequestFiles("9fceb02d0ae598e95dc970b74767f19372d61af8", null, Array.from({ length: 12 }, (_, i) =>
     new HostPullRequestFile(`src/notes/f${String(i)}.ts`, FileChangeKind.Modified, null)), false).toJson());
   requests.otherwise(AzureDevOpsNames.readPullRequestUpdatesMethod, new HostPullRequestUpdates(Array.from({ length: 3 }, (_, i) =>
     new HostPullRequestUpdate(i + 1, null, Date.UTC(2026, 10, 20 + i, 12), "0123456789abcdef0123456789abcdef01234567", null)), false).toJson());
   requests.answer(AzureDevOpsNames.readPersonAvatarMethod, ...Array.from({ length: pictures }, () => new HostAvatar(picture).toJson()));
-  requests.answer(AzureDevOpsNames.searchPeopleMethod, [{ descriptor: "aad.TW9uYQ", name: "Mona Lisa", login: "monalisa@fabrikam.com", isGroup: false },
+  requests.answer(AzureDevOpsNames.searchPeopleMethod, [{ descriptor: "aad.TW9uYQ", name: "Mona Lisa", login: "monalisa@fabrikam.test", isGroup: false },
     { descriptor: "vssgp.V2Vi", name: "Web Team", login: "[Web Site]\\Web Team", isGroup: true }]);
   TestBed.configureTestingModule({
     providers: [{ provide: WindowPartTokens.context, useValue: context }, { provide: WindowPartTokens.activeDocument, useValue: signal(true) }, provideMarkdown()]
@@ -424,9 +424,9 @@ describe("AzureDevOpsPullRequestComponent in the kit's look", () => {
   it.each(AppearanceFixture.modes)("draws reviewers as the board does: 1.5rem avatars, a group's as a groups icon, each vote's badge in its state's color with a white mark, none without a vote, and Required at the row's end, in %s mode",
     async mode => {
       const fixture = await openAsync(mode, 60, pullRequestWith([
-        new HostReviewer(new HostPerson("octocat@fabrikam.com", null, null), 0.5, "Approved with suggestions", true),
-        new HostReviewer(new HostPerson("hubot@fabrikam.com", null, null), -0.5, "Waiting for the author", false),
-        new HostReviewer(new HostPerson("monalisa@fabrikam.com", null, null), -1, "Rejected", false),
+        new HostReviewer(new HostPerson("octocat@fabrikam.test", null, null), 0.5, "Approved with suggestions", true),
+        new HostReviewer(new HostPerson("hubot@fabrikam.test", null, null), -0.5, "Waiting for the author", false),
+        new HostReviewer(new HostPerson("monalisa@fabrikam.test", null, null), -1, "Rejected", false),
         new HostReviewer(new HostPerson("[Web Site]\\Web Team", null, null), 0, "No vote", false)]));
       const root: HTMLElement = fixture.nativeElement;
       const rows: HTMLElement[] = [...root.querySelectorAll<HTMLElement>(".reviewer")];
@@ -455,7 +455,7 @@ describe("AzureDevOpsPullRequestComponent in the kit's look", () => {
     });
 
   it.each(AppearanceFixture.modes)("shows the author's and each reviewer's Azure DevOps picture at the 1.5rem avatar's size, a group keeping its icon, in %s mode", async mode => {
-    const fixture = await openAsync(mode, 60, pullRequestWith([new HostReviewer(new HostPerson("octocat@fabrikam.com", null, null), 1, "Approved", true),
+    const fixture = await openAsync(mode, 60, pullRequestWith([new HostReviewer(new HostPerson("octocat@fabrikam.test", null, null), 1, "Approved", true),
       new HostReviewer(new HostPerson("[Web Site]\\Web Team", null, null), 0, "No vote", false)]), 3);
     const root: HTMLElement = fixture.nativeElement;
     await untilAsync(() => root.querySelectorAll(".meta img, .reviewer img").length === 2);
@@ -517,11 +517,11 @@ describe("AzureDevOpsPullRequestComponent in the kit's look", () => {
   });
 
   it.each(AppearanceFixture.modes)("fits a 30rem middle column with the comment threads on the overview, with nothing cut, outside it or overlapping, in %s mode", async mode => {
-    const octocat: HostPerson = new HostPerson("octocat@fabrikam.com", null, null);
+    const octocat: HostPerson = new HostPerson("octocat@fabrikam.test", null, null);
     const fixture = await openAsync(mode, 30, pullRequest, 0, [
       new HostThread(3, ThreadStatus.Active, null, null, [
         new HostComment(1, null, octocat, 1_800_000_000_000, "Could the export say which folder the note is kept in, so a user with two folders knows where to look?"),
-        new HostComment(2, 1, new HostPerson("monalisa@fabrikam.com", null, null), 1_800_000_060_000, "Yes, it reads the folder's name from the note itself.")]),
+        new HostComment(2, 1, new HostPerson("monalisa@fabrikam.test", null, null), 1_800_000_060_000, "Yes, it reads the folder's name from the note itself.")]),
       new HostThread(5, ThreadStatus.Active, "/src/notes/shared-notes-list/markdown-note-export-schedule.component.ts", 41,
         [new HostComment(1, null, octocat, 1_800_000_120_000, "Is this the right default for an export made a day before?")]),
       new HostThread(7, ThreadStatus.Resolved, null, null, [new HostComment(1, null, octocat, 1_800_000_180_000, "Done.")])]);

@@ -22,6 +22,7 @@ import { GitRuntimeClient } from "../../../../src/app/services/git-runtime-clien
 import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
+import { Wait } from "../../../fixtures/wait.fixture.ts";
 
 /** A mounted repository panel, with the folder the views show and the errors it reported. */
 class MountedRepository {
@@ -147,7 +148,7 @@ describe("GitRepositoryComponent reads and writes", () => {
       return new PanelAndHistory(element, fixture.nativeElement);
     };
     const historyRow = (element: HTMLElement): HTMLElement => find(element, "button.row.history");
-    const until = (done: () => boolean): Promise<boolean> => vi.waitUntil(done, { timeout: 5000 });
+    const until = (done: () => boolean): Promise<void> => Wait.until(done);
     const selectedIn = (history: HTMLElement): string | undefined => history.querySelector("[role=option][aria-selected=true]")?.textContent ?? undefined;
 
     it("selects the current branch's newest commit at a click on History, so History is marked and the Git panel shows it, opens the history and brings the Commit view forward", async () => {

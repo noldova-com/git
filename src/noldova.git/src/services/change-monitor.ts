@@ -61,7 +61,7 @@ export class ChangeMonitor {
     const watched = new WatchedWorktree(key, worktree, folders);
     this.worktrees.set(key, watched);
     const cookies = [
-      this.addWatcher(watched, folders.gitFolder, t => Resources.watchedGitFiles.includes(t), ""),
+      this.addWatcher(watched, folders.gitFolder, t => this.acceptsGitFile(watched, t), ""),
       isReftable
         ? this.addWatcher(watched, path.join(folders.commonGitFolder, Resources.reftableFolder), t => t === Resources.reftableListFile, undefined)
         : this.addWatcher(watched, path.join(folders.commonGitFolder, ...Resources.branchRefsFolder), t => !t.endsWith(Resources.lockExtension), Resources.lockExtension)
@@ -175,6 +175,13 @@ export class ChangeMonitor {
       this.pollAlways(watched);
       return undefined;
     }
+  }
+
+  /** Whether a change in the worktree's own git folder refreshes it; a changed index also makes the ignore check forget the worktree's answers. */
+  private acceptsGitFile(watched: WatchedWorktree, name: string): boolean {
+    if (name === Resources.indexFile)
+      this.ignored.forgetIndex(watched.folders.top);
+    return Resources.watchedGitFiles.includes(name);
   }
 
   /** Watches the worktree's whole folder tree; a watch that fails leaves a shown worktree checked every few seconds, as without one. */

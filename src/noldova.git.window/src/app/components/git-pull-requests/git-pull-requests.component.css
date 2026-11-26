@@ -49,13 +49,17 @@
   text-align: start;
 }
 
-button.row,
-.row.pull-request {
+button.row {
   cursor: pointer;
 }
 
 .row:hover {
   background: var(--nol-hover);
+}
+
+.row.sel,
+.row.sel:hover {
+  background: var(--nol-selected);
 }
 
 /* A pull request's row starts under the section title's text, as a branch row does under Branches. */

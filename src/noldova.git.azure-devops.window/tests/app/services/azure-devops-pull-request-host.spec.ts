@@ -40,7 +40,7 @@ describe("AzureDevOpsPullRequestHost", () => {
     const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", "3f2504e0-4f89-11d3-9a0c-0305e82c3301", 752);
 
     expect([host.readThreadsMethod, host.replyToThreadMethod, host.changeThreadMethod, host.personAvatarOf(reference, "[Web Site]\\Web Team"),
-      host.personAvatarOf(reference, "monalisa@fabrikam.com")]).toEqual([AzureDevOpsNames.readPullRequestThreadsMethod, AzureDevOpsNames.replyToThreadMethod,
+      host.personAvatarOf(reference, "monalisa@fabrikam.test")]).toEqual([AzureDevOpsNames.readPullRequestThreadsMethod, AzureDevOpsNames.replyToThreadMethod,
       AzureDevOpsNames.changeThreadMethod, null, undefined]);
   });
 

@@ -39,7 +39,7 @@ function pinNow(): void {
 }
 const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752);
 const other: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 7);
-const monalisa: HostPerson = new HostPerson("monalisa@fabrikam.com", null, null);
+const monalisa: HostPerson = new HostPerson("monalisa@fabrikam.test", null, null);
 const azureStatus: GitStatus = new GitStatus("main", "a".repeat(40), null, [], false, "f1", null,
   new GitRemote("origin", "dev.azure.com", "fabrikam/Web%20Site/_git/site", RemoteTransport.Https));
 
@@ -119,7 +119,7 @@ describe("AzureDevOpsPullRequestUpdatesComponent", () => {
 
     const old: string = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(OLD);
     expect([tab.requests.methods, tab.requests.payloads]).toEqual([[AzureDevOpsNames.readPullRequestUpdatesMethod], [reference.toJson()]]);
-    expect(tab.texts(".row")).toEqual(["Update 2 monalisa@fabrikam.com 2 h 9fceb02", `Update 1 Someone ${old} 0123456`]);
+    expect(tab.texts(".row")).toEqual(["Update 2 monalisa@fabrikam.test 2 h 9fceb02", `Update 1 Someone ${old} 0123456`]);
     expect([tab.element.querySelectorAll("button.row").length, tab.texts(".cap"), tab.counts]).toEqual([0, [], ["2"]]);
   });
 

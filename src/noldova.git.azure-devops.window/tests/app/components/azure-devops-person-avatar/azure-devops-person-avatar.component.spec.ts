@@ -26,11 +26,11 @@ const picture: string = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABC
   selector: "nol-git-azure-devops-people",
   imports: [AzureDevOpsPersonAvatarComponent],
   template: `<div class="list">
-    <nol-git-azure-devops-person-avatar class="mona" organization="fabrikam" login="monalisa@fabrikam.com" name="monalisa" [size]="small" />
-    <nol-git-azure-devops-person-avatar class="mona-again" organization="Fabrikam" login="MonaLisa@Fabrikam.com" name="monalisa" [size]="small" />
-    <nol-git-azure-devops-person-avatar class="given" organization="fabrikam" login="hubot@fabrikam.com" name="hubot" [image]="picture" />
+    <nol-git-azure-devops-person-avatar class="mona" organization="fabrikam" login="monalisa@fabrikam.test" name="monalisa" [size]="small" />
+    <nol-git-azure-devops-person-avatar class="mona-again" organization="Fabrikam" login="MonaLisa@Fabrikam.test" name="monalisa" [size]="small" />
+    <nol-git-azure-devops-person-avatar class="given" organization="fabrikam" login="hubot@fabrikam.test" name="hubot" [image]="picture" />
     <div class="gap"></div>
-    <nol-git-azure-devops-person-avatar class="below" organization="fabrikam" login="octocat@fabrikam.com" name="octocat" />
+    <nol-git-azure-devops-person-avatar class="below" organization="fabrikam" login="octocat@fabrikam.test" name="octocat" />
   </div>`,
   styles: [".list { display: flex; flex-direction: column; height: 10rem; overflow: auto; } .gap { flex: none; height: 50rem; }"]
 })
@@ -67,18 +67,18 @@ describe("AzureDevOpsPersonAvatarComponent", () => {
 
     await Wait.until(() => expect([imageOf(root, ".mona"), imageOf(root, ".mona-again")]).toEqual([picture, picture]));
 
-    expect([askedLogins(), imageOf(root, ".given"), imageOf(root, ".below")]).toEqual([["monalisa@fabrikam.com"], picture, null]);
+    expect([askedLogins(), imageOf(root, ".given"), imageOf(root, ".below")]).toEqual([["monalisa@fabrikam.test"], picture, null]);
   });
 
   it("reads a person's picture once they're scrolled into view, showing their initials until then", async () => {
     const fixture = await openAsync();
     const root: HTMLElement = fixture.nativeElement;
-    await Wait.until(() => expect(askedLogins()).toEqual(["monalisa@fabrikam.com"]));
+    await Wait.until(() => expect(askedLogins()).toEqual(["monalisa@fabrikam.test"]));
     const initials: boolean = !Object.isNull(root.querySelector(".below .nol-avatar-initials"));
 
     root.querySelector(".below")?.scrollIntoView();
 
     await Wait.until(() => expect(imageOf(root, ".below")).toBe(picture));
-    expect([initials, askedLogins()]).toEqual([true, ["monalisa@fabrikam.com", "octocat@fabrikam.com"]]);
+    expect([initials, askedLogins()]).toEqual([true, ["monalisa@fabrikam.test", "octocat@fabrikam.test"]]);
   });
 });

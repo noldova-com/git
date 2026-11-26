@@ -35,10 +35,10 @@ function itemOf(number: number, changes: HostChanges): HostItem {
 
 const changes: HostChanges = HostChanges.uncounted("users/monalisa/7521-export-notes", "main", "0123456789abcdef0123456789abcdef01234567");
 const full: HostPullRequest = new HostPullRequest(itemOf(752, changes), [
-  new HostReviewer(new HostPerson("octocat@fabrikam.com", null, null), 0.5, "Approved with suggestions", true),
-  new HostReviewer(new HostPerson("hubot@fabrikam.com", null, null), -0.5, "Waiting for the author", false),
+  new HostReviewer(new HostPerson("octocat@fabrikam.test", null, null), 0.5, "Approved with suggestions", true),
+  new HostReviewer(new HostPerson("hubot@fabrikam.test", null, null), -0.5, "Waiting for the author", false),
   new HostReviewer(new HostPerson("[Web Site]\\Web Team", null, null), 0, "No vote", false),
-  new HostReviewer(new HostPerson("monalisa@fabrikam.com", null, null), -1, "Rejected", false)
+  new HostReviewer(new HostPerson("monalisa@fabrikam.test", null, null), -1, "Rejected", false)
 ], [
   new HostPolicy("Minimum number of reviewers", PolicyState.Approved, true, null),
   new HostPolicy("Comment requirements", PolicyState.Rejected, true, null),

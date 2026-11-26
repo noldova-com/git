@@ -70,9 +70,9 @@ function threadOn(iteration: number, comments: readonly Readonly<Record<string, 
 function pull(changes: Readonly<Record<string, unknown>> = {}): Record<string, unknown> {
   return {
     pullRequestId: 12, status: "active", isDraft: false, title: "Add the sign-in page", creationDate: "2027-01-15T09:30:00Z",
-    createdBy: { displayName: "Mona Lisa", uniqueName: "monalisa@fabrikam.com" }, sourceRefName: "refs/heads/feature/sign-in", targetRefName: "refs/heads/main",
+    createdBy: { displayName: "Mona Lisa", uniqueName: "monalisa@fabrikam.test" }, sourceRefName: "refs/heads/feature/sign-in", targetRefName: "refs/heads/main",
     lastMergeSourceCommit: { commitId: commit },
-    reviewers: [{ displayName: "Octo Cat", uniqueName: "octocat@fabrikam.com", vote: 5, isRequired: true }, { displayName: "[Web Site]\\Web Team",
+    reviewers: [{ displayName: "Octo Cat", uniqueName: "octocat@fabrikam.test", vote: 5, isRequired: true }, { displayName: "[Web Site]\\Web Team",
       uniqueName: "vstfs:///Classification/TeamProject/7f3c2a10-0000-0000-0000-000000000003\\Web Team", isContainer: true, vote: 0 }],
     repository: { id: repositoryId, name: "site", project: { id: projectId, name: "Web Site" } },
     ...changes
@@ -97,12 +97,12 @@ const reviewRequestsUrl: string = "https://dev.azure.com/fabrikam/web/_apis/git/
 const connection = (): Response => FakeAzure.json({ authenticatedUser: { id: personId, providerDisplayName: "Mona Lisa" } });
 
 function asking(vote: number, changes: Readonly<Record<string, unknown>> = {}): Record<string, unknown> {
-  return pull({ reviewers: [{ id: "a1b2c3d4-0000-0000-0000-000000000001", uniqueName: "octocat@fabrikam.com", vote: 0 }, { uniqueName: "[web]\\Web Team", vote: 0 },
-    { id: personId, uniqueName: "monalisa@fabrikam.com", vote }], ...changes });
+  return pull({ reviewers: [{ id: "a1b2c3d4-0000-0000-0000-000000000001", uniqueName: "octocat@fabrikam.test", vote: 0 }, { uniqueName: "[web]\\Web Team", vote: 0 },
+    { id: personId, uniqueName: "monalisa@fabrikam.test", vote }], ...changes });
 }
 
 const item: HostItem = new HostItem(reference, ReferenceKind.PullRequest, ReferenceState.Open, "Add the sign-in page", page,
-  new HostPerson("monalisa@fabrikam.com", null, null, undefined, "Mona Lisa"), Date.parse("2027-01-15T09:30:00Z"), null, 0,
+  new HostPerson("monalisa@fabrikam.test", null, null, undefined, "Mona Lisa"), Date.parse("2027-01-15T09:30:00Z"), null, 0,
   HostChanges.uncounted("feature/sign-in", "main", commit));
 
 const workItemQuery: WorkItemQuery = new WorkItemQuery("git-azure-devops", "fabrikam", 42);
@@ -118,7 +118,7 @@ function workItem(fields: Readonly<Record<string, unknown>> = {}): Record<string
     id: 42,
     fields: {
       "System.TeamProject": "Web Site", "System.WorkItemType": "User Story", "System.Title": "Sign in with a token", "System.State": "Active",
-      "System.AssignedTo": { displayName: "Mona Lisa", uniqueName: "monalisa@fabrikam.com" }, "System.IterationPath": "Web Site\\Sprint 3",
+      "System.AssignedTo": { displayName: "Mona Lisa", uniqueName: "monalisa@fabrikam.test" }, "System.IterationPath": "Web Site\\Sprint 3",
       "System.AreaPath": "Web Site\\Accounts", "System.Parent": 40, "System.ChangedDate": "2027-01-15T09:30:00Z", ...fields
     }
   };
@@ -133,15 +133,15 @@ function workItemType(name: string = "User Story"): Record<string, unknown> {
 }
 
 const storyItem: HostWorkItem = new HostWorkItem("git-azure-devops", "fabrikam", "Web Site", 42, story, "Sign in with a token", "Active",
-  WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/42", new HostPerson("monalisa@fabrikam.com", null, null, undefined, "Mona Lisa"),
+  WorkItemCategory.InProgress, "https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/42", new HostPerson("monalisa@fabrikam.test", null, null, undefined, "Mona Lisa"),
   "Web Site\\Sprint 3", "Web Site\\Accounts", 40, Date.parse("2027-01-15T09:30:00Z"));
 
 const threadsUrl: string = `https://dev.azure.com/fabrikam/_apis/git/repositories/${repositoryId}/pullRequests/12/threads?api-version=7.1`;
-const monalisa: HostPerson = new HostPerson("monalisa@fabrikam.com", null, null, undefined, "Mona Lisa");
+const monalisa: HostPerson = new HostPerson("monalisa@fabrikam.test", null, null, undefined, "Mona Lisa");
 
 function comment(id: number, parent: number, content: string, changes: Readonly<Record<string, unknown>> = {}): Record<string, unknown> {
   return {
-    id, parentCommentId: parent, author: { displayName: "Mona Lisa", uniqueName: "monalisa@fabrikam.com" }, content, publishedDate: "2027-01-15T10:00:00Z",
+    id, parentCommentId: parent, author: { displayName: "Mona Lisa", uniqueName: "monalisa@fabrikam.test" }, content, publishedDate: "2027-01-15T10:00:00Z",
     lastUpdatedDate: "2027-01-15T10:00:00Z", commentType: "text", ...changes
   };
 }
@@ -274,9 +274,9 @@ describe("AzureReads", () => {
       read.push(await reads.readReferenceAsync(reference, signal));
 
     assert.deepEqual(read.map(t => [t?.state, t?.closedAt, t?.changes?.headBranch, t?.author?.login ?? null]), [
-      [ReferenceState.Draft, null, "feature/sign-in", "monalisa@fabrikam.com"],
-      [ReferenceState.Merged, Date.parse("2027-01-16T10:00:00Z"), "feature/sign-in", "monalisa@fabrikam.com"],
-      [ReferenceState.Closed, Date.parse("2027-01-17T10:00:00Z"), "feature/raw", "monalisa@fabrikam.com"],
+      [ReferenceState.Draft, null, "feature/sign-in", "monalisa@fabrikam.test"],
+      [ReferenceState.Merged, Date.parse("2027-01-16T10:00:00Z"), "feature/sign-in", "monalisa@fabrikam.test"],
+      [ReferenceState.Closed, Date.parse("2027-01-17T10:00:00Z"), "feature/raw", "monalisa@fabrikam.test"],
       [ReferenceState.Open, null, "feature/sign-in", null]
     ]);
   });
@@ -301,7 +301,7 @@ describe("AzureReads", () => {
   it("reads a pull request with its reviewers' votes, its policies, its builds, its work items' state categories, a state its type doesn't list as proposed, and"
     + " whether it completes by itself", async () => {
     const azure = new FakeAzure();
-    azure.answer(FakeAzure.json(pull({ autoCompleteSetBy: { uniqueName: "monalisa@fabrikam.com" }, completionOptions: { mergeStrategy: "squash" },
+    azure.answer(FakeAzure.json(pull({ autoCompleteSetBy: { uniqueName: "monalisa@fabrikam.test" }, completionOptions: { mergeStrategy: "squash" },
       description: "Readers see **due dates**." })),
       FakeAzure.json({ value: [evaluation("approved", "Minimum number of reviewers", true), evaluation("running", "Build", false, "0609b952-1397-4640-95ec-e00a01b2c241")] }),
       FakeAzure.json({ value: [build("completed", "succeeded"), build("inProgress", null)] }), FakeAzure.json({ count: 5, value: Array.from({ length: 5 }, () => ({})) }),
@@ -316,7 +316,7 @@ describe("AzureReads", () => {
     assert.deepEqual(linesOf(log), ["Azure DevOps' icon_insect icon isn't shown: Azure DevOps answered 404."]);
 
     assert.deepEqual(read, new HostPullRequest(item, [
-      new HostReviewer(new HostPerson("octocat@fabrikam.com", null, null, undefined, "Octo Cat"), 0.5, "Approved with suggestions", true),
+      new HostReviewer(new HostPerson("octocat@fabrikam.test", null, null, undefined, "Octo Cat"), 0.5, "Approved with suggestions", true),
       new HostReviewer(new HostPerson("[Web Site]\\Web Team", null, null), 0, "No vote", false)
     ], [
       new HostPolicy("Minimum number of reviewers", PolicyState.Approved, true, null), new HostPolicy("Build", PolicyState.Running, false, null)
@@ -337,7 +337,7 @@ describe("AzureReads", () => {
 
   it("names no auto-complete merge type without auto-complete, without completion options or when the options name none", async () => {
     const azure = new FakeAzure();
-    const setBy = { uniqueName: "monalisa@fabrikam.com" };
+    const setBy = { uniqueName: "monalisa@fabrikam.test" };
     for (const changes of [{ completionOptions: { mergeStrategy: "squash" } }, { autoCompleteSetBy: setBy }, { autoCompleteSetBy: setBy, completionOptions: {
       deleteSourceBranch: true } }])
       azure.answer(FakeAzure.json(pull(changes)), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }));
@@ -353,13 +353,13 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     const descriptor: string = "vstfs:///Framework/IdentityDomain/5d2f0c11-0000-0000-0000-000000000004\\sample_qa";
     azure.answer(FakeAzure.json(pull({ reviewers: [{ displayName: "[Sample]\\sample_qa", uniqueName: descriptor, isContainer: true, vote: 0 },
-      { displayName: " ", uniqueName: descriptor, isContainer: true, vote: 0 }, { displayName: "Octo Cat", uniqueName: "octocat@fabrikam.com", isContainer: false, vote: 0 }] })),
+      { displayName: " ", uniqueName: descriptor, isContainer: true, vote: 0 }, { displayName: "Octo Cat", uniqueName: "octocat@fabrikam.test", isContainer: false, vote: 0 }] })),
       FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] }));
     const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
 
     const read: HostPullRequest | null = await reads.readPullRequestAsync(reference, signal);
 
-    assert.deepEqual(read?.reviewers.map(t => t.person.login), ["[Sample]\\sample_qa", descriptor, "octocat@fabrikam.com"]);
+    assert.deepEqual(read?.reviewers.map(t => t.person.login), ["[Sample]\\sample_qa", descriptor, "octocat@fabrikam.test"]);
   });
 
   it("reads each build's number and, for a build policy, the number of the build its evaluation ran, none for a build it didn't read or a policy that ran none",
@@ -385,7 +385,7 @@ describe("AzureReads", () => {
   it("names each vote, policy state and build state Azure DevOps answers, and one it doesn't know", async () => {
     const azure = new FakeAzure();
     const votes: readonly number[] = [10, 5, 0, -5, -10, 3];
-    azure.answer(FakeAzure.json(pull({ reviewers: votes.map(t => ({ uniqueName: "octocat@fabrikam.com", vote: t })) })),
+    azure.answer(FakeAzure.json(pull({ reviewers: votes.map(t => ({ uniqueName: "octocat@fabrikam.test", vote: t })) })),
       FakeAzure.json({ value: ["queued", "running", "approved", "rejected", "notApplicable", "broken"].map(t => evaluation(t, "Policy", true)) }),
       FakeAzure.json({ value: [build("notStarted", null, false, false), build("inProgress", null), build("cancelling", null), build("completed", "succeeded"),
         build("completed", "partiallySucceeded"), build("completed", "canceled", true, false), build("completed", "failed"), build("completed", "unknown")] }),
@@ -610,7 +610,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     const at: string = "2027-01-15T09:30:00Z";
     azure.answer(FakeAzure.json({ value: [
-      { id: 1, author: { uniqueName: "monalisa@fabrikam.com" }, createdDate: at, sourceRefCommit: { commitId: otherCommit }, commonRefCommit: { commitId: commit } },
+      { id: 1, author: { uniqueName: "monalisa@fabrikam.test" }, createdDate: at, sourceRefCommit: { commitId: otherCommit }, commonRefCommit: { commitId: commit } },
       { id: 2, createdDate: at, sourceRefCommit: { commitId: commit } }] }),
     FakeAzure.json({ value: Array.from({ length: 101 }, (_, i) => ({ id: i + 1, createdDate: at, sourceRefCommit: { commitId: commit } })) }));
     const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
@@ -618,7 +618,7 @@ describe("AzureReads", () => {
     const read: HostPullRequestUpdates[] = [await reads.readPullRequestUpdatesAsync(reference, signal), await reads.readPullRequestUpdatesAsync(reference, signal)];
 
     assert.deepEqual(read[0], new HostPullRequestUpdates([new HostPullRequestUpdate(2, null, Date.parse(at), commit, null),
-      new HostPullRequestUpdate(1, new HostPerson("monalisa@fabrikam.com", null, null), Date.parse(at), otherCommit, commit)], false));
+      new HostPullRequestUpdate(1, new HostPerson("monalisa@fabrikam.test", null, null), Date.parse(at), otherCommit, commit)], false));
     assert.deepEqual([read[1]?.updates.length, read[1]?.updates[0]?.number, read[1]?.updates[99]?.number, read[1]?.hasMore], [100, 101, 2, true]);
     assert.deepEqual(azure.urls(), [pullUpdatesUrl, pullUpdatesUrl]);
   });
@@ -866,7 +866,7 @@ describe("AzureReads", () => {
   it("counts the approvals of people only, since Azure DevOps copies a person's vote onto each group they voted for, and takes the decision from them", async () => {
     const group = (name: string, vote: number): Record<string, unknown> => ({ displayName: `[Web Site]\\${name}`, isContainer: true, vote,
       uniqueName: `vstfs:///Classification/TeamProject/7f3c2a10-0000-0000-0000-000000000003\\${name}` });
-    const reviewers = [{ displayName: "Octo Cat", uniqueName: "octocat@fabrikam.com", vote: 10 }, { displayName: "Mona Lisa", uniqueName: "monalisa@fabrikam.com",
+    const reviewers = [{ displayName: "Octo Cat", uniqueName: "octocat@fabrikam.test", vote: 10 }, { displayName: "Mona Lisa", uniqueName: "monalisa@fabrikam.test",
       vote: 5 }, group("Web Team", 10), group("Leads", 10), group("Reviewers", 5), group("Admins", -10)];
     const azure = new FakeAzure();
     azure.answer(FakeAzure.json({ queries: [], results: [{ [commit]: [{ pullRequestId: 12 }] }] }), FakeAzure.json(pull({ reviewers })),
@@ -1003,7 +1003,7 @@ describe("AzureReads", () => {
     const azure = new FakeAzure();
     const query = new BranchQuery("dev.azure.com", "fabrikam/web/_git/site", "feature/sign-in", null);
     for (const votes of [[10, -5], [0, 0]]) {
-      azure.answer(FakeAzure.json({ value: [pull({ reviewers: votes.map(t => ({ uniqueName: "octocat@fabrikam.com", vote: t })) })] }),
+      azure.answer(FakeAzure.json({ value: [pull({ reviewers: votes.map(t => ({ uniqueName: "octocat@fabrikam.test", vote: t })) })] }),
         FakeAzure.json({ value: [evaluation("queued", "Status", false), evaluation("approved", "Work items", false), evaluation("notApplicable", "Merge strategy", false)] }),
         FakeAzure.json({ value: [] }));
     }
@@ -1049,7 +1049,7 @@ describe("AzureReads", () => {
 
   it("reads the active pull requests with each one's approving votes, its builds and its policies other than builds counted as checks, and its source and target branches", async () => {
     const azure = new FakeAzure();
-    const draft = pull({ pullRequestId: 13, isDraft: true, title: "Try the new layout", reviewers: [{ uniqueName: "octocat@fabrikam.com", vote: -10 }],
+    const draft = pull({ pullRequestId: 13, isDraft: true, title: "Try the new layout", reviewers: [{ uniqueName: "octocat@fabrikam.test", vote: -10 }],
       sourceRefName: "refs/heads/layout/grid", targetRefName: "refs/heads/feature/sign-in" });
     azure.answer(FakeAzure.json({ value: [pull(), draft] }),
       FakeAzure.json({ value: [evaluation("rejected", "Comment requirements", true), evaluation("running", "Build", true, "0609b952-1397-4640-95ec-e00a01b2c241")] }),
@@ -1486,7 +1486,7 @@ function relation(rel: string, url: string): Record<string, unknown> {
 
 function itemOf(id: number, title: string, parent: number | null): HostWorkItem {
   return new HostWorkItem("git-azure-devops", "fabrikam", "Web Site", id, story, title, "Active", WorkItemCategory.InProgress,
-    `https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/${id}`, new HostPerson("monalisa@fabrikam.com", null, null, undefined, "Mona Lisa"), "Web Site\\Sprint 3",
+    `https://dev.azure.com/fabrikam/Web%20Site/_workitems/edit/${id}`, new HostPerson("monalisa@fabrikam.test", null, null, undefined, "Mona Lisa"), "Web Site\\Sprint 3",
     "Web Site\\Accounts", parent, Date.parse("2027-01-15T09:30:00Z"));
 }
 
@@ -1638,7 +1638,7 @@ describe("AzureReads, work items", () => {
 const peopleQuery: PeopleQuery = new PeopleQuery(reference, "mona");
 const subjectQueryUrl: string = "https://vssps.dev.azure.com/fabrikam/_apis/graph/subjectquery?api-version=7.1-preview.1";
 const subject = (index: number, name: string = `Mona ${index}`): Record<string, unknown> =>
-  ({ subjectKind: "user", descriptor: `aad.${index}`, displayName: name, principalName: `mona${index}@fabrikam.com`, mailAddress: null });
+  ({ subjectKind: "user", descriptor: `aad.${index}`, displayName: name, principalName: `mona${index}@fabrikam.test`, mailAddress: null });
 
 describe("AzureReads, people", () => {
   it("finds up to 10 people and groups of the organization through Graph, each with its descriptor, name, login and whether it's a group", async () => {
@@ -1651,7 +1651,7 @@ describe("AzureReads, people", () => {
     const found: readonly FoundPerson[] = await reads.searchPeopleAsync(peopleQuery, signal);
 
     assert.deepEqual(found, [new FoundPerson("vssgp.R3JvdXA", "Web Team", "[Web Site]\\Web Team", true),
-      ...Array.from({ length: 9 }, (_, i) => new FoundPerson(`aad.${i}`, `Mona ${i}`, `mona${i}@fabrikam.com`, false))]);
+      ...Array.from({ length: 9 }, (_, i) => new FoundPerson(`aad.${i}`, `Mona ${i}`, `mona${i}@fabrikam.test`, false))]);
     assert.deepEqual([azure.urls(), azure.requests[0]?.init.method, azure.requests[0]?.body], [[subjectQueryUrl], "POST",
       { query: "mona", subjectKind: ["User", "Group"] }]);
   });

@@ -20,8 +20,8 @@ import { RuntimePart } from "../src/api/index.ts";
 import { FakeAzure, KeptSecrets, linesOf } from "./fixtures/fake-azure.fixture.ts";
 import { RuntimeContext } from "./fixtures/runtime-context.fixture.ts";
 
-const account: HostAccount = new HostAccount("monalisa@fabrikam.com", "Mona Lisa", null, []);
-const profile = (): Response => FakeAzure.json({ authenticatedUser: { providerDisplayName: "Mona Lisa", properties: { Account: { $value: "monalisa@fabrikam.com" } } } });
+const account: HostAccount = new HostAccount("monalisa@fabrikam.test", "Mona Lisa", null, []);
+const profile = (): Response => FakeAzure.json({ authenticatedUser: { providerDisplayName: "Mona Lisa", properties: { Account: { $value: "monalisa@fabrikam.test" } } } });
 const reference: JsonValue = new HostReference("git-azure-devops", "fabrikam", "3411ebc1-d5aa-464f-9615-0b527bc66719", 12).toJson();
 const bugItem: JsonValue = { id: 42, fields: { "System.TeamProject": "web", "System.WorkItemType": "Bug", "System.Title": "Fix the sign-in", "System.State": "New" } };
 const bugType = (): Response => FakeAzure.json({ name: "Bug", color: "CC293D", icon: { id: "icon_insect" }, states: [{ name: "New", category: "Proposed" }] });
@@ -171,8 +171,8 @@ describe("RuntimePart", () => {
       await callAsync(context, "git-azure-devops.readPullRequest", reference),
       await callAsync(context, "git-azure-devops.readBranchPullRequest", new BranchQuery("dev.azure.com", "fabrikam/web/_git/site", "main", null).toJson()),
       await callAsync(context, "git-azure-devops.readWorkItem", new WorkItemQuery("git-azure-devops", "fabrikam", 42).toJson()),
-      await callAsync(context, "git-azure-devops.readAuthorAvatar", new AuthorQuery("dev.azure.com", "fabrikam", "monalisa@fabrikam.com", "a".repeat(40)).toJson()),
-      await callAsync(context, "git-azure-devops.readPersonAvatar", new PersonQuery("dev.azure.com", "fabrikam", "monalisa@fabrikam.com").toJson()),
+      await callAsync(context, "git-azure-devops.readAuthorAvatar", new AuthorQuery("dev.azure.com", "fabrikam", "monalisa@fabrikam.test", "a".repeat(40)).toJson()),
+      await callAsync(context, "git-azure-devops.readPersonAvatar", new PersonQuery("dev.azure.com", "fabrikam", "monalisa@fabrikam.test").toJson()),
       await callAsync(context, "git-azure-devops.readPullRequests", new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site").toJson()),
       await callAsync(context, "git-azure-devops.readPullRequestHeads", new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site").toJson()),
       await callAsync(context, "git-azure-devops.readReviewRequests", new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site").toJson()),
@@ -211,7 +211,7 @@ describe("RuntimePart", () => {
   it("serves a signed-in pull request's threads as their JSON, with no more", async () => {
     const azure = new FakeAzure();
     azure.hold();
-    azure.answer(FakeAzure.json({ count: 1, value: [{ id: 3, status: "active", comments: [{ id: 1, parentCommentId: 0, author: { uniqueName: "monalisa@fabrikam.com" },
+    azure.answer(FakeAzure.json({ count: 1, value: [{ id: 3, status: "active", comments: [{ id: 1, parentCommentId: 0, author: { uniqueName: "monalisa@fabrikam.test" },
       content: "Fix the sign-in", publishedDate: "2027-05-02T00:00:00Z", commentType: "text" }] }] }));
     vi.stubGlobal("fetch", azure.fetch);
     const part = new RuntimePart();
@@ -222,7 +222,7 @@ describe("RuntimePart", () => {
     const answers = [await callAsync(context, "git-azure-devops.readPullRequestThreads", reference)];
     await part.deactivateAsync();
 
-    assert.deepEqual(answers, [{ threads: [{ id: 3, state: "Active", path: null, line: null, comments: [{ id: 1, parent: null, author: { login: "monalisa@fabrikam.com", avatar: null,
+    assert.deepEqual(answers, [{ threads: [{ id: 3, state: "Active", path: null, line: null, comments: [{ id: 1, parent: null, author: { login: "monalisa@fabrikam.test", avatar: null,
       url: null }, publishedAt: Date.parse("2027-05-02T00:00:00Z"), body: "Fix the sign-in" }] }], hasMore: false }]);
   });
 
@@ -344,7 +344,7 @@ describe("RuntimePart", () => {
   it("replies to a thread and changes its state only for the app's main process acting for a window, with a payload it can read", async () => {
     const azure = new FakeAzure();
     azure.hold();
-    azure.answer(FakeAzure.json({ id: 2, parentCommentId: 1, author: { uniqueName: "monalisa@fabrikam.com" }, content: "Fixed.",
+    azure.answer(FakeAzure.json({ id: 2, parentCommentId: 1, author: { uniqueName: "monalisa@fabrikam.test" }, content: "Fixed.",
       publishedDate: "2027-05-02T00:00:00Z", commentType: "text" }), FakeAzure.json({ id: 3, status: "fixed" }));
     vi.stubGlobal("fetch", azure.fetch);
     const part = new RuntimePart();
@@ -373,7 +373,7 @@ describe("RuntimePart", () => {
     const badChange = [FailureCode.InvalidParams, "The thread change takes { reference, thread, state }: an Azure DevOps pull request's reference, "
       + "a thread's id and Active or Resolved."];
     assert.deepEqual(refusals, [...Array.from({ length: 6 }, () => unauthorized), badReply, badReply, badReply, badReply, badChange, badChange, badChange]);
-    assert.deepEqual(answers, [{ id: 2, parent: 1, author: { login: "monalisa@fabrikam.com", avatar: null, url: null }, publishedAt: Date.parse("2027-05-02T00:00:00Z"),
+    assert.deepEqual(answers, [{ id: 2, parent: 1, author: { login: "monalisa@fabrikam.test", avatar: null, url: null }, publishedAt: Date.parse("2027-05-02T00:00:00Z"),
       body: "Fixed." }, null]);
     assert.deepEqual(azure.urls().slice(1), [
       "https://dev.azure.com/fabrikam/_apis/git/repositories/3411ebc1-d5aa-464f-9615-0b527bc66719/pullRequests/12/threads/3/comments?api-version=7.1",
@@ -464,7 +464,7 @@ describe("RuntimePart", () => {
     const azure = new FakeAzure();
     azure.hold();
     azure.answer(FakeAzure.json({ authenticatedUser: { id: "d6245f20-2af8-44f4-9451-8107cb2767db" } }),
-      FakeAzure.json({ uniqueName: "monalisa@fabrikam.com", vote: 5 }));
+      FakeAzure.json({ uniqueName: "monalisa@fabrikam.test", vote: 5 }));
     vi.stubGlobal("fetch", azure.fetch);
     const part = new RuntimePart();
     const context = new RuntimeContext();
@@ -483,7 +483,7 @@ describe("RuntimePart", () => {
     const unauthorized = [FailureCode.Unauthorized, "Only a person's sign-in in a window signs in to Azure DevOps."];
     const badVote = [FailureCode.InvalidParams, "The vote takes { reference, vote }: an Azure DevOps pull request's reference and 10, 5, 0, -5 or -10."];
     assert.deepEqual(refusals, [unauthorized, unauthorized, unauthorized, badVote, badVote]);
-    assert.deepEqual(answer, { person: { login: "monalisa@fabrikam.com", avatar: null, url: null }, vote: 0.5, voteLabel: "Approved with suggestions", isRequired: false });
+    assert.deepEqual(answer, { person: { login: "monalisa@fabrikam.test", avatar: null, url: null }, vote: 0.5, voteLabel: "Approved with suggestions", isRequired: false });
     assert.deepEqual(azure.urls().slice(1), ["https://dev.azure.com/fabrikam/_apis/connectionData",
       "https://dev.azure.com/fabrikam/_apis/git/repositories/3411ebc1-d5aa-464f-9615-0b527bc66719/pullRequests/12/reviewers/d6245f20-2af8-44f4-9451-8107cb2767db?api-version=7.1"]);
   });
@@ -491,9 +491,9 @@ describe("RuntimePart", () => {
   it("searches people and adds a reviewer only for the app's main process acting for a window, with a payload it takes", async () => {
     const azure = new FakeAzure();
     azure.hold();
-    azure.answer(FakeAzure.json({ value: [{ subjectKind: "user", descriptor: "aad.TW9uYQ", displayName: "Mona Lisa", principalName: "monalisa@fabrikam.com" }] }),
+    azure.answer(FakeAzure.json({ value: [{ subjectKind: "user", descriptor: "aad.TW9uYQ", displayName: "Mona Lisa", principalName: "monalisa@fabrikam.test" }] }),
       FakeAzure.json({ value: "d6245f20-2af8-44f4-9451-8107cb2767db" }),
-      FakeAzure.json({ count: 1, value: [{ id: "D6245F20-2AF8-44F4-9451-8107CB2767DB", uniqueName: "monalisa@fabrikam.com", vote: 0 }] }));
+      FakeAzure.json({ count: 1, value: [{ id: "D6245F20-2AF8-44F4-9451-8107CB2767DB", uniqueName: "monalisa@fabrikam.test", vote: 0 }] }));
     vi.stubGlobal("fetch", azure.fetch);
     const part = new RuntimePart();
     const context = new RuntimeContext();
@@ -520,8 +520,8 @@ describe("RuntimePart", () => {
     const badAddition = [FailureCode.InvalidParams,
       "Adding a reviewer takes { reference, descriptor }: an Azure DevOps pull request's reference and a person's or group's descriptor."];
     assert.deepEqual(refusals, [...Array.from({ length: 6 }, () => unauthorized), badSearch, badSearch, badAddition, badAddition]);
-    assert.deepEqual(answers, [[{ descriptor: "aad.TW9uYQ", name: "Mona Lisa", login: "monalisa@fabrikam.com", isGroup: false }],
-      { person: { login: "monalisa@fabrikam.com", avatar: null, url: null }, vote: 0, voteLabel: "No vote", isRequired: false }]);
+    assert.deepEqual(answers, [[{ descriptor: "aad.TW9uYQ", name: "Mona Lisa", login: "monalisa@fabrikam.test", isGroup: false }],
+      { person: { login: "monalisa@fabrikam.test", avatar: null, url: null }, vote: 0, voteLabel: "No vote", isRequired: false }]);
     assert.deepEqual(azure.urls().slice(1), ["https://vssps.dev.azure.com/fabrikam/_apis/graph/subjectquery?api-version=7.1-preview.1",
       "https://vssps.dev.azure.com/fabrikam/_apis/graph/storagekeys/aad.TW9uYQ?api-version=7.1-preview.1",
       "https://dev.azure.com/fabrikam/_apis/git/repositories/3411ebc1-d5aa-464f-9615-0b527bc66719/pullRequests/12/reviewers?api-version=7.1"]);

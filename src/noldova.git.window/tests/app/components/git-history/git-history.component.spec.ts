@@ -248,6 +248,31 @@ describe("GitHistoryComponent", () => {
         "First", "Second", null]);
   });
 
+  it("brings the Git view forward when the person clicks the changes row, and not when the arrow keys reach it", async () => {
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.graph": graph.toJson(),
+      "git.status": GitFixtures.status([GitFixtures.entry("a.ts", FileState.Unmodified, FileState.Modified)]).toJson() });
+    GitFixtures.setUp(context);
+    const fixture: ComponentFixture<GitHistoryComponent> = TestBed.createComponent(GitHistoryComponent);
+    fixture.componentRef.setInput("instance", GitFixtures.folder);
+    fixture.autoDetectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    const options = (): readonly HTMLElement[] => [...element.querySelectorAll<HTMLElement>("[role=option]")];
+    await untilAsync(element, () => options().length === 3);
+    options()[1]?.click();
+    await untilAsync(element, () => !Object.isNull(GitViewing.commitOf(GitFixtures.folder)));
+    const keyed: number = context.callsOf("showView").length;
+    options()[1]?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+    await untilAsync(element, () => Object.isNull(GitViewing.commitOf(GitFixtures.folder)));
+    const afterKey: number = context.callsOf("showView").length;
+
+    options()[0]?.click();
+    await fixture.whenStable();
+
+    expect([afterKey - keyed, context.callsOf("showView").slice(afterKey)]).toEqual([0, [["git.view"]]]);
+  });
+
   it("keeps each folder's chosen commit, so a commit chosen in one History leaves another folder's History on its own", async () => {
     const other: string = "/work/other";
     onTestFinished(() => [GitFixtures.folder, other].forEach(t => GitViewing.showChanges(t)));

@@ -19,6 +19,8 @@ import { Resources } from "../resources.ts";
  */
 export class Journal {
   private readonly entries: Map<string, GitJournalEntry[]> = new Map();
+  /** The git folder of the worktree each kept entry was written in, by the entry's id. */
+  private readonly worktrees: Map<string, string> = new Map();
   private readonly now: () => Date;
   private readonly limit: () => JsonValue;
   private next: number = 1;
@@ -35,7 +37,8 @@ export class Journal {
       : Resources.journalLimit;
   }
 
-  public record(commonGitFolder: string, method: string, undo: UndoMode, before: RefSnapshot, after: RefSnapshot, checkpoint: IWriteCheckpoint | null = null): GitJournalEntry {
+  /** @param gitFolder The git folder of the worktree the write ran in, its own one rather than the common one its worktrees share. */
+  public record(commonGitFolder: string, gitFolder: string, method: string, undo: UndoMode, before: RefSnapshot, after: RefSnapshot, checkpoint: IWriteCheckpoint | null = null): GitJournalEntry {
     const hasIndex = undo === UndoMode.Index && before.index !== null && after.index !== null;
     const entry = new GitJournalEntry(
       String(this.next++),
@@ -51,7 +54,9 @@ export class Journal {
       checkpoint?.paths ?? []);
     const list = this.entries.get(commonGitFolder) ?? [];
     list.push(entry);
-    list.splice(0, Math.max(0, list.length - Journal.limitOf(this.limit())));
+    this.worktrees.set(entry.id, gitFolder);
+    for (const dropped of list.splice(0, Math.max(0, list.length - Journal.limitOf(this.limit()))))
+      this.worktrees.delete(dropped.id);
     this.entries.set(commonGitFolder, list);
     return entry;
   }
@@ -64,9 +69,15 @@ export class Journal {
     return this.entries.get(commonGitFolder)?.find(t => t.id === id) ?? null;
   }
 
+  /** The git folder of the worktree a kept entry was written in, or null once the entry is no longer kept. */
+  public worktreeOf(id: string): string | null {
+    return this.worktrees.get(id) ?? null;
+  }
+
   /** Takes an undone entry out, so it can't be undone twice. */
   public remove(commonGitFolder: string, id: string): void {
     const list = this.entries.get(commonGitFolder) ?? [];
     this.entries.set(commonGitFolder, list.filter(t => t.id !== id));
+    this.worktrees.delete(id);
   }
 }

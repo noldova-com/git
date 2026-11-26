@@ -83,10 +83,20 @@ export class FolderTreeWatch {
     }
   }
 
-  /** Watches one folder; once the watch is closed, a walk still running stops here rather than leave a watch behind. */
+  /**
+   * Watches one folder, unless it is gone by now, as a folder made and removed at once can be; once the watch is closed, a walk still running stops here
+   * rather than leave a watch behind.
+   */
   private add(folder: string): void {
     this.stop.signal.throwIfAborted();
-    const watcher = watch(path.join(this.worktree, folder), { persistent: false }, (event, name) => this.note(folder, event, name));
+    let watcher: FSWatcher;
+    try {
+      watcher = watch(path.join(this.worktree, folder), { persistent: false }, (event, name) => this.note(folder, event, name));
+    } catch (error) {
+      if (FolderTreeWatch.isGone(error))
+        return;
+      throw error;
+    }
     watcher.on("error", (error: Error) => this.follow(this.loseAsync(folder, watcher, error)));
     this.watchers.set(folder, watcher);
   }

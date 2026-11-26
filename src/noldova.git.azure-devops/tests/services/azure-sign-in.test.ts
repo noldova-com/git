@@ -23,11 +23,11 @@ import { EntraFlow } from "../../src/services/entra-flow.ts";
 import { FakeAzure, KeptSecrets, linesOf } from "../fixtures/fake-azure.fixture.ts";
 
 const connectionUrl: string = "https://dev.azure.com/fabrikam/_apis/connectionData";
-const account: HostAccount = new HostAccount("monalisa@fabrikam.com", "Mona Lisa", null, []);
-const renamed: HostAccount = new HostAccount("monalisa@fabrikam.com", "Mona", null, []);
+const account: HostAccount = new HostAccount("monalisa@fabrikam.test", "Mona Lisa", null, []);
+const renamed: HostAccount = new HostAccount("monalisa@fabrikam.test", "Mona", null, []);
 const connection = (user: Readonly<Record<string, unknown>>): Response => FakeAzure.json({ authenticatedUser: user, instanceId: "d6245f20-2af8-44f4-9451-8107cb2767db" });
 const profile = (displayName: string = "Mona Lisa"): Response => connection({ id: "d6245f20-2af8-44f4-9451-8107cb2767db", providerDisplayName: displayName,
-  properties: { Account: { $type: "System.String", $value: "monalisa@fabrikam.com" } } });
+  properties: { Account: { $type: "System.String", $value: "monalisa@fabrikam.test" } } });
 const anonymous = (): Response => connection({ id: "aa442948-ba01-4b5d-9b19-fbcb2c4ba0e9", providerDisplayName: "Anonymous", properties: {} });
 const refused = (): Response => new Response(null, { status: 401 });
 const failed = (): Response => new Response(null, { status: 500 });
@@ -114,7 +114,7 @@ describe("AzureSignIn", () => {
 
     assert.deepEqual([signedIn, rig.signIn.token?.authorization ?? null, rig.signIn.organization, rig.kept(), rig.azure.urls()],
       [HostSignIn.signedIn(account), basic("azure-token"), "fabrikam", { kind: "token", token: "azure-token", organization: "fabrikam", account: account.toJson() }, [connectionUrl]]);
-    assert.deepEqual([rig.states(), linesOf(rig.log)], [["SignedIn"], ["Signed in to Azure DevOps as monalisa@fabrikam.com."]]);
+    assert.deepEqual([rig.states(), linesOf(rig.log)], [["SignedIn"], ["Signed in to Azure DevOps as monalisa@fabrikam.test."]]);
   });
 
   it("ends signed out as Refused for a token its organization refuses, doesn't show or answers as anonymous, as Unreachable when it can't be reached, and keeps nothing", async () => {
@@ -247,7 +247,8 @@ describe("AzureSignIn", () => {
 
     await Promise.all([revoked, unchecked, broken].map(t => t.signIn.restoreAsync()));
     await revoked.changedAsync(2);
-    await vi.waitFor(() => assert.equal(linesOf(unchecked.log).length + linesOf(broken.log).length, 2));
+    while (linesOf(unchecked.log).length + linesOf(broken.log).length < 2)
+      await new Promise<void>(resolve => setImmediate(resolve));
 
     assert.deepEqual([revoked.states(), revoked.kept(), revoked.signIn.token?.authorization ?? null], [["SignedIn", "SignedOut Revoked"], undefined, null]);
     assert.deepEqual([unchecked.signIn.current, unchecked.signIn.token?.authorization ?? null], [HostSignIn.signedIn(account), basic("kept-token")]);
@@ -525,7 +526,7 @@ describe("AzureSignIn with Microsoft", () => {
     assert.deepEqual({ ...form, code_verifier: null }, { client_id: "a1e591a3-da4c-47be-995b-3bc71493bf84", scope: scopes, grant_type: "authorization_code",
       code: "code-1", redirect_uri: address.searchParams.get("redirect_uri"), code_verifier: null });
     assert.deepEqual([rig.states(), rig.signIn.current, rig.signIn.token?.authorization, rig.kept(), linesOf(rig.log)],
-      [["Waiting", "SignedIn"], HostSignIn.signedIn(account), "Bearer access-1", keptMicrosoft("refresh-1"), ["Signed in to Azure DevOps as monalisa@fabrikam.com."]]);
+      [["Waiting", "SignedIn"], HostSignIn.signedIn(account), "Bearer access-1", keptMicrosoft("refresh-1"), ["Signed in to Azure DevOps as monalisa@fabrikam.test."]]);
     await assert.rejects(browse(waiting, { code: "code-2" }), TypeError);
   });
 

@@ -273,6 +273,26 @@ describe("ChangeMonitor", () => {
     assert.deepEqual([before, changes], [0, [{ key: KEY, sequence: 1 }]]);
   });
 
+  test("makes the ignore check forget the worktree's answers when its index changes, but not for another file in the git folder", async () => {
+    const forgotten = vi.spyOn(IgnoredPaths.prototype, "forgetIndex");
+    const earlier = vi.mocked(watch).mock.results.length;
+    monitor.watch(KEY, repository.folder, folders());
+    const [own] = watchersOf(earlier);
+    assert.ok(own !== undefined);
+    await startedAsync();
+    const other = seenAsync(own, t => t === "description");
+    await writeFile(path.join(repository.gitFolder, "description"), "other\n");
+    await other;
+    const before = forgotten.mock.calls.length;
+
+    const index = seenAsync(own, t => t === "index");
+    await repository.writeAsync("a.txt", "changed\n");
+    await repository.runGitAsync(["add", "a.txt"]);
+    await index;
+
+    assert.deepEqual([before, forgotten.mock.calls.at(-1)], [0, [repository.folder]]);
+  });
+
   test("refreshes when the file system names no file for a change", async () => {
     const earlier = vi.mocked(watch).mock.results.length;
     monitor.watch(KEY, repository.folder, folders());

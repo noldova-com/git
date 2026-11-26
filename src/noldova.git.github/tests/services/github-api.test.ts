@@ -330,7 +330,7 @@ describe("GitHubApi", () => {
   });
 
   it("refuses a read's redirect to another host, to plain HTTP, with credentials or without a target, so the token stays on GitHub's API, and says the repository moved", async () => {
-    const targets = [{ Location: "https://api.fabrikam.com/repos/octocat/hello-world" }, { Location: "http://api.github.com/repositories/1296269" },
+    const targets = [{ Location: "https://api.fabrikam.test/repos/octocat/hello-world" }, { Location: "http://api.github.com/repositories/1296269" },
       { Location: "https://monalisa@api.github.com/repositories/1296269" },
       { Location: "https://:x@api.github.com/repositories/1296269" }, {}];
     const github = new FakeGitHub();
@@ -359,7 +359,7 @@ describe("GitHubApi", () => {
   it("follows no post's redirect, even on GitHub's API, so the body goes nowhere else, and says the repository moved", async () => {
     const github = new FakeGitHub();
     github.answer(FakeGitHub.json({}, 307, { Location: "https://api.github.com/repositories/1296269/pulls" }),
-      FakeGitHub.json({}, 308, { Location: "https://api.fabrikam.com/repos/octocat/hello-world/pulls" }));
+      FakeGitHub.json({}, 308, { Location: "https://api.fabrikam.test/repos/octocat/hello-world/pulls" }));
     const api = new GitHubApi(github.fetch);
 
     const failures: (readonly string[] | null)[] = [];

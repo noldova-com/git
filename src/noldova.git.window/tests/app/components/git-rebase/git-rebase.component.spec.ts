@@ -28,6 +28,7 @@ import { GitRuntimeClient } from "../../../../src/app/services/git-runtime-clien
 import { GitViewOptions } from "../../../../src/app/services/git-view-options.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
+import { Wait } from "../../../fixtures/wait.fixture.ts";
 
 describe("GitRebaseComponent", () => {
   const onto: string = "0".repeat(40);
@@ -131,7 +132,7 @@ describe("GitRebaseComponent", () => {
     }
 
     public async readyAsync(): Promise<void> {
-      await vi.waitUntil(() => this.texts(".check-text").length > 0 && !this.texts(".check-text").includes("Checking…"));
+      await Wait.until(() => this.texts(".check-text").length > 0 && !this.texts(".check-text").includes("Checking…"));
       await this.view.whenStable();
     }
   }
@@ -276,7 +277,7 @@ describe("GitRebaseComponent", () => {
     field.dispatchEvent(new Event("input"));
     field.dispatchEvent(new KeyboardEvent("keydown", { key: "d", bubbles: true }));
     screen.find<HTMLButtonElement>(".start").click();
-    await vi.waitUntil(() => screen.context.callsOf("closeDocument").length > 0);
+    await Wait.until(() => screen.context.callsOf("closeDocument").length > 0);
 
     expect(screen.requested("git.rebase")).toEqual([{
       folder: GitFixtures.folder, onto, updateRefs: true, basedOn: "f1",
@@ -296,7 +297,7 @@ describe("GitRebaseComponent", () => {
     screen.fixture.detectChanges();
     expect(screen.words(".after .node")).toEqual(["feature/graph", "WIP debug logging", "Read the log as a stream", "main 0000000"]);
     screen.find<HTMLButtonElement>(".start").click();
-    await vi.waitUntil(() => screen.requested("git.rebase").length > 0);
+    await Wait.until(() => screen.requested("git.rebase").length > 0);
 
     expect(screen.requested("git.rebase")).toEqual([expect.objectContaining({
       updateRefs: false,
@@ -310,7 +311,7 @@ describe("GitRebaseComponent", () => {
     await screen.readyAsync();
 
     screen.find<HTMLInputElement>(".fold-fixups input").click();
-    await vi.waitUntil(() => screen.ids()[1] === "ccccccc");
+    await Wait.until(() => screen.ids()[1] === "ccccccc");
 
     expect(screen.ids()).toEqual(["aaaaaaa", "ccccccc", "fffffff", "eeeeeee"]);
     expect(screen.texts(".summary")).toEqual(["4 commits become 4"]);
@@ -418,7 +419,7 @@ describe("GitRebaseComponent", () => {
     const below: (answer: JsonValue | Error) => void = await screen.held.nextAsync("git.rebaseCheck");
     const asked: unknown = screen.requested("git.rebaseCheck").at(-1);
     below(checks(clean, new GitRebaseStepCheck(RebaseCheckOutcome.Folded, []), clean, new GitRebaseStepCheck(RebaseCheckOutcome.Conflicts, ["lanes.ts"])));
-    await vi.waitUntil(() => card()[0] !== "Dropped here: checking…");
+    await Wait.until(() => card()[0] !== "Dropped here: checking…");
     const conflicted: readonly string[] = card();
     over(0, false);
     const top: (answer: JsonValue | Error) => void = await screen.held.nextAsync("git.rebaseCheck");
@@ -463,7 +464,7 @@ describe("GitRebaseComponent", () => {
         summary: "4 commits become 3 · dropping ccccccc to the top clears the conflict in lanes.ts", places: ["afce", "afec", "cafe"] }
     ])("names the nearest place that clears the conflicting row's conflict, $name", async ({ conflicted, clears, summary, places }) => {
       const screen: Screen = Screen.render({ "git.rebasePlan": plan.toJson(), "git.rebaseCheck": answerFor(() => screen, conflicted, clears) });
-      await vi.waitUntil(() => screen.texts(".summary")[0]?.includes("·") === true, { timeout: 5000 });
+      await Wait.until(() => screen.texts(".summary")[0]?.includes("·") === true);
 
       expect(screen.texts(".summary")).toEqual([summary]);
       expect(screen.requested("git.rebaseCheck").map(t => order(t).map(id => id.slice(0, 1)).join(""))).toEqual(places);
@@ -486,7 +487,7 @@ describe("GitRebaseComponent", () => {
           return checks(...ids.map(t => t === middle && ids.indexOf(middle) === 2 ? conflict : clean));
         }
       });
-      await vi.waitUntil(() => screen.texts(".summary")[0]?.includes("·") === true, { timeout: 5000 });
+      await Wait.until(() => screen.texts(".summary")[0]?.includes("·") === true);
 
       expect([screen.requested("git.rebaseCheck").length, ...screen.texts(".summary")])
         .toEqual([2, "5 commits become 5 · dropping 3333333 below 4444444 clears the conflict in lanes.ts"]);
@@ -502,7 +503,7 @@ describe("GitRebaseComponent", () => {
           return checks(...ids.map(t => t === last && ids[0] !== last ? conflict : clean));
         }
       });
-      await vi.waitUntil(() => screen.requested("git.rebaseCheck").length >= 21, { timeout: 5000 });
+      await Wait.until(() => screen.requested("git.rebaseCheck").length >= 21);
       await screen.fixture.whenStable();
 
       expect([screen.requested("git.rebaseCheck").length, ...screen.texts(".summary")]).toEqual([21, "23 commits become 23"]);
@@ -513,7 +514,7 @@ describe("GitRebaseComponent", () => {
       const screen: Screen = Screen.render({
         "git.rebasePlan": plan.toJson(), "git.rebaseCheck": () => ++calls === 1 ? checks(clean, clean, conflict, clean) : GitFixtures.failure(FailureCode.Git)
       });
-      await vi.waitUntil(() => calls >= 2, { timeout: 5000 });
+      await Wait.until(() => calls >= 2);
       await screen.fixture.whenStable();
 
       expect([calls, ...screen.texts(".summary")]).toEqual([2, "4 commits become 3"]);
@@ -546,7 +547,7 @@ describe("GitRebaseComponent", () => {
     expect(screen.texts(".check-text")).toEqual(Array.from({ length: 4 }, () => "Not checked on this git"));
 
     screen.key(1, "p");
-    await vi.waitUntil(() => calls === 2);
+    await Wait.until(() => calls === 2);
 
     expect(screen.texts(".check-text")).toEqual(["Checking…", "Checking…", "Checking…", "Checking…"]);
     expect(screen.all(".stop-card")).toEqual([]);
@@ -574,7 +575,7 @@ describe("GitRebaseComponent", () => {
     await screen.readyAsync();
 
     screen.find<HTMLButtonElement>(".start").click();
-    await vi.waitUntil(() => screen.texts(".options .failure").length > 0);
+    await Wait.until(() => screen.texts(".options .failure").length > 0);
     expect(screen.texts(".options .failure")).toEqual(["Git refused the rebase."]);
     expect(screen.context.callsOf("closeDocument")).toEqual([]);
 
@@ -602,7 +603,7 @@ describe("GitRebaseComponent", () => {
     const predicted: readonly unknown[] = [button().disabled, button().title];
 
     screen.find<HTMLButtonElement>(".start").click();
-    await vi.waitUntil(() => !button().disabled, { timeout: 5000 });
+    await Wait.until(() => !button().disabled);
     button().click();
 
     expect(predicted).toEqual([true, "Opens the conflict once the rebase stops on it"]);
@@ -624,16 +625,16 @@ describe("GitRebaseComponent", () => {
     const statusReads = (folder: string): number => screen.requested("git.status").filter(t => JSON.stringify(t).includes(JSON.stringify(folder))).length;
 
     screen.find<HTMLButtonElement>(".start").click();
-    await vi.waitUntil(() => screen.texts(".options .failure").length > 0, { timeout: 5000 });
+    await Wait.until(() => screen.texts(".options .failure").length > 0);
     const atEdit: boolean = button().disabled;
     conflicted = true;
     onTestFinished(GitFolder.show("/work/other"));
     screen.active.set(false);
-    await vi.waitUntil(() => statusReads("/work/other") > 0, { timeout: 5000 });
+    await Wait.until(() => statusReads("/work/other") > 0);
     await screen.fixture.whenStable();
     const elsewhere: boolean = button().disabled;
     screen.active.set(true);
-    await vi.waitUntil(() => !button().disabled, { timeout: 5000 });
+    await Wait.until(() => !button().disabled);
 
     expect([atEdit, elsewhere, button().title]).toEqual([true, true, "Show the conflict now"]);
   });
@@ -670,9 +671,9 @@ describe("GitRebaseComponent", () => {
 
     head = later.id;
     screen.context.raiseEvent("git.changed", { folder: GitFixtures.folder });
-    await vi.waitUntil(() => screen.requested("git.rebasePlan").length === 2 && !start().disabled, { timeout: 5000 });
+    await Wait.until(() => screen.requested("git.rebasePlan").length === 2 && screen.all<HTMLButtonElement>(".start")[0]?.disabled === false);
     start().click();
-    await vi.waitUntil(() => screen.requested("git.rebase").length === 1, { timeout: 5000 });
+    await Wait.until(() => screen.requested("git.rebase").length === 1);
 
     expect(before).toBe(false);
     expect(screen.requested("git.rebase")).toEqual([expect.objectContaining({ basedOn: "f2",
@@ -697,7 +698,7 @@ describe("GitRebaseComponent", () => {
     await screen.fixture.whenStable();
     expect(screen.element.querySelector(".steps")).toBeNull();
     second(new GitRebasePlan("feature/graph", base, base, 0, [c], [], false).toJson());
-    await vi.waitUntil(() => screen.ids().length > 0);
+    await Wait.until(() => screen.ids().length > 0);
 
     expect([screen.ids(), screen.texts(".title")]).toEqual([["ccccccc"], ["Rebase one commit of feature/graph onto develop"]]);
   });
@@ -711,7 +712,7 @@ describe("GitRebaseComponent", () => {
     GitRebasing.open(GitFixtures.folder, new GitRebaseTarget(base, "develop"));
     const second: (answer: JsonValue | Error) => void = await screen.held.nextAsync("git.rebasePlan");
     second(new GitRebasePlan("feature/graph", base, base, 0, [c], [], false).toJson());
-    await vi.waitUntil(() => screen.ids().length > 0);
+    await Wait.until(() => screen.ids().length > 0);
     first(GitFixtures.failure(FailureCode.Git, null, "The older read failed."));
     await Promise.allSettled(reads.mock.results.flatMap(t => t.type === "return" ? [t.value] : []));
     await screen.fixture.whenStable();
@@ -724,7 +725,7 @@ describe("GitRebaseComponent", () => {
     const broken: Error = new Error("The channel closed.");
     const screen: Screen = Screen.render({ "git.rebasePlan": broken });
     vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.push(error));
-    await vi.waitUntil(() => handled.length === 1);
+    await Wait.until(() => handled.length === 1);
 
     expect([handled, screen.element.querySelector(".steps")]).toEqual([[broken], null]);
   });
@@ -734,10 +735,10 @@ describe("GitRebaseComponent", () => {
     const broken: Error = new Error("The channel closed.");
     const screen: Screen = Screen.render({ "git.rebasePlan": plan.toJson(), "git.rebaseCheck": broken, "git.rebase": broken });
     vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.push(error));
-    await vi.waitUntil(() => handled.length === 1);
+    await Wait.until(() => handled.length === 1);
 
     screen.find<HTMLButtonElement>(".start").click();
-    await vi.waitUntil(() => handled.length === 2);
+    await Wait.until(() => handled.length === 2);
 
     expect(handled).toEqual([broken, broken]);
     expect(screen.context.callsOf("closeDocument")).toEqual([]);
@@ -752,13 +753,13 @@ describe("GitRebaseComponent", () => {
 
   it("shows git's failure to read the plan", async () => {
     const failing: Screen = Screen.render({ "git.rebasePlan": GitFixtures.failure(FailureCode.Git, null, "Git couldn't read the branch.") });
-    await vi.waitUntil(() => failing.texts(".note").length > 0);
+    await Wait.until(() => failing.texts(".note").length > 0);
     expect(failing.texts(".note")).toEqual(["Git couldn't read the branch."]);
   });
 
   it("says a branch has nothing to rebase, names a detached HEAD, and holds Start and the stacked option", async () => {
     const empty: Screen = Screen.render({ "git.rebasePlan": new GitRebasePlan(null, onto, onto, 0, [], [], false).toJson() });
-    await vi.waitUntil(() => empty.texts(".note").length > 0);
+    await Wait.until(() => empty.texts(".note").length > 0);
 
     expect(empty.texts(".note")).toEqual(["The branch has no commits past this one to rebase."]);
     expect(empty.texts(".title")).toEqual(["Rebase 0 commits of the detached HEAD onto main"]);
@@ -790,7 +791,7 @@ describe("GitRebaseComponent", () => {
       screen.find(".title-row").lastElementChild?.classList.contains("title") === true];
     GitViewOptions.showsAiFeatures.set(true);
     onTestFinished(() => GitViewOptions.showsAiFeatures.set(false));
-    await vi.waitUntil(() => !Object.isNull(screen.element.querySelector(".tidy-up")));
+    await Wait.until(() => !Object.isNull(screen.element.querySelector(".tidy-up")));
     const tidy: HTMLButtonElement = screen.find<HTMLButtonElement>(".tidy-up");
 
     expect([off, tidy.disabled, tidy.title, screen.find(".title-row").lastElementChild === tidy]).toEqual([[0, true], true, "Not built yet", true]);

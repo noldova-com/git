@@ -14,6 +14,7 @@ import { GitFailedException } from "../exceptions/git-failed.exception.ts";
 import { UndoDuringOperationException } from "../exceptions/undo-during-operation.exception.ts";
 import { UndoMovedException } from "../exceptions/undo-moved.exception.ts";
 import { UndoNotPossibleException } from "../exceptions/undo-not-possible.exception.ts";
+import { UndoOtherWorktreeException } from "../exceptions/undo-other-worktree.exception.ts";
 import { UndoUnknownException } from "../exceptions/undo-unknown.exception.ts";
 import type { IGitWrite } from "../interfaces/i-git-write.ts";
 import { GitArguments } from "../models/git-arguments.ts";
@@ -168,7 +169,17 @@ export class UndoWriter implements IGitWrite {
       throw new UndoUnknownException();
     if (entry.undo === UndoMode.None)
       throw new UndoNotPossibleException();
+    if (UndoWriter.isOfWorktree(entry) && this.journal.worktreeOf(entry.id) !== folders.gitFolder)
+      throw new UndoOtherWorktreeException();
     return entry;
+  }
+
+  /**
+   * Whether undoing the entry acts on its worktree's own HEAD, index, files or stash, rather than on refs alone: the worktrees of one repository share the
+   * journal, and two detached at the same commit look alike to the check of what moved.
+   */
+  private static isOfWorktree(entry: GitJournalEntry): boolean {
+    return entry.undo !== UndoMode.Refs || entry.moves.some(t => t.name === Resources.headRevision);
   }
 
   private async runGitAsync(folders: RepositoryFolders, values: readonly string[], signal?: AbortSignal, input: string = ""): Promise<void> {

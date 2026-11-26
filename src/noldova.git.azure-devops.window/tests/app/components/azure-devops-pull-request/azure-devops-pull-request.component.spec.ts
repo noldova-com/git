@@ -29,6 +29,7 @@ import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { AzureDevOpsPullRequestComponent } from "../../../../src/app/components/azure-devops-pull-request/azure-devops-pull-request.component.ts";
 import { AzureDevOpsPullRequestDetailComponent }
   from "../../../../src/app/components/azure-devops-pull-request-detail/azure-devops-pull-request-detail.component.ts";
+import { PullRequestPages } from "../../../../src/app/services/pull-request-pages.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
@@ -42,14 +43,14 @@ const OLD: number = Date.UTC(2026, 0, 5, 12);
 const MISSING: string = "key This pull request can't be shown. Sign in to its organization in Settings → Accounts and hosts, or check that it still exists.";
 const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752);
 const item: HostItem = new HostItem(reference, ReferenceKind.PullRequest, ReferenceState.Open, "Export notes as Markdown from the shared notes list", URL,
-  new HostPerson("monalisa@fabrikam.com", null, null), CREATED, null, 0,
+  new HostPerson("monalisa@fabrikam.test", null, null), CREATED, null, 0,
   HostChanges.uncounted("users/monalisa/7521-export-notes", "main", "0123456789abcdef0123456789abcdef01234567"));
 const story: HostWorkItemType = new HostWorkItemType("User Story", "009CCC", "icon_book");
 const pullRequest: HostPullRequest = new HostPullRequest(item, [
-  new HostReviewer(new HostPerson("octocat@fabrikam.com", null, null), 0.5, "Approved with suggestions", true),
-  new HostReviewer(new HostPerson("hubot@fabrikam.com", null, null), -0.5, "Waiting for the author", false),
+  new HostReviewer(new HostPerson("octocat@fabrikam.test", null, null), 0.5, "Approved with suggestions", true),
+  new HostReviewer(new HostPerson("hubot@fabrikam.test", null, null), -0.5, "Waiting for the author", false),
   new HostReviewer(new HostPerson("[Web Site]\\Web Team", null, null), 0, "No vote", false),
-  new HostReviewer(new HostPerson("monalisa@fabrikam.com", null, null), -1, "Rejected", false)
+  new HostReviewer(new HostPerson("monalisa@fabrikam.test", null, null), -1, "Rejected", false)
 ], [
   new HostPolicy("Minimum number of reviewers", PolicyState.Approved, true, null),
   new HostPolicy("Comment requirements", PolicyState.Rejected, true, null),
@@ -110,7 +111,7 @@ class Page {
   /** Whether the page is the window's active document. */
   public readonly active: WritableSignal<boolean> = signal(true);
 
-  public constructor(threads: readonly HostThread[] = [], signIn: HostSignIn | Error = HostSignIn.signedIn(new HostAccount("monalisa@fabrikam.com", "Mona Lisa", null, []))) {
+  public constructor(threads: readonly HostThread[] = [], signIn: HostSignIn | Error = HostSignIn.signedIn(new HostAccount("monalisa@fabrikam.test", "Mona Lisa", null, []))) {
     const answer: JsonValue = new HostPullRequestThreads(threads, false).toJson();
     const types: JsonValue = ["noFastForward", "squash", "rebase", "rebaseMerge"];
     this.requests.answer(AzureDevOpsNames.readPullRequestThreadsMethod, answer, answer, answer);
@@ -270,7 +271,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
         AzureDevOpsNames.readPullRequestUpdatesMethod, AzureDevOpsNames.readSignInMethod].sort(), [null, null], [reference.toJson()], [reference.toJson()]]);
     expect(page.texts(".title-line")).toEqual(["radio_button_checked Active !752 Export notes as Markdown from the shared notes list open_in_new Open in Azure DevOps"]);
     expect(page.texts(".vote-line")).toEqual(["Your vote: Rejected. Votes and comments go to Azure DevOps as you. check Approve expand_more"]);
-    expect(page.texts(".meta")).toEqual([`M monalisa@fabrikam.com wants to merge users/monalisa/7521-export-notes into main · 5 commits · opened ${opened}`
+    expect(page.texts(".meta")).toEqual([`M monalisa@fabrikam.test wants to merge users/monalisa/7521-export-notes into main · 5 commits · opened ${opened}`
       + " schedule Completes by itself once its policies pass"]);
     expect(page.texts(".tab")).toEqual(["Overview", "Files 0", "Updates 0", "Commits 5", "Conflicts"]);
     await page.untilAsync(() => !Object.isNull(page.query(".description strong")));
@@ -279,8 +280,8 @@ describe("AzureDevOpsPullRequestComponent", () => {
     expect(page.texts(".policy")).toEqual(["check_circle Minimum number of reviewers Required", "error Comment requirements Required",
       "progress_activity Work item linking Optional · running"]);
     expect([...page.queryAll(".policy [role=img]")].map(t => t.getAttribute("aria-label"))).toEqual(["Passed", "Failed", "Running"]);
-    expect(page.texts(".reviewer")).toEqual(["O check octocat@fabrikam.com Approved with suggestions Required",
-      "H schedule hubot@fabrikam.com Waiting for the author", "groups Web Team No vote yet · optional", "M close monalisa@fabrikam.com Rejected"]);
+    expect(page.texts(".reviewer")).toEqual(["O check octocat@fabrikam.test Approved with suggestions Required",
+      "H schedule hubot@fabrikam.test Waiting for the author", "groups Web Team No vote yet · optional", "M close monalisa@fabrikam.test Rejected"]);
     expect([page.queryAll(".vote.approved").length, page.queryAll(".vote.waiting").length,
       page.queryAll(".vote.rejected").length]).toEqual([1, 1, 1]);
     expect(page.texts("button.row")).toEqual(["menu_book 7521 Export notes as Markdown files Active", "description 7499 Due dates ignore local times New"]);
@@ -327,6 +328,19 @@ describe("AzureDevOpsPullRequestComponent", () => {
     await page.settleAsync();
 
     expect([behind, front, page.context.callsOf("openView").length, page.context.callsOf("showView")]).toEqual([0, 1, 1, []]);
+  });
+
+  it("tells the Git panel its pull request's page is in front while its document is active, until the page closes", async () => {
+    const page = new Page();
+    page.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson());
+    await page.openAsync();
+    const front: boolean = PullRequestPages.isActive(INSTANCE);
+    page.active.set(false);
+    const behind: boolean = PullRequestPages.isActive(INSTANCE);
+    page.active.set(true);
+    page.fixture?.destroy();
+
+    expect([front, behind, PullRequestPages.isActive(INSTANCE)]).toEqual([true, false, false]);
   });
 
   it("keeps the last pull request in the view while another kind of document is in front, and says to open one once no pull request is open", async () => {
@@ -725,7 +739,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
 
   it("shows the pull request's comments after its policies, and opens a link in a comment through the window", async () => {
     const page = new Page([new HostThread(3, ThreadStatus.Active, null, null,
-      [new HostComment(1, null, new HostPerson("octocat@fabrikam.com", null, null), CREATED, "See [the spec](https://example.com/spec).")])]);
+      [new HostComment(1, null, new HostPerson("octocat@fabrikam.test", null, null), CREATED, "See [the spec](https://example.com/spec).")])]);
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson());
     page.context.answer("openLinkAsync", async () => undefined);
     await page.openAsync();
@@ -742,7 +756,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
   it("shows the Azure DevOps references in the description and comments as chips, opens a work item or pull request in the app, and others through the window",
     async () => {
       const page = new Page([new HostThread(3, ThreadStatus.Active, null, null,
-        [new HostComment(1, null, new HostPerson("octocat@fabrikam.com", null, null), CREATED, "Also #7499.")])]);
+        [new HostComment(1, null, new HostPerson("octocat@fabrikam.test", null, null), CREATED, "Also #7499.")])]);
       page.requests.answer(AzureDevOpsNames.readPullRequestMethod, new HostPullRequest(item, [], [], [], false,
         `Fixes AB#7521, follows [!12](https://dev.azure.com/fabrikam/Web%20Site/_git/${REPOSITORY}/pullrequest/12) and https://dev.azure.com/contoso/_workitems/edit/3.`,
         5, []).toJson());
@@ -765,7 +779,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
   it("lists the votes Azure DevOps takes, sets the one chosen, and shows the answer in place of the person's reviewer entry", async () => {
     const page = new Page();
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson());
-    page.requests.answer(AzureDevOpsNames.voteMethod, new HostReviewer(new HostPerson("monalisa@fabrikam.com", null, null), 1, "Approved", false).toJson());
+    page.requests.answer(AzureDevOpsNames.voteMethod, new HostReviewer(new HostPerson("monalisa@fabrikam.test", null, null), 1, "Approved", false).toJson());
     await page.openAsync();
 
     const choices: string[] = await page.voteAsync("Approve");
@@ -779,16 +793,16 @@ describe("AzureDevOpsPullRequestComponent", () => {
     expect(choices).toEqual(["Approve", "Approve with suggestions", "Wait for author", "Reject", "Reset vote"]);
     expect(page.texts(".vote-note")).toEqual(["Your vote: Approved. Votes and comments go to Azure DevOps as you."]);
     expect([page.requests.methods.at(-1), page.requests.payloads.at(-1)]).toEqual([AzureDevOpsNames.voteMethod, { reference: reference.toJson(), vote: 10 }]);
-    expect(page.texts(".reviewer").at(-1)).toBe("M check monalisa@fabrikam.com Approved");
+    expect(page.texts(".reviewer").at(-1)).toBe("M check monalisa@fabrikam.test Approved");
     expect([page.queryAll(".vote.approved").length, page.queryAll(".vote.waiting").length,
       page.queryAll(".vote.rejected").length]).toEqual([2, 1, 0]);
   });
 
   it("approves from the footer's Approve, and says the person's vote is none yet until they vote", async () => {
-    const page = new Page([], HostSignIn.signedIn(new HostAccount("Hubot@Fabrikam.com", null, null, [])));
-    const reviewers = [new HostReviewer(new HostPerson("hubot@fabrikam.com", null, null), 0, "No vote", false)];
+    const page = new Page([], HostSignIn.signedIn(new HostAccount("Hubot@Fabrikam.test", null, null, [])));
+    const reviewers = [new HostReviewer(new HostPerson("hubot@fabrikam.test", null, null), 0, "No vote", false)];
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, new HostPullRequest(item, reviewers, [], [], false, "", 5, []).toJson());
-    page.requests.answer(AzureDevOpsNames.voteMethod, new HostReviewer(new HostPerson("hubot@fabrikam.com", null, null), 1, "Approved", false).toJson());
+    page.requests.answer(AzureDevOpsNames.voteMethod, new HostReviewer(new HostPerson("hubot@fabrikam.test", null, null), 1, "Approved", false).toJson());
     await page.openAsync();
     const before: string[] = page.texts(".vote-note");
 
@@ -1030,7 +1044,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     const page = new Page();
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson());
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson());
-    page.requests.answer(AzureDevOpsNames.voteMethod, new HostReviewer(new HostPerson("monalisa@fabrikam.com", null, null), -1, "Rejected", false).toJson());
+    page.requests.answer(AzureDevOpsNames.voteMethod, new HostReviewer(new HostPerson("monalisa@fabrikam.test", null, null), -1, "Rejected", false).toJson());
     await page.openAsync();
 
     await page.voteAsync("Approve with suggestions");
@@ -1058,11 +1072,11 @@ describe("AzureDevOpsPullRequestComponent", () => {
     await page.voteAsync("Wait for author");
     await page.untilAsync(() => page.find(".vote-menu").hasAttribute("disabled"));
     const held: boolean = page.find(".vote-menu").hasAttribute("disabled");
-    release(new HostReviewer(new HostPerson("octocat@fabrikam.com", null, null), -0.5, "Waiting for the author", false).toJson());
+    release(new HostReviewer(new HostPerson("octocat@fabrikam.test", null, null), -0.5, "Waiting for the author", false).toJson());
     await page.untilAsync(() => !page.find(".vote-menu").hasAttribute("disabled"));
 
     expect([held, page.requests.payloads.at(-1)]).toEqual([true, { reference: reference.toJson(), vote: -5 }]);
-    expect(page.texts(".reviewer")).toEqual(["O schedule octocat@fabrikam.com Waiting for the author"]);
+    expect(page.texts(".reviewer")).toEqual(["O schedule octocat@fabrikam.test Waiting for the author"]);
   });
 
   it("shows the runtime's sentence, or that Azure DevOps didn't answer, beside the menu, and clears it on the next vote", async () => {
@@ -1071,7 +1085,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     const cannotVote = "The Azure DevOps token can't vote on pull requests; it needs the Code (Read & write) scope.";
     page.requests.fail(AzureDevOpsNames.voteMethod, new RuntimeRequestException(FailureCode.Unauthorized, cannotVote));
     page.requests.fail(AzureDevOpsNames.voteMethod, new WindowFailure("The runtime stopped."));
-    page.requests.answer(AzureDevOpsNames.voteMethod, new HostReviewer(new HostPerson("monalisa@fabrikam.com", null, null), 0, "No vote", false).toJson());
+    page.requests.answer(AzureDevOpsNames.voteMethod, new HostReviewer(new HostPerson("monalisa@fabrikam.test", null, null), 0, "No vote", false).toJson());
     await page.openAsync();
 
     await page.voteAsync("Reject");
@@ -1097,7 +1111,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     }
     else {
       const release = page.requests.hold(AzureDevOpsNames.voteMethod);
-      finish = () => release(new HostReviewer(new HostPerson("monalisa@fabrikam.com", null, null), 1, "Approved", false).toJson());
+      finish = () => release(new HostReviewer(new HostPerson("monalisa@fabrikam.test", null, null), 1, "Approved", false).toJson());
     }
     await page.openAsync();
 
@@ -1109,14 +1123,14 @@ describe("AzureDevOpsPullRequestComponent", () => {
     await page.untilAsync(() => !Object.isNull(page.query(".page")));
 
     expect([page.texts(".reviewer").at(-1), page.query(".vote-failure"), page.find(".vote-menu").hasAttribute("disabled")])
-      .toEqual(["M close monalisa@fabrikam.com Rejected", null, false]);
+      .toEqual(["M close monalisa@fabrikam.test Rejected", null, false]);
   });
 
   it("opens a search under Reviewers from its button, lists the reviewer it adds and closes, and closes on another click or document", async () => {
     const page = new Page();
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, new HostPullRequest(item, [], [], [], false, "", 5, []).toJson(), pullRequest.toJson());
-    page.requests.answer(AzureDevOpsNames.searchPeopleMethod, [{ descriptor: "aad.TW9uYQ", name: "Mona Lisa", login: "monalisa@fabrikam.com", isGroup: false }]);
-    page.requests.answer(AzureDevOpsNames.addReviewerMethod, new HostReviewer(new HostPerson("monalisa@fabrikam.com", null, null), 0, "No vote", false).toJson());
+    page.requests.answer(AzureDevOpsNames.searchPeopleMethod, [{ descriptor: "aad.TW9uYQ", name: "Mona Lisa", login: "monalisa@fabrikam.test", isGroup: false }]);
+    page.requests.answer(AzureDevOpsNames.addReviewerMethod, new HostReviewer(new HostPerson("monalisa@fabrikam.test", null, null), 0, "No vote", false).toJson());
     await page.openAsync();
     const button = (): HTMLElement => page.find(".add-reviewer");
 
@@ -1144,7 +1158,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     await page.untilAsync(() => !Object.isNull(page.query(".page")));
 
     expect([opened, reviewers, closed, page.query("nol-git-azure-devops-add-reviewer"), button().getAttribute("aria-pressed")])
-      .toEqual(["true", ["M monalisa@fabrikam.com No vote yet · optional"], true, null, "false"]);
+      .toEqual(["true", ["M monalisa@fabrikam.test No vote yet · optional"], true, null, "false"]);
   });
 
   it("closes the search when it asks to", async () => {
@@ -1176,7 +1190,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
   describe("Go to line on a comment thread", () => {
     const COMMON: string = "fedcba9876543210fedcba9876543210fedcba98";
     const thread: HostThread = new HostThread(5, ThreadStatus.Active, "/src/app.ts", 41,
-      [new HostComment(1, null, new HostPerson("octocat@fabrikam.com", null, null), CREATED, "Is this the right default?")]);
+      [new HostComment(1, null, new HostPerson("octocat@fabrikam.test", null, null), CREATED, "Is this the right default?")]);
     const threadPage: string = `${URL}?_a=files&path=%2Fsrc%2Fapp.ts&discussionId=5`;
     const appDiff: GitDiff = new GitDiff([new DiffFile("src/app.ts", undefined, "src/app.ts", undefined, FileChange.Modified, null, null, false, null,
       [new DiffHunk(40, 1, 40, 2, "", [new DiffLine(LineKind.Context, 40, 40, "const a = 1;"), new DiffLine(LineKind.Added, null, 41, "const b = 2;")])], false)],

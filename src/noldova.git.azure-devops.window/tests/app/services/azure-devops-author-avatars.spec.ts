@@ -36,7 +36,7 @@ describe("AzureDevOpsAuthorAvatars", () => {
     answer = () => new HostAvatar(picture).toJson();
     answerPerson = () => new HostAvatar(picture).toJson();
     context = new ReferenceContext()
-      .answerModule("git-azure-devops.readSignIn", () => HostSignIn.signedIn(new HostAccount("monalisa@fabrikam.com", "Mona Lisa", null, [])).toJson())
+      .answerModule("git-azure-devops.readSignIn", () => HostSignIn.signedIn(new HostAccount("monalisa@fabrikam.test", "Mona Lisa", null, [])).toJson())
       .answerModule("git.status", t => statusOf(GitFolderParams.fromJson(t).folder === "/work/plain" ? null
         : new GitRemote("origin", "dev.azure.com", "Fabrikam/web/_git/site", RemoteTransport.Https)))
       .answerModule(avatarMethod, t => answer(AuthorQuery.fromJson(t)))
@@ -51,50 +51,50 @@ describe("AzureDevOpsAuthorAvatars", () => {
   });
 
   it("has none until the folder's organization is known, then reads each author's picture once in it, whatever the email's case or spaces", async () => {
-    const before = avatars.avatarOf("/work/site", "MonaLisa@Fabrikam.com ", commit);
+    const before = avatars.avatarOf("/work/site", "MonaLisa@Fabrikam.test ", commit);
 
-    await Wait.until(() => expect(avatars.avatarOf("/work/site", "MonaLisa@Fabrikam.com ", commit)).toBe(picture));
-    const again = avatars.avatarOf("/work/site", "monalisa@fabrikam.com", "b".repeat(40));
+    await Wait.until(() => expect(avatars.avatarOf("/work/site", "MonaLisa@Fabrikam.test ", commit)).toBe(picture));
+    const again = avatars.avatarOf("/work/site", "monalisa@fabrikam.test", "b".repeat(40));
 
     expect([before, again]).toEqual([null, picture]);
-    expect(asked()).toEqual([new AuthorQuery("dev.azure.com", "Fabrikam", "MonaLisa@Fabrikam.com ", commit).toJson()]);
+    expect(asked()).toEqual([new AuthorQuery("dev.azure.com", "Fabrikam", "MonaLisa@Fabrikam.test ", commit).toJson()]);
   });
 
   it("has none for a folder whose remote isn't Azure DevOps', and none for a picture Azure DevOps has none of or that couldn't be read", async () => {
-    answer = t => t.email === "none@fabrikam.com" ? new HostAvatar(null).toJson() : Promise.reject(new Error("Azure DevOps is away."));
-    const read = (): readonly (string | null | undefined)[] => [avatars.avatarOf("/work/plain", "monalisa@fabrikam.com", commit),
-      avatars.avatarOf("/work/site", "none@fabrikam.com", commit), avatars.avatarOf("/work/site", "down@fabrikam.com", commit)];
+    answer = t => t.email === "none@fabrikam.test" ? new HostAvatar(null).toJson() : Promise.reject(new Error("Azure DevOps is away."));
+    const read = (): readonly (string | null | undefined)[] => [avatars.avatarOf("/work/plain", "monalisa@fabrikam.test", commit),
+      avatars.avatarOf("/work/site", "none@fabrikam.test", commit), avatars.avatarOf("/work/site", "down@fabrikam.test", commit)];
 
     await Wait.until(() => expect([read(), asked().length]).toEqual([[null, null, null], 2]));
   });
 
   it("reads each picture again once the sign-in changes, and no longer follows it once stopped", async () => {
-    avatars.avatarOf("/work/site", "monalisa@fabrikam.com", commit);
-    await Wait.until(() => expect(avatars.avatarOf("/work/site", "monalisa@fabrikam.com", commit)).toBe(picture));
+    avatars.avatarOf("/work/site", "monalisa@fabrikam.test", commit);
+    await Wait.until(() => expect(avatars.avatarOf("/work/site", "monalisa@fabrikam.test", commit)).toBe(picture));
 
     context.emitModule("git-azure-devops.signInChanged", HostSignIn.signedOut().toJson());
-    const reading = avatars.avatarOf("/work/site", "monalisa@fabrikam.com", commit);
-    await Wait.until(() => expect(avatars.avatarOf("/work/site", "monalisa@fabrikam.com", commit)).toBe(picture));
+    const reading = avatars.avatarOf("/work/site", "monalisa@fabrikam.test", commit);
+    await Wait.until(() => expect(avatars.avatarOf("/work/site", "monalisa@fabrikam.test", commit)).toBe(picture));
     avatars.stop();
     context.emitModule("git-azure-devops.signInChanged", HostSignIn.signedOut().toJson());
 
-    expect([reading, Object.isUndefined(avatars.avatarOf("/work/site", "monalisa@fabrikam.com", commit)), asked().length]).toEqual([undefined, true, 3]);
+    expect([reading, Object.isUndefined(avatars.avatarOf("/work/site", "monalisa@fabrikam.test", commit)), asked().length]).toEqual([undefined, true, 3]);
   });
 
   it("reads a person's picture once per organization and email, whatever its case or spaces, and an author of that email shares it", async () => {
-    const before = [avatars.personAvatarOf("Fabrikam", "MonaLisa@Fabrikam.com "), avatars.personAvatarOf("fabrikam", "monalisa@fabrikam.com")];
+    const before = [avatars.personAvatarOf("Fabrikam", "MonaLisa@Fabrikam.test "), avatars.personAvatarOf("fabrikam", "monalisa@fabrikam.test")];
 
-    await Wait.until(() => expect(avatars.personAvatarOf("fabrikam", "monalisa@fabrikam.com")).toBe(picture));
-    await Wait.until(() => expect(avatars.avatarOf("/work/site", "MonaLisa@fabrikam.com", commit)).toBe(picture));
+    await Wait.until(() => expect(avatars.personAvatarOf("fabrikam", "monalisa@fabrikam.test")).toBe(picture));
+    await Wait.until(() => expect(avatars.avatarOf("/work/site", "MonaLisa@fabrikam.test", commit)).toBe(picture));
 
-    expect([before, askedPeople(), asked()]).toEqual([[undefined, undefined], [new PersonQuery("dev.azure.com", "Fabrikam", "MonaLisa@Fabrikam.com ").toJson()], []]);
+    expect([before, askedPeople(), asked()]).toEqual([[undefined, undefined], [new PersonQuery("dev.azure.com", "Fabrikam", "MonaLisa@Fabrikam.test ").toJson()], []]);
   });
 
   it("reads four people's pictures at a time, the next as each read ends, none for a person whose read fails, and none for a group", async () => {
     const releases: ((avatar: JsonValue) => void)[] = [];
-    answerPerson = t => t.login === "down@fabrikam.com" ? Promise.reject(new Error("Azure DevOps is away."))
+    answerPerson = t => t.login === "down@fabrikam.test" ? Promise.reject(new Error("Azure DevOps is away."))
       : new Promise<JsonValue>(resolve => releases.push(resolve));
-    const logins: readonly string[] = ["down@fabrikam.com", ...["a", "b", "c", "d", "e"].map(t => `${t}@fabrikam.com`)];
+    const logins: readonly string[] = ["down@fabrikam.test", ...["a", "b", "c", "d", "e"].map(t => `${t}@fabrikam.test`)];
     const read = (): readonly (string | null | undefined)[] => [...logins, "[Web Site]\\Web Team"].map(t => avatars.personAvatarOf("fabrikam", t));
 
     read();
@@ -111,8 +111,8 @@ describe("AzureDevOpsAuthorAvatars", () => {
 
   it("gives the Git view and every page of a window part the same pictures until the part releases them", async () => {
     const shared = AzureDevOpsAuthorAvatars.register(context);
-    shared.personAvatarOf("fabrikam", "monalisa@fabrikam.com");
-    await Wait.until(() => expect(AzureDevOpsAuthorAvatars.register(context).personAvatarOf("fabrikam", "monalisa@fabrikam.com")).toBe(picture));
+    shared.personAvatarOf("fabrikam", "monalisa@fabrikam.test");
+    await Wait.until(() => expect(AzureDevOpsAuthorAvatars.register(context).personAvatarOf("fabrikam", "monalisa@fabrikam.test")).toBe(picture));
 
     AzureDevOpsAuthorAvatars.release(context);
     const released = AzureDevOpsAuthorAvatars.register(context);

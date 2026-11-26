@@ -22,6 +22,7 @@ import { PullRequestClone } from "../models/pull-request-clone.ts";
 import { PullRequestDocument } from "../models/pull-request-document.ts";
 import { WorkItemsPlace } from "../models/work-items-place.ts";
 import { Resources } from "../../resources.ts";
+import { PullRequestPages } from "./pull-request-pages.ts";
 
 export class AzureDevOpsPullRequests implements IGitPullRequests {
   private static readonly STATES: Readonly<Record<ReferenceState, GitPullRequestState>> = {
@@ -127,6 +128,10 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
     const path: string | null = AzureDevOpsRemote.pathOf(remote);
     if (!Object.isNull(remote.host) && !Object.isNull(path))
       void this.readReviewsAsync(new RepositoryQuery(remote.host, path));
+  }
+
+  public isShown(_folder: string, row: GitPullRequestRow): boolean {
+    return PullRequestPages.isActive(row.key);
   }
 
   public open(_folder: string, row: GitPullRequestRow): boolean {

@@ -51,7 +51,7 @@ const pr482: HostReference = new HostReference(HOST, "fabrikam", REPOSITORY, 752
 
 function itemOf(id: number, type: HostWorkItemType, title: string, state: string, category: WorkItemCategory, parent: number | null): HostWorkItem {
   return new HostWorkItem(HOST, "fabrikam", "Sample Project", id, type, title, state, category,
-    `https://dev.azure.com/fabrikam/Sample%20Project/_workitems/edit/${id}`, new HostPerson("kim@fabrikam.com", null, null), "Sample Project\\Sprint 17",
+    `https://dev.azure.com/fabrikam/Sample%20Project/_workitems/edit/${id}`, new HostPerson("kim@fabrikam.test", null, null), "Sample Project\\Sprint 17",
     "Sample Project\\Notes app", parent);
 }
 
@@ -75,9 +75,9 @@ const pullRequest: HostPullRequest = new HostPullRequest(new HostItem(pr482, Ref
 
 const history: GitGraph = new GitGraph([
   new GitGraphCommit(new GitCommit("a91c40e".padEnd(40, "0"), [], "Mona Lisa", "2026-11-22T10:00:00Z",
-    "Show the note card with its tag chip choices, with a subject long enough to run past the row so the row cuts it short #7521"), "kim@fabrikam.com", []),
+    "Show the note card with its tag chip choices, with a subject long enough to run past the row so the row cuts it short #7521"), "kim@fabrikam.test", []),
   new GitGraphCommit(new GitCommit("5f02b7d".padEnd(40, "0"), [], "Mona Lisa", "2026-11-22T08:00:00Z", "Local times AB#7521"),
-    "kim@fabrikam.com", [])
+    "kim@fabrikam.test", [])
 ], true);
 
 const picture: string = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";

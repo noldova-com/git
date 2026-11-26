@@ -42,11 +42,11 @@ class DocumentComponent {
   protected readonly reference: HostReference = reference;
 }
 
-const octocat: HostPerson = new HostPerson("octocat@fabrikam.com", null, null);
+const octocat: HostPerson = new HostPerson("octocat@fabrikam.test", null, null);
 const threads: readonly HostThread[] = [
   new HostThread(1, ThreadStatus.Active, `/src/${"note-exports/".repeat(12)}local-times.ts`, 42, [
     new HostComment(1, null, octocat, 1_800_000_000_000, "Should this respect local times?"),
-    new HostComment(2, 1, new HostPerson("monalisa@fabrikam.com", null, null), 1_800_000_060_000, "Yes, it will.")
+    new HostComment(2, 1, new HostPerson("monalisa@fabrikam.test", null, null), 1_800_000_060_000, "Yes, it will.")
   ]),
   new HostThread(2, ThreadStatus.Resolved, null, null, [new HostComment(1, null, octocat, 1_800_000_000_000, `Typo ${"in the heading ".repeat(20)}`)])
 ];
