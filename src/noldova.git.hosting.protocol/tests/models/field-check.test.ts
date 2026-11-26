@@ -15,11 +15,23 @@ import { describe, it } from "vitest";
 import { CheckState } from "../../src/enums/check-state.ts";
 import { FieldCheck } from "../../src/models/field-check.ts";
 
+interface IArgumentFailure {
+  readonly name: string;
+  readonly parameterName: string;
+  readonly message: string;
+}
+
+interface IFieldFailure {
+  readonly name: string;
+  readonly field: string;
+  readonly message: string;
+}
+
 describe("FieldCheck", () => {
   const reader = JsonReader.fromValue({ kept: "a", missing: null, state: "Queued", child: { a: 1 } }, "$.item");
-  const argument = (parameterName: string, expectation: string): { name: string; parameterName: string; message: string } =>
+  const argument = (parameterName: string, expectation: string): IArgumentFailure =>
     ({ name: "HostingArgumentException", parameterName, message: `The argument ${parameterName} is invalid: expected ${expectation}.` });
-  const field = (path: string, expectation: string): { name: string; field: string; message: string } =>
+  const field = (path: string, expectation: string): IFieldFailure =>
     ({ name: "HostingFieldException", field: path, message: `The field ${path} is invalid: expected ${expectation}.` });
 
   it("names a parameter without a reader, and a field by its path with one", () => {
@@ -40,6 +52,12 @@ describe("FieldCheck", () => {
     assert.throws(() => FieldCheck.readNullableMember(reader, "state", [CheckState.Failed]), { name: "JsonException", path: "$.item.state" });
   });
 
+  it("requires a member of a list, answering it, and names the members it takes", () => {
+    assert.equal(FieldCheck.requireMember("Queued", [CheckState.Queued, CheckState.Failed], "state"), CheckState.Queued);
+    assert.throws(() => FieldCheck.requireMember("Skipped", [CheckState.Queued, CheckState.Failed], "state"), argument("state", "one of Queued, Failed"));
+    assert.throws(() => FieldCheck.requireMember("Skipped", [CheckState.Queued], "state", reader), field("$.item.state", "one of Queued"));
+  });
+
   it("requires a text that isn't blank, a whole number above zero and a count of zero or more", () => {
     assert.doesNotThrow(() => FieldCheck.requireText("a", "title"));
     for (const value of ["", " ", "\t"])
@@ -57,10 +75,10 @@ describe("FieldCheck", () => {
       assert.doesNotThrow(() => FieldCheck.requireName(value, "repository"));
     for (const value of ["", ".", "..", "a/b", "a b"])
       assert.throws(() => FieldCheck.requireName(value, "repository"), argument("repository", "a name of letters, digits, '.', '_' and '-', other than '.' and '..'"));
-    for (const value of ["octocat", "group/sub/project"])
+    for (const value of ["octocat", "group/sub/project", "fabrikam/Sample%20Project/_git/site", "a/%C3%A9t%c3%a9", "a/.%2ex"])
       assert.doesNotThrow(() => FieldCheck.requirePath(value, "owner"));
-    for (const value of ["", "/a", "a/", "a//b", "a/../b", "./a", "a/."])
-      assert.throws(() => FieldCheck.requirePath(value, "owner"), argument("owner", "names of letters, digits, '.', '_' and '-' joined by '/', none of them '.' or '..'"));
+    for (const value of ["", "/a", "a/", "a//b", "a/../b", "./a", "a/.", "a b", "a/%2e", "%2E%2e/a", "a/.%2E", "a/%2", "a/%zz", "a/%", "a%2F..", "a%5c..", "a/b%2fc"])
+      assert.throws(() => FieldCheck.requirePath(value, "owner"), argument("owner", "names of letters, digits, '.', '_', '-' and percent escapes such as '%20' but not of '/' or '\\' joined by '/', none of them '.' or '..', '%2e' counting as a dot"));
   });
 
   it("requires a full commit hash, a data image avatar and an https address without a user", () => {

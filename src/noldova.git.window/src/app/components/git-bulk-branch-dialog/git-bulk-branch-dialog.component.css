@@ -1,0 +1,29 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+.name {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.refused {
+  margin: 0.25rem 0 0;
+  color: var(--nol-error);
+}
+
+.text {
+  margin: 0.75rem 0 0;
+}
+
+.targets {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.5rem 0 0;
+  padding-inline-start: 1.25rem;
+}

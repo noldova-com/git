@@ -1,0 +1,221 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  overflow: auto;
+  color: var(--nol-text);
+}
+
+.empty-view {
+  margin: var(--nol-space-3);
+}
+
+.detail,
+.list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.detail {
+  gap: var(--nol-space-3);
+  padding: var(--nol-space-3);
+}
+
+.list {
+  gap: var(--nol-space-2);
+}
+
+.section-head,
+.card-head,
+.policy,
+.row,
+.reviewer {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.section-head .add-reviewer {
+  margin-block: calc((var(--nol-line-panel) - var(--nol-icon-button-target)) / 2);
+}
+
+.section-title {
+  margin: 0;
+  color: var(--nol-text-strong);
+  font-size: inherit;
+  font-weight: var(--nol-weight-strong);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nol-space-2);
+  padding: var(--nol-space-3);
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: var(--nol-radius-medium);
+}
+
+.card p,
+.list p {
+  margin: 0;
+}
+
+.id {
+  font-variant-numeric: tabular-nums;
+}
+
+.build-number {
+  font-family: var(--nol-font-mono);
+}
+
+.id,
+.muted {
+  color: var(--nol-text-muted);
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.small {
+  font-size: var(--nol-text-label);
+}
+
+.work-state {
+  display: flex;
+  flex: none;
+  gap: var(--nol-space-1);
+  align-items: center;
+}
+
+.dot {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+}
+
+.policy {
+  min-height: var(--nol-icon-button);
+}
+
+.row {
+  min-height: var(--nol-button-height);
+  padding: 0 var(--nol-space-1);
+  border: 0;
+  border-radius: var(--nol-radius-medium);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  white-space: nowrap;
+}
+
+button.row {
+  cursor: pointer;
+}
+
+button.row:hover {
+  background-color: var(--nol-hover);
+}
+
+.filled {
+  font-variation-settings: "FILL" 1;
+}
+
+.avatar {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  margin: 0 -0.25rem -0.25rem 0;
+  padding: 0 0.25rem 0.25rem 0;
+}
+
+.group-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--nol-avatar-small);
+  height: var(--nol-avatar-small);
+  border-radius: 50%;
+  background-color: var(--nol-avatar-violet);
+  color: var(--nol-avatar-violet-text);
+}
+
+.group-avatar .material-symbols-rounded {
+  font-size: 0.875rem;
+}
+
+.vote {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid var(--nol-window);
+  border-radius: 50%;
+  background-color: var(--nol-text-muted);
+}
+
+.vote .material-symbols-rounded {
+  color: var(--nol-button-text);
+  font-size: 0.625rem;
+  font-variation-settings: "wght" 700;
+}
+
+.vote.waiting {
+  background-color: var(--nol-warning);
+}
+
+.vote.approved {
+  background-color: var(--nol-status-ok);
+}
+
+.vote.rejected {
+  background-color: var(--nol-status-failed);
+}
+
+.reviewer .grow {
+  display: flex;
+  flex-direction: column;
+}
+
+.reviewer .required {
+  flex: none;
+}
+
+.reviewer .name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.complete-panel {
+  border-top: var(--nol-border-width) solid var(--nol-border);
+}
+
+.type-image {
+  width: 0.875em;
+  height: 0.875em;
+  margin: 0.0625em;
+  flex: none;
+  vertical-align: middle;
+}

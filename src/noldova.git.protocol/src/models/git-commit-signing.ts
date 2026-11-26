@@ -1,0 +1,35 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import { type JsonObject, JsonReader } from "@noldova/context.json";
+
+import { SigningFormat } from "../enums/signing-format.ts";
+import { Resources } from "../resources.ts";
+import { FieldCheck } from "./field-check.ts";
+
+export class GitCommitSigning {
+  private static readonly FIELDS: readonly string[] = [Resources.signsField, Resources.formatField];
+
+  public readonly signs: boolean;
+  public readonly format: SigningFormat | null;
+
+  public constructor(signs: boolean, format: SigningFormat | null) {
+    this.signs = signs;
+    this.format = format;
+  }
+
+  public static fromJson(value: unknown, path?: string): GitCommitSigning {
+    const reader = JsonReader.fromValue(value, path);
+    FieldCheck.refuseUnknownFields(reader, GitCommitSigning.FIELDS);
+    return new GitCommitSigning(reader.readBoolean(Resources.signsField), FieldCheck.readNullableMember(reader, Resources.formatField, Object.values(SigningFormat)));
+  }
+
+  public toJson(): JsonObject {
+    return { [Resources.signsField]: this.signs, [Resources.formatField]: this.format };
+  }
+}

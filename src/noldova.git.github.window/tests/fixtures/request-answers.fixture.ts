@@ -6,14 +6,17 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { UnansweredCallException } from "@noldova/desktop.protocol/testing";
 import type { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 
+import { AnswerWaiter } from "./answer-waiter.fixture.ts";
+
 export class RequestAnswers {
   private readonly context: FakeWindowPartContext;
   private readonly queues: Map<string, (() => Promise<JsonValue>)[]> = new Map();
-  private readonly waiters: { readonly count: number; readonly resolve: () => void }[] = [];
+  private readonly waiters: AnswerWaiter[] = [];
 
   public readonly answered: Promise<JsonValue>[] = [];
 
@@ -21,7 +24,7 @@ export class RequestAnswers {
     this.context = context;
     context.answer("requestAsync", method => {
       const next = this.queue(method).shift();
-      const reply: Promise<JsonValue> = next === undefined ? Promise.reject(new UnansweredCallException("requestAsync")) : next();
+      const reply: Promise<JsonValue> = Object.isUndefined(next) ? Promise.reject(new UnansweredCallException("requestAsync")) : next();
       this.answered.push(reply);
       for (const waiter of this.waiters.filter(t => t.count <= this.answered.length)) {
         this.waiters.splice(this.waiters.indexOf(waiter), 1);
@@ -41,7 +44,7 @@ export class RequestAnswers {
 
   public askedAsync(count: number): Promise<void> {
     return this.answered.length >= count ? Promise.resolve() : new Promise<void>(resolve => {
-      this.waiters.push({ count, resolve });
+      this.waiters.push(new AnswerWaiter(count, resolve));
     });
   }
 

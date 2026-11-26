@@ -9,7 +9,7 @@ LICENSE file in the root directory of this source tree.
 @if (signIn(); as current) {
   <section class="nol-git-github-setting" [attr.aria-busy]="isBusy()">
     @if (current.deviceCode; as code) {
-      <div class="nol-git-github-heading" [attr.data-setting]="resources.accountRow">
+      <div class="nol-git-github-heading">
         <h3 class="nol-git-github-setting-title">{{ resources.accountTitle }}</h3>
         <p class="nol-git-github-setting-note">{{ resources.formatCodeNote(code.verificationUri, code.userCode, copiedCode() === code.userCode) }}</p>
       </div>
@@ -28,7 +28,7 @@ LICENSE file in the root directory of this source tree.
         <button type="button" nol-button class="nol-git-github-cancel" [variant]="secondary" [disabled]="isBusy()" (click)="cancelAsync()">{{ resources.cancel }}</button>
       </div>
     } @else if (current.account; as account) {
-      <div class="nol-git-github-heading" [attr.data-setting]="resources.accountRow">
+      <div class="nol-git-github-heading">
         <h3 class="nol-git-github-setting-title">{{ resources.accountTitle }}</h3>
         <div class="nol-git-github-account">
           <nol-avatar [name]="account.login" [image]="account.avatar" [initials]="initialOf(account)" [colorKey]="account.login" [decorative]="true" />
@@ -39,19 +39,19 @@ LICENSE file in the root directory of this source tree.
         </div>
       </div>
       <div class="nol-git-github-row">
-        <span class="nol-git-github-action" [attr.data-setting]="resources.signOutRow">
+        <span class="nol-git-github-action">
           <button type="button" nol-button [variant]="secondary" [disabled]="isBusy()" (click)="signOutAsync()">
             <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.signOutIcon }}</span>{{ resources.signOut }}
           </button>
         </span>
-        <span class="nol-git-github-action" [attr.data-setting]="resources.manageAccessRow">
+        <span class="nol-git-github-action">
           <button type="button" nol-button [variant]="secondary" (click)="manageAsync()">
             <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.openIcon }}</span>{{ resources.manageAccess }}
           </button>
         </span>
       </div>
     } @else {
-      <div class="nol-git-github-heading" [attr.data-setting]="resources.accountRow">
+      <div class="nol-git-github-heading">
         <h3 class="nol-git-github-setting-title">{{ resources.accountTitle }}</h3>
         @if (failureOf(current); as failure) {
           <div class="nol-git-github-banner" role="alert">
@@ -66,7 +66,7 @@ LICENSE file in the root directory of this source tree.
         }
       </div>
       <div class="nol-git-github-row">
-        <span class="nol-git-github-action" [attr.data-setting]="resources.signInRow">
+        <span class="nol-git-github-action">
           <button type="button" nol-button [disabled]="isBusy()" (click)="startAsync()">
             <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.signInIcon }}</span>{{ resources.signIn }}
           </button>
@@ -79,7 +79,7 @@ LICENSE file in the root directory of this source tree.
   </section>
 } @else if (failure(); as failure) {
   <section class="nol-git-github-setting">
-    <div class="nol-git-github-heading" [attr.data-setting]="resources.accountRow">
+    <div class="nol-git-github-heading">
       <h3 class="nol-git-github-setting-title">{{ resources.accountTitle }}</h3>
       <ng-container *ngTemplateOutlet="requestFailed; context: { $implicit: failure }" />
     </div>

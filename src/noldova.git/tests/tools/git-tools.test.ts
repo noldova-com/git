@@ -21,6 +21,11 @@ import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { FakeAnswerer } from "../fixtures/fake-answerer.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
+interface IToolRefusal {
+  readonly code: ToolFailureCode;
+  readonly moduleCode: string | null;
+}
+
 describe("The Git agent tools", () => {
   const names = ["git_status", "git_diff", "git_log", "git_branches", "git_stage", "git_unstage", "git_create_branch", "git_switch_branch", "git_commit",
     "git_push", "git_pull"];
@@ -45,6 +50,7 @@ describe("The Git agent tools", () => {
     cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
     cleanUps.add(() => supervisor.disposeAsync());
+    supervisor.context.settings.answer("read", () => null);
     part = new RuntimePart();
     await part.activateAsync(supervisor.context);
     cleanUps.add(() => part.deactivateAsync());
@@ -67,10 +73,10 @@ describe("The Git agent tools", () => {
     assert.ok(isRecord(value));
     return value;
   };
-  const failureAsync = async (name: string, input: JsonObject = {}, on: ToolSession = session): Promise<readonly [ToolFailureCode, string | null]> => {
+  const failureAsync = async (name: string, input: JsonObject = {}, on: ToolSession = session): Promise<IToolRefusal> => {
     const outcome = await callAsync(name, input, on);
     assert.ok(outcome instanceof ToolFailure, name);
-    return [outcome.code, outcome.moduleCode];
+    return { code: outcome.code, moduleCode: outcome.moduleCode };
   };
   const pathsOf = (value: unknown): string[] =>
     (Array.isArray(value) ? value.map((t: unknown) => (typeof t === "object" && t !== null && "path" in t ? String(t.path) : "")) : []);
@@ -117,13 +123,21 @@ describe("The Git agent tools", () => {
   });
 
   it("refuses a session with no git.folder, a write's before the tool runs, a folder outside any repository, and a path outside the repository", async () => {
-    assert.deepEqual(await failureAsync("git_status", {}, supervisor.registry.openSession("chat-2", {})), [ToolFailureCode.Refused, "git.noFolder"]);
-    assert.deepEqual(await failureAsync("git_stage", { paths: ["a.txt"] }, supervisor.registry.openSession("chat-3", {})), [ToolFailureCode.Refused, null]);
+    assert.deepEqual(await failureAsync("git_status", {}, supervisor.registry.openSession("chat-2", {})), { code: ToolFailureCode.Refused, moduleCode: "git.noFolder" });
+    assert.deepEqual(await failureAsync("git_stage", { paths: ["a.txt"] }, supervisor.registry.openSession("chat-3", {})), { code: ToolFailureCode.Refused, moduleCode: null });
     const outside = supervisor.registry.openSession("chat-4", { "git.folder": repository.root });
-    assert.deepEqual(await failureAsync("git_status", {}, outside), [ToolFailureCode.Refused, "git.notRepository"]);
-    assert.deepEqual(await failureAsync("git_diff", { paths: ["../a.txt"] }), [ToolFailureCode.Refused, "git.invalidArgument"]);
-    assert.deepEqual(await failureAsync("git_switch_branch", { name: "--detach" }), [ToolFailureCode.Refused, "git.invalidArgument"]);
+    assert.deepEqual(await failureAsync("git_status", {}, outside), { code: ToolFailureCode.Refused, moduleCode: "git.notRepository" });
+    assert.deepEqual(await failureAsync("git_diff", { paths: ["../a.txt"] }), { code: ToolFailureCode.Refused, moduleCode: "git.invalidArgument" });
+    assert.deepEqual(await failureAsync("git_switch_branch", { name: "--detach" }), { code: ToolFailureCode.Refused, moduleCode: "git.invalidArgument" });
     assert.deepEqual(answerer.requests, []);
+  });
+
+  it("tells the agent push asks at high risk, or at medium with an Always allow for a branch the session made", () => {
+    const push = session.listTools().find(t => t.name === "git_push");
+
+    assert.match(push?.description ?? "", /at high risk, or at medium risk with an Always allow for this session when the branch is one this session made/v);
+    assert.doesNotMatch(push?.description ?? "", /always asks/v);
+    assert.match(push?.description ?? "", /to the branch of its own name on its remote, .* it refuses a branch whose upstream has another name\./v);
   });
 
   it("stages and unstages without asking while no hook would run, and asks at low risk when one would", async () => {
@@ -161,10 +175,10 @@ describe("The Git agent tools", () => {
     const subject = await subjectAsync();
     answerer.answerNext(PermissionDecision.Denied);
 
-    assert.deepEqual(await failureAsync("git_commit", { message: "Add c" }), [ToolFailureCode.Denied, "git.denied"]);
+    assert.deepEqual(await failureAsync("git_commit", { message: "Add c" }), { code: ToolFailureCode.Denied, moduleCode: "git.denied" });
     assert.equal(await subjectAsync(), subject);
     await readAsync("git_unstage", { paths: ["c.txt"] });
-    assert.deepEqual(await failureAsync("git_commit", { message: "Nothing" }), [ToolFailureCode.Refused, "git.nothingToCommit"]);
+    assert.deepEqual(await failureAsync("git_commit", { message: "Nothing" }), { code: ToolFailureCode.Refused, moduleCode: "git.nothingToCommit" });
     assert.equal(answerer.requests.length, 1);
   });
 

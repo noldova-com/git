@@ -10,11 +10,16 @@ import { CheckState, type ReferenceKind, type ReferenceState, SignInFailure } fr
 import type { IconName } from "@noldova/ui.components.angular";
 
 export class Resources {
-  public static readonly settingsPage: string = "git-github.account";
-  public static readonly accountRow: string = "git-github.account";
-  public static readonly signInRow: string = "git-github.signIn";
-  public static readonly signOutRow: string = "git-github.signOut";
-  public static readonly manageAccessRow: string = "git-github.manageAccess";
+  public static readonly accountsPage: string = "git.accounts";
+  public static readonly pullRequestsUnanswered: string = "GitHub didn't answer. Try again to read this repository's pull requests.";
+  public static readonly accountId: string = "git-github.account";
+  public static readonly hostName: string = "GitHub";
+  public static readonly hostColumn: string = "GitHub";
+  public static readonly hostMark: string = "GH";
+  public static readonly hostColor: string = "#24292f";
+  public static readonly signedIn: string = "Signed in";
+  public static readonly waiting: string = "Waiting for the code";
+  public static readonly signInAction: string = "Sign in";
   public static readonly accountTitle: string = "Account";
   public static readonly signedOutNote: string = "Sign in to see pull requests, their checks, and issue and pull request links in replies. Git works without it.";
   public static readonly signIn: string = "Sign in to GitHub";
@@ -66,6 +71,23 @@ export class Resources {
   public static readonly markOcticon: string = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path d="M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656"/></svg>';
 
   public static readonly gitHubHost: string = "github.com";
+  public static readonly gitHubReferenceProtocol: string = "https:";
+  public static readonly gitHubIssuesSegment: string = "issues";
+  public static readonly gitHubPullSegment: string = "pull";
+  public static readonly gitHubCompareSegment: string = "compare";
+  public static readonly gitHubFilesSegment: string = "files";
+  public static readonly gitHubAppsSegment: string = "apps";
+  public static readonly gitHubOwnerPattern: RegExp = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/;
+  public static readonly gitHubRepositoryPattern: RegExp = /^(?!\.{1,2}$)[A-Za-z0-9._-]{1,100}$/;
+  public static readonly gitHubNumberPattern: RegExp = /^[1-9][0-9]{0,9}$/;
+  public static readonly gitHubTextReferencePattern: RegExp =
+    /(?<![\w./#&-])(?:[A-Za-z0-9][A-Za-z0-9-]{0,38}\/(?!\.{1,2}#)[A-Za-z0-9._-]{1,100})?#[1-9][0-9]{0,9}(?![\w-])/gu;
+  public static readonly gitHubHomePattern: RegExp = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/(?!\.{1,2}$)[A-Za-z0-9._-]{1,100}$/;
+  public static readonly gitHubTextNumberMark: string = "#";
+  public static readonly gitHubReferenceReadLimit: number = 4;
+  public static readonly gitHubReferenceMemoryLimit: number = 500;
+  public static readonly gitHubBotSuffix: string = "[bot]";
+  public static readonly slash: string = "/";
   public static readonly hostRowSignedOut: string = "Sign in to GitHub to see this branch's pull request and its checks.";
   public static readonly readingPullRequest: string = "Reading this branch's pull request on GitHub.";
   public static readonly noPullRequest: string = "No pull request for this branch";
@@ -105,6 +127,10 @@ export class Resources {
     [SignInFailure.Unforgotten]: "The app may sign in with it when it next starts; the app's log has the details."
   };
 
+  public static formatAvatarKey(home: string, email: string): string {
+    return `${home} ${email}`;
+  }
+
   public static formatRequestFailed(method: string, reason: string): string {
     return `The GitHub module's ${method} request failed: ${reason}`;
   }
@@ -115,6 +141,14 @@ export class Resources {
 
   public static formatLinkFailed(url: string, reason: string): string {
     return `The GitHub module couldn't open ${url}: ${reason}`;
+  }
+
+  public static formatPullRequestLabel(number: number): string {
+    return `#${number}`;
+  }
+
+  public static formatRemoteKey(host: string, path: string): string {
+    return `${host}/${path}`;
   }
 
   public static formatPullRequestTitle(number: number, title: string): string {
@@ -141,6 +175,10 @@ export class Resources {
     return `color-mix(in srgb, ${color} ${percent}%, transparent)`;
   }
 
+  public static formatAccountTitle(login: string): string {
+    return `${Resources.hostName} · ${login}`;
+  }
+
   public static formatAccess(scopes: readonly string[]): string {
     return scopes.includes(Resources.repositoryScope) ? Resources.withRepositories : Resources.withoutRepositories;
   }
@@ -157,5 +195,38 @@ export class Resources {
     const minutes = Math.floor(remainingSeconds / Resources.minuteSeconds);
     const seconds = String(remainingSeconds % Resources.minuteSeconds).padStart(2, "0");
     return `Waiting for GitHub. The code expires in ${minutes}:${seconds}.`;
+  }
+
+  public static formatGitHubReferenceLocation(owner: string, repository: string, number: number): string {
+    return `${owner}/${repository} #${number}`;
+  }
+
+  public static formatGitHubRepositoryAddress(owner: string, repository: string): string {
+    return `${Resources.gitHubReferenceProtocol}//${Resources.gitHubHost}/${owner}/${repository}`;
+  }
+
+  public static formatGitHubTextAddress(reference: string): string {
+    return `${Resources.gitHubReferenceProtocol}//${Resources.gitHubHost}/${reference.replace(Resources.gitHubTextNumberMark, `/${Resources.gitHubIssuesSegment}/`)}`;
+  }
+
+  public static formatGitHubPullFilesAddress(owner: string, repository: string, number: number): string {
+    return `${Resources.formatGitHubRepositoryAddress(owner, repository)}/${Resources.gitHubPullSegment}/${number}/${Resources.gitHubFilesSegment}`;
+  }
+
+  public static formatGitHubNewPullRequestAddress(path: string, source: string, target: string): string {
+    const branch = (name: string): string => name.split(Resources.slash).map(t => encodeURIComponent(t)).join(Resources.slash);
+    return `${Resources.gitHubReferenceProtocol}//${Resources.gitHubHost}/${path}/${Resources.gitHubCompareSegment}/${branch(target)}...${branch(source)}?expand=1`;
+  }
+
+  public static formatGitHubPersonAddress(login: string): string {
+    return `${Resources.gitHubReferenceProtocol}//${Resources.gitHubHost}/${encodeURIComponent(login)}`;
+  }
+
+  public static formatGitHubAppAddress(name: string): string {
+    return `${Resources.gitHubReferenceProtocol}//${Resources.gitHubHost}/${Resources.gitHubAppsSegment}/${encodeURIComponent(name)}`;
+  }
+
+  public static formatGitHubReferenceReadFailed(error: string): string {
+    return `Reading a GitHub reference failed, so it shows as a plain link: ${error}`;
   }
 }

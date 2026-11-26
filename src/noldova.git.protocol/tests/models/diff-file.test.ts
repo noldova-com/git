@@ -65,6 +65,24 @@ describe("DiffFile", () => {
     assert.equal(new DiffFile("b", undefined, "a", undefined, FileChange.Copied, "100644", "100644", false, null, [], false).oldPath, "a");
   });
 
+  it("a renamed or copied file keeps Git's similarity score, left out of the JSON form for any other change", () => {
+    const renamed = new DiffFile("b", undefined, "a", undefined, FileChange.Renamed, "100644", "100644", false, null, [], false, 92);
+    const copied = new DiffFile("c", undefined, "a", undefined, FileChange.Copied, "100644", "100644", false, null, [], false, 100);
+
+    assert.deepEqual([renamed.toJson()["similarity"], roundTrip(renamed).similarity, roundTrip(copied).similarity], [92, 92, 100]);
+    assert.equal("similarity" in new DiffFile("a", undefined, "a", undefined, FileChange.Modified, "100644", "100644", false, null, [], false).toJson(), false);
+    assert.equal(DiffFile.fromJson({ path: "b", oldPath: "a", change: "Renamed", oldMode: null, newMode: null, binary: false, submodule: null, hunks: [], truncated: false }).similarity, null);
+  });
+
+  it("refuses a similarity outside 0 to 100, not whole, or on a file that isn't renamed or copied", () => {
+    const expected = { name: "ProtocolFieldException", field: "similarity", message: "The field similarity is invalid: expected a whole percent from 0 to 100 on a renamed or copied file, or no value." };
+
+    for (const [change, similarity] of [[FileChange.Renamed, 101], [FileChange.Renamed, -1], [FileChange.Copied, 9.5], [FileChange.Modified, 50]] as const)
+      assert.throws(() => new DiffFile("b", undefined, change === FileChange.Modified ? "b" : "a", undefined, change, null, null, false, null, [], false, similarity), expected);
+    assert.throws(() => DiffFile.fromJson({ path: "b", oldPath: "a", change: "Renamed", oldMode: null, newMode: null, binary: false, submodule: null, hunks: [], truncated: false, similarity: 300 }, "$.files[0]"),
+      { name: "ProtocolFieldException", field: "$.files[0].similarity" });
+  });
+
   it("a binary file has no hunks", () => {
     assert.throws(() => new DiffFile("a", undefined, "a", undefined, FileChange.Modified, "100644", "100644", true, null, [hunk], false),
       { name: "ProtocolFieldException", field: "hunks", message: "The field hunks is invalid: expected no hunks, since the file is binary." });

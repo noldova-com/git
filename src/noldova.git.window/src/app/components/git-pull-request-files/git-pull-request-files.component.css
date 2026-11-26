@@ -1,0 +1,149 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.notice {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  padding: var(--nol-space-2) var(--nol-view-padding-inline);
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: var(--nol-radius-medium);
+  background-color: var(--nol-raised);
+  color: var(--nol-text-muted);
+}
+
+.notice-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.notice-icon {
+  flex: none;
+  color: var(--nol-status-failed);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.local {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.hint {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  margin: 0 0 var(--nol-space-2);
+  padding: var(--nol-space-1) var(--nol-space-1);
+  color: var(--nol-text-muted);
+}
+
+.hint-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.files-header {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 0 var(--nol-space-1);
+}
+
+.caps {
+  color: var(--nol-text-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.row {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--nol-button-height);
+  padding: 0 var(--nol-space-1);
+  border: 0;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  white-space: nowrap;
+}
+
+.row:hover {
+  background: var(--nol-hover);
+}
+
+.folder {
+  cursor: pointer;
+}
+
+.ms {
+  display: inline-block;
+  flex: none;
+  overflow: hidden;
+  width: 1rem;
+  height: 1rem;
+  color: var(--nol-icon-color);
+  font-family: "Material Symbols Rounded";
+  font-size: 1rem;
+  font-weight: 400;
+  font-style: normal;
+  line-height: 1;
+  white-space: nowrap;
+  font-feature-settings: "liga";
+}
+
+.letter {
+  flex: none;
+  min-width: 1rem;
+  color: var(--nol-text-muted);
+  font-family: var(--nol-font-mono);
+  text-align: center;
+}
+
+.path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.from {
+  color: var(--nol-text-muted);
+}
+
+.empty,
+.cap {
+  margin: 0;
+  padding: var(--nol-space-1);
+  color: var(--nol-text-muted);
+}
+
+.cap {
+  font-size: var(--nol-text-label);
+}

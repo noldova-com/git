@@ -1,0 +1,26 @@
+<div class="backdrop" (click)="closed.emit()" (contextmenu)="close($event)"></div>
+<div #box class="drop" role="dialog" [attr.aria-label]="resources.formatDropTitle(drop().source, drop().target)" [style.left.px]="left()" [style.top.px]="top()"
+  (keydown.escape)="close($event)">
+  @if (heading(); as shown) {
+    <div class="heading" [class]="'heading ' + shown.tone" role="status">
+      <span class="ms" aria-hidden="true">{{ shown.icon }}</span><span class="strong">{{ shown.text }}</span>
+    </div>
+  }
+  <p class="detail">{{ detail() }}</p>
+  @let merge = mergeLabel();
+  <button type="button" class="option merge" [class.switching]="!drop().canMerge" [disabled]="!(drop().canMerge || drop().canSwitchAndMerge) || busy()"
+    [title]="drop().canMerge || drop().canSwitchAndMerge ? merge : resources.formatDropMergeNeedsSwitch(drop().target)"
+    (click)="drop().canMerge ? merged.emit() : switchMerged.emit()">
+    <span class="ms" aria-hidden="true">{{ resources.mergeIcon }}</span><span class="grow">{{ merge }}</span>
+  </button>
+  <button type="button" class="option rebase" [disabled]="!drop().canRebase"
+    [title]="drop().canRebase ? resources.formatDropRebase(drop().source, drop().target) : resources.formatDropRebaseNeedsSwitch(drop().source)" (click)="rebased.emit()">
+    <span class="ms" aria-hidden="true">{{ resources.dropRebaseIcon }}</span><span class="grow">{{ resources.formatDropRebase(drop().source, drop().target) }}</span>
+  </button>
+  @let requestUrl = request();
+  <button type="button" class="option request" [disabled]="requestUrl === null"
+    [title]="requestUrl === null ? resources.formatDropRequestNeedsHost(drop().source, drop().target) : resources.formatDropRequest(drop().target)"
+    (click)="requestUrl !== null && requested.emit(requestUrl)">
+    <span class="ms" aria-hidden="true">{{ resources.dropRequestIcon }}</span><span class="grow">{{ resources.formatDropRequest(drop().target) }}</span>
+  </button>
+</div>

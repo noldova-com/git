@@ -11,7 +11,9 @@ import { DiffFile, DiffHunk, DiffLine, FileChange, LineKind, ProtocolException, 
 import { UnreadableOutputException } from "../exceptions/unreadable-output.exception.ts";
 import type { IRawDiffEntry } from "../interfaces/i-raw-diff-entry.ts";
 import { GitPath } from "../models/git-path.ts";
+import { NulToken } from "../models/nul-token.ts";
 import { ParsedDiff } from "../models/parsed-diff.ts";
+import { RawDiffEntries } from "../models/raw-diff-entries.ts";
 import { Required } from "../models/required.ts";
 import { Resources } from "../resources.ts";
 
@@ -23,7 +25,7 @@ export class DiffParser {
 
   public static parse(output: Buffer, isCut: boolean): ParsedDiff {
     try {
-      const [entries, patch] = DiffParser.readEntries(output, isCut);
+      const { entries, patch } = DiffParser.readEntries(output, isCut);
       const patched = entries.filter(t => !t.isCombined);
       const sections = DiffParser.findSections(patch, patched, isCut);
       const files: DiffFile[] = [];
@@ -44,11 +46,11 @@ export class DiffParser {
     }
   }
 
-  private static readEntries(output: Buffer, isCut: boolean): [IRawDiffEntry[], Buffer] {
+  private static readEntries(output: Buffer, isCut: boolean): RawDiffEntries {
     const entries: IRawDiffEntry[] = [];
     let start = 0;
     while (output[start] === Resources.colonByte) {
-      const [fields, pathsStart] = DiffParser.readToken(output, start);
+      const { value: fields, next: pathsStart } = DiffParser.readToken(output, start);
       if (fields === null)
         return DiffParser.incomplete(entries, isCut);
       const text = fields.toString(Resources.latin1Encoding);
@@ -56,7 +58,7 @@ export class DiffParser {
       const paths: Buffer[] = [];
       start = pathsStart;
       while (paths.length < (DiffParser.MOVED.includes(entry.change) ? 2 : 1)) {
-        const [path, next] = DiffParser.readToken(output, start);
+        const { value: path, next } = DiffParser.readToken(output, start);
         if (path === null)
           return DiffParser.incomplete(entries, isCut);
         paths.push(path);
@@ -65,21 +67,21 @@ export class DiffParser {
       entries.push({ ...entry, oldPath: Required.at(paths, 0, Resources.diffCommand, Resources.incompleteEntryPart), path: Required.at(paths, paths.length - 1, Resources.diffCommand, Resources.incompleteEntryPart) });
     }
     if (start === output.length)
-      return [entries, Buffer.alloc(0)];
+      return new RawDiffEntries(entries, Buffer.alloc(0));
     if (output[start] !== Resources.nulByte)
       throw DiffParser.unreadable(Resources.unknownEntryPart);
-    return [entries, output.subarray(start + 1)];
+    return new RawDiffEntries(entries, output.subarray(start + 1));
   }
 
-  private static readToken(output: Buffer, start: number): [Buffer | null, number] {
+  private static readToken(output: Buffer, start: number): NulToken {
     const end = output.indexOf(Resources.nulByte, start);
-    return end < 0 ? [null, output.length] : [output.subarray(start, end), end + 1];
+    return end < 0 ? new NulToken(null, output.length) : new NulToken(output.subarray(start, end), end + 1);
   }
 
-  private static incomplete(entries: IRawDiffEntry[], isCut: boolean): [IRawDiffEntry[], Buffer] {
+  private static incomplete(entries: IRawDiffEntry[], isCut: boolean): RawDiffEntries {
     if (!isCut)
       throw DiffParser.unreadable(Resources.incompleteEntryPart);
-    return [entries, Buffer.alloc(0)];
+    return new RawDiffEntries(entries, Buffer.alloc(0));
   }
 
   private static readRaw(fields: string): Omit<IRawDiffEntry, "oldPath" | "path"> {
@@ -95,7 +97,8 @@ export class DiffParser {
       oldMode: DiffParser.readMode(Required.at(match, 1, Resources.diffCommand, Resources.unknownEntryPart)),
       newMode: DiffParser.readMode(Required.at(match, 2, Resources.diffCommand, Resources.unknownEntryPart)),
       oldId: DiffParser.readId(Required.at(match, 3, Resources.diffCommand, Resources.unknownEntryPart)),
-      newId: DiffParser.readId(Required.at(match, 4, Resources.diffCommand, Resources.unknownEntryPart))
+      newId: DiffParser.readId(Required.at(match, 4, Resources.diffCommand, Resources.unknownEntryPart)),
+      similarity: DiffParser.readSimilarity(change, Required.at(match, 6, Resources.diffCommand, Resources.unknownEntryPart))
     };
   }
 
@@ -109,8 +112,13 @@ export class DiffParser {
       oldMode: DiffParser.readMode(Required.at(match, 1, Resources.diffCommand, Resources.unknownEntryPart)),
       newMode: DiffParser.readMode(Required.at(match, 2, Resources.diffCommand, Resources.unknownEntryPart)),
       oldId: null,
-      newId: null
+      newId: null,
+      similarity: null
     };
+  }
+
+  private static readSimilarity(change: FileChange, score: string): number | null {
+    return DiffParser.MOVED.includes(change) && score.length > 0 ? Number.parseInt(score, 10) : null;
   }
 
   private static readMode(mode: string): string | null {
@@ -137,8 +145,9 @@ export class DiffParser {
   }
 
   private static findEnd(patch: Buffer, start: number, next: number): number {
-    const combined = DiffParser.COMBINED_HEADERS.map(t => DiffParser.findLine(patch, t, start + 1)).filter(t => t >= 0 && t < next);
-    return Math.min(next, ...combined);
+    const section = patch.subarray(start, next);
+    const combined = DiffParser.COMBINED_HEADERS.map(t => DiffParser.findLine(section, t, 1)).filter(t => t >= 0);
+    return start + Math.min(section.length, ...combined);
   }
 
   private static findLine(buffer: Buffer, line: Buffer, from: number): number {
@@ -160,7 +169,7 @@ export class DiffParser {
     ]);
   }
 
-  private static quote(prefix: string, path: Buffer): Buffer {
+  public static quote(prefix: string, path: Buffer): Buffer {
     const name = Buffer.concat([Buffer.from(prefix), path]);
     if (!name.some(t => DiffParser.isUnprintable(t) || Resources.cEscapes.has(t)))
       return name;
@@ -185,9 +194,9 @@ export class DiffParser {
     const binary = lines.some(t => t.toString(Resources.latin1Encoding, 0, Resources.binaryFilesPrefix.length) === Resources.binaryFilesPrefix);
     const hunks = binary ? [] : DiffParser.readHunks(lines, isCut);
     if (entry.oldMode !== Resources.submoduleMode && entry.newMode !== Resources.submoduleMode)
-      return new DiffFile(path.text, path.bytes, oldPath.text, oldPath.bytes, entry.change, entry.oldMode, entry.newMode, binary, null, hunks, isCut);
+      return new DiffFile(path.text, path.bytes, oldPath.text, oldPath.bytes, entry.change, entry.oldMode, entry.newMode, binary, null, hunks, isCut, entry.similarity);
     const submodule = new SubmoduleChange(DiffParser.readCommit(hunks, LineKind.Removed, entry.oldId), DiffParser.readCommit(hunks, LineKind.Added, entry.newId));
-    return new DiffFile(path.text, path.bytes, oldPath.text, oldPath.bytes, entry.change, entry.oldMode, entry.newMode, false, submodule, [], isCut);
+    return new DiffFile(path.text, path.bytes, oldPath.text, oldPath.bytes, entry.change, entry.oldMode, entry.newMode, false, submodule, [], isCut, entry.similarity);
   }
 
   private static splitLines(section: Buffer): Buffer[] {

@@ -1,0 +1,109 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<section class="threads" [attr.aria-label]="resources.commentsTitle">
+  <div class="threads-head">
+    <h2 class="threads-title">{{ resources.commentsTitle }}</h2>
+    @if (threads().length > 0) {
+      <span class="small muted">{{ resources.formatOpenThreads(openCount()) }}</span>
+    }
+  </div>
+  @if (failure(); as failure) {
+    <div class="threads-notice" role="alert">
+      <span class="material-symbols-rounded failed" aria-hidden="true">{{ resources.failureIcon }}</span>
+      <span class="grow">{{ failure }}</span>
+      <button type="button" nol-button [variant]="secondary" (click)="retry()">{{ resources.tryAgainLabel }}</button>
+    </div>
+  } @else if (isRead()) {
+    @if (hasMore()) {
+      <p class="small muted threads-more">{{ resources.formatOlderComments(host().name) }}</p>
+    }
+    @for (thread of threads(); track thread.id) {
+      <article class="thread" [attr.aria-busy]="busy().has(thread.id)">
+        @if (thread.path !== null || thread.state !== none) {
+          <div class="thread-head">
+            <span class="material-symbols-rounded thread-icon" aria-hidden="true">{{ resources.threadIcon }}</span>
+            <span class="place" [attr.title]="thread.path">@if (thread.state !== none) {<span class="thread-state" [class.open]="resources.openThreadStates.includes(thread.state)">{{ resources.threadLabels[thread.state] }}</span>}{{ resources.formatThreadPlace(thread.state !== none, thread.path, thread.line) }}</span>
+            @if (thread.path; as path) {
+              @if (thread.line; as line) {
+                <button type="button" nol-button class="go-to-line" [variant]="secondary" [size]="compact"
+                  (click)="goToLine.emit(lineOf(thread, path, line))">{{ resources.goToLine }}</button>
+              }
+            }
+          </div>
+        }
+        @if (isFolded(thread)) {
+          @for (first of thread.comments.slice(0, 1); track first.id) {
+            <button type="button" class="fold" aria-expanded="false" (click)="unfold(thread)">
+              <span class="material-symbols-rounded" aria-hidden="true">{{ resources.unfoldIcon }}</span>
+              <span class="name">{{ first.author.name ?? first.author.login }}</span>
+              <span class="grow muted">{{ first.body }}</span>
+              <span class="small muted">{{ resources.formatCommentCount(thread.comments.length) }}</span>
+            </button>
+          }
+        } @else {
+          @for (comment of thread.comments; track comment.id) {
+            <div class="comment" [class.reply]="comment.parent !== null">
+              <nol-git-person-avatar [host]="host()" [reference]="reference()" [login]="comment.author.login" [image]="comment.author.avatar" [size]="small" />
+              <div class="comment-main">
+                <div class="comment-meta">
+                  <span class="name">{{ comment.author.name ?? comment.author.login }}</span>
+                  <span class="small muted">{{ dateOf(comment) }}</span>
+                </div>
+                <nol-markdown-view [text]="comment.body" [references]="references()" (linkOpen)="linkOpen.emit($event)" />
+              </div>
+            </div>
+          }
+          @if (host().replyToThreadMethod !== null || host().changeThreadMethod !== null) {
+            <div class="answer">
+              @if (host().replyToThreadMethod !== null && isReplying(thread)) {
+                <textarea #draft nol-text-field rows="2" class="draft" [attr.data-thread]="thread.id" [attr.aria-label]="resources.replyLabel"
+                  [placeholder]="resources.replyPlaceholder" [value]="draftOf(thread)" [disabled]="busy().has(thread.id)" (input)="noteDrafts()"></textarea>
+              }
+              @if (host().changeThreadMethod; as changeMethod) {
+                @if (confirming() === thread.id) {
+                  <div class="change-confirm" role="alert">
+                    <span class="grow">{{ resources.autoCompleteResolveConfirm }}</span>
+                    <button type="button" nol-button [variant]="secondary" class="cancel" (click)="cancelChange()">{{ resources.cancelAction }}</button>
+                    <button type="button" nol-button class="confirm" (click)="confirmChange(thread, changeMethod)">{{ resources.resolveAnyway }}</button>
+                  </div>
+                }
+              }
+              <div class="answer-actions">
+                @if (writeFailures().get(thread.id); as writeFailure) {
+                  <span class="answer-failure" role="alert">
+                    <span class="material-symbols-rounded failed" aria-hidden="true">{{ resources.failureIcon }}</span>{{ writeFailure }}
+                  </span>
+                }
+                @if (host().changeThreadMethod; as changeMethod) {
+                  <button type="button" nol-button class="change" [variant]="secondary" [disabled]="busy().has(thread.id)" (click)="askChange(thread, changeMethod)">
+                    {{ isOpen(thread) ? resources.resolveThread : resources.reactivateThread }}
+                  </button>
+                }
+                @if (host().replyToThreadMethod; as replyMethod) {
+                  @if (isReplying(thread)) {
+                    <button type="button" nol-button class="send" [disabled]="!canReply(thread)" (click)="replyAsync(thread, replyMethod)">{{ resources.replyAction }}</button>
+                  } @else {
+                    <button type="button" nol-button class="start-reply" [disabled]="busy().has(thread.id)" (click)="startReply(thread)">{{ resources.replyAction }}</button>
+                  }
+                }
+              </div>
+            </div>
+          }
+        }
+      </article>
+    } @empty {
+      <p class="muted">{{ resources.noComments }}</p>
+    }
+  } @else {
+    <div class="threads-notice" role="status">
+      <nol-spinner />
+      <span class="grow">{{ resources.formatThreadsReading(host().name) }}</span>
+    </div>
+  }
+</section>

@@ -9,6 +9,7 @@
 import type {} from "@vitest/browser-playwright";
 import { Component } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitHubNames } from "@noldova/git.github.protocol";
@@ -21,6 +22,11 @@ import { cdp, page } from "vitest/browser";
 import { GitHubSignInComponent } from "../../../../src/app/components/github-sign-in/github-sign-in.component.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
+
+interface ISignInState {
+  readonly name: string;
+  readonly signIn: HostSignIn | null;
+}
 
 @Component({
   selector: "nol-git-github-settings-column",
@@ -39,23 +45,23 @@ const NOW: number = 1_800_000_000_000;
 const code: DeviceCode = new DeviceCode("WDJB-MJHT", "https://github.com/login/device", NOW + 872_000);
 const picture: string = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEElEQVR4nGNoCrgPRwzEcQC6IhsRLJyGqgAAAABJRU5ErkJggg==";
 const account: HostAccount = new HostAccount("example-user", null, picture, ["repo"]);
-const states: readonly (readonly [string, HostSignIn | null])[] = [
-  ["signed-out", HostSignIn.signedOut()],
-  ["code", HostSignIn.waiting(code)],
-  ["signed-in", HostSignIn.signedIn(account)],
-  ["expired", HostSignIn.signedOut(SignInFailure.Expired)],
-  ["unforgotten", HostSignIn.signedOut(SignInFailure.Unforgotten)],
-  ["unread", null]
+const states: readonly ISignInState[] = [
+  { name: "signed-out", signIn: HostSignIn.signedOut() },
+  { name: "code", signIn: HostSignIn.waiting(code) },
+  { name: "signed-in", signIn: HostSignIn.signedIn(account) },
+  { name: "expired", signIn: HostSignIn.signedOut(SignInFailure.Expired) },
+  { name: "unforgotten", signIn: HostSignIn.signedOut(SignInFailure.Unforgotten) },
+  { name: "unread", signIn: null }
 ];
 const screenshots: string = "../../../../../../_build/github-window/screenshots";
-const cases = AppearanceFixture.modes.flatMap(mode => states.map(([name, signIn]) => [mode, name, signIn] as const));
+const cases = AppearanceFixture.modes.flatMap(mode => states.map(({ name, signIn }) => [mode, name, signIn] as const));
 
 async function openAsync(mode: ThemeMode, signIn: HostSignIn | null,
   prepare: (requests: RequestAnswers) => void = () => undefined): Promise<ComponentFixture<SettingsColumnComponent>> {
   AppearanceFixture.apply(DefaultTheme.theme, mode);
   const context = new FakeWindowPartContext();
   const requests = new RequestAnswers(context);
-  if (signIn === null)
+  if (Object.isNull(signIn))
     requests.fail(GitHubNames.readSignInMethod, new WindowFailure("Not connected."));
   else
     requests.answer(GitHubNames.readSignInMethod, signIn.toJson());
@@ -145,7 +151,7 @@ describe("GitHubSignInComponent in the kit's look", () => {
     }
   });
 
-  it.each(states)("reaches out by Settings' edge as Settings' own rows do, so its edges line up with theirs, %s", async (_name, signIn) => {
+  it.each(states)("reaches out by Settings' edge as Settings' own rows do, so its edges line up with theirs, $name", async ({ signIn }) => {
     vi.useFakeTimers({ now: NOW, toFake: ["Date", "setInterval", "clearInterval"] });
     const fixture = await openAsync(ThemeMode.Light, signIn);
     const root: HTMLElement = fixture.nativeElement;
@@ -184,35 +190,6 @@ describe("GitHubSignInComponent in the kit's look", () => {
     }
 
     await page.screenshot({ element: find(root, ".column"), path: `${screenshots}/sign-in-${name}-${mode}.png` });
-  });
-
-  it.each(cases)("marks each row Settings search opens at on a box inside the section, the Account row from its title's start to the section's content end, an action's row on its button alone, in %s mode, %s", async (mode, _name, signIn) => {
-    vi.useFakeTimers({ now: NOW, toFake: ["Date", "setInterval", "clearInterval"] });
-    const fixture = await openAsync(mode, signIn);
-    const root: HTMLElement = fixture.nativeElement;
-    const section = find(root, "section");
-    const sectionBox = section.getBoundingClientRect();
-    const sectionStyle = getComputedStyle(section);
-    const title = find(root, "h3").getBoundingClientRect();
-    const marks = [...root.querySelectorAll<HTMLElement>("[data-setting]")];
-
-    expect(marks.length).toBeGreaterThan(0);
-    for (const mark of marks) {
-      const box = mark.getBoundingClientRect();
-      const buttons = [...mark.querySelectorAll("button")];
-      expect([box.width > 0, box.height > 0, box.top >= sectionBox.top, box.bottom <= sectionBox.bottom]).toEqual([true, true, true, true]);
-      if (mark.getAttribute("data-setting") === "git-github.account") {
-        expect(buttons).toEqual([]);
-        AppearanceFixture.expectPixels(box.left, title.left);
-        AppearanceFixture.expectPixels(box.right, sectionBox.right - Number.parseFloat(sectionStyle.paddingRight));
-        AppearanceFixture.expectPixels(box.top, title.top);
-        continue;
-      }
-      expect(buttons).toHaveLength(1);
-      const button = buttons[0]?.getBoundingClientRect() ?? box;
-      for (const [edge, value] of [[box.left, button.left], [box.right, button.right], [box.top, button.top], [box.bottom, button.bottom]] as const)
-        AppearanceFixture.expectPixels(edge, value);
-    }
   });
 
   it.each(AppearanceFixture.modes)("draws the code large and dashed, with the wait's row under it, in %s mode", async mode => {

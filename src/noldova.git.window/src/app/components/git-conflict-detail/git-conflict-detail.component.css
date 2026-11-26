@@ -1,0 +1,132 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  display: block;
+  box-sizing: border-box;
+  height: 100%;
+  min-width: 0;
+  overflow: auto;
+  color: var(--nol-text);
+  font-family: var(--nol-font-sans);
+  font-size: var(--nol-text-panel);
+  line-height: var(--nol-line-panel);
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-sizing: border-box;
+  min-height: 100%;
+  padding: 0.75rem;
+}
+
+.empty-view {
+  margin: var(--nol-space-3);
+}
+
+.detail-head {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.detail-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--nol-text-strong);
+  font-size: 0.9375rem;
+  font-weight: var(--nol-weight-emphasis);
+}
+
+.detail-lines,
+.base-note {
+  margin: 0;
+  color: var(--nol-text-muted);
+  font-size: 0.75rem;
+}
+
+.base,
+.checklist {
+  display: flex;
+  flex-direction: column;
+}
+
+.base {
+  gap: 0.25rem;
+}
+
+.checklist {
+  gap: 0.375rem;
+}
+
+.base-text {
+  min-height: 1.25rem;
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  overflow: auto;
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: var(--nol-radius-medium);
+  background: var(--nol-code);
+  color: var(--nol-text-code);
+  font-family: var(--nol-font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  white-space: pre;
+}
+
+.checklist-title {
+  display: flex;
+  align-items: center;
+  height: 1.625rem;
+  margin: 0;
+  padding: 0;
+  color: var(--nol-text-muted);
+  font-size: 0.75rem;
+  font-weight: normal;
+  letter-spacing: var(--nol-letter-spacing-caps);
+  text-transform: uppercase;
+}
+
+.check {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
+  min-height: 1.625rem;
+  margin: 0;
+}
+
+.file-icon {
+  flex: none;
+  font-size: var(--nol-icon);
+}
+
+.detail-note {
+  margin: auto 0 0;
+  color: var(--nol-text-muted);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.failure {
+  color: var(--nol-status-failed);
+}
+
+.warning {
+  color: var(--nol-warning);
+}
+
+.ok {
+  color: var(--nol-status-ok);
+}
+
+.muted {
+  color: var(--nol-text-muted);
+}

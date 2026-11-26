@@ -1,0 +1,62 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<nol-dialog [title]="resources.formatBranchDialogTitle(request().id)" (dismissed)="close()">
+  <div class="nol-git-azure-devops-branch" [attr.aria-busy]="isBusy()">
+    @if (line(); as text) {
+      <p class="nol-git-azure-devops-branch-line">{{ text }}</p>
+    }
+    <div class="nol-git-azure-devops-branch-group">
+      <label class="nol-git-azure-devops-branch-field">
+        <span class="nol-git-azure-devops-branch-label">{{ resources.branchNameLabel }}</span>
+        <input #nameField nol-text-field type="text" autocomplete="off" spellcheck="false" [value]="name()" [disabled]="isBusy() || created() !== null" (input)="noteName()"
+          (keydown.enter)="createAsync()" />
+      </label>
+      @if (owner()) {
+        <p class="nol-git-azure-devops-branch-note">{{ resources.branchPatternNote }}</p>
+      }
+    </div>
+    @if (base(); as from) {
+      <div class="nol-git-azure-devops-branch-group">
+        <span class="nol-git-azure-devops-branch-label" aria-hidden="true">{{ resources.basedOnLabel }}</span>
+        <nol-select class="nol-git-azure-devops-branch-base" [options]="baseOptions()" [value]="from" [label]="resources.basedOnLabel"
+          [disabled]="isBusy() || created() !== null" (valueChange)="chooseBase($event)" />
+        @if (baseNote(); as note) {
+          <p class="nol-git-azure-devops-branch-note">{{ note }}</p>
+        }
+      </div>
+    } @else if (commitNote(); as note) {
+      <p class="nol-git-azure-devops-branch-note">{{ note }}</p>
+    }
+    <div class="nol-git-azure-devops-branch-choices">
+      <nol-checkbox class="nol-git-azure-devops-branch-link" [checked]="isLinking()" [disabled]="isBusy() || !linkRemote()" (checkedChange)="wantsLink.set($event)">
+        {{ resources.formatLinkChoice(request().id) }}
+      </nol-checkbox>
+      <nol-checkbox class="nol-git-azure-devops-branch-active" [checked]="wantsActive()" [disabled]="isBusy()" (checkedChange)="wantsActive.set($event)">
+        {{ resources.formatActivateChoice(request().id) }}
+      </nol-checkbox>
+      <nol-checkbox class="nol-git-azure-devops-branch-prefix" [checked]="wantsPrefix()" [disabled]="isBusy() || created() !== null"
+        (checkedChange)="wantsPrefix.set($event)">
+        {{ resources.formatPrefixChoice(request().id) }}
+      </nol-checkbox>
+      <nol-checkbox class="nol-git-azure-devops-branch-push" [checked]="isPushing()" [disabled]="isBusy() || !canPush()" (checkedChange)="wantsPush.set($event)">
+        {{ resources.pushChoice }}
+      </nol-checkbox>
+    </div>
+    @if (failure(); as message) {
+      <p class="nol-git-azure-devops-branch-failure" role="alert">{{ message }}</p>
+    }
+  </div>
+  <ng-container ngProjectAs="[nolDialogAction]">
+    <button nol-button nolDialogAction type="button" class="nol-git-azure-devops-branch-cancel" [variant]="secondary" [disabled]="isBusy()" (click)="close()">
+      {{ resources.cancel }}
+    </button>
+    <button nol-button nolDialogAction type="button" class="nol-git-azure-devops-branch-create" [disabled]="isBusy() || !hasName() || !isRead()"
+      (click)="createAsync()">{{ resources.createBranch }}</button>
+  </ng-container>
+</nol-dialog>

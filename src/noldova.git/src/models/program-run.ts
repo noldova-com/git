@@ -24,6 +24,8 @@ export class ProgramRun {
   public readonly commonGitFolder: string | null;
   public readonly limits: ProgramLimits;
   public readonly signal: AbortSignal | undefined;
+  public readonly input: Buffer;
+  public readonly isLogged: boolean;
 
   private constructor(
     program: Program,
@@ -33,7 +35,9 @@ export class ProgramRun {
     gitFolder: string | null,
     commonGitFolder: string | null,
     limits: ProgramLimits,
-    signal?: AbortSignal) {
+    signal?: AbortSignal,
+    input: Buffer = Buffer.alloc(0),
+    isLogged: boolean = true) {
     ProgramRun.requireAbsolute(Resources.workingFolderName, workingFolder);
     ProgramRun.requireAbsolute(Resources.gitFolderName, gitFolder);
     ProgramRun.requireAbsolute(Resources.commonGitFolderName, commonGitFolder);
@@ -46,10 +50,22 @@ export class ProgramRun {
     this.limits = limits;
     if (signal !== undefined)
       this.signal = signal;
+    this.input = input;
+    this.isLogged = isLogged;
   }
 
   public static readGit(gitArguments: GitArguments, workingFolder: string, limits: ProgramLimits, signal?: AbortSignal): ProgramRun {
     return new ProgramRun(Program.Git, Access.Read, gitArguments.values, workingFolder, null, null, limits, signal);
+  }
+
+  public withInput(input: Buffer): ProgramRun {
+    return new ProgramRun(this.program, this.access, this.arguments, this.workingFolder, this.gitFolder, this.commonGitFolder, this.limits, this.signal, input,
+      this.isLogged);
+  }
+
+  public unlogged(): ProgramRun {
+    return new ProgramRun(this.program, this.access, this.arguments, this.workingFolder, this.gitFolder, this.commonGitFolder, this.limits, this.signal, this.input,
+      false);
   }
 
   public static writeGit(
@@ -59,7 +75,7 @@ export class ProgramRun {
     commonGitFolder: string,
     limits: ProgramLimits,
     signal?: AbortSignal): ProgramRun {
-    return new ProgramRun(Program.Git, Access.Write, gitArguments.values, workingFolder, gitFolder, commonGitFolder, limits, signal);
+    return new ProgramRun(Program.Git, Access.Write, gitArguments.withLiteralPaths().values, workingFolder, gitFolder, commonGitFolder, limits, signal);
   }
 
   public static runGh(access: Access, ghArguments: readonly string[], workingFolder: string, limits: ProgramLimits, signal?: AbortSignal): ProgramRun {

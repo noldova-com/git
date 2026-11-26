@@ -16,18 +16,25 @@ import { FieldCheck } from "./field-check.ts";
 import { HostAccount } from "./host-account.ts";
 
 export class HostSignIn {
-  private static readonly FIELDS: readonly string[] = [Resources.stateField, Resources.deviceCodeField, Resources.accountField, Resources.failureField];
+  private static readonly FIELDS: readonly string[] = [Resources.stateField, Resources.deviceCodeField, Resources.addressField, Resources.accountField,
+    Resources.failureField];
   private static readonly STATES: readonly SignInState[] = Object.values(SignInState);
   private static readonly FAILURES: readonly SignInFailure[] = Object.values(SignInFailure);
 
   public readonly state: SignInState;
   public readonly deviceCode: DeviceCode | null;
+  public readonly address: string | null;
   public readonly account: HostAccount | null;
   public readonly failure: SignInFailure | null;
 
-  public constructor(state: SignInState, deviceCode: DeviceCode | null, account: HostAccount | null, failure: SignInFailure | null, reader?: JsonReader) {
-    if ((state === SignInState.Waiting) !== (deviceCode !== null))
-      FieldCheck.fail(Resources.deviceCodeField, Resources.deviceCodeExpected, reader);
+  public constructor(state: SignInState, deviceCode: DeviceCode | null, account: HostAccount | null, failure: SignInFailure | null, reader?: JsonReader,
+    address: string | null = null) {
+    if ((state === SignInState.Waiting) !== (deviceCode !== null || address !== null))
+      FieldCheck.fail(deviceCode === null && address !== null ? Resources.addressField : Resources.deviceCodeField, Resources.deviceCodeExpected, reader);
+    if (deviceCode !== null && address !== null)
+      FieldCheck.fail(Resources.addressField, Resources.deviceCodeExpected, reader);
+    if (address !== null)
+      FieldCheck.requireHttps(address, Resources.addressField, reader);
     if ((state === SignInState.SignedIn) !== (account !== null))
       FieldCheck.fail(Resources.accountField, Resources.accountExpected, reader);
     if (state !== SignInState.SignedOut && failure !== null)
@@ -35,6 +42,7 @@ export class HostSignIn {
 
     this.state = state;
     this.deviceCode = deviceCode;
+    this.address = address;
     this.account = account;
     this.failure = failure;
   }
@@ -45,6 +53,10 @@ export class HostSignIn {
 
   public static waiting(deviceCode: DeviceCode): HostSignIn {
     return new HostSignIn(SignInState.Waiting, deviceCode, null, null);
+  }
+
+  public static waitingInBrowser(address: string): HostSignIn {
+    return new HostSignIn(SignInState.Waiting, null, null, null, undefined, address);
   }
 
   public static signedIn(account: HostAccount): HostSignIn {
@@ -59,7 +71,8 @@ export class HostSignIn {
       FieldCheck.readNullableModel(reader, Resources.deviceCodeField, DeviceCode.fromJson),
       FieldCheck.readNullableModel(reader, Resources.accountField, HostAccount.fromJson),
       FieldCheck.readNullableMember(reader, Resources.failureField, HostSignIn.FAILURES),
-      reader);
+      reader,
+      reader.hasField(Resources.addressField) ? reader.readNullableString(Resources.addressField) : null);
   }
 
   public toJson(): JsonObject {
@@ -67,7 +80,8 @@ export class HostSignIn {
       [Resources.stateField]: this.state,
       [Resources.deviceCodeField]: this.deviceCode?.toJson() ?? null,
       [Resources.accountField]: this.account?.toJson() ?? null,
-      [Resources.failureField]: this.failure
+      [Resources.failureField]: this.failure,
+      ...this.address === null ? {} : { [Resources.addressField]: this.address }
     };
   }
 }

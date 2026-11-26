@@ -1,0 +1,125 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (signIn(); as current) {
+  <section class="nol-git-azure-devops-setting" [attr.aria-busy]="isBusy()">
+    @if (current.address; as address) {
+      <div class="nol-git-azure-devops-heading">
+        <h3 class="nol-git-azure-devops-setting-title">{{ resources.accountTitle }}</h3>
+        <p class="nol-git-azure-devops-setting-note">{{ resources.browserNote }}</p>
+      </div>
+      <div class="nol-git-azure-devops-row">
+        <button type="button" nol-button [variant]="secondary" (click)="openAsync(address)">
+          <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.openIcon }}</span>{{ resources.openBrowserAgain }}
+        </button>
+      </div>
+      <div class="nol-git-azure-devops-row nol-git-azure-devops-muted">
+        <nol-spinner />
+        <span>{{ resources.waitingForMicrosoft }}</span>
+        <button type="button" nol-button [variant]="secondary" [disabled]="isBusy()" (click)="cancelAsync()">{{ resources.cancel }}</button>
+      </div>
+    } @else if (current.account; as account) {
+      <div class="nol-git-azure-devops-heading">
+        <h3 class="nol-git-azure-devops-setting-title">{{ resources.accountTitle }}</h3>
+        <div class="nol-git-azure-devops-account">
+          <nol-avatar [name]="nameOf(account)" [colorKey]="account.login" [decorative]="true" />
+          <span class="nol-git-azure-devops-account-text">
+            <span class="nol-git-azure-devops-strong">{{ account.login }}</span>
+            <span class="nol-git-azure-devops-muted nol-git-azure-devops-label">{{ signedInOf(account) }}</span>
+          </span>
+        </div>
+      </div>
+      <div class="nol-git-azure-devops-row">
+        <span class="nol-git-azure-devops-action">
+          <button type="button" nol-button [variant]="secondary" [disabled]="isBusy()" (click)="signOutAsync()">
+            <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.signOutIcon }}</span>{{ resources.signOut }}
+          </button>
+        </span>
+      </div>
+    } @else {
+      <div class="nol-git-azure-devops-heading">
+        <h3 class="nol-git-azure-devops-setting-title">{{ resources.accountTitle }}</h3>
+        @if (failureOf(current); as failure) {
+          <div class="nol-git-azure-devops-banner" role="alert">
+            <span class="material-symbols-rounded nol-git-azure-devops-banner-icon" aria-hidden="true">{{ resources.failureIcon }}</span>
+            <span class="nol-git-azure-devops-banner-text">
+              <span class="nol-git-azure-devops-strong">{{ failure.title }}</span>
+              <span class="nol-git-azure-devops-muted">{{ failure.hint }}</span>
+            </span>
+          </div>
+        } @else {
+          <p class="nol-git-azure-devops-setting-note">{{ resources.signedOutNote }}</p>
+        }
+      </div>
+      <div class="nol-git-azure-devops-row">
+        <input #organizationField nol-text-field class="nol-git-azure-devops-organization" type="text" autocomplete="off" spellcheck="false"
+          [attr.aria-label]="resources.organizationLabel" [placeholder]="resources.organizationPlaceholder" [value]="organizationText()" [disabled]="isBusy()"
+          (input)="noteOrganization()" (keydown.enter)="signInAsync()" />
+      </div>
+      @if (isOrganizationUnread()) {
+        <p class="nol-git-azure-devops-setting-note nol-git-azure-devops-label nol-git-azure-devops-organization-note">{{ resources.organizationUnread }}</p>
+      }
+      <div class="nol-git-azure-devops-row nol-git-azure-devops-token-row">
+        <input #tokenField nol-text-field class="nol-git-azure-devops-token" type="password" autocomplete="off" [attr.aria-label]="resources.tokenLabel"
+          [placeholder]="resources.tokenPlaceholder" [disabled]="isBusy()" (input)="noteToken()" (keydown.enter)="signInAsync()" />
+        <button type="button" nol-button [disabled]="isBusy() || !hasToken() || !hasOrganization()" (click)="signInAsync()">
+          <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.signInIcon }}</span>{{ resources.signIn }}
+        </button>
+      </div>
+      <p class="nol-git-azure-devops-setting-note nol-git-azure-devops-label">{{ resources.tokenNote }}</p>
+      <ul class="nol-git-azure-devops-scopes nol-git-azure-devops-label" [attr.aria-label]="resources.tokenScopesLabel">
+        @for (scope of resources.tokenScopes; track scope) {
+          <li>{{ scope }}</li>
+        }
+      </ul>
+      <div class="nol-git-azure-devops-row">
+        @if (tokensUrl(); as url) {
+          <button type="button" nol-button [variant]="secondary" (click)="openAsync(url)">
+            <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.openIcon }}</span>{{ resources.makeToken }}
+          </button>
+        } @else {
+          <button type="button" nol-button [variant]="secondary" [disabled]="true">
+            <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.openIcon }}</span>{{ resources.makeToken }}
+          </button>
+        }
+      </div>
+      <h4 class="nol-git-azure-devops-setting-title nol-git-azure-devops-microsoft-title">{{ resources.microsoftTitle }}</h4>
+      <div class="nol-git-azure-devops-row nol-git-azure-devops-microsoft-row">
+        <span class="nol-git-azure-devops-action">
+          <button type="button" nol-button [variant]="secondary" [disabled]="isBusy() || !hasOrganization()" (click)="startAsync()">
+            <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.signInIcon }}</span>{{ resources.signInWithMicrosoft }}
+          </button>
+        </span>
+      </div>
+      <p class="nol-git-azure-devops-setting-note nol-git-azure-devops-label">{{ resources.microsoftNote }}</p>
+    }
+    @if (failure(); as failure) {
+      <ng-container *ngTemplateOutlet="requestFailed; context: { $implicit: failure }" />
+    }
+  </section>
+} @else if (failure(); as failure) {
+  <section class="nol-git-azure-devops-setting">
+    <div class="nol-git-azure-devops-heading">
+      <h3 class="nol-git-azure-devops-setting-title">{{ resources.accountTitle }}</h3>
+      <ng-container *ngTemplateOutlet="requestFailed; context: { $implicit: failure }" />
+    </div>
+    <div class="nol-git-azure-devops-row">
+      <button type="button" nol-button [variant]="secondary" [disabled]="isBusy()" (click)="readAsync()">{{ resources.tryAgain }}</button>
+    </div>
+  </section>
+}
+
+<ng-template #requestFailed let-failure>
+  <div class="nol-git-azure-devops-banner" role="alert">
+    <span class="material-symbols-rounded nol-git-azure-devops-banner-icon" aria-hidden="true">{{ resources.failureIcon }}</span>
+    <span class="nol-git-azure-devops-banner-text">
+      <span class="nol-git-azure-devops-strong">{{ failure }}</span>
+      <span class="nol-git-azure-devops-muted">{{ resources.requestFailedHint }}</span>
+    </span>
+  </div>
+</ng-template>

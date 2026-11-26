@@ -47,6 +47,9 @@ Each name opens the package's folder; each badge opens it on npm.
 | [`git.github`](src/noldova.git.github) | [![npm](https://badgen.net/npm/v/@noldova/git.github)](https://www.npmjs.com/package/@noldova/git.github) | The GitHub module: its `module.json` and its runtime part, which signs in to GitHub and reads its issues, pull requests and checks. |
 | [`git.github.window`](src/noldova.git.github.window) | [![npm](https://badgen.net/npm/v/@noldova/git.github.window)](https://www.npmjs.com/package/@noldova/git.github.window) | The GitHub module's window part: the sign-in and a branch's pull request and checks, in Angular. |
 | [`git.github.protocol`](src/noldova.git.github.protocol) | [![npm](https://badgen.net/npm/v/@noldova/git.github.protocol)](https://www.npmjs.com/package/@noldova/git.github.protocol) | What the GitHub module's parts share. |
+| [`git.azure-devops`](src/noldova.git.azure-devops) | [![npm](https://badgen.net/npm/v/@noldova/git.azure-devops)](https://www.npmjs.com/package/@noldova/git.azure-devops) | The Azure DevOps module: its `module.json` and its runtime part, which signs in to Azure DevOps with a Microsoft account or a personal access token and reads its pull requests with their votes, policies and builds, and its work items. |
+| [`git.azure-devops.window`](src/noldova.git.azure-devops.window) | [![npm](https://badgen.net/npm/v/@noldova/git.azure-devops.window)](https://www.npmjs.com/package/@noldova/git.azure-devops.window) | The Azure DevOps module's window part, in Angular: the sign-in on Git's Accounts and hosts page, a branch's pull request and checks, the pull request page and My work items. |
+| [`git.azure-devops.protocol`](src/noldova.git.azure-devops.protocol) | [![npm](https://badgen.net/npm/v/@noldova/git.azure-devops.protocol)](https://www.npmjs.com/package/@noldova/git.azure-devops.protocol) | What the Azure DevOps module's parts share. |
 | [`git.hosting.protocol`](src/noldova.git.hosting.protocol) | [![npm](https://badgen.net/npm/v/@noldova/git.hosting.protocol)](https://www.npmjs.com/package/@noldova/git.hosting.protocol) | What every host module shares: references to issues and pull requests, and the sign-in's models. |
 
 ## Building from source
@@ -65,7 +68,7 @@ npm test
 
 Every pull request into `main` must pass "Check / Linked issue" and "Build and test / All targets", which [documents/TESTING.md](documents/TESTING.md#the-pull-request-checks) describes.
 
-`.github/workflows/module-range.yml` calls Noldova Desktop's "Module range" workflow, pinned to Noldova Desktop 0.0.2's commit, once for each module, `src/noldova.git` and `src/noldova.git.github`, on every pull request, every night and by hand.
+`.github/workflows/module-range.yml` calls Noldova Desktop's "Module range" workflow, pinned to Noldova Desktop 0.0.12's commit, once for each module, `src/noldova.git`, `src/noldova.git.github` and `src/noldova.git.azure-devops`, on every pull request, every night and by hand.
 It builds and tests each module with `npm run build` and `npm test` against the newest published Noldova Desktop inside its `module.json`'s `noldovaDesktop` range, which Desktop Build's range check, at the Noldova Desktop version the root `package.json` pins, chooses, and a failing nightly run opens or updates an issue, so it holds only `contents: read` and `issues: write`.
 The build's installs of the packed packages name the version `node_modules` holds of each `@noldova/` package the root `package.json` pins, since an install otherwise takes the lockfile's version back, so the version the run moved to stays.
 
@@ -98,7 +101,7 @@ The time is the highest of the latest runs on Linux, both macOS machines and Win
 | `src/noldova.git/tests/services/diff.reader.test.ts` | 19.5 s | 15 tests read real diffs of the worktree, the index, a range, conflicts and submodules. |
 | `src/noldova.git/tests/services/commit.writer.test.ts` | 18.2 s | 11 tests commit for real, with hooks that pass and refuse. |
 | `src/noldova.git/tests/services/program-runner.test.ts` | 15.5 s | 16 tests start real git, and a stand-in gh, through Noldova Desktop's process supervisor, with its limits, its time limit, a held index lock and a missing program. |
-| `src/noldova.git/tests/services/change-monitor.test.ts` | 14.6 s | 16 tests watch real repositories through file-system events and read each change with real git. |
+| `src/noldova.git/tests/services/change-monitor.test.ts` | 14.6 s | 20 tests watch real repositories through file-system events and read each change with real git. |
 | `src/noldova.git/tests/services/branch-create.writer.test.ts` | 14.5 s | 8 tests create real branches, with hooks, and name each session's own branch against its remotes. |
 | `src/noldova.git/tests/services/stage.writer.test.ts` | 13.9 s | 6 tests stage real changes, with hooks and filters, and read git's refusals. |
 | `src/noldova.git/tests/services/filter-options.reader.test.ts` | 12.7 s | 11 tests read the filter drivers of real repositories' configuration and submodules. |
@@ -106,6 +109,7 @@ The time is the highest of the latest runs on Linux, both macOS machines and Win
 | `src/noldova.git/tests/services/line-counts.reader.test.ts` | 9.9 s | 8 tests count the lines of real changes, binary and text. |
 | `src/noldova.git/tests/services/checkout-risks.reader.test.ts` | 9.6 s | 2 tests read the hooks and filters of real submodules at several depths. |
 | `src/noldova.git/tests/tools/git-write-tool.test.ts` | 9.3 s | 2 tests run a write tool through Noldova Desktop's tool registry and real git, and read the status after it. |
+| `src/noldova.git/tests/services/pick.writer.test.ts` | 7.0 s | 7 tests cherry-pick and revert real commits, merges too, and stop on a conflict or abort a pick that changes nothing. |
 | `src/noldova.git/tests/services/repository-statuses.test.ts` | 6.6 s | 2 tests read the status and a remote of real repositories, as the runtime part's methods do. |
 | `src/noldova.git/tests/services/log.reader.test.ts` | 6.4 s | 8 tests read real history, with merges and before the first commit. |
 | `src/noldova.git/tests/services/operation.reader.test.ts` | 6.4 s | 8 tests read the merge, cherry-pick, revert and rebase that real git stops in on a conflict. |
@@ -117,8 +121,14 @@ The time is the highest of the latest runs on Linux, both macOS machines and Win
 | `src/noldova.git.window/tests/app/components/git-view/git-view-look.spec.ts` | 3.9 s | 19 look tests draw the Git view in a 25rem dock in light, dark and forced colours, measure its cards, rows and diff in rem and save screenshots. |
 | `src/noldova.git/tests/services/worktrees.reader.test.ts` | 3.7 s | 4 tests list real worktrees, before the first commit and of a bare repository. |
 | `src/noldova.git.github.window/tests/app/components/github-host-row/github-host-row-look.spec.ts` | 3.2 s | 12 look tests draw the pull request row in light, dark and forced colours and measure it in rem. |
+| `src/noldova.git.azure-devops.window/tests/app/components/azure-devops-host-row/azure-devops-host-row-look.spec.ts` | 2.9 s | 15 look tests draw the Azure DevOps pull request row in light, dark and forced colours and measure it in rem. |
+| `src/noldova.git.azure-devops.window/tests/app/components/azure-devops-sign-in/azure-devops-sign-in-look.spec.ts` | 2.6 s | 42 look tests draw each Azure DevOps sign-in state in Settings in light, dark and forced colours and measure its edges in rem. |
 | `src/noldova.git/tests/fixtures/repository.fixture.test.ts` | 2.6 s | 4 tests make and copy the template repository the other tests use, and run git through its fake prompts. |
+| `src/noldova.git/tests/services/lfs-pointer.reader.test.ts` | 2.2 s | 5 tests read real LFS pointers and attributes against the files in the worktree and the index. |
+| `src/noldova.git/tests/services/graph.reader.test.ts` | 1.9 s | 5 tests read every branch's real commits with their labels, a page at a time. |
+| `src/noldova.git/tests/services/repository-items.reader.test.ts` | 1.9 s | 5 tests read the real tags, stashes and submodules of repositories, cut at their limits. |
 | `src/noldova.git/tests/services/git-version.reader.test.ts` | 1.8 s | 4 tests start real git for its version. |
+| `src/noldova.git/tests/services/branch-at.writer.test.ts` | 1.7 s | 2 tests make real branches at a commit without switching, and read git's refusals. |
 | `src/noldova.git/tests/tools/git-read-tool.test.ts` | 1.6 s | 2 tests run a read tool through Noldova Desktop's tool registry and real git. |
 | `src/noldova.git/tests/tools/tool-text.test.ts` | 1.5 s | 3 tests cut long reads to the agent's limit, item by item. |
 | `src/noldova.git.window/tests/app/components/git-branch-card/git-branch-card.component.spec.ts` | 1.4 s | 19 specs render the branch card in a browser, open its menu and run its writes against the fake context. |
@@ -139,7 +149,7 @@ gh workflow run flake-proof.yml -R noldova-com/git --ref <branch> -f runs=10 -f 
 | Input | What it takes | Default |
 |---|---|---|
 | `ref` | The branch, tag or commit to test. | The branch the run starts on. |
-| `filter` | The arguments the script takes, separated by spaces; for `npm test`, the arguments it passes to Vitest, such as a test file's path, and such a run keeps measuring coverage but drops its gates; empty runs the whole suite. | Empty. |
+| `filter` | The arguments the script takes, separated by spaces; for `npm test`, the arguments it passes to Vitest, such as a test file's path: a root suite file keeps measuring coverage but drops its gates, and a window spec runs without coverage; empty runs the whole suite. | Empty. |
 | `script` | The npm script each run runs with the filter. | `test` |
 | `prepare` | The npm scripts each job runs once after the build and before the runs, separated by spaces. | Empty. |
 | `display` | Runs each run on Linux under a virtual display and a session bus, for a script that opens windows and starts no display. | Off. |
@@ -154,7 +164,7 @@ Runs of different inputs go side by side; a second run of the same `ref` and the
 
 ## Releases
 
-The seven packages are published to npm together, at one version, by the "Release npm packages" workflow, `.github/workflows/release-npm.yml`, and a release never deletes a published version.
+The ten packages are published to npm together, at one version, by the "Release npm packages" workflow, `.github/workflows/release-npm.yml`, and a release never deletes a published version.
 It publishes through npm's trusted publishing, with provenance, so no token is stored: each package's trusted publisher on npm is this repository's `release-npm.yml` in the `release` environment.
 [documents/ARCHITECTURE.md](documents/ARCHITECTURE.md#the-package) says how a version is built, checked and released, and [CHANGELOG.md](CHANGELOG.md) what each version changed.
 
@@ -162,7 +172,7 @@ It publishes through npm's trusted publishing, with provenance, so no token is s
 
 The code in this repository is licensed under the [MIT License](LICENSE).
 Its third-party packages keep their own licenses, which their packages carry.
-The window parts draw icons from [Primer Octicons](https://github.com/primer/octicons), under the MIT License, which each window part's `THIRD-PARTY-NOTICES.md` names and its package carries.
+The window parts draw icons from [Primer Octicons](https://github.com/primer/octicons), under the MIT License, and the Azure DevOps window part's reference chips from [Material Symbols](https://github.com/google/material-design-icons), under the Apache License 2.0, which each window part's `THIRD-PARTY-NOTICES.md` names and its package carries.
 
 Angular, Azure DevOps, Git, GitHub, GitLab, Linux, macOS, npm, Vitest and Windows are names of their owners.
 

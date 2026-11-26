@@ -12,11 +12,10 @@ import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
 import { PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
-import { FailureCode, GitCode, type GitStatus } from "@noldova/git.protocol";
+import { FailureCode, GitCode } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import type { GitFailureException } from "../../src/exceptions/git-failure.exception.ts";
-import type { RepositoryFolders } from "../../src/models/repository-folders.ts";
 import { BranchCreateWriter } from "../../src/services/branch-create.writer.ts";
 import { GitVersionReader } from "../../src/services/git-version.reader.ts";
 import { HooksReader } from "../../src/services/hooks.reader.ts";
@@ -26,6 +25,7 @@ import { SessionBranches } from "../../src/services/session-branches.ts";
 import { StatusReader } from "../../src/services/status.reader.ts";
 import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
+import { RepositoryState } from "../fixtures/repository-state.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
 describe("BranchCreateWriter", () => {
@@ -62,9 +62,9 @@ describe("BranchCreateWriter", () => {
     await cleanUps.runAsync();
   });
 
-  const readAsync = async (folder: string = repository.folder): Promise<[RepositoryFolders, GitStatus]> => {
+  const readAsync = async (folder: string = repository.folder): Promise<RepositoryState> => {
     const folders = await repositories.readAsync(folder);
-    return [folders, await statuses.readAsync(folders)];
+    return new RepositoryState(folders, await statuses.readAsync(folders));
   };
   const currentAsync = async (folder: string = repository.folder): Promise<string> => (await repository.runGitAsync(["-C", folder, "branch", "--show-current"])).trim();
   const hookAsync = async (name: string, hooksFolder: string = path.join(repository.gitFolder, "hooks")): Promise<void> => {
@@ -84,18 +84,27 @@ describe("BranchCreateWriter", () => {
     await repository.writeAsync("a.txt", "kept\n");
     await hookAsync("pre-push");
     assert.doesNotThrow(() => write.refuse());
-    assert.equal(await write.requestAsync(...await readAsync(), call), null);
+    assert.equal(await (await readAsync()).requestAsync(write, call), null);
 
-    await write.runAsync(...await readAsync());
+    await (await readAsync()).runAsync(write);
 
     assert.equal(await currentAsync(), "feature");
     assert.equal(await repository.runGitAsync(["status", "--porcelain=v1"]), " M a.txt\n");
     assert.equal(branches.has("session-1", repository.folder, "feature"), false);
   });
 
+  test("gives the new branch no upstream, even when the repository's configuration sets one up for every new branch", async () => {
+    await repository.runGitAsync(["config", "branch.autoSetupMerge", "always"]);
+
+    await (await readAsync()).runAsync(new BranchCreateWriter(runner, hooks, "feature", new SessionBranches(), null));
+
+    assert.equal(await currentAsync(), "feature");
+    assert.deepEqual((await repository.runGitAsync(["config", "--local", "--list"])).split("\n").filter(t => t.startsWith("branch.feature.")), []);
+  });
+
   test("remembers a branch an agent's session made, as that session's, in its repository", async () => {
     const branches = new SessionBranches();
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
 
     await new BranchCreateWriter(runner, hooks, "agent-branch", branches, "session-1").runAsync(folders, status);
 
@@ -105,7 +114,7 @@ describe("BranchCreateWriter", () => {
   test("asks an agent's create at low risk when a hook would run, naming each one", async () => {
     await hookAsync("post-checkout");
     await hookAsync("reference-transaction");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
 
     assert.deepEqual(await new BranchCreateWriter(runner, hooks, "feature", new SessionBranches(), "session-1").requestAsync(folders, status, call), {
       action: "git.createBranch",
@@ -121,7 +130,7 @@ describe("BranchCreateWriter", () => {
   test("asks an agent's create when the repository's hooks can't be read, saying so", async () => {
     const hook = path.join(repository.gitFolder, "hooks", "post-index-change");
     await symlink(hook, hook, "junction");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     const hooksDetail = { label: "Hooks that will run", kind: PermissionDetailKind.Text, value: "Unknown: the hooks couldn't be read, so any of them may run" };
 
     assert.deepEqual((await new BranchCreateWriter(runner, hooks, "feature", new SessionBranches(), "session-1").requestAsync(folders, status, call))?.details, [hooksDetail]);
@@ -134,7 +143,7 @@ describe("BranchCreateWriter", () => {
     await repository.runGitAsync(["remote", "add", "origin", remote]);
     await repository.runGitAsync(["fetch", "--quiet", "origin"]);
     const branches = new SessionBranches();
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
 
     await new BranchCreateWriter(runner, hooks, "release-1.2", branches, "session-1").runAsync(folders, status);
     assert.equal(await currentAsync(), "release-1.2");
@@ -148,17 +157,17 @@ describe("BranchCreateWriter", () => {
     const empty = path.join(repository.root, "empty");
     await repository.runGitAsync(["init", "--quiet", empty]);
 
-    await new BranchCreateWriter(runner, hooks, "first", new SessionBranches(), null).runAsync(...await readAsync(empty));
+    await (await readAsync(empty)).runAsync(new BranchCreateWriter(runner, hooks, "first", new SessionBranches(), null));
 
     assert.equal(await currentAsync(empty), "first");
   });
 
   test("fails with git's output when the branch exists, and remembers nothing", async () => {
     const branches = new SessionBranches();
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
 
     await assert.rejects(new BranchCreateWriter(runner, hooks, "next", branches, "session-1").runAsync(folders, status),
-      failsWith(GitFailedException, FailureCode.Unavailable, null, "git switch --create failed; its output comes with the failure as untrusted text."));
+      failsWith(GitFailedException, FailureCode.Unavailable, null, "git switch --no-track failed; its output comes with the failure as untrusted text."));
 
     assert.equal(branches.has("session-1", folders.top, "next"), false);
     assert.equal(await currentAsync(), "main");
@@ -166,7 +175,7 @@ describe("BranchCreateWriter", () => {
 
   test("fails with git's output when it can't tell whether the remote has the branch, and creates nothing", async () => {
     const branches = new SessionBranches();
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     const packed = path.join(repository.gitFolder, "packed-refs");
     await writeFile(packed, "not a ref\n");
 

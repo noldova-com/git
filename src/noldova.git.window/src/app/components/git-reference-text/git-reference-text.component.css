@@ -1,0 +1,40 @@
+.reference {
+  color: var(--nol-link);
+  text-decoration: none;
+}
+
+.reference:hover {
+  text-decoration: underline;
+}
+
+.reference.linked {
+  color: inherit;
+}
+
+:host(.line) {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+}
+
+:host(.line) > span,
+:host(.line) > .reference {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
+}
+
+:host(.line) > a[nol-link-reference-chip],
+:host(.line) > a[nol-link-reference-chip] ~ * {
+  flex-shrink: 1000;
+}
+
+:host(.line) > a[nol-link-reference-chip] {
+  min-width: calc(var(--nol-reference-mark) + var(--nol-icon) + 2 * var(--nol-space-1) + 1em);
+}
+
+:host(.line) > a[nol-link-reference-chip] ~ nol-link-reference-work-item-state {
+  flex: none;
+  margin-inline-start: var(--nol-space-1);
+}

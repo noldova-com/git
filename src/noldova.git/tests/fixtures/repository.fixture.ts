@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 
+import type { GitVersion } from "../../src/models/git-version.ts";
 import { FilePresence } from "../../src/services/file-presence.ts";
 
 export class RepositoryFixture {
@@ -104,6 +105,11 @@ export class RepositoryFixture {
       if (inputFailure !== null)
         throw inputFailure;
     })).stdout;
+  }
+
+  public async hasGitAsync(version: GitVersion): Promise<boolean> {
+    const [found, foundMajor, foundMinor] = /^git version (\d+)\.(\d+)/v.exec(await this.runGitAsync(["version"])) ?? [];
+    return found !== undefined && version.isReachedBy(Number(foundMajor), Number(foundMinor));
   }
 
   public supervisorEnvironment(searchPath: string = process.env["PATH"] ?? ""): Record<string, string> {

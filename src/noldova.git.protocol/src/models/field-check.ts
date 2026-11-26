@@ -86,14 +86,18 @@ export class FieldCheck {
   }
 
   public static requireBranchName(value: string, field: string, reader?: JsonReader): void {
-    if (value.length === 0
-      || value.length > Resources.maximumBranchNameLength
-      || value.startsWith(Resources.optionPrefix)
-      || value === Resources.headShorthand
-      || value === Resources.headName
-      || Resources.refusedBranchPattern.test(value)
-      || value.split(Resources.branchSegmentSeparator).some(t => t.length === 0 || t.startsWith(Resources.hiddenPrefix) || t.endsWith(Resources.lockSuffix)))
+    if (!FieldCheck.isBranchName(value))
       FieldCheck.fail(field, Resources.branchNameExpected, reader);
+  }
+
+  public static isBranchName(value: string): boolean {
+    return value.length > 0
+      && value.length <= Resources.maximumBranchNameLength
+      && !value.startsWith(Resources.optionPrefix)
+      && value !== Resources.headShorthand
+      && value !== Resources.headName
+      && !Resources.refusedBranchPattern.test(value)
+      && value.split(Resources.branchSegmentSeparator).every(t => t.length > 0 && !t.startsWith(Resources.hiddenPrefix) && !t.endsWith(Resources.lockSuffix));
   }
 
   public static requireNoNul(value: string, field: string, reader?: JsonReader): void {

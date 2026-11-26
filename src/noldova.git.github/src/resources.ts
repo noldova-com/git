@@ -24,6 +24,7 @@ export class Resources {
   public static readonly scopeSeparator: string = ",";
   public static readonly requestTimeout: number = 30_000;
   public static readonly avatarHost: string = "avatars.githubusercontent.com";
+  public static readonly noReplyPattern: RegExp = /^(?:(\d{1,12})\+)?([a-z\d](?:[a-z\d-]{0,38}))@users\.noreply\.github\.com$/u;
   public static readonly httpsProtocol: string = "https:";
   public static readonly avatarSizeParameter: string = "s";
   public static readonly avatarSize: string = "64";
@@ -49,6 +50,8 @@ export class Resources {
   public static readonly avatarRedirectedAway: string = `the avatar server redirected more than ${Resources.avatarRedirects} times, or off its host`;
   public static readonly tokenNotForgotten: string = "The GitHub token couldn't be removed from this computer's secrets; it is no longer used.";
   public static readonly manualRedirect: NonNullable<RequestInit["redirect"]> = "manual";
+  public static readonly apiRedirects: number = 1;
+  public static readonly movedMessage: string = "GitHub answered that this was moved to an address the module doesn't follow. If the repository was renamed or transferred, update the remote to its new address.";
   public static readonly intervalField: string = "interval";
   public static readonly expiresInField: string = "expires_in";
   public static readonly pendingError: string = "authorization_pending";
@@ -65,6 +68,8 @@ export class Resources {
   public static readonly freshFor: number = 60_000;
   public static readonly cacheSize: number = 500;
   public static readonly maximumKeptLength: number = 262_144;
+  public static readonly maximumAnswerBytes: number = 8 * 1_024 * 1_024;
+  public static readonly maximumSignInAnswerBytes: number = 65_536;
   public static readonly rateLimitRemainingHeader: string = "x-ratelimit-remaining";
   public static readonly rateLimitResetHeader: string = "x-ratelimit-reset";
   public static readonly noneRemaining: string = "0";
@@ -75,6 +80,8 @@ export class Resources {
   public static readonly notPlannedReason: string = "not_planned";
   public static readonly pullRequestField: string = "pull_request";
   public static readonly itemsField: string = "items";
+  public static readonly commitIdField: string = "commit_id";
+  public static readonly originalCommitIdField: string = "original_commit_id";
   public static readonly numberField: string = "number";
   public static readonly checkRunsField: string = "check_runs";
   public static readonly stateField: string = "state";
@@ -89,6 +96,7 @@ export class Resources {
   public static readonly mergedAtField: string = "merged_at";
   public static readonly draftField: string = "draft";
   public static readonly userField: string = "user";
+  public static readonly authorField: string = "author";
   public static readonly loginField: string = "login";
   public static readonly avatarUrlField: string = "avatar_url";
   public static readonly titleField: string = "title";
@@ -96,12 +104,27 @@ export class Resources {
   public static readonly createdAtField: string = "created_at";
   public static readonly closedAtField: string = "closed_at";
   public static readonly commentsField: string = "comments";
+  public static readonly commitsField: string = "commits";
+  public static readonly reviewCommentsField: string = "review_comments";
+  public static readonly autoMergeField: string = "auto_merge";
+  public static readonly mergeMethodField: string = "merge_method";
+  public static readonly mergeableStateField: string = "mergeable_state";
+  public static readonly requestedReviewersField: string = "requested_reviewers";
+  public static readonly requestedTeamsField: string = "requested_teams";
+  public static readonly startedAtField: string = "started_at";
+  public static readonly completedAtField: string = "completed_at";
+  public static readonly idField: string = "id";
+  public static readonly inReplyToIdField: string = "in_reply_to_id";
+  public static readonly pathField: string = "path";
+  public static readonly lineField: string = "line";
+  public static readonly originalLineField: string = "original_line";
   public static readonly statusField: string = "status";
   public static readonly conclusionField: string = "conclusion";
   public static readonly nameField: string = "name";
   public static readonly signedOutMessage: string = "Sign in to GitHub first.";
   public static readonly unreachableMessage: string = "GitHub couldn't be reached.";
   public static readonly unreadableAnswerMessage: string = "GitHub's answer couldn't be read.";
+  public static readonly answerTooLargeMessage: string = `GitHub's answer is over ${Resources.maximumAnswerBytes / Resources.bytesPerKibibyte / Resources.bytesPerKibibyte} MiB, more than the module reads.`;
   public static readonly notFoundMessage: string = "GitHub has no such repository, or the sign-in can't see it.";
   public static readonly refusedPullRequestMessage: string = "GitHub refused the pull request: the branch may already have one, or have no commits the base lacks.";
   public static readonly otherHostMessage: string = "The repository isn't on github.com.";
@@ -143,7 +166,7 @@ export class Resources {
   public static readonly maximumBranchLength: number = 255;
   public static readonly maximumBodyLength: number = 65_536;
   public static readonly notBlankPattern: string = "\\S";
-  public static readonly oneLinePattern: string = "^[^\\r\\n\\u2028\\u2029]*\\S[^\\r\\n\\u2028\\u2029]*$";
+  public static readonly oneLinePattern: string = "^[^\\r\\n\\v\\f\\u0085\\u2028\\u2029]*[^\\s\\u0085][^\\r\\n\\v\\f\\u0085\\u2028\\u2029]*$";
   public static readonly createToolDeadline: number = 60_000;
   public static readonly createToolMaximumDeadline: number = 120_000;
   public static readonly branchLabel: string = "Branch";
@@ -194,14 +217,31 @@ export class Resources {
   public static readonly repositoryPathPattern: RegExp = /^[A-Za-z0-9-]+\/(?!\.\.?$)[A-Za-z0-9._-]+$/;
   public static readonly repositoryPathSeparator: string = "/";
   public static readonly pullsPath: string = "pulls";
+  public static readonly openPullsPath: string = "pulls?state=open&sort=updated&direction=desc&per_page=21";
   public static readonly checkRunsPageSize: number = 100;
   public static readonly reviewsPageSize: number = 100;
+  public static readonly commentsPageSize: number = 100;
+  public static readonly newestCommentsCount: number = 100;
   public static readonly approvedReview: string = "APPROVED";
   public static readonly changesRequestedReview: string = "CHANGES_REQUESTED";
   public static readonly dismissedReview: string = "DISMISSED";
+  public static readonly commentedReview: string = "COMMENTED";
+  public static readonly pendingReview: string = "PENDING";
+  public static readonly approvedLabel: string = "Approved";
+  public static readonly changesRequestedLabel: string = "Changes requested";
+  public static readonly commentedLabel: string = "Commented";
+  public static readonly reviewRequestedLabel: string = "Review requested";
+  public static readonly dirtyMergeableState: string = "dirty";
+  public static readonly unknownMergeableState: string = "unknown";
+  public static readonly ghostLogin: string = "ghost";
   public static readonly authorAssociationField: string = "author_association";
   public static readonly reviewerAssociations: readonly string[] = ["OWNER", "MEMBER", "COLLABORATOR"];
   public static readonly totalCountField: string = "total_count";
+  public static readonly incompleteResultsField: string = "incomplete_results";
+  public static readonly repositoryUrlField: string = "repository_url";
+  public static readonly reviewRequestsPath: string = "/search/issues?q=is%3Apr+is%3Aopen+review-requested%3A%40me&sort=updated&order=desc&per_page=100";
+  public static readonly repositoryApiPrefix: string = "https://api.github.com/repos/";
+  public static readonly reviewRequestsHeldFor: number = 60_000;
   public static readonly objectType: string = "object";
   public static readonly stringType: string = "string";
   public static readonly booleanType: string = "boolean";
@@ -272,6 +312,10 @@ export class Resources {
     return `GitHub ended the sign-in with the error ${error}.`;
   }
 
+  public static formatSignInAnswerTooLarge(url: string): string {
+    return `GitHub's answer to the sign-in's request to ${url} is over ${Resources.maximumSignInAnswerBytes / Resources.bytesPerKibibyte} KiB, more than the module reads.`;
+  }
+
   public static formatSignInRequestRefused(url: string, status: number): string {
     return `GitHub refused the sign-in's request to ${url} (${status}).`;
   }
@@ -296,6 +340,38 @@ export class Resources {
     return `${owner}:${branch}`;
   }
 
+  public static formatCommitPath(commit: string): string {
+    return `commits/${commit}`;
+  }
+
+  public static formatCommitCommentsPath(commit: string): string {
+    return `commits/${commit}/comments?per_page=${Resources.commentsPageSize}`;
+  }
+
+  public static formatCommitPullsPath(commit: string): string {
+    return `commits/${commit}/${Resources.pullsPath}?per_page=1`;
+  }
+
+  public static formatPullCommentsPath(number: number): string {
+    return `${Resources.pullsPath}/${number}/comments?per_page=${Resources.commentsPageSize}`;
+  }
+
+  public static formatAccountAvatar(id: string | null, login: string): string {
+    return id === null ? `https://${Resources.avatarHost}/${login}` : `https://${Resources.avatarHost}/u/${id}?v=4`;
+  }
+
+  public static formatIssueCommentsPath(number: number, page: number): string {
+    return Resources.formatPagePath(`issues/${number}/comments?per_page=${Resources.commentsPageSize}`, page);
+  }
+
+  public static formatPullCommentsPagePath(number: number, page: number): string {
+    return Resources.formatPagePath(Resources.formatPullCommentsPath(number), page);
+  }
+
+  public static formatPagePath(path: string, page: number): string {
+    return page === 1 ? path : `${path}&page=${page}`;
+  }
+
   public static formatIssuePath(number: number): string {
     return `issues/${number}`;
   }
@@ -309,8 +385,7 @@ export class Resources {
   }
 
   public static formatReviewsPath(number: number, page: number): string {
-    const path: string = `${Resources.pullsPath}/${number}/reviews?per_page=${Resources.reviewsPageSize}`;
-    return page === 1 ? path : `${path}&page=${page}`;
+    return Resources.formatPagePath(`${Resources.pullsPath}/${number}/reviews?per_page=${Resources.reviewsPageSize}`, page);
   }
 
   public static formatCheckRunsPath(commit: string, page: number): string {

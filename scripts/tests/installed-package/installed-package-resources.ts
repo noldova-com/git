@@ -18,9 +18,9 @@ export class InstalledPackageResources {
   public static readonly devDependenciesField: string = "devDependencies";
   public static readonly peersField: string = "peerDependencies";
   public static readonly gitWindowName: string = "@noldova/git.window";
-  public static readonly gitHubWindowName: string = "@noldova/git.github.window";
   public static readonly gitWindowFolder: string = "src/noldova.git.window";
-  public static readonly gitHubWindowFolder: string = "src/noldova.git.github.window";
+  public static readonly hostWindows: readonly (readonly [string, string, boolean])[] = [["@noldova/git.github.window", "src/noldova.git.github.window", true],
+    ["@noldova/git.azure-devops.window", "src/noldova.git.azure-devops.window", true]];
   public static readonly angularPrefix: string = "@angular/";
   public static readonly angularCoreName: string = "@angular/core";
   public static readonly contextPeers: readonly (readonly [string, readonly string[]])[] = [
@@ -29,7 +29,9 @@ export class InstalledPackageResources {
     ["@noldova/git.protocol", ["@noldova/context.exceptions", "@noldova/context.json"]],
     ["@noldova/git.hosting.protocol", ["@noldova/context.exceptions", "@noldova/context.json"]],
     ["@noldova/git.window", ["@noldova/context.exceptions", "@noldova/context.json"]],
-    ["@noldova/git.github.window", ["@noldova/context.json"]]
+    ["@noldova/git.github.window", ["@noldova/context.json"]],
+    ["@noldova/git.azure-devops", ["@noldova/context.exceptions", "@noldova/context.json"]],
+    ["@noldova/git.azure-devops.window", ["@noldova/context.json"]]
   ];
   public static readonly contextPrefix: string = "@noldova/context.";
   public static readonly rangeSamples: readonly (readonly [string | undefined, string, boolean])[] = [
@@ -63,8 +65,8 @@ export class InstalledPackageResources {
     return `${file}'s ${field} must map names to versions.`;
   }
 
-  public static formatWindowPeerDiffers(version: string, peer: string | undefined, isDependency: boolean): string {
-    return `The GitHub window part takes the Git window part ${version} as the peer ${peer ?? InstalledPackageResources.noPeer}, not from it to the next minor`
+  public static formatWindowPeerDiffers(name: string, version: string, peer: string | undefined, isDependency: boolean): string {
+    return `${name} takes the Git window part ${version} as the peer ${peer ?? InstalledPackageResources.noPeer}, not from it to the next minor`
       + `${isDependency ? InstalledPackageResources.asDependency : ""}.`;
   }
 

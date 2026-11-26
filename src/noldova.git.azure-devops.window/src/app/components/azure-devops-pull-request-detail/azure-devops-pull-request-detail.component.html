@@ -1,0 +1,113 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (choice(); as choice) {
+  @let pullRequest = choice.pullRequest;
+  <div class="detail">
+    <section class="list" [attr.aria-label]="resources.reviewersTitle">
+      <div class="section-head">
+        <h2 class="section-title grow">{{ resources.reviewersTitle }}</h2>
+        <button nol-icon-button type="button" class="add-reviewer" [icon]="resources.addReviewerIcon" [label]="resources.addReviewerLabel"
+          [pressed]="isAdding()" (click)="isAdding.set(!isAdding())"></button>
+      </div>
+      @if (isAdding()) {
+        <nol-git-azure-devops-add-reviewer [reference]="pullRequest.item.reference" [reviewers]="loginsOf(choice)" (added)="add(choice, $event)"
+          (closed)="isAdding.set(false)" />
+      }
+      @for (reviewer of choice.reviewers; track $index) {
+        <div class="reviewer">
+          <span class="avatar">
+            @if (resources.isGroupLogin(reviewer.person.login)) {
+              <span class="group-avatar"><span class="material-symbols-rounded" aria-hidden="true">{{ resources.groupIcon }}</span></span>
+            } @else {
+              <nol-git-azure-devops-person-avatar [organization]="pullRequest.item.reference.owner" [login]="reviewer.person.login"
+                [name]="resources.formatPersonName(reviewer.person)" [image]="reviewer.person.avatar" [size]="small" />
+            }
+            @if (voteIconOf(reviewer); as icon) {
+              <span class="vote" [class.approved]="reviewer.vote > 0" [class.waiting]="reviewer.vote < 0 && reviewer.vote > -1" [class.rejected]="reviewer.vote <= -1">
+                <span class="material-symbols-rounded" aria-hidden="true">{{ icon }}</span>
+              </span>
+            }
+          </span>
+          <span class="grow">
+            <span class="name" [title]="reviewer.person.login">{{ resources.formatPersonName(reviewer.person) }}</span>
+            <span class="small muted">{{ resources.formatReviewerNote(reviewer.vote, reviewer.voteLabel, reviewer.isRequired) }}</span>
+          </span>
+          @if (reviewer.isRequired) {
+            <span class="small muted required">{{ resources.required }}</span>
+          }
+        </div>
+      } @empty {
+        <p class="muted">{{ resources.noReviewers }}</p>
+      }
+    </section>
+    <section class="card" [attr.aria-label]="resources.policiesTitle">
+      <div class="card-head">
+        <h2 class="section-title grow">{{ resources.policiesTitle }}</h2>
+        @if (pullRequest.item.changes; as changes) {
+          @if (policySummaryOf(choice, changes.baseBranch); as summary) {
+            <span class="small muted">{{ summary }}</span>
+          }
+        }
+      </div>
+      @for (policy of pullRequest.policies; track $index) {
+        <div class="policy">
+          <span class="material-symbols-rounded" role="img" [attr.aria-label]="resources.policyLabels[policy.state]"
+            [style.color]="resources.policyColors[policy.state]">{{ resources.policyIcons[policy.state] }}</span>
+          <span class="grow">{{ policy.name }}@if (policy.buildNumber; as number) {<span class="build-number muted"> {{ number }}</span>}</span>
+          <span class="small muted">{{ resources.formatPolicyRequirement(policy.isBlocking, policy.state === policyStates.Running) }}</span>
+        </div>
+      } @empty {
+        <p class="muted">{{ resources.noPolicies }}</p>
+      }
+    </section>
+    <section class="list" [attr.aria-label]="resources.buildsTitle">
+      <h2 class="section-title">{{ resources.buildsTitle }}</h2>
+      @for (build of pullRequest.builds; track $index) {
+        <div class="row">
+          <span class="material-symbols-rounded" role="img" [attr.aria-label]="resources.checkLabels[build.state]"
+            [style.color]="resources.checkColors[build.state]">{{ resources.checkIcons[build.state] }}</span>
+          <span class="grow">{{ build.name }}@if (buildTimeOf(choice, build); as time) {<span class="muted"> · {{ time }}</span>}</span>
+          @if (build.number; as number) {
+            <span class="build-number small muted">{{ resources.formatBuildNumber(number) }}</span>
+          }
+          @if (build.url; as url) {
+            <button nol-icon-button type="button" [icon]="resources.openIcon" [label]="resources.openOnAzureDevOps" (click)="openAsync(url)"></button>
+          }
+        </div>
+      } @empty {
+        <p class="muted">{{ resources.noBuilds }}</p>
+      }
+    </section>
+    <section class="list" [attr.aria-label]="resources.workItemsTitle">
+      <h2 class="section-title">{{ resources.workItemsTitle }}</h2>
+      @for (workItem of pullRequest.workItems; track workItem.id) {
+        <button type="button" class="row" (click)="openAsync(workItem.url)">
+          @if (resources.workItemImageOf(workItem.type); as image) {
+            <img class="material-symbols-rounded type-image" [src]="image" [alt]="workItem.type.name">
+          } @else {
+            <span class="material-symbols-rounded filled" role="img" [attr.aria-label]="workItem.type.name"
+              [style.color]="'#' + workItem.type.color">{{ resources.workItemIconOf(workItem.type.icon) }}</span>
+          }
+          <span class="id">{{ workItem.id }}</span>
+          <span class="grow">{{ workItem.title }}</span>
+          <span class="small work-state"><span class="dot" [style.background-color]="resources.categoryColors[workItem.category]"></span>{{ workItem.state }}</span>
+        </button>
+      } @empty {
+        <p class="muted">{{ resources.noWorkItems }}</p>
+      }
+    </section>
+  </div>
+  @if (pullRequest.item.state === open) {
+    @if (pullRequest.item.changes; as changes) {
+      <nol-git-azure-devops-complete class="complete-panel" [pullRequest]="pullRequest" [changes]="changes" (changed)="choice.actions.changed($event)" />
+    }
+  }
+} @else {
+  <p class="muted empty-view">{{ resources.noPullRequestShown }}</p>
+}

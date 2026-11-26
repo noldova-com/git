@@ -13,6 +13,7 @@ import { defineConfig } from "vitest/config";
 import { ClassMetadataCoverage } from "../../scripts/angular/class-metadata-coverage.ts";
 
 const cacheDir = fileURLToPath(new URL("../../node_modules/.vite", import.meta.url));
+const port: string | undefined = process.env["NOLDOVA_TEST_PORT"];
 
 export default defineConfig({
   plugins: [new ClassMetadataCoverage(), { name: "noldova:cache-dir", config: { order: "pre", handler: () => ({ cacheDir }) } }],
@@ -25,6 +26,7 @@ export default defineConfig({
     }
   },
   test: {
+    ...(port === undefined ? {} : { api: { port: Number(port) } }),
     attachmentsDir: fileURLToPath(new URL("../../_build/github-window/attachments", import.meta.url)),
     coverage: {
       reportsDirectory: fileURLToPath(new URL("../../_build/github-window-coverage", import.meta.url))

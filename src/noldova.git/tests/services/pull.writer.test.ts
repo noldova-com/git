@@ -37,8 +37,10 @@ import { Resources } from "../../src/resources.ts";
 import { CheckoutRisksReader } from "../../src/services/checkout-risks.reader.ts";
 import { FilterOptionsReader } from "../../src/services/filter-options.reader.ts";
 import { HooksReader } from "../../src/services/hooks.reader.ts";
+import { Journal } from "../../src/services/journal.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
 import { PullWriter } from "../../src/services/pull.writer.ts";
+import { RefSnapshotReader } from "../../src/services/ref-snapshot.reader.ts";
 import { StatusReader } from "../../src/services/status.reader.ts";
 import { WriteRunner } from "../../src/services/write.runner.ts";
 import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
@@ -118,7 +120,7 @@ describe("PullWriter", () => {
   };
   const fingerprintAsync = async (): Promise<string> => (await new StatusReader(runner).readAsync(folders)).fingerprint;
   const pullAsync = async (through: ProgramRunner = runner, signal?: AbortSignal, basedOn?: string): Promise<void> =>
-    await new WriteRunner(new StatusReader(through), () => undefined).runAsync(folders, basedOn ?? await fingerprintAsync(), new PullWriter(through, new CheckoutRisksReader(new HooksReader(through), new FilterOptionsReader(through))), null, signal);
+    await new WriteRunner(new StatusReader(through), new RefSnapshotReader(through), new Journal(), () => undefined, () => undefined).runAsync(folders, basedOn ?? await fingerprintAsync(), new PullWriter(through, new CheckoutRisksReader(new HooksReader(through), new FilterOptionsReader(through))), null, signal);
   const refusal = (type: abstract new (...args: never[]) => GitFailureException, code: FailureCode, gitCode: GitCode | null, message: string): ((error: unknown) => boolean) => (error: unknown): boolean => {
     assert.ok(error instanceof type);
     assert.deepEqual([error.code, error.gitCode, error.message], [code, gitCode, message]);
@@ -336,7 +338,7 @@ describe("PullWriter", () => {
     await commitLocallyAsync();
 
     await assert.rejects(pullAsync(), refusal(PullDivergedException, FailureCode.Git, GitCode.Diverged,
-      "This branch and its upstream each have commits the other doesn't, so a pull can't fast-forward it. Merge or rebase it in your editor or a terminal."));
+      "This branch and its upstream each have commits the other doesn't, so a pull can't fast-forward it. Merge or rebase it: in History, drag the upstream onto the branch."));
     assert.ok(!commands.some(t => t.startsWith("pull")));
   });
 
@@ -347,7 +349,7 @@ describe("PullWriter", () => {
     const before = await headAsync();
 
     await assert.rejects(pullAsync(), refusal(PullDivergedException, FailureCode.Git, GitCode.Diverged,
-      "This branch and its upstream each have commits the other doesn't, so a pull can't fast-forward it. Merge or rebase it in your editor or a terminal."));
+      "This branch and its upstream each have commits the other doesn't, so a pull can't fast-forward it. Merge or rebase it: in History, drag the upstream onto the branch."));
     assert.equal(await headAsync(), before);
   });
 

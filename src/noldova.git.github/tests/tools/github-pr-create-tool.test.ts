@@ -111,8 +111,8 @@ describe("GitHubPrCreateTool", () => {
       bodies.map(t => ({ title: "Fix the bug", body: t, head: "fix-bug", base: "main", draft: true })));
   });
 
-  it("refuses a title with a line break before asking the person or GitHub", async () => {
-    const titles = ["Fix\nDraft: no", "Fix\rDraft: no", "Fix\u2028Draft: no", "Fix\u2029Draft: no"];
+  it("refuses a title with any line break Desktop counts, a vertical tab, form feed and next line included, before asking the person or GitHub", async () => {
+    const titles = ["Fix\nDraft: no", "Fix\rDraft: no", "Fix\vDraft: no", "Fix\fDraft: no", "Fix\u0085Draft: no", "Fix\u2028Draft: no", "Fix\u2029Draft: no"];
     const rigs = titles.map(() => new PrToolsRig());
 
     const outcomes = await Promise.all(rigs.map((t, i) => t.createAsync({ ...draft, title: titles[i] ?? "" })));
@@ -121,8 +121,20 @@ describe("GitHubPrCreateTool", () => {
     assert.deepEqual(rigs.map(t => [t.answerer.requests.length, t.github.requests.length]), titles.map(() => [0, 0]));
   });
 
+  it("refuses a 30,000-character Japanese body, whose details would pass Desktop's 80 KiB, before asking the person or GitHub, as Desktop's 64 KiB of arguments ends the call", async () => {
+    const rig = new PrToolsRig();
+    rig.answerer.answerNext(PermissionDecision.AllowedOnce);
+    rig.github.answer(FakeGitHub.json(pull, 201));
+    const body: string = "あ".repeat(30_000);
+
+    const outcome = await rig.createAsync({ ...draft, body });
+
+    assert.deepEqual([Buffer.byteLength(body) > 80 * 1_024, failureOf(outcome), rig.answerer.requests.length, rig.github.requests.length],
+      [true, [ToolFailureCode.Refused, null], 0, 0]);
+  });
+
   it("opens nothing when the person doesn't allow it, failing with the decision", async () => {
-    const outcomes: (readonly [ToolFailureCode, string | null] | number | null)[] = [];
+    const outcomes: (ReturnType<typeof failureOf> | number)[] = [];
     for (const decision of [PermissionDecision.Denied, PermissionDecision.DeniedAlways, PermissionDecision.Expired]) {
       const rig = new PrToolsRig();
       rig.answerer.answerNext(decision);

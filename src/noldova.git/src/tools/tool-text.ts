@@ -13,13 +13,13 @@ export class ToolText {
   public static ofStatus(status: GitStatus): string | null {
     const { entries } = status;
     return ToolText.fit(entries.length, kept => new GitStatus(status.branch, status.head, status.upstream, entries.slice(0, kept),
-      status.truncated || kept < entries.length, status.fingerprint, status.operation, status.remote).toJson());
+      status.truncated || kept < entries.length, status.fingerprint, status.operation, status.remote, status.uncheckedLfsFiles, status.fetchedAt).toJson());
   }
 
   public static ofDiff(diff: GitDiff): string | null {
     const { files } = diff;
     return ToolText.fit(files.length, kept => new GitDiff(files.slice(0, kept), diff.totalBytes, diff.omittedFiles + files.length - kept,
-      diff.truncated || kept < files.length).toJson());
+      diff.truncated || kept < files.length, diff.totals).toJson());
   }
 
   public static ofLog(log: GitLog): string | null {
@@ -28,11 +28,15 @@ export class ToolText {
   }
 
   public static ofBranches(branches: GitBranches): string | null {
-    const { current, remotes, remoteBranches } = branches;
+    const { current, remotes, remoteBranches, tracks, tips } = branches;
     const local = branches.branches;
     return ToolText.fit(remoteBranches.length, kept =>
-      ({ ...new GitBranches(current, local, remotes, remoteBranches.slice(0, kept)).toJson(), truncated: kept < remoteBranches.length }))
-      ?? ToolText.fit(local.length, kept => ({ ...new GitBranches(current, local.slice(0, kept), remotes, []).toJson(), truncated: true }));
+      ({ ...new GitBranches(current, local, remotes, remoteBranches.slice(0, kept), tracks, tips).toJson(), truncated: kept < remoteBranches.length }))
+      ?? ToolText.fit(local.length, kept => {
+        const shown: readonly string[] = local.slice(0, kept);
+        return { ...new GitBranches(current, shown, remotes, [], tracks.filter(t => shown.includes(t.branch)),
+          tips.filter(t => shown.includes(t.branch))).toJson(), truncated: true };
+      });
   }
 
   private static fit(count: number, build: (kept: number) => JsonObject): string | null {

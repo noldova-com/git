@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { GitHooks, StatusUpstream } from "@noldova/git.protocol";
 import { DefaultTheme, ThemeMode } from "@noldova/ui.components.angular";
 import { AppearanceFixture, PointerFixture, TooltipFixture } from "@noldova/ui.components.angular/testing";
@@ -21,7 +22,7 @@ describe("GitBranchCardComponent", () => {
   const typeAsync = async (view: GitViewFixture, text: string): Promise<void> => {
     const field: HTMLInputElement | null = view.element.querySelector<HTMLInputElement>(".filter");
     expect(field).not.toBeNull();
-    if (field !== null) {
+    if (!Object.isNull(field)) {
       field.value = text;
       field.dispatchEvent(new Event("input"));
     }
@@ -109,7 +110,7 @@ describe("GitBranchCardComponent", () => {
 
     const before: string = description();
     reach(pull);
-    await GitFixtures.untilAsync(() => view.state.pullHooks() !== null);
+    await GitFixtures.untilAsync(() => !Object.isNull(view.state.pullHooks()));
     await view.fixture.whenStable();
     const loaded: string = description();
     pull.blur();
@@ -168,7 +169,7 @@ describe("GitBranchCardComponent", () => {
     await press("ArrowDown");
     await press("ArrowDown");
     await press("ArrowDown");
-    const third: readonly [readonly string[], string | null] = [activeTitle(), view.find(".filter").getAttribute("aria-activedescendant")];
+    const third: readonly unknown[] = [activeTitle(), view.find(".filter").getAttribute("aria-activedescendant")];
     await press("a");
     await press("Enter");
 
@@ -221,7 +222,7 @@ describe("GitBranchCardComponent", () => {
     await leave(view.find(".filter"), push);
     const afterMovingInside: number = view.all(".menu").length;
     const handled: boolean = await escape(push);
-    const afterEscape: readonly [number, boolean] = [view.all(".menu").length, document.activeElement === view.find(".name")];
+    const afterEscape: readonly unknown[] = [view.all(".menu").length, document.activeElement === view.find(".name")];
     push.focus();
     await escape(push);
 
@@ -258,7 +259,7 @@ describe("GitBranchCardComponent", () => {
     await view.waitForAsync(".filter");
     view.find(".filter").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
     await view.fixture.whenStable();
-    const afterEscape: readonly [number, boolean] = [view.all(".menu").length, document.activeElement === name];
+    const afterEscape: readonly unknown[] = [view.all(".menu").length, document.activeElement === name];
     await view.clickAsync(".name");
     view.find(".menu").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, composed: true }));
     document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, composed: true }));
@@ -279,9 +280,9 @@ describe("GitBranchCardComponent", () => {
     for (const key of ["ArrowDown", "Enter"])
       view.find(".filter").dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
     await view.fixture.whenStable();
-    const before: readonly [number, number, string | null] = [view.all(".menu [role=option]").length, view.all(".menu").length, view.find(".filter").getAttribute("aria-activedescendant")];
+    const before: readonly unknown[] = [view.all(".menu [role=option]").length, view.all(".menu").length, view.find(".filter").getAttribute("aria-activedescendant")];
     await held.answerAsync("git.branches", branches);
-    await GitFixtures.untilAsync(() => view.state.branches() !== null);
+    await GitFixtures.untilAsync(() => !Object.isNull(view.state.branches()));
     await view.fixture.whenStable();
 
     expect(before).toEqual([0, 1, null]);

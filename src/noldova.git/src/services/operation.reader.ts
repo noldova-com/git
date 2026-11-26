@@ -20,22 +20,15 @@ export class OperationReader {
       if (headName !== null)
         return new GitOperation(OperationKind.Rebase, OperationReader.branchOf(headName), null);
     }
-    for (const [file, kind] of Resources.operationHeads) {
-      const from = await OperationReader.readLineAsync(path.join(gitFolder, file));
+    for (const head of Resources.operationHeads) {
+      const from = await OperationReader.readLineAsync(path.join(gitFolder, head.file));
       if (from !== null)
-        return new GitOperation(kind, from, await OperationReader.readLineAsync(path.join(gitFolder, Resources.mergeMessageFile)));
+        return new GitOperation(head.kind, from, await OperationReader.readLineAsync(path.join(gitFolder, Resources.mergeMessageFile)));
     }
     return null;
   }
 
-  private static branchOf(headName: string): string | null {
-    if (!headName.startsWith(Resources.branchRefsPrefix))
-      return null;
-    const branch = headName.slice(Resources.branchRefsPrefix.length);
-    return branch.length === 0 ? null : branch;
-  }
-
-  private static async readLineAsync(file: string): Promise<string | null> {
+  public static async readLineAsync(file: string): Promise<string | null> {
     try {
       const [line] = (await readFile(file, Resources.utf8Encoding)).split(Resources.linePattern);
       return line === undefined || line.trim().length === 0 ? null : line.trim();
@@ -44,5 +37,12 @@ export class OperationReader {
         return null;
       throw error;
     }
+  }
+
+  private static branchOf(headName: string): string | null {
+    if (!headName.startsWith(Resources.branchRefsPrefix))
+      return null;
+    const branch = headName.slice(Resources.branchRefsPrefix.length);
+    return branch.length === 0 ? null : branch;
   }
 }

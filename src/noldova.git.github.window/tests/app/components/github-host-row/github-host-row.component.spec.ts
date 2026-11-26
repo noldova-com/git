@@ -7,6 +7,7 @@
  */
 
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitHubNames } from "@noldova/git.github.protocol";
@@ -43,7 +44,7 @@ const none: BranchPullRequest = new BranchPullRequest(null, []);
 function wordsOf(node: Node): string {
   const words: string[] = [];
   const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-  for (let text = walker.nextNode(); text !== null; text = walker.nextNode())
+  for (let text = walker.nextNode(); !Object.isNull(text); text = walker.nextNode())
     words.push((text.textContent ?? "").trim());
   return words.filter(t => t.length > 0).join(" ").replace(/\s+/g, " ");
 }
@@ -87,7 +88,7 @@ class Page {
   public get places(): readonly unknown[] {
     return this.context.callsOf("openLinkAsync").map(t => {
       const options = t[1];
-      return typeof options === "object" && options !== null && "place" in options ? options.place : this.browser.placeFor();
+      return Object.isObject(options) && "place" in options ? options.place : this.browser.placeFor();
     });
   }
 
@@ -102,7 +103,7 @@ class Page {
   }
 
   public create(first: HostSignIn | null, branch: string | null = "feature/readme", where: GitRemote = remote): void {
-    if (first !== null)
+    if (!Object.isNull(first))
       this.requests.answer(GitHubNames.readSignInMethod, first.toJson());
     TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: this.context }] });
     this.fixture = TestBed.createComponent(GitHubHostRowComponent);
@@ -151,7 +152,7 @@ class Page {
 
   public async clickAsync(label: string): Promise<void> {
     const found = [...this.element.querySelectorAll("button")].find(t => (t.textContent ?? "").includes(label) || t.getAttribute("aria-label") === label);
-    if (found === undefined)
+    if (Object.isUndefined(found))
       throw new Error(`No button reads ${label}.`);
     found.click();
     await this.settleAsync();
@@ -161,6 +162,12 @@ class Page {
     this.find(selector).click();
     await this.settleAsync();
   }
+}
+
+async function focusedAfterAsync(page: Page, label: string): Promise<string> {
+  [...page.element.querySelectorAll("button")].find(t => (t.textContent ?? "").includes(label))?.focus();
+  await page.clickAsync(label);
+  return Object.isNull(document.activeElement) ? "" : wordsOf(document.activeElement);
 }
 
 describe("GitHubHostRowComponent", () => {
@@ -374,11 +381,39 @@ describe("GitHubHostRowComponent", () => {
     expect([page.element.querySelector("[role=alert]"), page.texts(".title")]).toEqual([null, ["#7 Sample pull request title"]]);
   });
 
+  it("moves the focus to the pull request's title when Try again goes as it is used, never to the page", async () => {
+    const page = new Page();
+    page.requests.fail(GitHubNames.readBranchPullRequestMethod, new WindowFailure("GitHub didn't answer."));
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
+    await page.openAsync(signedIn);
+
+    const focused = await focusedAfterAsync(page, "Try again");
+
+    expect(focused).toBe("#7 Sample pull request title");
+  });
+
+  it("moves the focus to a surviving button when Sign in, Open the page again or Cancel goes as it is used, never to the page", async () => {
+    const page = new Page();
+    page.requests.answer(GitHubNames.startSignInMethod, HostSignIn.waiting(code).toJson());
+    page.requests.answer(GitHubNames.cancelSignInMethod, HostSignIn.signedOut().toJson());
+    await page.openAsync(HostSignIn.signedOut());
+    page.context.answer("openLinkAsync", async () => {
+      throw new WindowFailure("No browser.");
+    });
+
+    const afterSignIn = await focusedAfterAsync(page, "Sign in to GitHub");
+    page.context.answer("openLinkAsync", async () => undefined);
+    const afterOpenAgain = await focusedAfterAsync(page, "Open the page again");
+    const afterCancel = await focusedAfterAsync(page, "Cancel");
+
+    expect([afterSignIn, afterOpenAgain, afterCancel]).toEqual(["Copy code", "Cancel", "Sign in to GitHub"]);
+  });
+
   it("says when the sign-in can't be read, and reads it again on Try again", async () => {
     const page = new Page();
     page.requests.fail(GitHubNames.readSignInMethod, new WindowFailure("GitHub didn't answer."));
     await page.openAsync(null);
-    const failed = page.element.querySelector("[role=alert]") !== null;
+    const failed = !Object.isNull(page.element.querySelector("[role=alert]"));
     page.requests.answer(GitHubNames.readSignInMethod, HostSignIn.signedOut().toJson());
     await page.clickAsync("Try again");
 

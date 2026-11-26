@@ -1,0 +1,157 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (failure(); as failure) {
+  <div class="notice" role="alert">
+    <span class="material-symbols-rounded notice-icon" aria-hidden="true">{{ resources.failureIcon }}</span>
+    <span class="notice-text">{{ failure }}</span>
+    <button type="button" nol-button [variant]="secondary" (click)="retry()">{{ resources.tryAgain }}</button>
+  </div>
+} @else if (isReading()) {
+  <div class="notice" role="status">
+    <nol-spinner />
+    <span class="notice-text">{{ resources.pullRequestReading }}</span>
+  </div>
+} @else if (pullRequest(); as pullRequest) {
+  <article class="page" [attr.aria-label]="resources.formatPullRequestTitle(pullRequest.item.reference.number, pullRequest.item.title)">
+    <div class="main">
+      <header class="head">
+        <div class="title-line">
+          <span class="state" [style.color]="resources.stateColors[pullRequest.item.state]">
+            <span class="material-symbols-rounded state-icon" aria-hidden="true">{{ resources.pullRequestStateIcons[pullRequest.item.state] }}</span>{{ resources.stateLabels[pullRequest.item.state] }}
+          </span>
+          <span class="number">!{{ pullRequest.item.reference.number }}</span>
+          <h1 class="title">{{ pullRequest.item.title }}</h1>
+          <button type="button" nol-button [variant]="secondary" class="open" (click)="openAsync(pullRequest.item.url)">
+            <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.openIcon }}</span>{{ resources.openOnAzureDevOps }}
+          </button>
+        </div>
+        <div class="meta">
+          @if (pullRequest.item.author; as author) {
+            <nol-git-azure-devops-person-avatar [organization]="pullRequest.item.reference.owner" [login]="author.login" [name]="resources.formatPersonName(author)"
+              [image]="author.avatar" [size]="small" />
+          }
+          <span>{{ resources.formatWantsToMerge(pullRequest.item.author === null ? resources.unknownAuthor : resources.formatPersonName(pullRequest.item.author)) }}</span>
+          @if (pullRequest.item.changes; as changes) {
+            <span class="branch">{{ changes.headBranch }}</span>
+            <span>{{ resources.into }}</span>
+            <span class="branch">{{ changes.baseBranch }}</span>
+          }
+          @if (pullRequest.commitCount !== null) {
+            <span class="muted">· {{ resources.formatCommitCount(pullRequest.commitCount) }}</span>
+          }
+          <span class="muted">· {{ openedOf(pullRequest) }}</span>
+          @if (pullRequest.isAutoComplete) {
+            <span class="auto"><span class="material-symbols-rounded" aria-hidden="true">{{ resources.autoCompleteIcon }}</span>{{ resources.formatAutoComplete(pullRequest.autoCompleteMergeType) }}</span>
+          }
+        </div>
+        <nav class="tabs" [attr.aria-label]="resources.pullRequestTabs">
+          <button type="button" class="tab" [class.on]="tab() === overviewTab" [attr.aria-current]="tab() === overviewTab ? 'page' : null"
+            (click)="show(overviewTab)">{{ resources.overviewTab }}</button>
+          <button type="button" class="tab" [class.on]="tab() === filesTab" [attr.aria-current]="tab() === filesTab ? 'page' : null"
+            (click)="show(filesTab)">{{ resources.filesTab }}@if (counts().get(filesTab); as count) {<span class="badge">{{ count }}</span>}</button>
+          <button type="button" class="tab" [class.on]="tab() === updatesTab" [attr.aria-current]="tab() === updatesTab ? 'page' : null"
+            (click)="show(updatesTab)">{{ resources.updatesTab }}@if (counts().get(updatesTab); as count) {<span class="badge">{{ count }}</span>}</button>
+          <button type="button" class="tab" [class.on]="tab() === commitsTab" [attr.aria-current]="tab() === commitsTab ? 'page' : null"
+            (click)="show(commitsTab)">{{ resources.commitsTab }}@if (commitBadgeOf(pullRequest); as count) {<span class="badge">{{ count }}</span>}</button>
+          <button type="button" class="tab" [class.on]="tab() === conflictsTab" [attr.aria-current]="tab() === conflictsTab ? 'page' : null"
+            (click)="show(conflictsTab)">{{ resources.conflictsTab }}@if (counts().get(conflictsTab); as count) {<span class="badge">{{ count }}</span>}</button>
+        </nav>
+      </header>
+      @if (opened().has(filesTab)) {
+        @if (files() === undefined) {
+          <div class="pane" [hidden]="tab() !== filesTab">
+            <div class="notice" role="status"><nol-spinner /><span class="notice-text">{{ resources.filesReading }}</span></div>
+          </div>
+        } @else {
+          <nol-git-pull-request-files class="pane" [hidden]="tab() !== filesTab" [host]="host" [reference]="pullRequest.item.reference" [url]="pullRequest.item.url"
+            [answer]="files() ?? null" [reveal]="reveal()" (counted)="count(filesTab, $event)" (unrevealed)="unrevealed(pullRequest)" />
+        }
+      }
+      @if (opened().has(updatesTab)) {
+        @if (updates() === undefined) {
+          <div class="pane" [hidden]="tab() !== updatesTab">
+            <div class="notice" role="status"><nol-spinner /><span class="notice-text">{{ resources.updatesReading }}</span></div>
+          </div>
+        } @else {
+          <nol-git-azure-devops-pull-request-updates class="pane" [hidden]="tab() !== updatesTab" [reference]="pullRequest.item.reference" [url]="pullRequest.item.url"
+            [answer]="updates() ?? null" (counted)="count(updatesTab, $event)" />
+        }
+      }
+      @if (opened().has(commitsTab)) {
+        <nol-git-pull-request-commits class="pane" [hidden]="tab() !== commitsTab" [host]="host" [reference]="pullRequest.item.reference" [url]="pullRequest.item.url"
+          (counted)="count(commitsTab, $event)" />
+      }
+      @if (opened().has(conflictsTab)) {
+        <nol-git-pull-request-conflicts class="pane" [hidden]="tab() !== conflictsTab" [host]="host" [reference]="pullRequest.item.reference"
+          [url]="pullRequest.item.url" [changes]="pullRequest.item.changes" (counted)="count(conflictsTab, $event)" />
+      }
+      <div class="body" [hidden]="tab() !== overviewTab">
+        <div class="column">
+          <section class="description" [attr.aria-label]="resources.descriptionTitle">
+            <h2 class="section-title">{{ resources.descriptionTitle }}</h2>
+            @if (pullRequest.description.trim().length > 0) {
+              <nol-markdown-view [text]="pullRequest.description" [references]="referencesOf(pullRequest)" (linkOpen)="openLink(pullRequest, $event)" />
+            } @else {
+              <p class="muted">{{ resources.noDescription }}</p>
+            }
+          </section>
+          <nol-git-pull-request-threads [host]="host" [reference]="pullRequest.item.reference" [isAutoComplete]="pullRequest.isAutoComplete"
+            [references]="referencesOf(pullRequest)" (linkOpen)="openLink(pullRequest, $event)" (goToLine)="goToLine(pullRequest, $event)" />
+        </div>
+      </div>
+      <footer class="footer">
+        @if (pendingVote(); as pending) {
+          <div class="vote-confirm" role="alert">
+            <span class="grow">{{ resources.autoCompleteVoteConfirm }}</span>
+            <button type="button" nol-button [variant]="secondary" class="cancel" (click)="cancelVote()">{{ resources.cancelAction }}</button>
+            <button type="button" nol-button class="confirm" (click)="confirmVote(pullRequest.item.reference, pending)">{{ resources.approveAnyway }}</button>
+          </div>
+        }
+        @if (pullNote(); as pullNote) {
+          <p class="pull-note" role="status">{{ pullNote }}</p>
+        }
+        @if (pullFailure(); as pullFailure) {
+          <p class="pull-failure" role="alert">
+            <span class="material-symbols-rounded" aria-hidden="true">{{ resources.failureIcon }}</span>{{ pullFailure }}
+          </p>
+        }
+        @if (voteFailure(); as voteFailure) {
+          <p class="vote-failure" role="alert">
+            <span class="material-symbols-rounded" aria-hidden="true">{{ resources.failureIcon }}</span>{{ voteFailure }}
+          </p>
+        }
+        <div class="vote-line">
+          <span class="vote-note grow">{{ voteNoteOf(pullRequest) }}</span>
+          <span class="vote-split">
+            <button type="button" nol-button class="approve" [disabled]="isVoting()" (click)="chooseVote(pullRequest, resources.approveVote)">
+              <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.approveIcon }}</span>{{ resources.approveAction }}
+            </button>
+            <button type="button" nol-button class="vote-menu" [disabled]="isVoting()" [attr.aria-label]="resources.moreVotesLabel" [nolMenuTriggerFor]="voteChoices">
+              <span class="material-symbols-rounded" aria-hidden="true">{{ resources.moreVotesIcon }}</span>
+            </button>
+          </span>
+          <ng-template #voteChoices>
+            <nol-menu [attr.aria-label]="resources.voteMenuLabel">
+              @for (choice of resources.voteChoices; track choice.vote) {
+                <button nol-menu-item [label]="choice.label" (triggered)="chooseVote(pullRequest, choice.vote)"></button>
+              }
+              <nol-menu-separator />
+              <button nol-menu-item [label]="resources.resetVote.label" (triggered)="chooseVote(pullRequest, resources.resetVote.vote)"></button>
+            </nol-menu>
+          </ng-template>
+        </div>
+      </footer>
+    </div>
+  </article>
+} @else if (isMissing()) {
+  <div class="notice">
+    <span class="material-symbols-rounded notice-mark" aria-hidden="true">{{ resources.signedOutIcon }}</span>
+    <span class="notice-text">{{ resources.pullRequestMissing }}</span>
+  </div>
+}

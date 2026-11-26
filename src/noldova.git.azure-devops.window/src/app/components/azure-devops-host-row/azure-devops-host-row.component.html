@@ -1,0 +1,79 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (failure(); as failure) {
+  <div class="notice" role="alert">
+    <span class="material-symbols-rounded notice-icon" aria-hidden="true">{{ resources.failureIcon }}</span>
+    <span class="notice-text">{{ failure }}</span>
+    <button type="button" nol-button [variant]="secondary" (click)="retry()">{{ resources.tryAgain }}</button>
+  </div>
+} @else if (signIn() !== null) {
+  @if (!isSignedIn()) {
+    <div class="notice">
+      <span class="material-symbols-rounded notice-mark" aria-hidden="true">{{ resources.signedOutIcon }}</span>
+      <span class="notice-text">{{ resources.hostRowSignedOut }}</span>
+    </div>
+  } @else if (shown(); as shown) {
+    <div class="pr" [attr.aria-busy]="isReading() ? resources.ariaTrue : null">
+      <div class="line">
+        <span class="material-symbols-rounded state" role="img" [attr.aria-label]="resources.stateLabels[shown.pullRequest.state]"
+          [style.color]="resources.stateColors[shown.pullRequest.state]">{{ resources.stateIcons[shown.pullRequest.state] }}</span>
+        <button type="button" class="title" [nolTooltip]="titleOf(shown)" [nolTooltipTruncated]="true" (click)="openAsync(shown.pullRequest.url)">
+          <span class="text" data-truncates>{{ titleOf(shown) }}</span>
+        </button>
+        <button nol-icon-button type="button" class="open" [icon]="resources.openIcon" [label]="resources.openOnAzureDevOps" (click)="openAsync(shown.pullRequest.url)"></button>
+      </div>
+      @if (shown.checks.length > 0) {
+        <ul class="checks" [attr.aria-label]="resources.checksLabel">
+          @for (check of shown.checks; track $index) {
+            <li class="check" [class.failed]="check.state === states.Failed" [class.ok]="check.state === states.Succeeded">
+              <span class="material-symbols-rounded check-icon" aria-hidden="true">{{ checkIconOf(check) }}</span>
+              @if (check.url; as url) {
+                <button type="button" class="name" [nolTooltip]="check.name" [nolTooltipTruncated]="true" (click)="openAsync(url)">
+                  <span class="text" data-truncates>{{ check.name }}</span>
+                </button>
+              } @else {
+                <span class="name" [nolTooltip]="check.name" [nolTooltipTruncated]="true">
+                  <span class="text" data-truncates>{{ check.name }}</span>
+                </span>
+              }
+              <span class="check-state">{{ checkLabelOf(check) }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  } @else if (isReading()) {
+    <div class="notice" aria-busy="true">
+      <nol-spinner />
+      <span class="notice-text">{{ resources.readingPullRequest }}</span>
+    </div>
+  } @else {
+    <div class="notice">
+      <span class="material-symbols-rounded notice-mark" aria-hidden="true">{{ resources.noPullRequestIcon }}</span>
+      <span class="notice-text">{{ resources.noPullRequest }}</span>
+    </div>
+  }
+} @else {
+  <div class="notice" aria-busy="true">
+    <nol-spinner />
+    <span class="notice-text">{{ resources.readingPullRequest }}</span>
+  </div>
+}
+@if (failedLink(); as link) {
+  <div class="notice link-failed" role="alert">
+    <span class="material-symbols-rounded notice-icon" aria-hidden="true">{{ resources.failureIcon }}</span>
+    <span class="notice-text">{{ resources.hostRowLinkNotOpened }}</span>
+    <button type="button" nol-button [variant]="secondary" (click)="openAsync(link)">{{ resources.openAgain }}</button>
+  </div>
+}
+@if (place(); as place) {
+  <nav class="boards" [attr.aria-label]="resources.boardsLabel">
+    <button type="button" class="board" (click)="openBoard(place, resources.workItemsDocument, resources.myWorkItemsTitle)">{{ resources.myWorkItemsTitle }}</button>
+  </nav>
+}

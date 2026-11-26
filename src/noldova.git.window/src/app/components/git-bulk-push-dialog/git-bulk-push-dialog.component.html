@@ -1,0 +1,18 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<nol-dialog [title]="title()" (dismissed)="answered.emit(false)">
+  <p class="text">{{ resources.pushAllText }}</p>
+  <ul class="targets">
+    @for (line of lines(); track $index) {
+      <li>{{ line }}</li>
+    }
+  </ul>
+  <button nol-button nolDialogAction type="button" class="push" (click)="answered.emit(true)">{{ resources.pushLabel }}</button>
+  <button nol-button nolDialogAction type="button" class="cancel" [variant]="secondary" (click)="answered.emit(false)">{{ resources.cancelLabel }}</button>
+</nol-dialog>

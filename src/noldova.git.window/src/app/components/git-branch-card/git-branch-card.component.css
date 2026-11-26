@@ -59,6 +59,11 @@
   white-space: nowrap;
 }
 
+.recent-actions {
+  display: flex;
+  flex: none;
+}
+
 .spacer {
   flex: 1;
 }

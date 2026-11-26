@@ -68,7 +68,6 @@ class Test {
     return Resources.successExitCode;
   }
 
-  /** Runs the tests the filters choose, or the whole suite without filters, once the checks have passed. */
   private async runTestsAsync(values: readonly string[], options: readonly string[]): Promise<number> {
     const rootTests: readonly string[] = [
       ...Resources.vitestRun,
@@ -83,15 +82,11 @@ class Test {
       return await this.runStepsAsync([[...rootTests, ...Test.noGates, ...rootFilters]], Test.root);
     if (filters.length === 0) {
       const timed: readonly string[] = [...rootTests, ...(options.includes(Resources.skipTestDetails) ? [] : [Resources.defaultReporter]), ...Resources.testTimesReporter];
-      const ran: number = await this.runStepsAsync([timed, [Resources.testTimeCheckScript]], Test.root);
-      if (ran !== Resources.successExitCode)
-        return ran;
-      for (const folder of Test.windowFolders) {
-        const windowRan: number = await this.runWindowAsync(folder, null);
-        if (windowRan !== Resources.successExitCode)
-          return windowRan;
-      }
-      return await this.runStepsAsync([[Resources.installedPackageScript]], Test.root);
+      const ran: number[] = [await this.runStepsAsync([timed, [Resources.testTimeCheckScript]], Test.root)];
+      for (const folder of Test.windowFolders)
+        ran.push(await this.runWindowAsync(folder, null));
+      ran.push(await this.runStepsAsync([[Resources.installedPackageScript]], Test.root));
+      return ran.find(t => t !== Resources.successExitCode) ?? Resources.successExitCode;
     }
     const rootSteps: (readonly string[])[] = rootFilters.length === 0 ? [] : [[...rootTests, ...Test.noGates, ...rootFilters]];
     const ran: number = await this.runStepsAsync(rootSteps, Test.root);

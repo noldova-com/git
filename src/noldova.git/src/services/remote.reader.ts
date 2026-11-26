@@ -26,12 +26,17 @@ export class RemoteReader {
 
   public async readAsync(top: string, branch: string | null, signal?: AbortSignal): Promise<GitRemote | null> {
     const output: string | null = await this.readConfigAsync(top, signal);
-    return output === null ? null : RemoteReader.choose(output, branch);
+    return output === null ? null : this.readChosenAsync(top, output, RemoteReader.choose(output, branch), signal);
   }
 
   public async readNamedAsync(top: string, name: string, signal?: AbortSignal): Promise<GitRemote | null> {
     const output: string | null = await this.readConfigAsync(top, signal);
-    return output === null ? null : RemoteReader.find(output, name);
+    return output === null ? null : this.readChosenAsync(top, output, name, signal);
+  }
+
+  private async readChosenAsync(top: string, output: string, name: string | null, signal?: AbortSignal): Promise<GitRemote | null> {
+    const configured: string | undefined = name === null ? undefined : RemoteReader.urlsOf(output).get(name);
+    return name === null || configured === undefined ? null : await this.readUrlAsync(top, name, configured, signal);
   }
 
   private async readConfigAsync(top: string, signal?: AbortSignal): Promise<string | null> {
@@ -43,34 +48,37 @@ export class RemoteReader {
     return result.output.toString(Resources.utf8Encoding);
   }
 
-  private static choose(output: string, branch: string | null): GitRemote | null {
-    const [urls, named] = RemoteReader.parse(output, branch);
-    const remotes = [...urls];
-    const chosen = remotes.find(([name]) => name === named) ?? (remotes.length === 1 ? remotes[0] : undefined);
-    return chosen === undefined ? null : RemoteUrl.toRemote(chosen[0], chosen[1]);
+  private async readUrlAsync(top: string, name: string, configured: string, signal?: AbortSignal): Promise<GitRemote> {
+    const result = await this.runner.runAsync(ProgramRun.readGit(new GitArguments([...Resources.remoteUrlArguments, name]), top, RemoteReader.LIMITS, signal));
+    const url: string = result.exit.code !== 0 || result.isTruncated ? configured : result.output.toString(Resources.utf8Encoding).replace(Resources.lineEndPattern, "");
+    return RemoteUrl.toRemote(name, url);
   }
 
-  private static find(output: string, name: string): GitRemote | null {
-    const url: string | undefined = RemoteReader.parse(output, null)[0].get(name);
-    return url === undefined ? null : RemoteUrl.toRemote(name, url);
+  private static choose(output: string, branch: string | null): string | null {
+    const names: readonly string[] = [...RemoteReader.urlsOf(output).keys()];
+    const named: string | null = branch === null ? null : RemoteReader.valueOf(output, Resources.formatBranchRemoteKey(branch));
+    const chosen: string | undefined = names.find(t => t === named) ?? (names.length === 1 ? names[0] : undefined);
+    return chosen ?? null;
   }
 
-  private static parse(output: string, branch: string | null): readonly [ReadonlyMap<string, string>, string | null] {
+  private static urlsOf(output: string): ReadonlyMap<string, string> {
     const urls = new Map<string, string>();
-    let named: string | null = null;
     for (const record of output.split(Resources.recordSeparator)) {
-      const line = record.indexOf(Resources.lineEnd);
-      if (line < 0)
-        continue;
-      const key = record.slice(0, line);
-      const value = record.slice(line + 1);
-      if (key.startsWith(Resources.remoteKeyPrefix) && key.endsWith(Resources.urlKeySuffix)) {
-        const name = key.slice(Resources.remoteKeyPrefix.length, -Resources.urlKeySuffix.length);
-        if (!urls.has(name))
-          urls.set(name, value);
-      } else if (branch !== null && key === Resources.formatBranchRemoteKey(branch))
-        named = value;
+      const key: string = RemoteReader.keyOf(record);
+      const name: string = key.slice(Resources.remoteKeyPrefix.length, -Resources.urlKeySuffix.length);
+      if (key.startsWith(Resources.remoteKeyPrefix) && key.endsWith(Resources.urlKeySuffix) && !urls.has(name))
+        urls.set(name, record.slice(key.length + 1));
     }
-    return [urls, named];
+    return urls;
+  }
+
+  private static valueOf(output: string, key: string): string | null {
+    const record: string | undefined = output.split(Resources.recordSeparator).findLast(t => RemoteReader.keyOf(t) === key);
+    return record === undefined ? null : record.slice(key.length + 1);
+  }
+
+  private static keyOf(record: string): string {
+    const line: number = record.indexOf(Resources.lineEnd);
+    return line < 0 ? "" : record.slice(0, line);
   }
 }

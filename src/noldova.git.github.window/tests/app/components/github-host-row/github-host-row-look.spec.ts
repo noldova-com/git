@@ -9,6 +9,7 @@
 import type {} from "@vitest/browser-playwright";
 import { Component } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
+import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitHubNames } from "@noldova/git.github.protocol";
@@ -23,6 +24,12 @@ import { cdp, page } from "vitest/browser";
 import { GitHubHostRowComponent } from "../../../../src/app/components/github-host-row/github-host-row.component.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
+
+interface IStateColour {
+  readonly state: ReferenceState;
+  readonly colour: string | null;
+  readonly closedAt: number | null;
+}
 
 @Component({
   selector: "nol-git-github-dock",
@@ -60,7 +67,7 @@ async function openAsync(mode: ThemeMode, signIn: HostSignIn, pullRequest: Branc
   const context = new FakeWindowPartContext();
   const requests = new RequestAnswers(context);
   requests.answer(GitHubNames.readSignInMethod, signIn.toJson());
-  if (pullRequest !== null)
+  if (!Object.isNull(pullRequest))
     requests.answer(GitHubNames.readBranchPullRequestMethod, pullRequest.toJson());
   prepare(context, requests);
   TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: context }, TooltipFixture.atOnce] });
@@ -198,17 +205,20 @@ describe("GitHubHostRowComponent in the kit's look", () => {
   });
 
   it.each(AppearanceFixture.modes)("draws each pull request state's icon in GitHub's colour for that state, in %s mode", async mode => {
-    const states: readonly (readonly [ReferenceState, string | null, number | null])[] = [[ReferenceState.Open, "var(--nol-status-ok)", null],
-      [ReferenceState.Draft, "var(--nol-text-muted)", null], [ReferenceState.Closed, "var(--nol-status-failed)", 1_800_000_360_000],
-      [ReferenceState.Merged, null, 1_800_000_360_000]];
+    const states: readonly IStateColour[] = [
+      { state: ReferenceState.Open, colour: "var(--nol-status-ok)", closedAt: null },
+      { state: ReferenceState.Draft, colour: "var(--nol-text-muted)", closedAt: null },
+      { state: ReferenceState.Closed, colour: "var(--nol-status-failed)", closedAt: 1_800_000_360_000 },
+      { state: ReferenceState.Merged, colour: null, closedAt: 1_800_000_360_000 }
+    ];
     const shown: string[] = [];
     const expected: string[] = [];
-    for (const [state, colour, closedAt] of states) {
+    for (const { state, colour, closedAt } of states) {
       const item = new HostItem(merged.reference, ReferenceKind.PullRequest, state, "Sample pull request", merged.url, null, merged.createdAt, closedAt, 0,
         merged.changes);
       const fixture = await openAsync(mode, HostSignIn.signedIn(account), new BranchPullRequest(item, []));
       shown.push(getComputedStyle(find(fixture.nativeElement, ".state")).backgroundColor);
-      expected.push(colour === null ? purple[mode] : resolve(colour));
+      expected.push(Object.isNull(colour) ? purple[mode] : resolve(colour));
       await page.screenshot({ element: find(fixture.nativeElement, ".dock"), path: `${screenshots}/host-row-state-${state}-${mode}.png` });
       fixture.destroy();
       TestBed.resetTestingModule();
@@ -262,7 +272,7 @@ describe("GitHubHostRowComponent in the kit's look", () => {
     const fixture = await failLinkAsync(mode);
     const root: HTMLElement = fixture.nativeElement;
     const [codeNotice, failed] = all(root, ".notice");
-    if (codeNotice === undefined || failed === undefined)
+    if (Object.isUndefined(codeNotice) || Object.isUndefined(failed))
       throw new Error("The row shows fewer than two notices.");
     const codeBox = codeNotice.getBoundingClientRect();
     const failedBox = failed.getBoundingClientRect();

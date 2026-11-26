@@ -15,7 +15,9 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, onTestFinished, t
 import { FailureCode, GitCode, UntrustedSource } from "@noldova/git.protocol";
 
 import { FolderUnreadableException } from "../../src/exceptions/folder-unreadable.exception.ts";
+import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import { UnsafeRepositoryException } from "../../src/exceptions/unsafe-repository.exception.ts";
+import { GitVersion } from "../../src/models/git-version.ts";
 import { FilePresence } from "../../src/services/file-presence.ts";
 import { GitVersionReader } from "../../src/services/git-version.reader.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
@@ -133,6 +135,21 @@ describe("RepositoryReader", () => {
 
   test("fails on a folder it can't check for a reason other than its absence, rather than calling it no repository", async () => {
     await assert.rejects(reader.readAsync(path.join(repository.root, `bad${String.fromCharCode(0)}name`)), { code: "ERR_INVALID_ARG_VALUE" });
+  });
+
+  test("tells a repository that keeps its refs in a reftable from one that keeps them as files, and fails with git's words when git can't read its configuration", async context => {
+    context.skip(!(await repository.hasGitAsync(new GitVersion(2, 45))), "git keeps refs in a reftable from 2.45; an older git can't make or read one.");
+    const reftable = path.join(repository.root, "reftable");
+    await repository.runGitAsync(["init", "--quiet", "--ref-format=reftable", reftable]);
+    const runner = new ScriptedRunnerFixture(supervisor.context);
+    runner.failing = "config";
+    runner.failingCode = 128;
+
+    const answers = [await reader.isReftableAsync(await reader.readAsync(reftable)), await reader.isReftableAsync(await reader.readAsync(repository.folder))];
+
+    assert.deepEqual(answers, [true, false]);
+    await assert.rejects(new RepositoryReader(runner, new GitVersionReader(runner)).isReftableAsync(await reader.readAsync(repository.folder)),
+      (error: unknown) => error instanceof GitFailedException && error.command === "config --get" && error.output?.text === "scripted failure\n");
   });
 
   test("checks git's version before it reads a folder, so an old git fails as too old rather than as no repository", async () => {

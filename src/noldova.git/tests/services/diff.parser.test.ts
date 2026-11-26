@@ -8,11 +8,18 @@
 
 import assert from "node:assert/strict";
 
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 
 import { FailureCode, FileChange, GitCode, LineKind } from "@noldova/git.protocol";
 
 import { DiffParser } from "../../src/services/diff.parser.ts";
+
+interface IUnreadableFailure {
+  readonly name: string;
+  readonly code: FailureCode;
+  readonly gitCode: GitCode;
+  readonly message: string;
+}
 
 describe("DiffParser", () => {
   const OLD = "a".repeat(40);
@@ -27,10 +34,10 @@ describe("DiffParser", () => {
     const parsed = DiffParser.parse(value, isCut);
     return { files: parsed.files.map(t => t.toJson()), omittedFiles: parsed.omittedFiles, isCut: parsed.isCut };
   };
-  const unreadable = (part: string): { name: string; code: FailureCode; gitCode: GitCode; message: string } =>
+  const unreadable = (part: string): IUnreadableFailure =>
     ({ name: "UnreadableOutputException", code: FailureCode.Git, gitCode: GitCode.UnreadableOutput, message: `git diff printed ${part} that the module can't read.` });
 
-  test("reads modified, added, deleted and renamed files, splitting the patch only at each file's exact header", () => {
+  test("reads modified, added, deleted and renamed files, with a rename's similarity score, splitting the patch only at each file's exact header", () => {
     const patch = [
       "diff --git a/a.txt b/a.txt",
       "index 1111111..2222222 100644",
@@ -82,7 +89,7 @@ describe("DiffParser", () => {
         file("gone.bin", FileChange.Deleted, "100644", null, [], { binary: true }),
         file("x b/y.txt", FileChange.Renamed, "100644", "100644", [{
           oldStart: 2, oldCount: 1, newStart: 2, newCount: 1, header: "", lines: [line(LineKind.Removed, 2, null, "b"), line(LineKind.Added, null, 2, "c")]
-        }], { oldPath: "old name.txt" })
+        }], { oldPath: "old name.txt", similarity: 90 })
       ],
       omittedFiles: 0,
       isCut: false
@@ -189,6 +196,32 @@ describe("DiffParser", () => {
     ]);
     assert.deepEqual(DiffParser.parse(single, false).files.map(t => [t.path, t.hunks[0]?.lines[0]?.text]), [["new dir/u.txt", "u"]]);
     assert.deepEqual(json(Buffer.alloc(0)), { files: [], omittedFiles: 0, isCut: false });
+  });
+
+  test("scans each file's own section for combined headers, so the work grows with the output, not with files times output", () => {
+    const count = 400;
+    const entries = Array.from({ length: count }, (_, index) => entry(`:100644 100644 ${OLD} ${NEW} M`, `f${index}.txt`));
+    const patch = Array.from({ length: count }, (_, index) =>
+      [`diff --git a/f${index}.txt b/f${index}.txt`, "index 1111111..2222222 100644", `--- a/f${index}.txt`, `+++ b/f${index}.txt`, "@@ -1 +1 @@", "-old", "+new", ""].join("\n")).join("");
+    const value = output(entries, patch);
+    const spy = vi.spyOn(Buffer.prototype, "indexOf");
+    let scanned = 0;
+    try {
+      assert.equal(DiffParser.parse(value, false).files.length, count);
+      scanned = spy.mock.calls.reduce((sum: number, [needle, from]: readonly unknown[], index: number): number => {
+        const searched: unknown = spy.mock.contexts[index];
+        const result = spy.mock.results[index];
+        const at: number = result?.type === "return" && typeof result.value === "number" ? result.value : -1;
+        const start: number = typeof from === "number" ? from : 0;
+        const length: number = searched instanceof Uint8Array ? searched.length : 0;
+        const size: number = typeof needle === "string" || needle instanceof Uint8Array ? needle.length : 1;
+        return sum + (at < 0 ? length - start : at - start + size);
+      }, 0);
+    } finally {
+      spy.mockRestore();
+    }
+
+    assert.ok(scanned < 8 * value.length, `scanned ${scanned} bytes of ${value.length}`);
   });
 
   test("reads a cut output, leaving out what it lost and marking the last file it keeps", () => {

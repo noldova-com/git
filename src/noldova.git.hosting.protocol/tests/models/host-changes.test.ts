@@ -26,6 +26,25 @@ describe("HostChanges", () => {
     assert.deepEqual([empty.additions, empty.deletions, empty.changedFiles, empty.headCommit], [0, 0, 0, longCommit]);
   });
 
+  it("marks changes a host doesn't count, with zero counts, writes that only for them, and returns them as JSON that reads back the same", () => {
+    const uncounted: HostChanges = HostChanges.uncounted("feature/readme", "main", commit);
+
+    assert.deepEqual([uncounted.isCounted, changes.isCounted, uncounted.additions, uncounted.deletions, uncounted.changedFiles], [false, true, 0, 0, 0]);
+    assert.deepEqual(uncounted.toJson(),
+      { additions: 0, deletions: 0, changedFiles: 0, headBranch: "feature/readme", baseBranch: "main", headCommit: commit, isCounted: false });
+    assert.deepEqual(changes.toJson(), { additions: 12, deletions: 3, changedFiles: 2, headBranch: "feature/readme", baseBranch: "main", headCommit: commit });
+    assert.deepEqual(HostChanges.fromJson(uncounted.toJson()), uncounted);
+    assert.deepEqual(HostChanges.fromJson({ ...changes.toJson(), isCounted: true }), changes);
+  });
+
+  it("refuses counts above zero for changes the host doesn't count, naming the flag", () => {
+    assert.throws(() => new HostChanges(1, 0, 0, "feature/readme", "main", commit, undefined, false),
+      { name: "HostingArgumentException", parameterName: "isCounted", message: "The argument isCounted is invalid: expected zero counts when the host doesn't count them." });
+    assert.throws(() => new HostChanges(0, 0, 1, "feature/readme", "main", commit, undefined, false), { name: "HostingArgumentException", parameterName: "isCounted" });
+    assert.throws(() => HostChanges.fromJson({ ...changes.toJson(), isCounted: false }, "$.changes"), { name: "HostingFieldException", field: "$.changes.isCounted" });
+    assert.throws(() => HostChanges.fromJson({ ...changes.toJson(), deletions: null }), { name: "JsonException", path: "$.deletions" });
+  });
+
   it("refuses counts below zero or not whole, naming the parameter", () => {
     assert.throws(() => new HostChanges(-1, 0, 0, "feature/readme", "main", commit), HostingArgumentException);
     assert.throws(() => new HostChanges(-1, 0, 0, "feature/readme", "main", commit),

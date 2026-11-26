@@ -10,11 +10,18 @@ import assert from "node:assert/strict";
 
 import { describe, test } from "vitest";
 
-import { ConflictKind, FileChange, FileState, LineKind, OperationKind } from "@noldova/git.protocol";
+import { ConflictKind, FileChange, FileState, LineKind, OperationKind, SigningFormat, UndoMode } from "@noldova/git.protocol";
 
+import { TreeWatch } from "../src/enums/tree-watch.ts";
+import { GitVersion } from "../src/models/git-version.ts";
+import { OperationHead } from "../src/models/operation-head.ts";
 import { Resources } from "../src/resources.ts";
 
 describe("Resources", () => {
+  test("watches a whole worktree on Windows and macOS, each folder on Linux, and none on a system it names no watch for", () => {
+    assert.deepEqual(["win32", "darwin", "linux", "aix"].map(t => Resources.treeWatchOf(t)), [TreeWatch.Whole, TreeWatch.Whole, TreeWatch.Folders, TreeWatch.None]);
+  });
+
   test("hold the texts people read", () => {
     assert.equal(Resources.indexLocked, "Another process holds the repository's index.lock. Let it finish, then try again.");
     assert.equal(Resources.outputLimitInvalid, "The output limit must be a whole number of bytes above zero.");
@@ -22,6 +29,7 @@ describe("Resources", () => {
     assert.equal(Resources.lineCountsPart, "line counts");
     assert.equal(Resources.commitsPart, "commits");
     assert.equal(Resources.worktreesPart, "worktrees");
+    assert.equal(Resources.refsPart, "refs");
     assert.equal(Resources.gitTooOld, "The Git module needs git 2.39 or later.");
     assert.equal(Resources.worktreeListTooLarge, "The repository's worktree list is longer than the module reads.");
     assert.equal(Resources.changesTooLarge, "The worktree has more changes than the module reads, so it can't ask to remove it.");
@@ -43,6 +51,7 @@ describe("Resources", () => {
     assert.equal(Resources.requestExpired, "Nobody answered the request in time, so nothing ran.");
     assert.equal(Resources.requestWithdrawn, "The call was cancelled before the person answered, so nothing ran.");
     assert.equal(Resources.requestTooLarge, "The write is too large for a request to show exactly, so it wasn't asked and nothing ran.");
+    assert.equal(Resources.commitDuringOperation, "A merge, rebase, cherry-pick or revert is in progress, so an agent's commit isn't asked: git would take its author and parents from the operation. The person finishes it in the Git view, or aborts it.");
     assert.equal(Resources.switchDuringOperation, "A merge, rebase, cherry-pick or revert is in progress, so the module doesn't switch branches. Finish or abort it first.");
     assert.equal(Resources.changesLabel, "Changes");
     assert.equal(Resources.commitConflicts, "Some files still have conflicts. Resolve them and stage them before committing.");
@@ -75,7 +84,7 @@ describe("Resources", () => {
     assert.equal(Resources.pullNoUpstream, "This branch has no upstream to pull from, or its upstream is gone. Publish it first.");
     assert.equal(Resources.pullConflicts, "Finish the merge or other operation in progress, and resolve and stage its conflicts, before pulling.");
     assert.equal(Resources.pullDiverged,
-      "This branch and its upstream each have commits the other doesn't, so a pull can't fast-forward it. Merge or rebase it in your editor or a terminal.");
+      "This branch and its upstream each have commits the other doesn't, so a pull can't fast-forward it. Merge or rebase it: in History, drag the upstream onto the branch.");
     assert.equal(Resources.filterNotSwitchable, "The repository's configuration names a filter whose name the module can't switch off, so it doesn't read the folder.");
   });
 
@@ -113,11 +122,16 @@ describe("Resources", () => {
     assert.equal(Resources.formatLockedElsewhere("/w/1f"), "Another tool locked the worktree at /w/1f, so the module leaves it alone.");
     assert.equal(Resources.formatNotOurs("/w/1f"), "Left alone the worktree at /w/1f, which the module didn't make.");
     assert.equal(Resources.formatReconcileFailed("/w/1f", "Error: gone"), "Couldn't check /w/1f at activation: Error: gone");
+    assert.equal(Resources.formatPushUpstreamMismatch("feat", "origin/main"), "feat tracks origin/main, a branch of another name, and a push only goes to a branch of the same name. Set its upstream to one, or push it from a terminal.");
     assert.equal(Resources.formatSwitchTitle("main", "next"), "Switch from main to next");
     assert.equal(Resources.formatSwitchTitle(null, "next"), "Switch from a detached HEAD to next");
-    assert.equal(Resources.formatUnstagedStay(0), "There are no unstaged changes.");
-    assert.equal(Resources.formatUnstagedStay(1), "Your 1 unstaged change stays in the folder. Git refuses the switch if one of them would be overwritten.");
-    assert.equal(Resources.formatUnstagedStay(3), "Your 3 unstaged changes stay in the folder. Git refuses the switch if one of them would be overwritten.");
+    assert.equal(Resources.formatSwitchNewTitle("main", "feature", "origin/feature"), "Switch from main to feature, a new branch tracking origin/feature");
+    assert.equal(Resources.formatSwitchNewTitle(null, "feature", "upstream/feature"), "Switch from a detached HEAD to feature, a new branch tracking upstream/feature");
+    assert.equal(Resources.formatRemoteBranchRef("origin", "feature/a"), "refs/remotes/origin/feature/a");
+    assert.equal(Resources.formatUnstagedStay(0, false), "There are no unstaged changes.");
+    assert.equal(Resources.formatUnstagedStay(1, false), "Your 1 unstaged change stays in the folder. Git refuses the switch if one of them would be overwritten.");
+    assert.equal(Resources.formatUnstagedStay(3, false), "Your 3 unstaged changes stay in the folder. Git refuses the switch if one of them would be overwritten.");
+    assert.equal(Resources.formatUnstagedStay(10_000, true), "Your unstaged changes stay in the folder: 10000 unstaged changes and maybe more, since the status was cut short. Git refuses the switch if one of them would be overwritten.");
     assert.equal(Resources.formatChangesInTheWay(["a.txt", "b.txt"], 2), "Switching would overwrite your changes to a.txt, b.txt, so git didn't switch. Commit or stash them first.");
     assert.equal(Resources.formatChangesInTheWay(["a.txt"], 2), "Switching would overwrite your changes to a.txt and 1 other, so git didn't switch. Commit or stash them first.");
     assert.equal(Resources.formatChangesInTheWay(["a.txt"], 4), "Switching would overwrite your changes to a.txt and 3 others, so git didn't switch. Commit or stash them first.");
@@ -130,13 +144,15 @@ describe("Resources", () => {
     assert.equal(Resources.formatCreateBranchTitle("feature"), "Create the branch feature and switch to it");
     assert.equal(Resources.formatCommitTitle(1, "main"), "Commit 1 file to main");
     assert.equal(Resources.formatCommitTitle(2, null), "Commit 2 files on a detached HEAD");
+    assert.equal(Resources.formatAmendTitle(1, "main"), "Amend the last commit on main, adding 1 file");
+    assert.equal(Resources.formatAmendTitle(2, null), "Amend the last commit on a detached HEAD, adding 2 files");
     assert.equal(Resources.formatAuthor("Ann <ann@example.invalid>"), "Ann <ann@example.invalid> (from your Git settings)");
     assert.equal(Resources.formatPushTitle(1, "origin", "main"), "Push 1 commit to origin/main");
     assert.equal(Resources.formatPushTitle(2, "nas", "notes-sync"), "Push 2 commits to nas/notes-sync");
-    assert.equal(Resources.formatPushBranch("main", "main", true, false), "main, the repository's default branch");
-    assert.equal(Resources.formatPushBranch("local", "main", true, true), "local to main, the repository's default branch");
-    assert.equal(Resources.formatPushBranch("feature", "feature", false, true), "feature (made by this teammate)");
-    assert.equal(Resources.formatPushBranch("feature", "feature", false, false), "feature");
+    assert.equal(Resources.formatPushBranch("main", true, false), "main, the repository's default branch");
+    assert.equal(Resources.formatPushBranch("main", true, true), "main, the repository's default branch");
+    assert.equal(Resources.formatPushBranch("feature", false, true), "feature (made by this teammate)");
+    assert.equal(Resources.formatPushBranch("feature", false, false), "feature");
     assert.equal(Resources.formatMoreCommits(1), "…and 1 more commit");
     assert.equal(Resources.formatMoreCommits(5), "…and 5 more commits");
   });
@@ -152,6 +168,14 @@ describe("Resources", () => {
     assert.equal(Resources.hookStartLength, 2);
     assert.equal(Resources.hexEncoding, "hex");
     assert.equal(Resources.base64Encoding, "base64");
+    assert.deepEqual([Resources.gravatarAddress, Resources.gravatarSizeParameter, Resources.gravatarSize, Resources.gravatarDefaultParameter, Resources.gravatarNoDefault],
+      ["https://www.gravatar.com/avatar/", "s", "64", "d", "404"]);
+    assert.deepEqual([Resources.gravatarAccept, Resources.gravatarTypes, Resources.gravatarUserAgent, Resources.gravatarDeadline, Resources.maximumGravatarBytes,
+      Resources.gravatarCacheSize], ["image/png, image/jpeg, image/gif, image/webp", ["image/png", "image/jpeg", "image/gif", "image/webp"], "Noldova-Git", 5_000, 65_536, 500]);
+    assert.deepEqual([Resources.acceptHeader, Resources.userAgentHeader, Resources.contentTypeHeader, Resources.mediaTypeParameterSeparator, Resources.refuseRedirect,
+      Resources.notFoundStatus], ["Accept", "User-Agent", "Content-Type", ";", "error", 404]);
+    assert.deepEqual([Resources.formatGravatarRefused(500), Resources.formatGravatarDropped("why"), Resources.formatDataAddress("image/png", "AQID")],
+      ["Gravatar answered 500", "A Gravatar picture isn't shown: why.", "data:image/png;base64,AQID"]);
     assert.equal(Resources.gitReadMilliseconds, 30_000);
     assert.equal(Resources.headRevision, "HEAD");
     assert.equal(Resources.commitPeel, "^{commit}");
@@ -175,6 +199,12 @@ describe("Resources", () => {
     assert.deepEqual(Resources.worktreeUnlockArguments, ["worktree", "unlock"]);
     assert.deepEqual(Resources.worktreeRemoveArguments, ["worktree", "remove", "--force"]);
     assert.deepEqual(Resources.deleteBranchArguments, ["branch", "-d"]);
+    assert.deepEqual([Resources.renameBranchArguments, Resources.createTagArguments, Resources.deleteTagArguments, Resources.updateRefCommand, Resources.noOldValue, Resources.formatTagRef("v1")],
+      [["branch", "--move"], ["update-ref"], ["update-ref", "-d"], "update-ref", "", "refs/tags/v1"]);
+    assert.deepEqual([Resources.applyCachedArguments, Resources.reverseOption, Resources.standardInput, Resources.applyCommand, Resources.formatHunkHeader("3", 2, "4", 1)],
+      [["apply", "--cached", "--recount", "--whitespace=nowarn"], "--reverse", "-", "apply", "@@ -3,2 +4,1 @@\n"]);
+    assert.deepEqual([[...Resources.patchStartMark], [...Resources.firstHunkMark], Resources.oldFileMark, Resources.newFileMark, Resources.addedByte, Resources.removedByte],
+      [[0, ...Buffer.from("diff --git ")], [...Buffer.from("\n@@ -")], "--- ", "+++ ", 0x2b, 0x2d]);
     assert.deepEqual(Resources.readUpstreamArguments, ["for-each-ref", "--format=%(upstream)"]);
     assert.deepEqual(Resources.isAncestorArguments, ["merge-base", "--is-ancestor"]);
     assert.equal(Resources.notAncestorExitCode, 1);
@@ -197,10 +227,20 @@ describe("Resources", () => {
     assert.equal(Resources.gitCommandLength, 2);
     assert.deepEqual(Resources.zeroIdPattern, /^0+$/v);
     assert.equal(Resources.branchesReadBytes, 8 * 1024 * 1024);
-    assert.deepEqual(Resources.branchHeadsArguments, ["for-each-ref", "--format=%(refname)%00", "refs/heads"]);
+    assert.deepEqual(Resources.branchHeadsArguments, ["for-each-ref", "--format=%(refname)%09%(objectname)%09%(committerdate:iso-strict)%09%(committerdate:unix)%09%(upstream:track,nobracket)%00",
+      "refs/heads"]);
+    assert.equal(Resources.trackSeparator, "\t");
+    assert.deepEqual([Resources.aheadPattern.exec("ahead 3, behind 2")?.[1], Resources.behindPattern.exec("ahead 3, behind 2")?.[1]], ["3", "2"]);
     assert.deepEqual(Resources.currentBranchArguments, ["symbolic-ref", "--quiet", "HEAD"]);
     assert.deepEqual(Resources.remotesArguments, ["remote"]);
     assert.deepEqual(Resources.remoteHeadsArguments, ["for-each-ref", "--format=%(refname)%00", "refs/remotes"]);
+    assert.deepEqual(Resources.remoteTracksArguments, ["for-each-ref", "--format=%(refname)%09%(ahead-behind:HEAD)%00", "refs/remotes"]);
+    assert.deepEqual(Resources.headCommitCheckArguments, ["rev-parse", "--verify", "--quiet", "HEAD"]);
+    assert.equal(Resources.noCommitExitCode, 1);
+    assert.equal(Resources.revParseCommand, "rev-parse");
+    assert.deepEqual(Resources.aheadBehindVersion, new GitVersion(2, 41));
+    assert.deepEqual([Resources.remoteTrackPattern.exec("refs/remotes/origin/a/b\t3 12")?.slice(1), Resources.remoteTrackPattern.exec("refs/remotes/origin/t")?.slice(1),
+      Resources.remoteTrackPattern.exec("refs/remotes/origin/a\t3")], [["origin/a/b", "3", "12"], ["origin/t", undefined, undefined], null]);
     assert.equal(Resources.forEachRefCommand, "for-each-ref");
     assert.equal(Resources.remoteCommand, "remote");
     assert.equal(Resources.remoteUrlPart, "a remote URL");
@@ -231,6 +271,8 @@ describe("Resources", () => {
     assert.deepEqual(Resources.watchedGitFiles, ["HEAD", "index"]);
     assert.deepEqual(Resources.branchRefsFolder, ["refs", "heads"]);
     assert.equal(Resources.packedRefsFile, "packed-refs");
+    assert.deepEqual([Resources.reftableFolder, Resources.reftableListFile, Resources.reftableStorage], ["reftable", "tables.list", "reftable"]);
+    assert.deepEqual(Resources.refStorageArguments, ["config", "--get", "extensions.refStorage"]);
     assert.equal(Resources.lockExtension, ".lock");
     assert.equal(Resources.watchCookiePrefix, "noldova-watch-");
     assert.equal(Resources.digestAlgorithm, "sha256");
@@ -262,8 +304,13 @@ describe("Resources", () => {
     assert.deepEqual(Resources.submoduleRecurseArguments, ["config", "--type=bool", "--get", "submodule.recurse"]);
     assert.equal(Resources.configTrue, "true");
     assert.equal(Resources.configNotFoundExitCode, 1);
+    assert.deepEqual(Resources.commitSignsArguments, ["config", "--type=bool", "--get", "commit.gpgsign"]);
+    assert.deepEqual(Resources.signingFormatArguments, ["config", "--get", "gpg.format"]);
+    assert.deepEqual(["ssh\n".replace(Resources.configValueEnd, ""), "ssh\n\n".replace(Resources.configValueEnd, ""), " ssh ".replace(Resources.configValueEnd, "")], ["ssh", "ssh\n", " ssh "]);
+    assert.deepEqual(Resources.signingFormats, new Map([["openpgp", SigningFormat.OpenPgp], ["ssh", SigningFormat.Ssh], ["x509", SigningFormat.X509]]));
     assert.equal(Resources.filterSubmodulesLimit, 256);
     assert.deepEqual(Resources.repositoryConfigScopes, new Set(["local", "worktree"]));
+    assert.deepEqual(Resources.personConfigScopes, new Set(["global", "system"]));
     assert.equal(Resources.gitlinkPrefix, "160000 ");
     assert.equal(Resources.gitEntry, ".git");
     assert.equal(Resources.tab, "\t");
@@ -290,7 +337,7 @@ describe("Resources", () => {
     assert.equal(Resources.diffCommand, "diff");
     assert.equal(Resources.differentExitCode, 1);
     assert.equal(Resources.cachedOption, "--cached");
-    assert.deepEqual(Resources.diffSettings, ["-c", "core.quotePath=true", "-c", "diff.suppressBlankEmpty=false"]);
+    assert.deepEqual(Resources.diffSettings, ["-c", "core.quotePath=true", "-c", "diff.suppressBlankEmpty=false", "-c", "diff.autoRefreshIndex=true"]);
     assert.deepEqual(Resources.diffFormatOptions, ["-z", "--raw", "--patch", "--no-abbrev", "--no-color", "--no-ext-diff", "--no-textconv", "--src-prefix=a/", "--dst-prefix=b/", "--unified=3", "--ignore-submodules=none", "--submodule=short"]);
     assert.deepEqual(Resources.trackedDiffArguments, [...Resources.diffSettings, "--literal-pathspecs", "diff", ...Resources.diffFormatOptions, "--find-renames", "--no-relative"]);
     assert.deepEqual(Resources.untrackedDiffArguments, [...Resources.diffSettings, "diff", "--no-index", ...Resources.diffFormatOptions]);
@@ -303,7 +350,7 @@ describe("Resources", () => {
     assert.equal(Resources.backslashByte, 0x5c);
     assert.equal(Resources.deleteByte, 0x7f);
     assert.equal(Resources.combinedEntryPrefix, "::");
-    assert.deepEqual(Resources.rawEntryPattern, /^:(\d{6}) (\d{6}) ([0-9a-f]+) ([0-9a-f]+) ([A-Z])\d*$/v);
+    assert.deepEqual(Resources.rawEntryPattern, /^:(\d{6}) (\d{6}) ([0-9a-f]+) ([0-9a-f]+) ([A-Z])(\d*)$/v);
     assert.deepEqual(Resources.combinedEntryPattern, /^::(\d{6}) \d{6} (\d{6}) /v);
     assert.deepEqual(Resources.hunkPattern, /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@ ?(.*)$/sv);
     assert.deepEqual(Resources.subprojectPattern, /^Subproject commit ([0-9a-f]+)(?:-dirty)?$/v);
@@ -331,7 +378,7 @@ describe("Resources", () => {
     assert.deepEqual(Resources.removeCachedArguments, ["rm", "--cached", "-r", "--quiet", "--force"]);
     assert.deepEqual(Resources.stageArguments, ["add", "--all"]);
     assert.equal(Resources.addCommand, "add");
-    assert.deepEqual(Resources.createBranchArguments, ["switch", "--create"]);
+    assert.deepEqual(Resources.createBranchArguments, ["switch", "--no-track", "--create"]);
     assert.deepEqual(Resources.remoteBranchArguments, ["for-each-ref", "--count=1", "--format=%(refname)"]);
     assert.equal(Resources.pushCommand, "push");
     assert.equal(Resources.shownCommitsLimit, 100);
@@ -343,8 +390,9 @@ describe("Resources", () => {
     assert.deepEqual(Resources.credentialsPattern, /terminal prompts disabled|could not read (?:Username|Password)/v);
     assert.deepEqual(Resources.pushHooks, ["pre-push", Resources.referenceTransactionHook]);
     assert.deepEqual(Resources.pushUrlArguments, ["remote", "get-url", "--push", "--"]);
+    assert.deepEqual(Resources.remoteUrlArguments, ["remote", "get-url", "--"]);
     assert.deepEqual(Resources.countCommitsArguments, ["rev-list", "--count", "HEAD"]);
-    assert.deepEqual(Resources.pushArguments, ["push", "--porcelain", "--no-follow-tags", "--recurse-submodules=no", "--"]);
+    assert.deepEqual(Resources.pushOptions, ["push", "--porcelain", "--no-follow-tags", "--recurse-submodules=no"]);
     assert.deepEqual(Resources.setConfigArguments, ["config", "--"]);
     assert.deepEqual(Resources.defaultBranchArguments, ["symbolic-ref", "--quiet", "--short"]);
     assert.deepEqual(Resources.pullHooks, ["post-merge", Resources.postIndexChangeHook, Resources.referenceTransactionHook]);
@@ -365,14 +413,19 @@ describe("Resources", () => {
     assert.equal(Resources.lineCountFileBytes, 1024 * 1024);
     assert.equal(Resources.lineCountTotalBytes, 32 * 1024 * 1024);
     assert.deepEqual(Resources.missingFileCodes, ["ENOENT", "ENOTDIR"]);
+    assert.deepEqual([Resources.formatStashBaseArguments("abc"), Resources.formatStashUntrackedParentArguments("abc"), Resources.formatStashUntrackedArguments("abc")],
+      [["rev-parse", "--verify", "--quiet", "abc^1"], ["rev-parse", "--verify", "--quiet", "abc^3"], ["ls-tree", "-r", "--name-only", "-z", "abc^3"]]);
     assert.deepEqual(Resources.unwritableFileCodes, ["EACCES", "EPERM", "EROFS", "ENOENT"]);
     assert.deepEqual(Resources.rebaseFolders, ["rebase-merge", "rebase-apply"]);
     assert.equal(Resources.headNameFile, "head-name");
     assert.equal(Resources.mergeMessageFile, "MERGE_MSG");
-    assert.deepEqual(Resources.operationHeads, [["MERGE_HEAD", OperationKind.Merge], ["CHERRY_PICK_HEAD", OperationKind.CherryPick], ["REVERT_HEAD", OperationKind.Revert]]);
-    assert.deepEqual(Resources.logArguments, ["log", "-z", "--no-color", "--no-show-signature", "--no-notes", "--encoding=UTF-8", "--format=%H%x00%P%x00%an%x00%aI%x00%s"]);
+    assert.deepEqual(Resources.operationHeads, [new OperationHead("MERGE_HEAD", OperationKind.Merge), new OperationHead("CHERRY_PICK_HEAD", OperationKind.CherryPick),
+      new OperationHead("REVERT_HEAD", OperationKind.Revert)]);
+    assert.deepEqual(Resources.logArguments, ["log", "-z", "--no-color", "--no-show-signature", "--no-notes", "--encoding=UTF-8", "--format=%H%x00%P%x00%an%x00%aI%x00%at%x00%s"]);
     assert.equal(Resources.logCommand, "log");
-    assert.equal(Resources.logFieldCount, 5);
+    assert.equal(Resources.logFieldCount, 6);
+    assert.deepEqual([Resources.offsetDatePattern, Resources.epochSecondsPattern, Resources.millisecondsPerSecond],
+      [/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+\-]\d{2}:\d{2}$/v, /^\d{1,11}$/v, 1000]);
     assert.equal(Resources.revisionMissingExitCode, 1);
     assert.deepEqual(Resources.controlPattern, /\p{Cc}/gv);
     assert.equal(Resources.replacementCharacter, "\u{fffd}");
@@ -384,7 +437,7 @@ describe("Resources", () => {
     assert.deepEqual(Resources.versionArguments, ["version"]);
     assert.deepEqual(Resources.versionPattern, /^git version (\d+)\.(\d+)/v);
     assert.deepEqual(Resources.reportedVersionPattern, /^git version (\d{1,4}\.\d{1,4}(?:\.[0-9A-Za-z]{1,16}){0,4})(?:\s|$)/v);
-    assert.deepEqual(Resources.oldestGitVersion, [2, 39]);
+    assert.deepEqual(Resources.oldestGitVersion, new GitVersion(2, 39));
     assert.equal(Resources.indexFile, "index");
     assert.equal(Resources.missingFingerprint, "\0missing");
     assert.equal(Resources.statusHeader, "#");
@@ -414,6 +467,7 @@ describe("Resources", () => {
     assert.equal(Resources.aheadBehindCountsPart, "ahead and behind counts");
     assert.equal(Resources.statusRefusedValuesPart, "values the status model refuses");
     assert.deepEqual(Resources.userinfoPattern, /(?<=[A-Za-z][A-Za-z0-9+.\-]*:\/\/)[^\/\s@]*@/gv);
+    assert.deepEqual(Resources.scpUserinfoPattern, /(?<=^|[\s'"<\(])[^\/\s@:'"<\(]+@(?=[A-Za-z0-9.\-\[\]]+:)/gmv);
     assert.equal(Resources.errorsOutputBytes, 64 * 1024);
     assert.equal(Resources.gitFatalExitCode, 128);
     assert.equal(Resources.permissionTitleLimit, 200);
@@ -438,7 +492,9 @@ describe("Resources", () => {
     assert.deepEqual(Resources.edgeSlashesPattern, /^\/+|\/+$/gv);
     assert.equal(Resources.pathBatchBytes, 24_000);
     assert.equal(Resources.pathQuotingCost, 3);
-    assert.deepEqual(Resources.programEnvironment, { LC_ALL: "C", GIT_TERMINAL_PROMPT: "0", GH_PROMPT_DISABLED: "1", GCM_INTERACTIVE: "never", GIT_PAGER: "cat", GIT_LITERAL_PATHSPECS: "1" });
+    assert.deepEqual(Resources.programEnvironment, { LC_ALL: "C", GIT_TERMINAL_PROMPT: "0", GH_PROMPT_DISABLED: "1", GCM_INTERACTIVE: "never", GIT_PAGER: "cat" });
+    assert.deepEqual(Resources.readEnvironment, { LC_ALL: "C", GIT_TERMINAL_PROMPT: "0", GH_PROMPT_DISABLED: "1", GCM_INTERACTIVE: "never", GIT_PAGER: "cat", GIT_LITERAL_PATHSPECS: "1" });
+    assert.equal(Resources.literalPathMagic, ":(literal)");
     assert.deepEqual(Resources.inheritedEnvironment, ["HOME", "HOMEDRIVE", "HOMEPATH", "APPDATA", "LOCALAPPDATA", "XDG_CONFIG_HOME", "SSH_AUTH_SOCK", "DBUS_SESSION_BUS_ADDRESS", "GH_CONFIG_DIR", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "no_proxy"]);
     assert.equal(Resources.gitProgram, "git");
     assert.equal(Resources.ghProgram, "gh");
@@ -480,6 +536,8 @@ describe("Resources", () => {
     assert.deepEqual(Resources.formatNotOnRemote("origin"), ["--not", "--remotes=origin"]);
     assert.equal(Resources.formatExcludedRemoteRef("origin/main"), "^refs/remotes/origin/main");
     assert.equal(Resources.formatRemoteHeadRef("origin"), "refs/remotes/origin/HEAD");
+    assert.deepEqual(Resources.formatMergedBranchesArguments("refs/remotes/origin/HEAD"), ["for-each-ref", "--format=%(refname)%00",
+      "--merged=refs/remotes/origin/HEAD", "refs/heads"]);
     assert.equal(Resources.formatCommitLine("1f2e", "Fix it"), "1f2e Fix it");
     assert.equal(Resources.formatFingerprint(12n, 3n, 4n, 33188n), "\x0012:3:4:33188");
     assert.equal(Resources.formatBindingResource("git.folder"), "binding:git.folder");
@@ -490,5 +548,49 @@ describe("Resources", () => {
     assert.equal(Resources.formatLowerFirst("IndexLocked"), "indexLocked");
     assert.equal(Resources.formatCutOutput("x".repeat(Resources.toolOutputCharacters + 1)), `${"x".repeat(Resources.toolOutputCharacters)}${Resources.outputCut}`);
     assert.equal(Resources.formatEllipsized("abcdef", 3), "abc…");
+  });
+
+  test("format the journal's undo: the ref lines a request shows, the update-ref commands, the reset options and the lease", () => {
+    const a = "0123456789abcdef0123456789abcdef01234567";
+    const b = "89abcdef0123456789abcdef0123456789abcdef";
+
+    assert.equal(Resources.formatRefMoveLine("refs/heads/main", a, b), "refs/heads/main 0123456 to 89abcde");
+    assert.equal(Resources.formatRefMoveLine("refs/heads/new", null, b), "refs/heads/new none to 89abcde");
+    assert.equal(Resources.formatRefMoveLine("refs/tags/old", a, null), "refs/tags/old 0123456 to none");
+    assert.equal(Resources.formatCreateRefCommand("refs/tags/old", a), `create refs/tags/old ${a}
+`);
+    assert.equal(Resources.formatDeleteRefCommand("refs/heads/new", b), `delete refs/heads/new ${b}
+`);
+    assert.equal(Resources.formatUpdateRefCommand("HEAD", a, b), `update HEAD ${a} ${b}
+`);
+    assert.deepEqual([UndoMode.Refs, UndoMode.Mixed, UndoMode.Keep].map(t => Resources.resetOptionOf(t)), ["--soft", "--mixed", "--keep"]);
+    assert.equal(Resources.formatLeaseOption("main", a), `--force-with-lease=refs/heads/main:${a}`);
+    assert.equal(Resources.formatForcePushTitle(2, "origin", "main"), "Force push 2 commits to origin/main");
+  });
+
+  test("hold and format the conflict screen's texts, git arguments and choices", () => {
+    assert.equal(Resources.conflictGone, "That file is no longer in conflict, so there is nothing to read or resolve. Read the status again.");
+    assert.equal(Resources.resolutionNotOffered, "That choice isn't offered for this kind of conflict. Nothing changed.");
+    assert.equal(Resources.resolutionMarkersLeft, "The resolved text still has conflict marker lines. Resolve every conflict first. Nothing changed.");
+    assert.equal(Resources.noOperation, "No merge, rebase, cherry-pick or revert is in progress, so there is nothing to continue or abort.");
+    assert.equal(Resources.fileOutsideRepository, "The file's folder leads outside the repository, so the module doesn't write it. Nothing changed.");
+    assert.deepEqual(Resources.rerereSettings, ["-c", "rerere.enabled=true"]);
+    assert.deepEqual(Resources.acceptEditorSettings, ["-c", "core.editor=true"]);
+    assert.deepEqual(Resources.unmergedArguments, ["--literal-pathspecs", "ls-files", "-z", "--stage", "--unmerged"]);
+    assert.deepEqual(Resources.mergeFileArguments, ["merge-file", "-p", "--zdiff3"]);
+    assert.deepEqual(Resources.markerCheckArguments, ["diff", "--check", "--no-color", "--no-ext-diff"]);
+    assert.deepEqual([Resources.conflictTextBytes, Resources.mergedTextBytes, Resources.binaryProbeBytes], [4 * 1024 * 1024, 16 * 1024 * 1024, 8000]);
+    assert.deepEqual([...Resources.stageKinds], [["123", ConflictKind.BothModified], ["23", ConflictKind.BothAdded], ["1", ConflictKind.BothDeleted],
+      ["2", ConflictKind.AddedByUs], ["3", ConflictKind.AddedByThem], ["13", ConflictKind.DeletedByUs], ["12", ConflictKind.DeletedByThem]]);
+    assert.deepEqual(Resources.offeredResolutions[ConflictKind.BothDeleted], ["Delete"]);
+    assert.deepEqual(Resources.offeredResolutions[ConflictKind.DeletedByUs], ["Theirs", "Delete"]);
+    assert.deepEqual(Resources.operationCommands, { [OperationKind.Merge]: "merge", [OperationKind.CherryPick]: "cherry-pick", [OperationKind.Revert]: "revert",
+      [OperationKind.Rebase]: "rebase" });
+    assert.ok(Resources.unmergedRecordPattern.test("100644 0123456789012345678901234567890123456789 2\ta b.txt"));
+    assert.equal(Resources.formatPointsAt("abc"), "--points-at=abc");
+    assert.deepEqual([Resources.formatOntoLabel("main"), Resources.formatYourCommitLabel("abc1234"), Resources.formatPickedLabel("abc1234"),
+      Resources.formatRevertedLabel("abc1234")], ["onto main", "your commit abc1234", "commit abc1234", "revert of abc1234"]);
+    assert.deepEqual([Resources.formatResolveTitle("a.txt", "deleting it"), Resources.formatContinueTitle("rebase"), Resources.formatAbortTitle("merge")],
+      ["Resolve a.txt with deleting it", "Continue the rebase", "Abort the merge"]);
   });
 });

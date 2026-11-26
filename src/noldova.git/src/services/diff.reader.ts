@@ -6,10 +6,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { DiffFile, type DiffScope, DiffScopeKind, FileChange, type GitDiff, UntrustedSource } from "@noldova/git.protocol";
+import { DiffFile, type DiffScope, DiffScopeKind, DiffTotals, FileChange, GitDiff, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
 import type { GitFailureException } from "../exceptions/git-failure.exception.ts";
+import { UnreadableOutputException } from "../exceptions/unreadable-output.exception.ts";
 import { UnsafeRepositoryException } from "../exceptions/unsafe-repository.exception.ts";
 import { DiffBudget } from "../models/diff-budget.ts";
 import { GitArguments } from "../models/git-arguments.ts";
@@ -21,6 +22,7 @@ import { ProgramRun } from "../models/program-run.ts";
 import { Resources } from "../resources.ts";
 import { DiffParser } from "./diff.parser.ts";
 import { FilterOptionsReader } from "./filter-options.reader.ts";
+import { LineCountsReader } from "./line-counts.reader.ts";
 import { LogReader } from "./log.reader.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
@@ -46,7 +48,28 @@ export class DiffReader {
     budget.addParsed(DiffParser.parse(result.output, result.isTruncated));
     if (scope.kind === DiffScopeKind.Worktree)
       await this.addUntrackedAsync(budget, worktree, paths, filters, signal);
-    return budget.toDiff();
+    const diff: GitDiff = budget.toDiff();
+    if (!diff.truncated || scope.kind === DiffScopeKind.Worktree)
+      return diff;
+    return new GitDiff(diff.files, diff.totalBytes, diff.omittedFiles, true, await this.countFilteredAsync(worktree, scope, paths, filters, signal));
+  }
+
+  public async countAsync(worktree: string, scope: DiffScope, signal?: AbortSignal): Promise<DiffTotals> {
+    const totals: DiffTotals | null = await this.countFilteredAsync(worktree, scope, [], await this.filters.readAsync(worktree, signal), signal);
+    if (totals === null)
+      throw new UnreadableOutputException(Resources.numstatCommand, Resources.lineCountsPart);
+    return totals;
+  }
+
+  private async countFilteredAsync(worktree: string, scope: DiffScope, paths: readonly string[], filters: readonly string[], signal?: AbortSignal)
+    : Promise<DiffTotals | null> {
+    const options = scope.kind === DiffScopeKind.Staged ? [...Resources.totalsDiffArguments, Resources.cachedOption] : Resources.totalsDiffArguments;
+    const revisions = scope.from === undefined || scope.to === undefined ? [] : [scope.from, scope.to];
+    const result = await this.runAsync(new GitArguments([...filters, ...options], revisions, paths), worktree, DiffReader.LIST_LIMITS, Resources.numstatCommand, signal);
+    if (result.isTruncated)
+      return null;
+    const counts = [...LineCountsReader.parse(result.output).values()];
+    return new DiffTotals(counts.length, counts.reduce((sum, t) => sum + (t?.added ?? 0), 0), counts.reduce((sum, t) => sum + (t?.removed ?? 0), 0));
   }
 
   private async addUntrackedAsync(budget: DiffBudget, worktree: string, paths: readonly string[], filters: readonly string[], signal?: AbortSignal): Promise<void> {

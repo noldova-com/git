@@ -1,0 +1,210 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (folder(); as path) {
+  @let writableStatus = switchable();
+  <nav class="panel" [attr.aria-label]="resources.repositoryLabel">
+    <div class="row head">
+      <span class="ms">{{ resources.folderIcon }}</span>
+      <div class="strong grow name">{{ resources.formatHistoryTitle(path) }}</div>
+      <button type="button" nol-icon-button class="fetch-all" [icon]="resources.syncIcon" [label]="resources.fetchAllLabel" [nolTooltip]="resources.fetchAllRemotesTitle"
+        [disabled]="writableStatus === null" (click)="writableStatus !== null && fetchAll(path, writableStatus)"></button>
+      <div class="small muted grow path" [title]="path">{{ path }}</div>
+    </div>
+    @if (failure(); as message) {
+      <p class="note error" role="alert">{{ message }}</p>
+    }
+    @let changesSelected = !showsLink() && !showsCommit();
+    @let historySelected = !showsLink() && showsCommit();
+    <button type="button" class="row changes" [class.sel]="changesSelected" [attr.aria-current]="changesSelected ? 'true' : null" (click)="showChanges()">
+      <span class="ms">{{ resources.changesIcon }}</span><span class="grow">{{ resources.changesLabel }}</span>
+      @if (changes() > 0) {
+        <span class="badge">{{ changes() }}</span>
+      }
+    </button>
+    <button type="button" class="row history" [class.sel]="historySelected" [attr.aria-current]="historySelected ? 'true' : null" (click)="showHistory(path)">
+      <span class="ms">{{ resources.historyIcon }}</span><span class="grow">{{ resources.historyLabel }}</span>
+    </button>
+    @for (link of links(); track link.key) {
+      <button type="button" class="row link" [class.sel]="link.isActive()" [attr.aria-current]="link.isActive() ? 'true' : null" (click)="link.open()">
+        <span class="ms">{{ link.icon }}</span><span class="grow">{{ link.label }}</span>
+      </button>
+    }
+
+    <div class="row heading section">
+      <button type="button" class="toggle" [attr.aria-expanded]="isOpen(resources.branchesLabel)" (click)="toggle(resources.branchesLabel)">
+        <span class="ms">{{ isOpen(resources.branchesLabel) ? resources.sectionOpenIcon : resources.sectionClosedIcon }}</span>
+        <span class="caps grow">{{ resources.branchesLabel }}</span>
+      </button>
+      <button type="button" nol-icon-button class="new-branch" [icon]="resources.createBranchIcon" [label]="resources.newBranchLabel" [nolTooltip]="resources.newBranchLabel"
+        [disabled]="writableStatus === null" (click)="writableStatus !== null && newBranchAsync(path, writableStatus)"></button>
+    </div>
+    @if (isOpen(resources.branchesLabel)) {
+      @if (isReading()) {
+        <div class="row reading" [style.padding-left.rem]="readingIndent"><nol-spinner [label]="resources.readingBranches" [isDelayed]="true" /></div>
+      }
+      @for (row of localRows(); track row.key) {
+        @if (row.isFolder) {
+          <button type="button" class="row" [style.padding-left.rem]="indentOf(row)" [title]="row.key.slice(resources.localTreeKey.length)" [attr.aria-expanded]="isOpen(row.key)" (click)="toggle(row.key)">
+            <span class="ms">{{ isOpen(row.key) ? resources.sectionOpenIcon : resources.sectionClosedIcon }}</span>
+            <span class="ms">{{ resources.folderIcon }}</span>
+            <span class="grow">{{ row.name }}</span>
+          </button>
+        } @else {
+          @let isCurrent = row.branch === current();
+          @if (renaming() === row.branch) {
+            <form class="row rename" [style.padding-left.rem]="indentOf(row)" (submit)="$event.preventDefault(); renameAsync(path, row.branch, newName())">
+              <input nol-text-field class="grow" type="text" autofocus name="newName" [attr.aria-label]="resources.formatRenameLabel(row.branch)"
+                [ngModel]="newName()" (ngModelChange)="newName.set($event)" (keydown.escape)="cancelRename()" (blur)="cancelRename()" />
+            </form>
+          } @else {
+          <button type="button" class="row" [class.sel]="isViewed(row.branch, false)" [style.padding-left.rem]="indentOf(row)" [title]="row.branch"
+            [disabled]="busy() && !isCurrent" (click)="view(path, row.branch, false)" (dblclick)="switchTo(path, row.branch)"
+            [nolContextMenuTriggerFor]="branchMenu">
+            @if (!isCurrent) {
+              <svg class="octicon" viewBox="0 0 16 16" aria-hidden="true"><path [attr.d]="resources.branchIconPath" /></svg>
+            } @else if (switching() === null) {
+              <span class="ms current">{{ resources.currentBranchIcon }}</span>
+            } @else {
+              <span class="ms current spin" role="status" [attr.aria-label]="resources.switchingLabel">{{ resources.switchingIcon }}</span>
+            }
+            <span class="grow" [class.strong]="isCurrent">{{ row.name }}</span>
+            @let counts = countsOf(row.branch, isCurrent);
+            @if (counts.ahead > 0) {
+              <span class="small count ahead" [title]="resources.formatAheadTitle(counts.ahead)"><span class="arrow" aria-hidden="true">{{ resources.aheadArrow }}</span>{{ counts.ahead }}</span>
+            }
+            @if (counts.behind > 0) {
+              <span class="small count behind" [title]="resources.formatBehindTitle(counts.behind)"><span class="arrow" aria-hidden="true">{{ resources.behindArrow }}</span>{{ counts.behind }}</span>
+            }
+          </button>
+          <ng-template #branchMenu>
+            @if (switchable(); as status) {
+              <nol-menu>
+                <button nol-menu-item [label]="resources.switchLabel" [icon]="resources.switchIcon" [disabled]="isCurrent" (triggered)="switchTo(path, row.branch)"></button>
+                <nol-menu-separator />
+                <button nol-menu-item [label]="resources.renameLabel" [icon]="resources.renameIcon" (triggered)="startRename(row.branch)"></button>
+                <button nol-menu-item [label]="resources.deleteLabel" [icon]="resources.deleteIcon" [disabled]="isCurrent" (triggered)="deleteBranch(path, row.branch, status)"></button>
+              </nol-menu>
+            }
+          </ng-template>
+          }
+        }
+      }
+    }
+
+    <nol-git-agents [folder]="path" />
+
+    @if (status()?.remote; as remote) {
+      <nol-git-pull-requests [folder]="path" [remote]="remote" [current]="current()" [canSwitch]="switchable() !== null" (switchTo)="switchTo(path, $event)" />
+    }
+
+    <div class="row heading">
+      <button type="button" class="toggle" [attr.aria-expanded]="isOpen(resources.remotesLabel)" (click)="toggle(resources.remotesLabel)">
+        <span class="ms">{{ isOpen(resources.remotesLabel) ? resources.sectionOpenIcon : resources.sectionClosedIcon }}</span>
+        <span class="caps grow">{{ resources.remotesLabel }}</span>
+      </button>
+      <span class="small muted">{{ remotes().join(", ") }}</span>
+    </div>
+    @if (isOpen(resources.remotesLabel)) {
+      @for (row of remoteRows(); track row.key) {
+        @if (row.isFolder) {
+          <button type="button" class="row" [style.padding-left.rem]="indentOf(row)" [title]="row.key" [attr.aria-expanded]="isOpen(row.key)" (click)="toggle(row.key)">
+            <span class="ms">{{ isOpen(row.key) ? resources.sectionOpenIcon : resources.sectionClosedIcon }}</span>
+            <span class="ms">{{ row.depth === 1 ? resources.remoteIcon : resources.folderIcon }}</span>
+            <span class="grow">{{ row.name }}</span>
+            @if (row.depth === 1) {
+              <span class="small muted">{{ row.count }}</span>
+            }
+          </button>
+        } @else {
+          <button type="button" class="row" [class.sel]="isViewed(row.branch, true)" [style.padding-left.rem]="indentOf(row)" [title]="row.key" (click)="view(path, row.branch, true)">
+            <svg class="octicon" viewBox="0 0 16 16" aria-hidden="true"><path [attr.d]="resources.branchIconPath" /></svg><span class="grow">{{ row.name }}</span>
+            @let remoteCounts = remoteCountsOf(row.branch);
+            @if (remoteCounts.ahead > 0) {
+              <span class="small count ahead" [title]="resources.formatRemoteAheadTitle(remoteCounts.ahead)"><span class="arrow" aria-hidden="true">{{ resources.aheadArrow }}</span>{{ remoteCounts.ahead }}</span>
+            }
+            @if (remoteCounts.behind > 0) {
+              <span class="small count behind" [title]="resources.formatRemoteBehindTitle(remoteCounts.behind)"><span class="arrow" aria-hidden="true">{{ resources.behindArrow }}</span>{{ remoteCounts.behind }}</span>
+            }
+          </button>
+        }
+      }
+    }
+
+    <div class="row heading">
+      <button type="button" class="toggle" [attr.aria-expanded]="isOpen(resources.tagsLabel)" (click)="toggle(resources.tagsLabel)">
+        <span class="ms">{{ isOpen(resources.tagsLabel) ? resources.sectionOpenIcon : resources.sectionClosedIcon }}</span>
+        <span class="caps grow">{{ resources.tagsLabel }}</span>
+      </button>
+      @if ((items()?.tags ?? []).length > 0) {
+        <span class="small muted">{{ (items()?.tags ?? []).length }}</span>
+      }
+    </div>
+    @if (isOpen(resources.tagsLabel)) {
+      @for (tag of items()?.tags ?? []; track tag.name) {
+        <button type="button" class="row nested" [class.sel]="isTagViewed(tag)" [attr.aria-current]="isTagViewed(tag) ? 'true' : null" [title]="tag.name"
+          (click)="viewTag(path, tag)" [nolContextMenuTriggerFor]="tagMenu"><span class="ms">{{ resources.tagIcon }}</span><span class="grow">{{ tag.name }}</span></button>
+        <ng-template #tagMenu>
+          @if (switchable(); as status) {
+            <nol-menu>
+              <button nol-menu-item [label]="resources.deleteLabel" [icon]="resources.deleteIcon" (triggered)="deleteTag(path, tag.name, status)"></button>
+            </nol-menu>
+          }
+        </ng-template>
+      }
+    }
+
+    <div class="row heading">
+      <button type="button" class="toggle" [attr.aria-expanded]="isOpen(resources.stashesLabel)" (click)="toggle(resources.stashesLabel)">
+        <span class="ms">{{ isOpen(resources.stashesLabel) ? resources.sectionOpenIcon : resources.sectionClosedIcon }}</span>
+        <span class="caps grow">{{ resources.stashesLabel }}</span>
+      </button>
+      @if ((items()?.stashes ?? []).length > 0) {
+        <span class="small muted">{{ (items()?.stashes ?? []).length }}</span>
+      }
+    </div>
+    @if (isOpen(resources.stashesLabel)) {
+      @for (stash of items()?.stashes ?? []; track stash.id) {
+        <div class="row nested" [title]="stash.message"><span class="ms">{{ resources.stashIcon }}</span><span class="grow">{{ stash.message }}</span></div>
+      }
+    }
+
+    <div class="row heading">
+      <button type="button" class="toggle" [attr.aria-expanded]="isOpen(resources.worktreesLabel)" (click)="toggle(resources.worktreesLabel)">
+        <span class="ms">{{ isOpen(resources.worktreesLabel) ? resources.sectionOpenIcon : resources.sectionClosedIcon }}</span>
+        <span class="caps grow">{{ resources.worktreesLabel }}</span>
+      </button>
+      @if (worktreeFolders().length > 0) {
+        <span class="small muted">{{ worktreeFolders().length }}</span>
+      }
+    </div>
+    @if (isOpen(resources.worktreesLabel)) {
+      @for (worktree of worktreeFolders(); track worktree) {
+        <div class="row nested" [title]="worktree"><span class="ms">{{ resources.worktreeIcon }}</span><span class="grow">{{ worktree }}</span></div>
+      }
+    }
+
+
+    <div class="row heading">
+      <button type="button" class="toggle" [attr.aria-expanded]="isOpen(resources.submodulesLabel)" (click)="toggle(resources.submodulesLabel)">
+        <span class="ms">{{ isOpen(resources.submodulesLabel) ? resources.sectionOpenIcon : resources.sectionClosedIcon }}</span>
+        <span class="caps grow">{{ resources.submodulesLabel }}</span>
+      </button>
+      @if ((items()?.submodules ?? []).length > 0) {
+        <span class="small muted">{{ (items()?.submodules ?? []).length }}</span>
+      }
+    </div>
+    @if (isOpen(resources.submodulesLabel)) {
+      @for (submodule of items()?.submodules ?? []; track submodule.path) {
+        <div class="row nested" [title]="submodule.path"><span class="ms">{{ resources.submoduleIcon }}</span><span class="grow">{{ submodule.path }}</span></div>
+      }
+    }
+  </nav>
+} @else {
+  <p class="note">{{ resources.noFolderText }}</p>
+}

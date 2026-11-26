@@ -1,0 +1,48 @@
+{
+  "name": "@noldova/git.azure-devops.window",
+  "version": "0.0.7",
+  "description": "The Azure DevOps module's window part: the account on Git's Accounts and hosts page, which signs in with a Microsoft account or a personal access token, the Git view's row with a branch's pull request and its checks, the pull request page and My work items.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/noldova-com/git.git",
+    "directory": "src/noldova.git.azure-devops.window"
+  },
+  "homepage": "https://github.com/noldova-com/git#readme",
+  "bugs": {
+    "url": "https://github.com/noldova-com/git/issues"
+  },
+  "exports": {
+    ".": "./src/api/index.ts",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src/**/*.js",
+    "src/**/*.js.map",
+    "src/**/*.d.ts",
+    "THIRD-PARTY-NOTICES.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "dependencies": {
+    "@angular/cdk": "22.3.0",
+    "@angular/common": "22.3.0",
+    "@angular/compiler": "22.3.0",
+    "@angular/core": "22.3.0",
+    "@angular/forms": "22.3.0",
+    "@angular/platform-browser": "22.3.0",
+    "@noldova/ui.components.angular": "0.0.35",
+    "@noldova/desktop.protocol": "0.0.17",
+    "@noldova/desktop.window": "0.0.17",
+    "rxjs": "7.8.2",
+    "tslib": "2.8.1"
+  },
+  "peerDependencies": {
+    "@noldova/context.core": ">=0.0.12 <0.1.0",
+    "@noldova/context.exceptions": ">=0.0.12 <0.1.0",
+    "@noldova/context.json": ">=0.0.12 <0.1.0"
+  }
+}

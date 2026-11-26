@@ -1,0 +1,57 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (failure(); as failure) {
+  <div class="notice" role="alert">
+    <span class="material-symbols-rounded notice-icon" aria-hidden="true">{{ resources.failureIcon }}</span>
+    <span class="notice-text">{{ failure }}</span>
+    <button type="button" nol-button [variant]="secondary" (click)="retry()">{{ resources.tryAgain }}</button>
+  </div>
+} @else if (isReading()) {
+  <div class="notice" role="status">
+    <nol-spinner />
+    <span class="notice-text">{{ resources.workItemsReading }}</span>
+  </div>
+} @else if (isMissing()) {
+  <div class="notice" role="status"><span class="notice-text">{{ resources.noWorkItemsPlace }}</span></div>
+} @else if (place(); as place) {
+  <div class="page">
+    <main class="list" [attr.aria-label]="resources.myWorkItemsTitle">
+      <header class="head">
+        <h1 class="title">{{ resources.myWorkItemsTitle }}</h1>
+        <span class="muted subtitle">{{ resources.formatWorkItemsSubtitle(place.project) }}</span>
+        <span class="filters">
+          @for (facet of resources.workItemFacets; track facet; let first = $first) {
+            <button type="button" class="chip filter" [class]="facet + '-menu'" [nolMenuTriggerFor]="facetMenu">
+              @if (first) {
+                <span class="material-symbols-rounded chip-icon" aria-hidden="true">{{ resources.filterIcon }}</span>
+              }
+              {{ chipOf(facet) }}
+            </button>
+            <ng-template #facetMenu>
+              <nol-menu [attr.aria-label]="resources.facetNames[facet]">
+                <button nol-menu-item [label]="resources.allValues" [checked]="filter().of(facet) === null" (triggered)="chooseValue(facet, null)"></button>
+                @for (value of choicesOf(facet); track value) {
+                  <button nol-menu-item [label]="value" [checked]="filter().of(facet) === value" (triggered)="chooseValue(facet, value)"></button>
+                }
+              </nol-menu>
+            </ng-template>
+          }
+        </span>
+        <button type="button" nol-button [variant]="secondary" class="new" (click)="newWorkItem(place)">
+          <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.newWorkItemIcon }}</span>{{ resources.newWorkItem }}
+        </button>
+      </header>
+      @if (isTruncated()) {
+        <p class="muted small capped">{{ resources.workItemsCapped }}</p>
+      }
+      <nol-git-azure-devops-work-item-table [rows]="rows()" [selected]="selected()" [label]="resources.myWorkItemsTitle"
+        [empty]="details().length > 0 ? resources.noMatchingWorkItems : resources.noMyWorkItems" (chosen)="choose(place, $event)" />
+    </main>
+  </div>
+}

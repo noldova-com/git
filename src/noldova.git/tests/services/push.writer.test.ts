@@ -17,9 +17,10 @@ import {
   RememberedPermissionStore, ShellDatabase, ShellMigrations, ToolDescriptor, ToolRegistry, ToolRisk, ToolSession
 } from "@noldova/desktop.runtime";
 import { FakeModuleLog } from "@noldova/desktop.runtime/testing";
-import { FailureCode, GitCode, GitStatus, StatusUpstream } from "@noldova/git.protocol";
+import { FailureCode, GitCode, GitStatus, StatusUpstream, UntrustedSource } from "@noldova/git.protocol";
 
 import { CredentialsNeededException } from "../../src/exceptions/credentials-needed.exception.ts";
+import { ForcePushNoUpstreamException } from "../../src/exceptions/force-push-no-upstream.exception.ts";
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import type { GitFailureException } from "../../src/exceptions/git-failure.exception.ts";
 import { HostKeyUnknownException } from "../../src/exceptions/host-key-unknown.exception.ts";
@@ -29,10 +30,11 @@ import { PushBehindException } from "../../src/exceptions/push-behind.exception.
 import { PushDetachedException } from "../../src/exceptions/push-detached.exception.ts";
 import { PushNoRemoteException } from "../../src/exceptions/push-no-remote.exception.ts";
 import { PushRejectedException } from "../../src/exceptions/push-rejected.exception.ts";
+import { PushRemoteAheadException } from "../../src/exceptions/push-remote-ahead.exception.ts";
+import { PushUpstreamMismatchException } from "../../src/exceptions/push-upstream-mismatch.exception.ts";
 import { UpstreamNotSetException } from "../../src/exceptions/upstream-not-set.exception.ts";
 import { ProgramResult } from "../../src/models/program-result.ts";
 import type { ProgramRun } from "../../src/models/program-run.ts";
-import type { RepositoryFolders } from "../../src/models/repository-folders.ts";
 import { GitVersionReader } from "../../src/services/git-version.reader.ts";
 import { HooksReader } from "../../src/services/hooks.reader.ts";
 import { PushWriter } from "../../src/services/push.writer.ts";
@@ -42,6 +44,7 @@ import { StatusReader } from "../../src/services/status.reader.ts";
 import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { FakeAnswerer } from "../fixtures/fake-answerer.fixture.ts";
+import { RepositoryState } from "../fixtures/repository-state.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
 
@@ -100,9 +103,9 @@ describe("PushWriter", () => {
     await cleanUps.runAsync();
   });
 
-  const readAsync = async (folder: string = repository.folder): Promise<[RepositoryFolders, GitStatus]> => {
+  const readAsync = async (folder: string = repository.folder): Promise<RepositoryState> => {
     const folders = await repositories.readAsync(folder);
-    return [folders, await statuses.readAsync(folders)];
+    return new RepositoryState(folders, await statuses.readAsync(folders));
   };
   const commitAsync = async (subject: string): Promise<string> => {
     await repository.runGitAsync(["commit", "--quiet", "--allow-empty", "-m", subject]);
@@ -119,7 +122,7 @@ describe("PushWriter", () => {
 
   test("refuses a detached HEAD, a branch with no remote or no commit, nothing to push, and an upstream ahead of the branch", async () => {
     const write = new PushWriter(runner, hooks, branches);
-    const [, status] = await readAsync();
+    const { status } = await readAsync();
     const variant = (changed: Partial<Pick<GitStatus, "branch" | "head" | "upstream" | "remote">>): GitStatus => {
       const next = { ...status, ...changed };
       return new GitStatus(next.branch, next.head, next.upstream, next.entries, next.truncated, next.fingerprint, next.operation, next.remote);
@@ -130,7 +133,7 @@ describe("PushWriter", () => {
     assert.throws(() => write.refuse(variant({ remote: null })), failsWith(PushNoRemoteException, FailureCode.Refused, null));
     assert.throws(() => write.refuse(variant({ head: null })), failsWith(NothingToPushException, FailureCode.Refused, null, "The branch has no commits that its upstream doesn't have."));
     assert.throws(() => write.refuse(status), failsWith(NothingToPushException, FailureCode.Refused, null, "The branch has no commits that its upstream doesn't have."));
-    assert.throws(() => write.refuse(upstream(1, 1, false)), failsWith(PushBehindException, FailureCode.Git, GitCode.PushRejected));
+    assert.throws(() => write.refuse(upstream(1, 1, false)), failsWith(PushBehindException, FailureCode.Git, GitCode.PushBehind));
     assert.doesNotThrow(() => write.refuse(upstream(1, 0, false)));
     assert.doesNotThrow(() => write.refuse(upstream(0, 0, true)));
     assert.doesNotThrow(() => write.refuse(variant({ upstream: null })));
@@ -140,7 +143,7 @@ describe("PushWriter", () => {
   test("publishes a branch whose upstream is a local branch under its own name, with the commits the remote has on no branch", async () => {
     await repository.runGitAsync(["switch", "--quiet", "--create", "tracker", "--track", "main"]);
     const own = await commitAsync("Own");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     const write = new PushWriter(runner, hooks, branches);
 
     assert.doesNotThrow(() => write.refuse(status));
@@ -152,7 +155,7 @@ describe("PushWriter", () => {
   test("asks an agent's push to the default branch at high risk with the push URL and the commits, never offering Always allow", async () => {
     const first = await commitAsync("First");
     const second = await commitAsync("Second");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
 
     assert.deepEqual(await new PushWriter(runner, hooks, branches).requestAsync(folders, status, call), {
       action: "git.push",
@@ -173,7 +176,7 @@ describe("PushWriter", () => {
   test("offers Always allow, at medium risk with its words, only for a branch the session made, publishing it under its own name", async () => {
     await repository.runGitAsync(["switch", "--quiet", "--create", "feature"]);
     const only = await commitAsync("Only");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     const write = new PushWriter(runner, hooks, branches);
 
     const theirs = await write.requestAsync(folders, status, call);
@@ -203,26 +206,32 @@ describe("PushWriter", () => {
     assert.deepEqual([elsewhere?.options, elsewhere?.risk, elsewhere?.labels], [once, ToolRisk.High, undefined]);
   });
 
-  test("offers Always allow for no branch the session made that goes to a remote branch of another name, and names the hooks that will run", async () => {
+  test("refuses a branch whose upstream on the remote has another name, for a person and an agent, and names the hooks that will run once it tracks its own name", async () => {
     await repository.runGitAsync(["push", "--quiet", "origin", "main:shared"]);
     await repository.runGitAsync(["fetch", "--quiet", "origin"]);
     await repository.runGitAsync(["switch", "--quiet", "--create", "mine", "--track", "origin/shared"]);
     await commitAsync("Mine");
     await hookAsync("pre-push");
-    const [folders, status] = await readAsync();
-    branches.add("session-1", folders.top, "mine");
+    const write = new PushWriter(runner, hooks, branches);
+    const { folders, status } = await readAsync();
+    const mismatch = failsWith(PushUpstreamMismatchException, FailureCode.Refused, null,
+      "mine tracks origin/shared, a branch of another name, and a push only goes to a branch of the same name. Set its upstream to one, or push it from a terminal.");
 
-    const asked = await new PushWriter(runner, hooks, branches).requestAsync(folders, status, call);
-
-    assert.deepEqual(asked?.details.map(t => t.value).slice(1, 2), ["mine to shared"]);
+    assert.throws(() => write.refuse(status), mismatch);
+    await assert.rejects(write.requestAsync(folders, status, call), mismatch);
+    await repository.runGitAsync(["push", "--quiet", "origin", "main:mine"]);
+    await repository.runGitAsync(["fetch", "--quiet", "origin"]);
+    await repository.runGitAsync(["branch", "--quiet", "--set-upstream-to=origin/mine"]);
+    const { status: tracking } = await readAsync();
+    const asked = await write.requestAsync(folders, tracking, call);
+    assert.deepEqual(asked?.details.map(t => t.value).slice(1, 2), ["mine"]);
     assert.deepEqual(asked?.details[3], { label: "Hooks that will run", kind: PermissionDetailKind.Text, value: "pre-push" });
-    assert.deepEqual([asked?.options, asked?.risk, asked?.labels], [once, ToolRisk.High, undefined]);
   });
 
   test("remembers an agent's Always allow for the session that made the branch only, so another session's push asks again", async () => {
     await repository.runGitAsync(["switch", "--quiet", "--create", "feature"]);
     await commitAsync("Only");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     branches.add("session-1", folders.top, "feature");
     branches.add("session-2", folders.top, "feature");
     const write = new PushWriter(runner, hooks, branches);
@@ -262,7 +271,7 @@ describe("PushWriter", () => {
     }
   });
 
-  test("names the upstream's branch when it differs, strips a URL's name and password, and counts the commits past the hundred it shows", async () => {
+  test("strips a URL's name and password, and counts the commits past the hundred it shows", async () => {
     const base = (await repository.runGitAsync(["rev-parse", "HEAD"])).trim();
     const commits = Array.from({ length: 150 }, (_, index) => [
       "commit refs/heads/local",
@@ -273,23 +282,35 @@ describe("PushWriter", () => {
       ""
     ].join("\n"));
     await repository.runGitAsync(["fast-import", "--quiet"], commits.join(""));
+    await repository.runGitAsync(["push", "--quiet", "origin", `${base}:refs/heads/local`]);
+    await repository.runGitAsync(["fetch", "--quiet", "origin"]);
     await repository.runGitAsync(["switch", "--quiet", "local"]);
-    await repository.runGitAsync(["branch", "--quiet", "--set-upstream-to=origin/main"]);
+    await repository.runGitAsync(["branch", "--quiet", "--set-upstream-to=origin/local"]);
     await repository.runGitAsync(["remote", "set-url", "--push", "origin", "https://name:token@example.invalid/repo.git"]);
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
 
     const asked = await new PushWriter(runner, hooks, branches).requestAsync(folders, status, call);
 
-    assert.equal(asked?.title, "Push 150 commits to origin/main");
-    assert.deepEqual(asked?.details.map(t => t.value).slice(0, 2), ["origin https://example.invalid/repo.git", "local to main, the repository's default branch"]);
+    assert.equal(asked?.title, "Push 150 commits to origin/local");
+    assert.deepEqual(asked?.details.map(t => t.value).slice(0, 2), ["origin https://example.invalid/repo.git", "local"]);
     const shown = (asked?.details[2]?.value ?? "").split("\n");
     assert.deepEqual([shown.length, shown.at(-1)], [101, "…and 50 more commits"]);
     assert.deepEqual(shown.slice(0, 100).map(t => t.replace(/^[0-9a-f]+ /v, "")), Array.from({ length: 100 }, (_, index) => `Local ${150 - index}`));
   });
 
+  test("shows an scp-style remote without its user name on the card", async () => {
+    await commitAsync("Ahead");
+    await repository.runGitAsync(["remote", "set-url", "--push", "origin", "name@example.invalid:team/repo.git"]);
+    const { folders, status } = await readAsync();
+
+    const asked = await new PushWriter(runner, hooks, branches).requestAsync(folders, status, call);
+
+    assert.equal(asked?.details[0]?.value, "origin example.invalid:team/repo.git");
+  });
+
   test("fails with git's output when git can't read what the request shows", async () => {
     await commitAsync("Ahead");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     await repository.runGitAsync(["config", "--remove-section", "remote.origin"]);
 
     await assert.rejects(new PushWriter(runner, hooks, branches).requestAsync(folders, status, call),
@@ -298,7 +319,7 @@ describe("PushWriter", () => {
 
   test("fails with git's output when the remote's default branch can't be read for any reason but an unset one", async () => {
     await commitAsync("Ahead");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     runner.failing = "symbolic-ref";
     runner.failingCode = 128;
 
@@ -309,19 +330,19 @@ describe("PushWriter", () => {
   test("pushes the branch to its upstream, and publishes a new branch with its upstream set", async () => {
     await commitAsync("Ahead");
     const write = new PushWriter(runner, hooks, branches);
-    await write.runAsync(...await readAsync());
+    await (await readAsync()).runAsync(write);
     assert.equal(await remoteHeadAsync("main"), (await repository.runGitAsync(["rev-parse", "HEAD"])).trim());
 
     await repository.runGitAsync(["switch", "--quiet", "--create", "feature"]);
     await commitAsync("Feature");
-    await write.runAsync(...await readAsync());
+    await (await readAsync()).runAsync(write);
     assert.equal(await remoteHeadAsync("feature"), (await repository.runGitAsync(["rev-parse", "HEAD"])).trim());
     assert.equal((await repository.runGitAsync(["rev-parse", "--abbrev-ref", "feature@{upstream}"])).trim(), "origin/feature");
   });
 
   test("pushes the commit the status read, never one that reached the branch after it", async () => {
     await commitAsync("Shown");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     runner.beforePush = async () => {
       await commitAsync("Later");
     };
@@ -335,7 +356,7 @@ describe("PushWriter", () => {
   test("fails with git's output when the push went through but git can't set the new branch's upstream", async () => {
     await repository.runGitAsync(["switch", "--quiet", "--create", "feature"]);
     await commitAsync("Feature");
-    const [folders, status] = await readAsync();
+    const { folders, status } = await readAsync();
     await writeFile(path.join(repository.gitFolder, "config.lock"), "");
 
     await assert.rejects(new PushWriter(runner, hooks, branches).runAsync(folders, status), failsWith(UpstreamNotSetException, FailureCode.Unavailable, null,
@@ -343,19 +364,21 @@ describe("PushWriter", () => {
     assert.equal(await remoteHeadAsync("feature"), status.head);
   });
 
-  test("fails as rejected when the remote has commits the branch doesn't", async () => {
+  test("fails as behind, with git's output, when the remote has commits the branch doesn't that the last fetch didn't bring", async () => {
     const elsewhere = (await repository.runGitAsync(["commit-tree", "HEAD^{tree}", "-p", "HEAD", "-m", "Elsewhere"])).trim();
     await repository.runGitAsync(["push", "--quiet", "origin", `${elsewhere}:refs/heads/main`]);
     await commitAsync("Ahead");
 
-    await assert.rejects(new PushWriter(runner, hooks, branches).runAsync(...await readAsync()), failsWith(PushRejectedException, FailureCode.Git, GitCode.PushRejected));
+    await assert.rejects((await readAsync()).runAsync(new PushWriter(runner, hooks, branches)), (error: unknown) =>
+      failsWith(PushRemoteAheadException, FailureCode.Git, GitCode.PushBehind)(error) && error instanceof PushRemoteAheadException
+      && error.output?.source === UntrustedSource.Repository);
     assert.equal(await remoteHeadAsync("main"), elsewhere);
   });
 
   test("tells each other refusal from the remote's real answers: its hook's, an unknown host key, a refused SSH key, a sign-in it can't give, and no remote there", async () => {
     await commitAsync("Ahead");
     const write = new PushWriter(runner, hooks, branches);
-    const pushAsync = async (): Promise<void> => await write.runAsync(...await readAsync());
+    const pushAsync = async (): Promise<void> => await (await readAsync()).runAsync(write);
     const hook = path.join(remote, "hooks", "pre-receive");
     await writeFile(hook, "#!/bin/sh\nexit 1\n");
     await chmod(hook, 0o755);
@@ -386,11 +409,36 @@ describe("PushWriter", () => {
     await repository.runGitAsync(["tag", "v1"]);
     await repository.runGitAsync(["config", "push.followTags", "true"]);
 
-    await new PushWriter(runner, hooks, branches).runAsync(...await readAsync());
+    await (await readAsync()).runAsync(new PushWriter(runner, hooks, branches));
 
     assert.deepEqual(supervisor.requests.map(t => t.arguments.join(" ")).filter(t => t.includes(" push ")), [
       `-c core.fsmonitor=false push --porcelain --no-follow-tags --recurse-submodules=no -- origin ${(await repository.runGitAsync(["rev-parse", "HEAD"])).trim()}:refs/heads/main`
     ]);
     assert.equal(await repository.runGitAsync(["-C", remote, "tag", "--list"]), "");
+  });
+
+  test("force pushes over a diverged upstream only while the remote still holds the commit the person saw, asking an agent at high risk every time", async () => {
+    await commitAsync("One");
+    await repository.runGitAsync(["push", "--quiet", "origin", "main"]);
+    const seen = await remoteHeadAsync("main");
+    await repository.runGitAsync(["commit", "--quiet", "--amend", "--allow-empty", "-m", "One again"]);
+    const again = (await repository.runGitAsync(["rev-parse", "--short", "HEAD"])).trim();
+    const { folders, status } = await readAsync();
+    const force = new PushWriter(runner, hooks, branches, seen);
+
+    assert.equal(force.method, "git.forcePush");
+    assert.throws(() => new PushWriter(runner, hooks, branches).refuse(status), failsWith(PushBehindException, FailureCode.Git, GitCode.PushBehind));
+    assert.doesNotThrow(() => force.refuse(status));
+    assert.throws(() => force.refuse(new GitStatus(status.branch, status.head, null, status.entries, status.truncated, status.fingerprint, status.operation, status.remote)),
+      failsWith(ForcePushNoUpstreamException, FailureCode.Refused, null, "The branch has no upstream on its remote to replace."));
+    const asked = await force.requestAsync(folders, status, call);
+    assert.deepEqual([asked?.action, asked?.title, asked?.risk, asked?.options, asked?.details.at(-1)?.value],
+      ["git.forcePush", "Force push 1 commit to origin/main", ToolRisk.High, once, `origin/main's commits, only while it still points at ${seen.slice(0, 7)}`]);
+
+    await assert.rejects(new PushWriter(runner, hooks, branches, (await repository.runGitAsync(["rev-parse", "HEAD"])).trim()).runAsync(folders, status),
+      failsWith(PushRejectedException, FailureCode.Git, GitCode.PushRejected));
+    assert.equal(await remoteHeadAsync("main"), seen);
+    await force.runAsync(folders, status);
+    assert.equal((await remoteHeadAsync("main")).slice(0, 7), again);
   });
 });

@@ -12,6 +12,7 @@ import path from "node:path";
 import { UntrustedSource } from "@noldova/git.protocol";
 
 import { FolderUnreadableException } from "../exceptions/folder-unreadable.exception.ts";
+import { GitFailedException } from "../exceptions/git-failed.exception.ts";
 import { NotARepositoryException } from "../exceptions/not-a-repository.exception.ts";
 import { RepositoryNotAbsoluteException } from "../exceptions/repository-not-absolute.exception.ts";
 import { UnsafeRepositoryException } from "../exceptions/unsafe-repository.exception.ts";
@@ -27,6 +28,7 @@ import type { ProgramRunner } from "./program-runner.ts";
 export class RepositoryReader {
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.lineOutputBytes, Resources.gitReadMilliseconds);
   private static readonly ARGUMENTS: GitArguments = new GitArguments(Resources.repositoryArguments);
+  private static readonly REF_STORAGE: GitArguments = new GitArguments(Resources.refStorageArguments);
   private readonly runner: ProgramRunner;
   private readonly version: GitVersionReader;
 
@@ -46,10 +48,19 @@ export class RepositoryReader {
     const errors = result.errors.toString(Resources.utf8Encoding);
     if (result.exit.code !== 0 && Resources.unsafeRepositoryPattern.test(errors))
       throw new UnsafeRepositoryException(folder, { text: errors, source: UntrustedSource.Repository });
-    if (result.exit.code !== 0 || !RepositoryReader.isComplete(lines))
+    if (result.exit.code !== 0 || lines.length !== Resources.repositoryLineCount)
       throw new NotARepositoryException(folder);
-    const [top, gitFolder, commonGitFolder] = lines;
+    const [top = "", gitFolder = "", commonGitFolder = ""] = lines;
     return new RepositoryFolders(path.resolve(top), path.resolve(gitFolder), path.resolve(commonGitFolder));
+  }
+
+  public async isReftableAsync(folders: RepositoryFolders, signal?: AbortSignal): Promise<boolean> {
+    const result = await this.runner.runAsync(ProgramRun.readGit(RepositoryReader.REF_STORAGE, folders.top, RepositoryReader.LIMITS, signal));
+    if (result.exit.code === Resources.configNotFoundExitCode)
+      return false;
+    if (result.exit.code !== 0)
+      throw new GitFailedException(Resources.formatGitCommand(Resources.refStorageArguments), { text: result.errors.toString(Resources.utf8Encoding), source: UntrustedSource.Repository });
+    return result.output.toString(Resources.utf8Encoding).trim() === Resources.reftableStorage;
   }
 
   private static async isPresentAsync(folder: string): Promise<boolean> {
@@ -60,9 +71,5 @@ export class RepositoryReader {
         throw new FolderUnreadableException(folder, error);
       throw error;
     }
-  }
-
-  private static isComplete(lines: readonly string[]): lines is readonly [string, string, string, string] {
-    return lines.length === Resources.repositoryLineCount;
   }
 }

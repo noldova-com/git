@@ -1,0 +1,18 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<button nol-icon-button type="button" class="layout" [icon]="resources.fileLayoutIcons[layout()()]" [label]="resources.fileLayoutLabel"
+  [nolTooltip]="resources.fileLayoutLabel" [nolMenuTriggerFor]="layouts"></button>
+<ng-template #layouts>
+  <nol-menu>
+    @for (choice of resources.fileLayouts; track choice) {
+      <button nol-menu-item [label]="resources.fileLayoutLabels[choice]" [icon]="resources.fileLayoutIcons[choice]" [checked]="layout()() === choice"
+        (triggered)="layout().set(choice)"></button>
+    }
+  </nol-menu>
+</ng-template>

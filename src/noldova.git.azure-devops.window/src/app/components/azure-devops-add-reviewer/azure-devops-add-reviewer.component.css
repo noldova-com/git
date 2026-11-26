@@ -1,0 +1,114 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.add-reviewer,
+.found {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nol-space-2);
+  min-width: 0;
+}
+
+.found {
+  gap: 0;
+}
+
+.search {
+  width: 100%;
+}
+
+.person {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  min-width: 0;
+  min-height: var(--nol-button-height);
+  padding: var(--nol-space-1);
+  border: 0;
+  border-radius: var(--nol-radius-medium);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.person:not(:disabled):hover {
+  background-color: var(--nol-hover);
+}
+
+.person:focus-visible {
+  outline: var(--nol-border-width) solid var(--nol-accent);
+  outline-offset: calc(var(--nol-border-width) * -1);
+}
+
+.person:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.grow {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.title {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.kind {
+  display: flex;
+  flex: none;
+  gap: var(--nol-space-1);
+  align-items: center;
+}
+
+.kind .material-symbols-rounded {
+  font-size: 1rem;
+}
+
+.name,
+.small {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.small {
+  font-size: var(--nol-text-label);
+}
+
+.muted {
+  color: var(--nol-text-muted);
+}
+
+p {
+  margin: 0;
+}
+
+.add-failure {
+  display: flex;
+  gap: var(--nol-space-1);
+  align-items: center;
+  color: var(--nol-text-muted);
+  font-size: var(--nol-text-label);
+}
+
+.add-failure .material-symbols-rounded {
+  color: var(--nol-status-failed);
+}

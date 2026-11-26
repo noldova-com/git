@@ -10,6 +10,7 @@ import {
   Component, computed, effect, ElementRef, inject, input, type InputSignal, signal, type Signal, viewChild, type WritableSignal
 } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import "@noldova/context.core";
 import type { GitStatus, StatusUpstream } from "@noldova/git.protocol";
 import { ButtonComponent, ButtonVariant, TooltipDirective } from "@noldova/ui.components.angular";
 
@@ -17,10 +18,11 @@ import { GitBranchMenuKind } from "../../enums/git-branch-menu-kind.ts";
 import { GitBranchMenuItem } from "../../models/git-branch-menu-item.ts";
 import { Resources } from "../../../resources.ts";
 import { GitViewStateService } from "../../services/git-view-state.service.ts";
+import { GitUndoMenuComponent } from "../git-undo-menu/git-undo-menu.component.ts";
 
 @Component({
   selector: "nol-git-branch-card",
-  imports: [ButtonComponent, FormsModule, TooltipDirective],
+  imports: [ButtonComponent, FormsModule, GitUndoMenuComponent, TooltipDirective],
   templateUrl: "./git-branch-card.component.html",
   styleUrl: "./git-branch-card.component.css",
   host: {
@@ -81,7 +83,7 @@ export class GitBranchCardComponent {
       case "Enter": {
         event.preventDefault();
         const item: GitBranchMenuItem | undefined = this.items()[this.active()];
-        if (item !== undefined)
+        if (!Object.isUndefined(item))
           this.choose(item);
         break;
       }

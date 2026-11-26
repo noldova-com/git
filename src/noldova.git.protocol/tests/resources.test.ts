@@ -60,6 +60,7 @@ describe("The protocol's Resources", () => {
       "a whole number from 1 to 500"
     ]);
     assert.deepEqual([Resources.maximumPathLength, Resources.maximumPathCount, Resources.maximumBranchNameLength, Resources.maximumLogLimit], [4096, 10000, 255, 500]);
+    assert.deepEqual([Resources.lineCountExpected, Resources.maximumLineCount, Resources.linesField], ["1 to 100000 different lines", 100_000, "lines"]);
     assert.deepEqual([Resources.parentSegment, Resources.nulCharacter, Resources.noNulExpected], ["..", "\u0000", "a text without a NUL character"]);
   });
 
@@ -77,6 +78,8 @@ describe("The protocol's Resources", () => {
     assert.deepEqual([Resources.worktreesField, Resources.lockedField, Resources.prunableField], ["worktrees", "locked", "prunable"]);
     assert.equal(Resources.hooksField, "hooks");
     assert.equal(Resources.maximumLineLength, 1000);
+    assert.deepEqual([Resources.imageField, Resources.maximumAvatarLength, Resources.avatarImageExpected],
+      ["image", 90_000, "a PNG, JPEG, GIF or WebP image as a base64 data address of at most 90000 characters, or null"]);
     assert.equal(Resources.lineExpected, "a line of at most 1000 characters without a control character");
     assert.equal(Resources.dateTimeExpected, "an ISO 8601 date and time with its offset, such as 2026-11-06T09:30:00-08:00");
     assert.equal(Resources.commitsExpected, "at most 500 commits");

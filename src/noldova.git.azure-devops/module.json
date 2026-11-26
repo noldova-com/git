@@ -1,0 +1,28 @@
+{
+  "id": "git-azure-devops",
+  "version": "0.0.7",
+  "displayName": "Azure DevOps",
+  "description": "Signs in to Azure DevOps with Microsoft or a personal access token and shows its pull requests with their votes, policies and builds.",
+  "parts": ["runtime", "window"],
+  "dependencies": { "git": "0.0.7" },
+  "noldovaDesktop": ">=0.0.17 <0.1.0",
+  "contributes": {
+    "methods": ["git-azure-devops.readSignIn", "git-azure-devops.startSignIn", "git-azure-devops.cancelSignIn", "git-azure-devops.signInWithToken", "git-azure-devops.signOut", "git-azure-devops.readReference",
+      "git-azure-devops.readBranchPullRequest", "git-azure-devops.readPullRequest", "git-azure-devops.readWorkItem",
+      "git-azure-devops.readWorkItems", "git-azure-devops.updateWorkItem",
+      "git-azure-devops.readAuthorAvatar", "git-azure-devops.readPersonAvatar", "git-azure-devops.readPullRequests", "git-azure-devops.readPullRequestHeads",
+      "git-azure-devops.readPullRequestThreads", "git-azure-devops.linkBranch",
+      "git-azure-devops.replyToThread", "git-azure-devops.changeThread",
+      "git-azure-devops.vote", "git-azure-devops.readMergeTypes", "git-azure-devops.completePullRequest",
+      "git-azure-devops.setAutoComplete", "git-azure-devops.cancelAutoComplete", "git-azure-devops.abandonPullRequest",
+      "git-azure-devops.searchPeople", "git-azure-devops.readCommitPullRequest", "git-azure-devops.addReviewer",
+      "git-azure-devops.readReviewRequests", "git-azure-devops.readCommitComments",
+      "git-azure-devops.readPullRequestCommits", "git-azure-devops.readPullRequestUpdates", "git-azure-devops.readPullRequestChanges",
+      "git-azure-devops.readPullRequestConflicts"],
+    "notifications": ["git-azure-devops.noProject"],
+    "events": ["git-azure-devops.signInChanged"],
+    "views": ["git-azure-devops.workItemDetail", "git-azure-devops.pullRequestDetail"],
+    "documents": ["git-azure-devops.pullRequest", "git-azure-devops.workItems"],
+    "commands": ["git-azure-devops.openWorkItems"]
+  }
+}

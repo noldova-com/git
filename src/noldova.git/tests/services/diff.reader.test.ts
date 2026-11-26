@@ -8,12 +8,12 @@
 
 import assert from "node:assert/strict";
 import { existsSync, rmSync } from "node:fs";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, utimes, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
-import { DiffScope, DiffScopeKind, FailureCode, FileChange, GitCode, LineKind, UntrustedSource } from "@noldova/git.protocol";
+import { DiffScope, DiffScopeKind, FailureCode, FileChange, GitCode, type GitDiff, LineKind, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import { UnsafeRepositoryException } from "../../src/exceptions/unsafe-repository.exception.ts";
@@ -59,7 +59,7 @@ describe("DiffReader", () => {
     await repository.runGitAsync(["add", ...Object.keys(files)]);
     await repository.runGitAsync(["commit", "--quiet", "-m", message]);
   };
-  const changes = (diff: { files: readonly { path: string; change: FileChange }[] }): string[][] => diff.files.map(t => [t.path, t.change]);
+  const changes = (diff: GitDiff): string[][] => diff.files.map(t => [t.path, t.change]);
 
   test("reads the worktree's changes and its untracked files with their lines, leaving out staged and ignored ones", async () => {
     await commitAsync({ "b.txt": "one\ntwo\nthree\n", "gone.txt": "g\n" }, "More");
@@ -101,14 +101,28 @@ describe("DiffReader", () => {
     assert.deepEqual(file?.hunks[0]?.lines.map(t => [t.kind, t.text]), [[LineKind.Context, "a\r"], [LineKind.Removed, "b\r"], [LineKind.Added, "b"]]);
   });
 
-  test("reads staged changes, with a rename and its old path", async () => {
+  test("leaves out a file whose content is unchanged though its timestamps differ, beside a changed one, even when the repository turns off the index's refresh", async () => {
+    await commitAsync({ "a.txt": "same\n", "b.txt": "one\n" }, "Two files");
+    await repository.runGitAsync(["config", "diff.autoRefreshIndex", "false"]);
+    const later: Date = new Date(Date.now() + 60_000);
+    await utimes(path.join(repository.folder, "a.txt"), later, later);
+    await repository.writeAsync("b.txt", "two\n");
+
+    const diff = await reader.readAsync(repository.folder, WORKTREE, []);
+
+    assert.deepEqual(changes(diff), [["b.txt", FileChange.Modified]]);
+    assert.deepEqual(diff.files[0]?.hunks[0]?.lines.map(t => [t.kind, t.text]), [[LineKind.Removed, "one"], [LineKind.Added, "two"]]);
+  });
+
+  test("reads staged changes, with a rename, its old path and its similarity", async () => {
     await repository.runGitAsync(["mv", "a.txt", "moved.txt"]);
     await repository.writeAsync("new.txt", "n\n");
     await repository.runGitAsync(["add", "new.txt"]);
 
     const diff = await reader.readAsync(repository.folder, STAGED, []);
 
-    assert.deepEqual(diff.files.map(t => [t.oldPath, t.path, t.change, t.hunks.length]), [["a.txt", "moved.txt", FileChange.Renamed, 0], ["new.txt", "new.txt", FileChange.Added, 1]]);
+    assert.deepEqual(diff.files.map(t => [t.oldPath, t.path, t.change, t.hunks.length, t.similarity]),
+      [["a.txt", "moved.txt", FileChange.Renamed, 0, 100], ["new.txt", "new.txt", FileChange.Added, 1, null]]);
   });
 
   test("reads a range, and never takes a revision for an option", async () => {
@@ -249,6 +263,47 @@ describe("DiffReader", () => {
     assert.deepEqual([diff.omittedFiles, diff.truncated], [2, true]);
     assert.ok(diff.totalBytes <= 4 * 1024 * 1024);
     assert.ok(Buffer.byteLength(JSON.stringify(diff.toJson())) <= 4 * 1024 * 1024 + 100);
+  });
+
+  test("counts the whole of a range its limit cuts, so its totals show every file, and counts none for a worktree's, whose untracked files git can't count", async () => {
+    const big = `${"x".repeat(99)}\n`.repeat(8_000);
+    await commitAsync({ "big1.txt": big, "big2.txt": big, "big3.txt": big, "big4.txt": big, "big5.txt": big, "small.txt": "s\n" }, "Big");
+    await repository.writeAsync("big1.txt", "y\n");
+
+    const range = await reader.readAsync(repository.folder, new DiffScope(DiffScopeKind.Range, "HEAD~1", "HEAD"), []);
+    const worktree = await reader.readAsync(repository.folder, WORKTREE, []);
+    const whole = await reader.readAsync(repository.folder, new DiffScope(DiffScopeKind.Range, "HEAD~1", "HEAD"), ["small.txt"]);
+
+    assert.deepEqual([range.files.length < 6, range.omittedFiles > 0, range.totals?.toJson()], [true, true, { files: 6, added: 40_001, removed: 0 }]);
+    assert.deepEqual([worktree.truncated, worktree.totals, whole.truncated, whole.totals], [false, null, false, null]);
+  });
+
+  test("counts a diff's files and lines without reading it: a rename once, a binary file's lines as none, and the staged changes apart from the worktree's", async () => {
+    await commitAsync({ "old.txt": "one\ntwo\nthree\nfour\n", "c.bin": "\0a\0" }, "Second");
+    await repository.runGitAsync(["mv", "old.txt", "new.txt"]);
+    await repository.writeAsync("c.bin", "\0b\0");
+    await repository.writeAsync("a.txt", "a\nmore\n");
+    await repository.runGitAsync(["add", "c.bin"]);
+
+    const staged = await reader.countAsync(repository.folder, STAGED);
+    const worktree = await reader.countAsync(repository.folder, WORKTREE);
+    const range = await reader.countAsync(repository.folder, new DiffScope(DiffScopeKind.Range, "HEAD~1", "HEAD"));
+
+    assert.deepEqual([staged.toJson(), worktree.toJson(), range.toJson()], [{ files: 2, added: 0, removed: 0 }, { files: 1, added: 1, removed: 0 },
+      { files: 2, added: 4, removed: 0 }]);
+  });
+
+  test("fails to count when git's answer outgrows its limit, and leaves a cut diff's totals unknown then", async () => {
+    const runner = new ScriptedRunnerFixture(supervisor.context);
+    const big = `${"x".repeat(99)}
+`.repeat(8_000);
+    await commitAsync({ "big1.txt": big, "big2.txt": big, "big3.txt": big, "big4.txt": big, "big5.txt": big }, "Big");
+    runner.truncating = "--numstat";
+
+    const diff = await new DiffReader(runner).readAsync(repository.folder, new DiffScope(DiffScopeKind.Range, "HEAD~1", "HEAD"), []);
+
+    assert.deepEqual([diff.truncated, diff.totals], [true, null]);
+    await assert.rejects(new DiffReader(runner).countAsync(repository.folder, STAGED), { name: "UnreadableOutputException" });
   });
 
   test("fails as unavailable outside a repository, with git's errors marked untrusted", async () => {

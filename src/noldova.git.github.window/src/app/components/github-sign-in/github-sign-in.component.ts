@@ -7,10 +7,12 @@
  */
 
 import { NgTemplateOutlet } from "@angular/common";
-import { Component, DestroyRef, effect, inject, type OnInit, PendingTasks, signal, type WritableSignal } from "@angular/core";
+import { Component, DestroyRef, effect, ElementRef, inject, type OnInit, PendingTasks, signal, type WritableSignal } from "@angular/core";
+import "@noldova/context.core";
 import { type IWindowPartContext, LinkPlace, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { type DeviceCode, type HostAccount, HostSignIn, SignInState } from "@noldova/git.hosting.protocol";
+import { FocusKeeper } from "@noldova/git.window";
 import { AvatarComponent, ButtonComponent, ButtonVariant, ClipboardWriter, SpinnerComponent } from "@noldova/ui.components.angular";
 
 import { SignInNotice } from "../../models/sign-in-notice.ts";
@@ -39,6 +41,7 @@ export class GitHubSignInComponent implements OnInit {
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
 
   public constructor() {
+    this.destroyRef.onDestroy(FocusKeeper.keep(inject<ElementRef<HTMLElement>>(ElementRef).nativeElement));
     effect(onCleanup => {
       if (this.signIn()?.state !== SignInState.Waiting)
         return;
@@ -58,7 +61,7 @@ export class GitHubSignInComponent implements OnInit {
   }
 
   protected failureOf(signIn: HostSignIn): SignInNotice | null {
-    return signIn.failure === null ? null : new SignInNotice(Resources.failureTitles[signIn.failure], Resources.failureHints[signIn.failure]);
+    return Object.isNull(signIn.failure) ? null : new SignInNotice(Resources.failureTitles[signIn.failure], Resources.failureHints[signIn.failure]);
   }
 
   protected initialOf(account: HostAccount): string {
@@ -78,7 +81,7 @@ export class GitHubSignInComponent implements OnInit {
     try {
       const answer = await this.askAsync(GitHubNames.startSignInMethod);
       const code = answer?.deviceCode ?? null;
-      if (code !== null)
+      if (!Object.isNull(code))
         await this.continueAsync(code);
     }
     finally {

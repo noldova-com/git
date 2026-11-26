@@ -28,6 +28,10 @@ export class GitBranchParams {
     this.basedOn = basedOn;
   }
 
+  public static isBranchName(name: string): boolean {
+    return FieldCheck.isBranchName(name);
+  }
+
   public static fromJson(value: unknown, path?: string): GitBranchParams {
     const reader = JsonReader.fromValue(value, path);
     FieldCheck.refuseUnknownFields(reader, GitBranchParams.FIELDS);

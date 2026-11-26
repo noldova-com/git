@@ -1,0 +1,20 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<button nol-icon-button type="button" class="recent" [icon]="resources.historyIcon" [label]="resources.recentActionsLabel"
+  [nolTooltip]="resources.recentActionsLabel" [nolMenuTriggerFor]="actions" (click)="read()"></button>
+<ng-template #actions>
+  <nol-menu>
+    @for (entry of state.recentActions(); track entry.id) {
+      <button nol-menu-item [label]="labelOf(entry)" [description]="timeOf(entry)" [value]="canUndo(entry) ? resources.undoLabel : null"
+        [disabled]="!canUndo(entry) || state.busy()" (triggered)="undo(entry)"></button>
+    } @empty {
+      <button nol-menu-item [label]="resources.noRecentActions" [disabled]="true"></button>
+    }
+  </nol-menu>
+</ng-template>

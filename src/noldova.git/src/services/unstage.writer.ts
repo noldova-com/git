@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 import { type IPermissionRequest, PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
-import { GitNames, type GitStatus, UntrustedSource } from "@noldova/git.protocol";
+import { GitNames, type GitStatus, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
 import type { IGitWrite } from "../interfaces/i-git-write.ts";
@@ -22,6 +22,8 @@ import { LogReader } from "./log.reader.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
 export class UnstageWriter implements IGitWrite {
+  public readonly method: string = GitNames.unstageMethod;
+  public readonly undo: UndoMode = UndoMode.Index;
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.writeOutputBytes, Resources.indexWriteMilliseconds);
   private static readonly RESTORE: GitArguments = new GitArguments(Resources.restoreStagedArguments);
   private static readonly REMOVE: GitArguments = new GitArguments(Resources.removeCachedArguments);

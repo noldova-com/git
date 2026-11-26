@@ -1,0 +1,168 @@
+/*
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  display: block;
+  container-type: inline-size;
+}
+
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--nol-space-4);
+  align-items: start;
+}
+
+@container (min-width: 48rem) {
+  .page {
+    grid-template-columns: minmax(0, 1fr) 26rem;
+  }
+}
+
+.accounts,
+.features {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.accounts {
+  gap: var(--nol-space-3);
+}
+
+.features {
+  gap: var(--nol-space-2);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--nol-space-2);
+}
+
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--nol-text-title);
+  font-weight: var(--nol-weight-emphasis);
+  color: var(--nol-text-strong);
+}
+
+.intro {
+  margin: 0;
+  font-size: var(--nol-text-small);
+  color: var(--nol-text-muted);
+}
+
+.host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nol-space-3);
+}
+
+.card {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  gap: var(--nol-space-3);
+  align-items: center;
+  padding: var(--nol-space-3);
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: var(--nol-radius-large);
+  background: var(--nol-panel);
+}
+
+.mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--nol-radius-medium);
+  color: var(--nol-button-text);
+  font-weight: var(--nol-weight-emphasis);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.card-title,
+.detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-title {
+  font-weight: var(--nol-weight-emphasis);
+  color: var(--nol-text-strong);
+}
+
+.detail {
+  font-size: var(--nol-text-small);
+  color: var(--nol-text-muted);
+}
+
+.end {
+  display: flex;
+  align-items: center;
+  gap: var(--nol-space-1);
+}
+
+.matrix {
+  display: flex;
+  flex-direction: column;
+}
+
+.matrix-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(var(--git-host-columns), 4.75rem);
+  gap: var(--nol-space-1);
+  align-items: center;
+  min-height: 1.625rem;
+  border-bottom: var(--nol-border-width) solid var(--nol-border);
+  font-size: var(--nol-text-small);
+}
+
+.caps {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: var(--nol-letter-spacing-caps);
+  color: var(--nol-text-muted);
+}
+
+.matrix-row > :not(:first-child) {
+  text-align: center;
+}
+
+.answer {
+  display: flex;
+  justify-content: center;
+  color: var(--nol-text-muted);
+}
+
+.answer.yes {
+  color: var(--nol-status-ok);
+}
+
+.answer .material-symbols-rounded {
+  font-size: 1rem;
+  color: inherit;
+}
+
+.answer-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

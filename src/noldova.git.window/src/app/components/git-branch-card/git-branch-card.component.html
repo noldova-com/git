@@ -13,6 +13,7 @@ LICENSE file in the root directory of this source tree.
     <span class="branch" data-truncates [nolTooltip]="name()" [nolTooltipTruncated]="true">{{ name() }}</span>
     <span class="material-symbols-rounded" aria-hidden="true">{{ isOpen() ? resources.menuOpenIcon : resources.menuClosedIcon }}</span>
   </button>
+  <nol-git-undo-menu class="recent-actions" />
   <span class="spacer"></span>
   @if (status().branch !== null) {
     @if (upstream(); as upstream) {

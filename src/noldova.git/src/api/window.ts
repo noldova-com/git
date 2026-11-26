@@ -6,4 +6,5 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-export { GitFolder, GitFolderProvidedException, GitHostRows, GitWindowException, type IGitHostRow, windowPart } from "@noldova/git.window";
+export { GitAvatars, GitFolder, GitFolderProvidedException, GitHostRows, GitLinkReferences, GitWindowException, type IGitAvatars, type IGitHostRow, type IGitLinkReferences, windowPart }
+  from "@noldova/git.window";

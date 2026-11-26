@@ -1,0 +1,27 @@
+{
+  "settings": [
+    {
+      "name": "git.gravatar",
+      "title": "Show Gravatar pictures",
+      "description": "Whether a commit author with no picture on the repository's host shows their Gravatar picture. Gravatar receives a hash of each shown author's email.",
+      "type": { "kind": "Boolean" },
+      "default": true,
+      "locality": "Shared",
+      "scopes": [],
+      "page": "Git",
+      "group": "Pictures"
+    },
+    {
+      "name": "git.undoHistory",
+      "title": "Actions to keep for undo",
+      "description": "How many of each repository's recent actions the Undo menu keeps while the app runs, from 1 to 500. An action can be undone while what it changed is still as it left it.",
+      "type": { "kind": "Number", "minimum": 1, "maximum": 500, "step": 1 },
+      "default": 50,
+      "locality": "Shared",
+      "scopes": [],
+      "page": "Git",
+      "group": "Undo"
+    }
+  ],
+  "pages": [{ "name": "git.accounts", "title": "Accounts and hosts" }]
+}

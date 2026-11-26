@@ -25,11 +25,16 @@ import { ProgramTimedOutException } from "../../src/exceptions/program-timed-out
 import { GitArguments } from "../../src/models/git-arguments.ts";
 import { ProgramLimits } from "../../src/models/program-limits.ts";
 import { ProgramRun } from "../../src/models/program-run.ts";
+import { CommandLog } from "../../src/services/command-log.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
 import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { FakeGhFixture } from "../fixtures/fake-gh.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
+
+interface IClock {
+  expire: () => void;
+}
 
 describe("ProgramRunner", () => {
   const limits = new ProgramLimits(1024 * 1024, 30_000);
@@ -63,8 +68,8 @@ describe("ProgramRunner", () => {
   const write = (gitArguments: GitArguments, gitFolder: string = repository.gitFolder): ProgramRun =>
     ProgramRun.writeGit(gitArguments, repository.folder, gitFolder, repository.gitFolder, limits);
 
-  const mockClock = (): { readonly expire: () => void } => {
-    const clock = { expire: (): void => undefined };
+  const mockClock = (): IClock => {
+    const clock: IClock = { expire: (): void => undefined };
     const original = timers.setTimeout;
     const timer = vi.spyOn(timers, "setTimeout").mockImplementation((...values: Parameters<typeof timers.setTimeout>) => {
       const [handler, delay] = values;
@@ -89,6 +94,15 @@ describe("ProgramRunner", () => {
     assert.equal(request?.inherit.includes("GH_CONFIG_DIR"), true);
   });
 
+  test("a read gets its input on standard input, and a program that never reads it still finishes", async () => {
+    const hash = await runner.runAsync(ProgramRun.readGit(new GitArguments(["hash-object", "--stdin"]), repository.folder, limits).withInput(Buffer.from("abc")));
+    const unread = await runner.runAsync(ProgramRun.readGit(new GitArguments(["rev-parse", "--is-inside-work-tree"]), repository.folder, limits)
+      .withInput(Buffer.alloc(8 * 1024 * 1024, 120)));
+
+    assert.deepEqual([hash.output.toString(), hash.exit.code], ["f2ba8f84ab5c1bce84a7b441cb1959cfc7093b7f\n", 0]);
+    assert.deepEqual([unread.output.toString(), unread.exit.code], ["true\n", 0]);
+  });
+
   test("a git write turns fsmonitor off before its arguments, and a gh run passes its arguments unchanged", async () => {
     await repository.writeAsync("b.txt", "b\n");
 
@@ -97,7 +111,7 @@ describe("ProgramRunner", () => {
 
     assert.equal(staged.exit.code, 0);
     assert.equal(printed.output.toString(), "printed\n");
-    assert.deepEqual(supervisor.requests.map(t => [t.program, ...t.arguments]), [["git", "-c", "core.fsmonitor=false", "add", "--", "b.txt"], ["gh", "print"]]);
+    assert.deepEqual(supervisor.requests.map(t => [t.program, ...t.arguments]), [["git", "-c", "core.fsmonitor=false", "add", "--", ":(literal)b.txt"], ["gh", "print"]]);
     assert.equal(await repository.runGitAsync(["diff", "--cached", "--name-only"]), "b.txt\n");
   });
 
@@ -112,10 +126,10 @@ describe("ProgramRunner", () => {
     ]);
 
     assert.deepEqual(supervisor.events, [
-      "start -c core.fsmonitor=false add -- b.txt",
-      "exit -c core.fsmonitor=false add -- b.txt",
-      "start -c core.fsmonitor=false add -- c.txt",
-      "exit -c core.fsmonitor=false add -- c.txt"
+      "start -c core.fsmonitor=false add -- :(literal)b.txt",
+      "exit -c core.fsmonitor=false add -- :(literal)b.txt",
+      "start -c core.fsmonitor=false add -- :(literal)c.txt",
+      "exit -c core.fsmonitor=false add -- :(literal)c.txt"
     ]);
   });
 
@@ -265,5 +279,23 @@ describe("ProgramRunner", () => {
 
     await assert.rejects(runner.runAsync(ProgramRun.readGit(new GitArguments(["status"]), repository.folder, limits, AbortSignal.abort(reason))), reason);
     assert.deepEqual(supervisor.events, []);
+  });
+
+  test("with a command log, it logs each git write with its exit code, or none when it didn't run to its end, and leaves out reads and unlogged writes", async () => {
+    const commands = new CommandLog();
+    const logged = new ProgramRunner(supervisor.context, commands);
+    await repository.writeAsync("b.txt", "b\n");
+
+    await logged.runAsync(write(new GitArguments(["add"]).withPaths(["b.txt"])));
+    await logged.runAsync(write(new GitArguments(["switch", "missing"])));
+    await logged.runAsync(write(new GitArguments(["write-tree"])).unlogged());
+    await logged.runAsync(ProgramRun.readGit(new GitArguments(["status"]), repository.folder, limits));
+    const reason = new Error("Already cancelled.");
+    await assert.rejects(logged.runAsync(ProgramRun.writeGit(new GitArguments(["gc"]), repository.folder, repository.gitFolder, repository.gitFolder, limits,
+      AbortSignal.abort(reason))), reason);
+
+    assert.deepEqual(commands.read(repository.gitFolder).commands.map(t => [t.line, t.exitCode]), [
+      ["git add -- :(literal)b.txt", 0], ["git switch missing", 128], ["git gc", null]
+    ]);
   });
 });

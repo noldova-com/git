@@ -48,6 +48,12 @@ export class LogReader {
     return line.slice(0, last >= Resources.highSurrogateStart && last <= Resources.highSurrogateEnd ? Resources.lineLimit - 1 : Resources.lineLimit);
   }
 
+  public static dateOf(authoredAt: string, seconds: string): string {
+    if (Resources.offsetDatePattern.test(authoredAt) || !Resources.epochSecondsPattern.test(seconds))
+      return authoredAt;
+    return new Date(Number(seconds) * Resources.millisecondsPerSecond).toISOString().replace(Resources.millisecondsPattern, Resources.utcSuffix);
+  }
+
   public static withoutControls(text: string): string {
     return text.replaceAll(Resources.controlPattern, Resources.replacementCharacter);
   }
@@ -59,9 +65,9 @@ export class LogReader {
     const commits: GitCommit[] = [];
     for (let index = 0; index + 1 < fields.length; index += Resources.logFieldCount) {
       const field = (offset: number): string => Required.at(fields, index + offset, Resources.logCommand, Resources.commitsPart);
-      const [id, parents, author, authoredAt, subject] = [field(0), field(1), field(2), field(3), field(4)];
+      const [id, parents, author, authoredAt, seconds, subject] = [field(0), field(1), field(2), field(3), field(4), field(5)];
       try {
-        commits.push(new GitCommit(id, parents.length === 0 ? [] : parents.split(Resources.wordSeparator), LogReader.toLine(author), authoredAt,
+        commits.push(new GitCommit(id, parents.length === 0 ? [] : parents.split(Resources.wordSeparator), LogReader.toLine(author), LogReader.dateOf(authoredAt, seconds),
           LogReader.toLine(subject)));
       } catch (error) {
         if (error instanceof ProtocolException)

@@ -17,7 +17,7 @@ import { HostCheck } from "./host-check.ts";
 import { HostItem } from "./host-item.ts";
 
 export class BranchPullRequest {
-  private static readonly FIELDS: readonly string[] = [Resources.pullRequestField, Resources.checksField, Resources.reviewDecisionField];
+  private static readonly FIELDS: readonly string[] = [Resources.pullRequestField, Resources.checksField, Resources.reviewDecisionField, Resources.approvalsField];
   private static readonly DECISIONS: readonly ReviewDecision[] = Object.values(ReviewDecision);
   private static readonly WORST_FIRST: readonly CheckState[] = [CheckState.Failed, CheckState.Running, CheckState.Queued, CheckState.Succeeded,
     CheckState.Neutral];
@@ -25,19 +25,25 @@ export class BranchPullRequest {
   public readonly pullRequest: HostItem | null;
   public readonly checks: readonly HostCheck[];
   public readonly reviewDecision: ReviewDecision | null;
+  public readonly approvals: number | null;
 
   public constructor(pullRequest: HostItem | null, checks: readonly HostCheck[],
-    reviewDecision: ReviewDecision | null = pullRequest === null ? null : ReviewDecision.Waiting, reader?: JsonReader) {
+    reviewDecision: ReviewDecision | null = pullRequest === null ? null : ReviewDecision.Waiting, approvals: number | null = null, reader?: JsonReader) {
     if (pullRequest !== null && pullRequest.kind !== ReferenceKind.PullRequest)
       FieldCheck.fail(Resources.pullRequestField, Resources.pullRequestExpected, reader);
     if (pullRequest === null && checks.length > 0)
       FieldCheck.fail(Resources.checksField, Resources.checksExpected, reader);
     if ((pullRequest === null) !== (reviewDecision === null))
       FieldCheck.fail(Resources.reviewDecisionField, Resources.reviewDecisionExpected, reader);
+    if (pullRequest === null && approvals !== null)
+      FieldCheck.fail(Resources.approvalsField, Resources.approvalsExpected, reader);
+    if (approvals !== null)
+      FieldCheck.requireCount(approvals, Resources.approvalsField, reader);
 
     this.pullRequest = pullRequest;
     this.checks = [...checks];
     this.reviewDecision = reviewDecision;
+    this.approvals = approvals;
   }
 
   public get checksState(): CheckState | null {
@@ -53,6 +59,7 @@ export class BranchPullRequest {
       reader.readObjectArray(Resources.checksField).map(t => HostCheck.fromJson(t.toJson(), t.path)),
       reader.hasField(Resources.reviewDecisionField) ? FieldCheck.readNullableMember(reader, Resources.reviewDecisionField, BranchPullRequest.DECISIONS)
         : pullRequest === null ? null : ReviewDecision.Waiting,
+      reader.hasField(Resources.approvalsField) ? reader.readNullableInteger(Resources.approvalsField) : null,
       reader);
   }
 
@@ -60,7 +67,8 @@ export class BranchPullRequest {
     return {
       [Resources.pullRequestField]: this.pullRequest?.toJson() ?? null,
       [Resources.checksField]: this.checks.map(t => t.toJson()),
-      [Resources.reviewDecisionField]: this.reviewDecision
+      [Resources.reviewDecisionField]: this.reviewDecision,
+      [Resources.approvalsField]: this.approvals
     };
   }
 }

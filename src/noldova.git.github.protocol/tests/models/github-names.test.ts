@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { JsonReader } from "@noldova/context.json";
+import { HostCapability } from "@noldova/git.hosting.protocol";
 import { describe, it } from "vitest";
 
 import { GitHubNames } from "../../src/api/index.ts";
@@ -25,10 +26,20 @@ describe("GitHubNames", () => {
 
     assert.deepEqual(contributes.readStringArray("methods"),
       [GitHubNames.readSignInMethod, GitHubNames.startSignInMethod, GitHubNames.cancelSignInMethod, GitHubNames.signOutMethod,
-        GitHubNames.readReferenceMethod, GitHubNames.readBranchPullRequestMethod, GitHubNames.createPullRequestMethod]);
+        GitHubNames.readReferenceMethod, GitHubNames.readBranchPullRequestMethod, GitHubNames.createPullRequestMethod,
+        GitHubNames.readAuthorAvatarMethod, GitHubNames.readPullRequestsMethod, GitHubNames.readReviewRequestsMethod, GitHubNames.readCommitCommentsMethod,
+        GitHubNames.readPullRequestMethod, GitHubNames.readPullRequestThreadsMethod]);
+    assert.deepEqual([GitHubNames.readPullRequestsMethod, GitHubNames.readReviewRequestsMethod, GitHubNames.readCommitCommentsMethod],
+      ["git-github.readPullRequests", "git-github.readReviewRequests", "git-github.readCommitComments"]);
+    assert.deepEqual([GitHubNames.readPullRequestMethod, GitHubNames.readPullRequestThreadsMethod], ["git-github.readPullRequest", "git-github.readPullRequestThreads"]);
     assert.deepEqual(contributes.readStringArray("events"), [GitHubNames.signInChangedEvent]);
     assert.deepEqual(contributes.readStringArray("tools"), [GitHubNames.readTool, GitHubNames.prChecksTool, GitHubNames.prCreateTool]);
     assert.equal(GitHubNames.accessService, "git-github.access");
     assert.equal(GitHubNames.manageAccessUrl, `https://github.com/settings/connections/applications/${GitHubNames.clientId}`);
+  });
+  it("declares what the module does today: sign-in, reading an item and a branch's pull request with its checks, opening a pull request, showing authors' pictures and listing pull requests", () => {
+    assert.deepEqual(GitHubNames.capabilities.capabilities, [HostCapability.SignIn, HostCapability.ReadItem, HostCapability.BranchPullRequest,
+      HostCapability.CreatePullRequest, HostCapability.Checks, HostCapability.AuthorAvatars, HostCapability.PullRequests]);
+    assert.equal(GitHubNames.capabilities.has(HostCapability.Votes), false);
   });
 });

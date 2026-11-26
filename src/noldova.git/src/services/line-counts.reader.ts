@@ -5,7 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
-import { lstat, readFile } from "node:fs/promises";
+import { lstat, open } from "node:fs/promises";
 import path from "node:path";
 
 import { FileState, LineCounts, StatusEntry, UntrustedSource } from "@noldova/git.protocol";
@@ -16,6 +16,7 @@ import { GitArguments } from "../models/git-arguments.ts";
 import { GitPath } from "../models/git-path.ts";
 import { ProgramLimits } from "../models/program-limits.ts";
 import { ProgramRun } from "../models/program-run.ts";
+import { ReadBudget } from "../models/read-budget.ts";
 import { Required } from "../models/required.ts";
 import { Resources } from "../resources.ts";
 import { FilePresence } from "./file-presence.ts";
@@ -38,7 +39,7 @@ export class LineCountsReader {
       hasIndex ? this.readAsync(top, LineCountsReader.INDEX.withSettings(filters), signal) : new Map<string, LineCounts | null>(),
       hasWorktree ? this.readAsync(top, LineCountsReader.WORKTREE.withSettings(filters), signal) : new Map<string, LineCounts | null>()
     ]);
-    const budget = { remainingBytes: Resources.lineCountTotalBytes };
+    const budget = new ReadBudget(Resources.lineCountTotalBytes);
     const counted: StatusEntry[] = [];
     for (const entry of entries) {
       const untracked = entry.worktree === FileState.Untracked;
@@ -52,7 +53,7 @@ export class LineCountsReader {
     return counted;
   }
 
-  private static parse(output: Buffer): Map<string, LineCounts | null> {
+  public static parse(output: Buffer): Map<string, LineCounts | null> {
     const counts = new Map<string, LineCounts | null>();
     const records = LineCountsReader.split(output);
     for (let index = 0; index < records.length; index++) {
@@ -95,13 +96,14 @@ export class LineCountsReader {
     return records;
   }
 
-  private static async countFileAsync(file: string, budget: { remainingBytes: number }): Promise<LineCounts | null> {
+  private static async countFileAsync(file: string, budget: ReadBudget): Promise<LineCounts | null> {
     try {
-      const stats = await lstat(file);
-      if (!stats.isFile() || stats.size > Resources.lineCountFileBytes || stats.size > budget.remainingBytes)
+      if (!(await lstat(file)).isFile())
         return null;
-      budget.remainingBytes -= stats.size;
-      const content = await readFile(file);
+      const content: Buffer | null = await LineCountsReader.readCappedAsync(file, Math.min(Resources.lineCountFileBytes, budget.remainingBytes));
+      if (content === null)
+        return null;
+      budget.remainingBytes -= content.length;
       if (content.includes(Resources.nulByte))
         return null;
       let lines = 0;
@@ -113,6 +115,20 @@ export class LineCountsReader {
       if (FilePresence.isUnreadable(error))
         return null;
       throw error;
+    }
+  }
+
+  private static async readCappedAsync(file: string, limit: number): Promise<Buffer | null> {
+    const handle = await open(file, "r");
+    try {
+      const { size } = await handle.stat();
+      if (size > limit)
+        return null;
+      const buffer = Buffer.alloc(size);
+      const { bytesRead } = await handle.read(buffer, 0, size, 0);
+      return buffer.subarray(0, bytesRead);
+    } finally {
+      await handle.close();
     }
   }
 

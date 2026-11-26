@@ -1,0 +1,61 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (failure(); as message) {
+  <p class="note error" role="alert">{{ message }}</p>
+} @else if (diff(); as diff) {
+  <div class="files">
+    <div class="files-header">
+      <span class="caps grow">{{ resources.formatFilesChanged(totals().files) }}</span>
+      <span class="small added">{{ resources.addedPrefix }}{{ totals().added }}</span>
+      <span class="small removed">{{ resources.removedSign }}{{ totals().removed }}</span>
+      @if (chosen(); as layout) {
+        <nol-git-file-layout-button class="layout" [layout]="layout" />
+      }
+    </div>
+    @for (row of rows(); track row.key + row.isFolder) {
+      @if (row.isFolder) {
+        <button type="button" class="file-row folder" [title]="row.key" [attr.aria-expanded]="!closed().has(row.key)" [style.padding-inline-start.rem]="insetOf(row.depth)"
+          (click)="toggle(row.key)">
+          <span class="ms">{{ closed().has(row.key) ? resources.sectionClosedIcon : resources.sectionOpenIcon }}</span>
+          <span class="ms">{{ resources.folderIcon }}</span>
+          <span class="grow ellipsis">{{ row.name }}</span>
+        </button>
+      } @else {
+        @let isOpen = open().has(row.key);
+        <button type="button" class="file-row" [class.open]="isOpen" [title]="titleOf(row)" [attr.aria-expanded]="isOpen" [style.padding-inline-start.rem]="insetOf(row.depth)"
+          (click)="toggleFile(row.key)">
+          <nol-file-badge [fileName]="row.name" />
+          <span class="grow ellipsis">{{ row.name }}@if (row.from.length > 0) {<span class="muted">{{ resources.formatMovedFrom(nameOf(row.from)) }}</span>}</span>
+          @if (row.added !== null && row.added > 0) {
+            <span class="small added">{{ resources.addedPrefix }}{{ row.added }}</span>
+          }
+          @if (row.removed !== null && row.removed > 0) {
+            <span class="small removed">{{ resources.removedSign }}{{ row.removed }}</span>
+          }
+          <span class="small muted letter">{{ row.letter }}</span>
+        </button>
+        @if (isOpen) {
+          <div class="diff" [style.margin-inline-start.rem]="insetOf(row.depth)">
+            @let codes = openCodes().get(row.key) ?? [];
+            @for (line of openLines().get(row.key) ?? []; track $index) {
+              <div [class.added-line]="line.kind === lineKinds.Added" [class.removed-line]="line.kind === lineKinds.Removed"
+                [class.meta-line]="line.kind === lineKinds.Meta"
+                [class.marked-line]="isMarked(row.key, $index)">@for (span of codes[$index] ?? []; track $index) {@if (span.className === "") {{{ span.text }}} @else {<span [class]="span.className">{{ span.text }}</span>}}</div>
+            }
+          </div>
+        }
+      }
+    }
+    @if (diff.truncated || diff.omittedFiles > 0) {
+      <p class="note">{{ resources.commitFilesCut }}</p>
+    }
+  </div>
+} @else {
+  <p class="note">{{ resources.commitFilesLoading }}</p>
+}

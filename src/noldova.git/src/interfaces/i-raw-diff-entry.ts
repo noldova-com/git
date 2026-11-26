@@ -15,6 +15,7 @@ export interface IRawDiffEntry {
   readonly newMode: string | null;
   readonly oldId: string | null;
   readonly newId: string | null;
+  readonly similarity: number | null;
   readonly oldPath: Buffer;
   readonly path: Buffer;
 }

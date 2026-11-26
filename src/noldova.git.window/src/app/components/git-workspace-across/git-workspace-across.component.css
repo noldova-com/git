@@ -1,0 +1,136 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+  padding: 0.75rem;
+  overflow: auto;
+}
+
+.material-symbols-rounded {
+  flex: none;
+  width: var(--nol-icon);
+  height: var(--nol-icon);
+  overflow: hidden;
+  color: var(--nol-icon-color);
+  font-size: var(--nol-icon);
+  line-height: 1;
+}
+
+.strong {
+  color: var(--nol-text-strong);
+  font-weight: var(--nol-weight-emphasis);
+}
+
+.small {
+  font-size: 0.75rem;
+}
+
+.muted {
+  color: var(--nol-text-muted);
+}
+
+.caps {
+  margin-bottom: 0.25rem;
+  color: var(--nol-text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.grow {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.75rem;
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: var(--nol-radius-medium);
+  background: var(--nol-raised);
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.card-text,
+.more,
+.note,
+.quiet,
+.result p {
+  margin: 0;
+  line-height: var(--nol-line-message);
+}
+
+.card-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.section {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.row {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+  height: 1.625rem;
+  padding: 0 0.25rem;
+  border: 0;
+  border-radius: var(--nol-radius-medium);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  white-space: nowrap;
+}
+
+button.row,
+.row.review {
+  cursor: pointer;
+}
+
+.row:hover {
+  background: var(--nol-hover);
+}
+
+.warning {
+  color: var(--nol-warning);
+}
+
+.failed {
+  color: var(--nol-status-failed);
+}
+
+.agent {
+  color: var(--nol-author-8);
+}
+
+.fill {
+  flex: 1 1 auto;
+}

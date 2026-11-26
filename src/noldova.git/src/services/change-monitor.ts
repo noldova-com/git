@@ -14,40 +14,53 @@ import timers from "node:timers";
 
 import type { IModuleLog } from "@noldova/desktop.runtime";
 
+import { TreeWatch } from "../enums/tree-watch.ts";
 import { WatchStart } from "../enums/watch-start.ts";
 import type { RepositoryFolders } from "../models/repository-folders.ts";
 import { WatchCookie } from "../models/watch-cookie.ts";
 import { WatchedWorktree } from "../models/watched-worktree.ts";
 import { Resources } from "../resources.ts";
 import { FilePresence } from "./file-presence.ts";
+import { FolderTreeWatch } from "./folder-tree-watch.ts";
+import { IgnoredPaths } from "./ignored-paths.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 import { StatusReader } from "./status.reader.ts";
 
 export class ChangeMonitor {
   private readonly statuses: StatusReader;
+  private readonly ignored: IgnoredPaths;
+  private readonly treeWatch: TreeWatch;
   private readonly log: IModuleLog;
   private readonly onChanged: (key: string, sequence: number) => void;
   private readonly worktrees: Map<string, WatchedWorktree> = new Map();
   private readonly running: Set<Promise<void>> = new Set();
   private readonly cookies: Set<string> = new Set();
   private sequence: number = 0;
+  private isDisposed: boolean = false;
 
-  public constructor(runner: ProgramRunner, log: IModuleLog, onChanged: (key: string, sequence: number) => void) {
+  public constructor(runner: ProgramRunner, log: IModuleLog, onChanged: (key: string, sequence: number) => void, treeWatch: TreeWatch) {
     this.statuses = new StatusReader(runner);
+    this.ignored = new IgnoredPaths(runner);
+    this.treeWatch = treeWatch;
     this.log = log;
     this.onChanged = onChanged;
   }
 
-  public watch(key: string, worktree: string, folders: RepositoryFolders): void {
+  public watch(key: string, worktree: string, folders: RepositoryFolders, isReftable: boolean = false): void {
+    if (this.isDisposed)
+      return;
     this.unwatch(key);
     const watched = new WatchedWorktree(key, worktree, folders);
     this.worktrees.set(key, watched);
-    const branches = path.join(folders.commonGitFolder, ...Resources.branchRefsFolder);
     const cookies = [
-      this.addWatcher(watched, folders.gitFolder, t => Resources.watchedGitFiles.includes(t), ""),
-      this.addWatcher(watched, branches, t => !t.endsWith(Resources.lockExtension), Resources.lockExtension)
+      this.addWatcher(watched, folders.gitFolder, t => this.acceptsGitFile(watched, t), ""),
+      isReftable
+        ? this.addWatcher(watched, path.join(folders.commonGitFolder, Resources.reftableFolder), t => t === Resources.reftableListFile, undefined)
+        : this.addWatcher(watched, path.join(folders.commonGitFolder, ...Resources.branchRefsFolder), t => !t.endsWith(Resources.lockExtension), Resources.lockExtension)
     ];
     this.addWatcher(watched, folders.commonGitFolder, t => t === Resources.packedRefsFile, undefined);
+    if (this.treeWatch === TreeWatch.Whole)
+      this.addTreeWatcher(watched);
     watched.started = this.startAsync(watched, cookies.filter(t => t !== undefined));
     this.track(watched.started.then(() => undefined, () => undefined));
   }
@@ -62,6 +75,8 @@ export class ChangeMonitor {
       return;
     this.worktrees.delete(key);
     watched.stop.abort();
+    ChangeMonitor.endTreeWaits(watched);
+    ChangeMonitor.stopFolderTree(watched);
     for (const watcher of watched.watchers)
       watcher.close();
   }
@@ -74,23 +89,50 @@ export class ChangeMonitor {
       if (!isVisible) {
         watched.poll.abort();
         watched.poll = null;
+        ChangeMonitor.stopFolderTree(watched);
       }
       return;
     }
     if (!isVisible)
       return;
     watched.poll = new AbortController();
-    this.schedule(watched, false);
-    this.track(this.pollAsync(watched, AbortSignal.any([watched.poll.signal, watched.stop.signal])));
+    if (this.treeWatch === TreeWatch.Folders)
+      this.startFolderTree(watched);
+    this.schedule(watched);
+    this.track(this.pollAsync(watched, AbortSignal.any([watched.poll.signal, watched.stop.signal]),
+      () => watched.isTreeWatched ? Resources.backstopPollMilliseconds : Resources.changePollMilliseconds));
+  }
+
+  public notifyWriting(key: string): void {
+    const watched = this.worktrees.get(key);
+    if (watched === undefined)
+      return;
+    watched.writing += 1;
+    watched.generation += 1;
   }
 
   public notifyWritten(key: string): void {
     const watched = this.worktrees.get(key);
-    if (watched !== undefined)
-      this.schedule(watched, true);
+    if (watched === undefined)
+      return;
+    watched.writing = Math.max(0, watched.writing - 1);
+    watched.generation += 1;
+    watched.fingerprint = null;
+    this.onChanged(watched.key, ++this.sequence);
+  }
+
+  public generationOf(key: string): number {
+    return this.worktrees.get(key)?.generation ?? 0;
+  }
+
+  public observe(key: string, generation: number, fingerprint: string): void {
+    const watched = this.worktrees.get(key);
+    if (watched !== undefined && watched.writing === 0 && watched.generation === generation && watched.fingerprint === null)
+      watched.fingerprint = fingerprint;
   }
 
   public async disposeAsync(): Promise<void> {
+    this.isDisposed = true;
     for (const key of [...this.worktrees.keys()])
       this.unwatch(key);
     await Promise.all(this.running);
@@ -103,7 +145,7 @@ export class ChangeMonitor {
         if (cookie !== undefined && name === cookie.name)
           cookie.markSeen();
         else if (name === null || accepts(name))
-          this.schedule(watched, false);
+          this.schedule(watched);
       });
       watcher.on("error", (error: Error) => {
         this.log.write(Resources.formatWatchFailed(folder, String(error)));
@@ -117,6 +159,89 @@ export class ChangeMonitor {
       this.pollAlways(watched);
       return undefined;
     }
+  }
+
+  private acceptsGitFile(watched: WatchedWorktree, name: string): boolean {
+    if (name === Resources.indexFile) {
+      this.ignored.forgetIndex(watched.folders.top);
+      watched.folderTree?.recheck();
+    }
+    return Resources.watchedGitFiles.includes(name);
+  }
+
+  private addTreeWatcher(watched: WatchedWorktree): void {
+    try {
+      const watcher = watch(watched.worktree, { persistent: false, recursive: true }, (_event, name) => this.noteTreeChange(watched, name));
+      watcher.on("error", (error: Error) => {
+        this.log.write(Resources.formatWatchFailed(watched.worktree, String(error)));
+        watcher.close();
+        watched.isTreeWatched = false;
+      });
+      watched.watchers.push(watcher);
+      watched.isTreeWatched = true;
+    } catch (error) {
+      this.log.write(Resources.formatWatchFailed(watched.worktree, String(error)));
+    }
+  }
+
+  private startFolderTree(watched: WatchedWorktree): void {
+    const tree: FolderTreeWatch = new FolderTreeWatch(watched.worktree, watched.folders.top, this.ignored, name => this.noteTreeChange(watched, name),
+      error => this.loseFolderTree(watched, tree, Resources.formatWatchFailed(watched.worktree, String(error))));
+    watched.folderTree = tree;
+    this.track(tree.startAsync().then(() => {
+      watched.isTreeWatched ||= watched.folderTree === tree;
+    }, (error: unknown) => this.loseFolderTree(watched, tree, Resources.formatWatchFailed(watched.worktree, String(error)))));
+  }
+
+  private loseFolderTree(watched: WatchedWorktree, tree: FolderTreeWatch, line: string): void {
+    if (watched.folderTree !== tree)
+      return;
+    ChangeMonitor.stopFolderTree(watched);
+    this.log.write(line);
+  }
+
+  private static stopFolderTree(watched: WatchedWorktree): void {
+    watched.folderTree?.close();
+    watched.folderTree = null;
+    watched.isTreeWatched = false;
+  }
+
+  private noteTreeChange(watched: WatchedWorktree, name: string | null): void {
+    if (watched.poll === null)
+      return;
+    if (name === null) {
+      this.schedule(watched);
+      return;
+    }
+    watched.changed.add(name);
+    if (watched.treeQuiet !== null)
+      timers.clearTimeout(watched.treeQuiet);
+    const check = (): void => this.checkTree(watched);
+    watched.treeQuiet = timers.setTimeout(check, Resources.treeQuietMilliseconds);
+    watched.treeLongest ??= timers.setTimeout(check, Resources.treeLongestWaitMilliseconds);
+  }
+
+  private checkTree(watched: WatchedWorktree): void {
+    ChangeMonitor.endTreeWaits(watched);
+    const names = [...watched.changed];
+    watched.changed.clear();
+    this.track(this.ignored.hasShownAsync(watched.folders.top, names, watched.stop.signal).then(isShown => {
+      if (isShown)
+        this.schedule(watched);
+    }, (error: unknown) => {
+      if (watched.stop.signal.aborted)
+        return;
+      this.log.write(Resources.formatIgnoreCheckFailed(watched.worktree, String(error)));
+      this.schedule(watched);
+    }));
+  }
+
+  private static endTreeWaits(watched: WatchedWorktree): void {
+    for (const timer of [watched.treeQuiet, watched.treeLongest])
+      if (timer !== null)
+        timers.clearTimeout(timer);
+    watched.treeQuiet = null;
+    watched.treeLongest = null;
   }
 
   private async startAsync(watched: WatchedWorktree, cookies: readonly WatchCookie[]): Promise<WatchStart> {
@@ -201,12 +326,11 @@ export class ChangeMonitor {
     if (watched.isPolledAlways)
       return;
     watched.isPolledAlways = true;
-    this.track(this.pollAsync(watched, watched.stop.signal));
+    this.track(this.pollAsync(watched, watched.stop.signal, () => Resources.changePollMilliseconds));
   }
 
-  private schedule(watched: WatchedWorktree, isForced: boolean): void {
-    watched.isForced = watched.isForced || isForced;
-    if (watched.isScheduled)
+  private schedule(watched: WatchedWorktree): void {
+    if (watched.writing > 0 || watched.isScheduled)
       return;
     watched.isScheduled = true;
     watched.running = watched.running.then(() => this.debounceAsync(watched));
@@ -223,18 +347,16 @@ export class ChangeMonitor {
     await ChangeMonitor.waitAsync(Resources.changeDebounceMilliseconds, watched.stop.signal);
     if (watched.stop.signal.aborted)
       return;
-    const isForced = watched.isForced;
     watched.isScheduled = false;
-    watched.isForced = false;
-    await this.refreshAsync(watched, isForced);
+    await this.refreshAsync(watched);
   }
 
-  private async pollAsync(watched: WatchedWorktree, signal: AbortSignal): Promise<void> {
+  private async pollAsync(watched: WatchedWorktree, signal: AbortSignal, interval: () => number): Promise<void> {
     for (;;) {
-      await ChangeMonitor.waitAsync(Resources.changePollMilliseconds, signal);
+      await ChangeMonitor.waitAsync(interval(), signal);
       if (signal.aborted)
         return;
-      this.schedule(watched, false);
+      this.schedule(watched);
     }
   }
 
@@ -252,10 +374,13 @@ export class ChangeMonitor {
     });
   }
 
-  private async refreshAsync(watched: WatchedWorktree, isForced: boolean): Promise<void> {
+  private async refreshAsync(watched: WatchedWorktree): Promise<void> {
+    if (watched.writing > 0)
+      return;
+    const generation = watched.generation;
     try {
       const { fingerprint } = await this.statuses.readAsync(watched.folders, watched.stop.signal);
-      if (watched.stop.signal.aborted || (!isForced && fingerprint === watched.fingerprint))
+      if (watched.stop.signal.aborted || watched.generation !== generation || fingerprint === watched.fingerprint)
         return;
       watched.fingerprint = fingerprint;
       this.onChanged(watched.key, ++this.sequence);

@@ -1,0 +1,150 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.notice,
+.pr {
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: var(--nol-radius-medium);
+  background-color: var(--nol-raised);
+}
+
+.notice {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  padding: var(--nol-space-2) var(--nol-view-padding-inline);
+  color: var(--nol-text-muted);
+}
+
+.notice-text {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--nol-text-label);
+  overflow-wrap: anywhere;
+}
+
+.notice-icon {
+  color: var(--nol-status-failed);
+}
+
+.link-failed {
+  margin-top: var(--nol-space-2);
+}
+
+.pr {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--nol-space-1);
+  padding: var(--nol-space-2) var(--nol-view-padding-inline);
+}
+
+.line {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.state,
+.check-icon,
+.notice-mark,
+.notice-icon {
+  flex: none;
+}
+
+.check-icon {
+  color: var(--nol-text-muted);
+}
+
+.title,
+.name {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: start;
+  overflow: hidden;
+}
+
+.text {
+  display: block;
+}
+
+.title {
+  color: var(--nol-link);
+  cursor: pointer;
+}
+
+.checks {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--nol-space-half);
+  margin: var(--nol-space-half) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.check {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  min-height: var(--nol-icon-button);
+  font-size: var(--nol-text-label);
+  color: var(--nol-text-muted);
+}
+
+.name {
+  color: var(--nol-text);
+}
+
+button.name {
+  cursor: pointer;
+}
+
+.check.failed .check-state,
+.check.failed .check-icon {
+  color: var(--nol-status-failed);
+}
+
+.check.ok .check-state,
+.check.ok .check-icon {
+  color: var(--nol-status-ok);
+}
+
+.boards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nol-space-3);
+  margin-top: var(--nol-space-1);
+  padding-inline: calc(var(--nol-view-padding-inline) + var(--nol-border-width));
+}
+
+.board {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--nol-text-label);
+  color: var(--nol-link);
+  cursor: pointer;
+}
+
+@media (forced-colors: active) {
+  .title,
+  .board {
+    color: LinkText;
+  }
+}

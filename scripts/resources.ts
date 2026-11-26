@@ -58,6 +58,8 @@ export class Resources {
   public static readonly mainPackageName: string = "@noldova/git";
   public static readonly gitHubModuleName: string = "noldova.git.github";
   public static readonly gitHubPackageName: string = "@noldova/git.github";
+  public static readonly azureDevOpsModuleName: string = "noldova.git.azure-devops";
+  public static readonly azureDevOpsPackageName: string = "@noldova/git.azure-devops";
   public static readonly hostingProtocolFolder: string = "src/noldova.git.hosting.protocol";
   public static readonly hostingProtocolPackageName: string = "@noldova/git.hosting.protocol";
   public static readonly packageScope: string = "@noldova";
@@ -66,6 +68,7 @@ export class Resources {
   public static readonly corePrefix: string = "@noldova/desktop.";
   public static readonly contextPrefix: string = "@noldova/context.";
   public static readonly uiKitName: string = "@noldova/ui.components.angular";
+  public static readonly editorPrefix: string = "@noldova/code.editor";
   public static readonly cdkName: string = "@angular/cdk";
   public static readonly cdkConsequence: string = "so the UI kit's overlays and focus handling and the app's would run from different ones";
   public static readonly cdkRemedy: string = "Install the version the UI kit pins, so npm keeps one copy.";
@@ -92,6 +95,7 @@ export class Resources {
   public static readonly pinFields: readonly string[] = ["dependencies", "peerDependencies", "optionalDependencies"];
   public static readonly dependencyFields: readonly string[] = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"];
   public static readonly moduleFields: readonly string[] = ["id", "version", "displayName", "description", "parts", "dependencies", "noldovaDesktop", "contributes"];
+  public static readonly optionalModuleFields: readonly string[] = ["optionalDependencies"];
   public static readonly declarationTextFields: readonly string[] = ["displayName", "description"];
   public static readonly contributionKinds: readonly string[] = [
     "methods", "events", "commands", "notifications", "views", "documents", "statusBarItems", "topBarActions", "menus", "themes", "settings", "settingScopes",
@@ -167,6 +171,10 @@ export class Resources {
   public static readonly archiveInstallArguments: readonly string[] = ["install", "--no-save", "--ignore-scripts", "--no-audit", "--no-fund", "--loglevel=error"];
   public static readonly installTimeoutMilliseconds: number = 600_000;
   public static readonly lockFile: string = "package-lock.json";
+  public static readonly lockPackagesField: string = "packages";
+  public static readonly lockModulesPrefix: string = "node_modules/";
+  public static readonly lockResolvedField: string = "resolved";
+  public static readonly fileProtocol: string = "file:";
   public static readonly installedLockSegments: readonly string[] = ["node_modules", ".package-lock.json"];
   public static readonly typeScriptCompiler: readonly string[] = ["node_modules", "typescript", "bin", "tsc"];
   public static readonly projectOption: string = "--project";
@@ -254,14 +262,14 @@ export class Resources {
   public static readonly windowManifestName: string = "the window package's manifest";
   public static readonly rangeAlternative: string = " or a range of the form >=<lowest> <first refused>";
   public static readonly peerRangeAlternative: string = ", or a range of the form >=<lowest> <first refused>,";
-  public static readonly rangedPrefixes: readonly string[] = [Resources.corePrefix, Resources.contextPrefix];
+  public static readonly rangedPrefixes: readonly string[] = [Resources.corePrefix, Resources.contextPrefix, Resources.editorPrefix];
   public static readonly rangedNames: readonly string[] = [Resources.uiKitName];
-  public static readonly peerPrefixes: readonly string[] = [Resources.angularPrefix, Resources.corePrefix, Resources.contextPrefix];
+  public static readonly peerPrefixes: readonly string[] = [Resources.angularPrefix, Resources.corePrefix, Resources.contextPrefix, Resources.editorPrefix];
   public static readonly peerNames: readonly string[] = [Resources.uiKitName];
   public static readonly archiveManifestEntry: string = `${Resources.archiveFolder}${Resources.pathSeparator}${Resources.manifestFile}`;
   public static readonly declarationImportReplacement: string = `$1${Resources.javaScriptExtension}"`;
   public static readonly toolNamePattern: RegExp = new RegExp(`^[a-z][a-z0-9_]{0,${Resources.maximumToolNameLength - 1}}$`);
-  public static readonly declarationFieldsInvalid: string = `module.json must have exactly the fields ${Resources.moduleFields.join(Resources.listSeparator)}.`;
+  public static readonly declarationFieldsInvalid: string = `module.json must have exactly the fields ${Resources.moduleFields.join(Resources.listSeparator)}, and may have ${Resources.optionalModuleFields.join(Resources.listSeparator)}.`;
   public static readonly binField: string = "bin";
   public static readonly notExecutableCodes: readonly string[] = ["ENOENT", "ENOTDIR", "EACCES", "EPERM"];
   public static readonly missingFileCodes: readonly string[] = ["ENOENT", "ENOTDIR"];
@@ -271,7 +279,7 @@ export class Resources {
   public static readonly inheritedStdio: "inherit" = "inherit";
   public static readonly fixtureRootSegments: readonly string[] = ["..", "..", ".."];
   public static readonly fixtureArchivePrefix: string = "noldova-git";
-  public static readonly fixtureArchiveCount: number = 7;
+  public static readonly fixtureArchiveCount: number = 10;
   public static readonly repositoryPlace: string = "the repository";
   public static readonly fixturePlace: string = "the fixture app";
   public static readonly fixtureContextRangeFile: string = "src/noldova.git.window/package.json";
@@ -290,17 +298,17 @@ export class Resources {
   public static readonly fixtureOpenModule: string = "scripts/tests/installed-package/open-module.ts";
   public static readonly fixtureRuntimeModule: string = "scripts/tests/installed-package/read-runtime-part.mts";
   public static readonly fixturePeersModule: string = "scripts/tests/installed-package/read-packed-peers.mts";
-  public static readonly fixtureRuntimeParts: readonly string[] = ["@noldova/git/runtime", "@noldova/git.github/runtime"];
+  public static readonly fixtureRuntimeParts: readonly string[] = ["@noldova/git/runtime", "@noldova/git.github/runtime", "@noldova/git.azure-devops/runtime"];
   public static readonly fixtureContextUnread: string = "The installed-package test reads the lowest tested context from src/noldova.git.window/package.json's "
     + "@noldova/context.core peer range and the newest from the root manifest's pin, and couldn't read one of them.";
   public static readonly fixturePackArguments: readonly string[] = ["pack", "--ignore-scripts", "--silent"];
   public static readonly fixtureInstallArguments: readonly string[] = ["install", "--no-audit", "--no-fund", "--ignore-scripts"];
   public static readonly fixtureCompileArguments: readonly string[] = ["--noEmit", "--strict", "--allowImportingTsExtensions", "--module", "nodenext", "--moduleResolution", "nodenext",
     "--target", "es2023", "--types", "node"];
-  public static readonly fixtureArchivesMissing: string = "_packages must hold the repository's seven archives; run npm run build first.";
+  public static readonly fixtureArchivesMissing: string = "_packages must hold the repository's ten archives; run npm run build first.";
   public static readonly fixturePeersMissing: string = "node_modules must hold Noldova Desktop's runtime and the packages it depends on; run npm ci first.";
   public static readonly fixtureNpmMissing: string = "Run it with npm test, which installs the fixture app through npm.";
-  public static readonly fixturePeersRead: string = "Read the GitHub window part's peer on the Git window part at the module's version, each window part's Angular peers "
+  public static readonly fixturePeersRead: string = "Read each host window part's peer on the Git window part at the module's version, each window part's Angular peers "
     + `from its pins to the next major, no context package among the window parts' dependencies, and each package's peers on context's packages from a tested version to the pin's next minor.${Resources.lineEnd}`;
   public static readonly fixtureCompiled: string =
     `Compiled and ran the runtime parts' construction and the protocols' reading against the installed packages.${Resources.lineEnd}`;
@@ -728,7 +736,7 @@ export class Resources {
   }
 
   public static formatWindowPeerInvalid(name: string): string {
-    return `The window package's manifest's peerDependencies may hold only context's packages, each as >=<lowest> <first refused> to the next minor below 1.0 `
+    return `The window package's manifest's peerDependencies may hold only context's packages and the editor's, each as >=<lowest> <first refused> to the next minor below 1.0 `
       + `or the next major from 1.0, which ${name} isn't.`;
   }
 

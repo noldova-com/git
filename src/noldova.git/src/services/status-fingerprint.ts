@@ -17,8 +17,8 @@ import { Resources } from "../resources.ts";
 import { FilePresence } from "./file-presence.ts";
 
 export class StatusFingerprint {
-  public static async readAsync(top: string, gitFolder: string, output: Buffer, status: ParsedStatus): Promise<string> {
-    const hash = createHash(Resources.digestAlgorithm).update(output).update(String(status.truncated));
+  public static async readAsync(top: string, gitFolder: string, output: Buffer, status: ParsedStatus, submoduleHeads: Buffer): Promise<string> {
+    const hash = createHash(Resources.digestAlgorithm).update(output).update(String(status.truncated)).update(submoduleHeads);
     hash.update(await StatusFingerprint.statAsync(Buffer.from(path.join(gitFolder, Resources.indexFile))));
     const root = Buffer.from(Resources.formatFolderPrefix(top, path.sep));
     for (const entry of status.entries)

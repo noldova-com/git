@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { DiffScopeKind, FileState, type LineCounts, type StatusEntry } from "@noldova/git.protocol";
 
 import { GitFileGroupKind } from "../enums/git-file-group-kind.ts";
@@ -31,10 +32,10 @@ export class GitFileRow {
     this.path = entry.path;
     this.directory = GitFileRow.shortFolderOf(entry.path.slice(0, slash + 1));
     this.fileName = entry.path.slice(slash + 1);
-    this.letter = entry.conflict === null ? Resources.stateLetters[state] : Resources.conflictLetter;
-    this.tone = entry.conflict === null ? GitFileRow.toneOf(state) : GitFileTone.Conflict;
+    this.letter = Object.isNull(entry.conflict) ? Resources.stateLetters[state] : Resources.conflictLetter;
+    this.tone = Object.isNull(entry.conflict) ? GitFileRow.toneOf(state) : GitFileTone.Conflict;
     this.counts = group === GitFileGroupKind.Staged ? entry.indexCounts : group === GitFileGroupKind.Changes ? entry.worktreeCounts : null;
-    this.kind = entry.conflict === null ? null : Resources.conflictKinds[entry.conflict];
+    this.kind = Object.isNull(entry.conflict) ? null : Resources.conflictKinds[entry.conflict];
     this.scope = group === GitFileGroupKind.Staged ? DiffScopeKind.Staged : DiffScopeKind.Worktree;
   }
 

@@ -1,0 +1,103 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<aside class="complete" [attr.aria-label]="resources.completeLabel">
+  <h2 class="complete-title">{{ resources.completeTitle }}</h2>
+  <section class="group">
+    <h3 class="label">{{ resources.mergeTypeTitle }}</h3>
+    @if (typesFailure(); as typesFailure) {
+      <p class="failure" role="alert">
+        <span class="material-symbols-rounded" aria-hidden="true">{{ resources.failureIcon }}</span>
+        <span class="grow">{{ typesFailure }}</span>
+        <button type="button" nol-button [variant]="secondary" class="retry" (click)="retryTypes()">{{ resources.tryAgain }}</button>
+      </p>
+    } @else if (allowed(); as allowed) {
+      <nol-radio-group [label]="resources.mergeTypeTitle" [value]="mergeType()?.type ?? null" (valueChange)="choose($event)">
+        @for (choice of resources.mergeTypeChoices; track choice.type) {
+          <nol-radio class="choice" [class.on]="mergeType()?.type === choice.type" [value]="choice.type" [disabled]="!allowed.includes(choice.type) || isWriting()">
+            <span class="choice-label">{{ choice.label }}</span>
+            @if (noteOf(choice.type, allowed); as note) {
+              <span class="small muted">{{ note }}</span>
+            }
+          </nol-radio>
+        }
+      </nol-radio-group>
+    } @else {
+      <p class="reading" role="status"><nol-spinner />{{ resources.mergeTypesReading }}</p>
+    }
+  </section>
+  @if (takesMessage()) {
+    <label class="group">
+      <span class="label">{{ resources.commitMessageTitle }}</span>
+      <textarea #field nol-text-field class="message" rows="4" [value]="message()" [disabled]="isWriting()" (input)="edit()"></textarea>
+    </label>
+  }
+  <div class="group options">
+    <nol-checkbox class="work-items" [checked]="completeWorkItems()" [disabled]="isWriting()" (checkedChange)="completeWorkItems.set($event)">
+      {{ resources.completeWorkItemsLabel }}
+    </nol-checkbox>
+    <nol-checkbox class="delete-branch" [checked]="deleteSourceBranch()" [disabled]="isWriting()" (checkedChange)="deleteSourceBranch.set($event)">
+      {{ resources.formatDeleteBranch(changes().headBranch) }}
+    </nol-checkbox>
+    @if (clone() !== null) {
+      <nol-checkbox class="pull-after" [checked]="pullAfter()" [disabled]="isWriting()" (checkedChange)="pullAfter.set($event)">
+        {{ resources.formatPullAfter(changes().baseBranch) }}
+      </nol-checkbox>
+    }
+  </div>
+  @if (blocking().length > 0) {
+    <div class="blocking">
+      <p class="blocking-head">
+        <span class="material-symbols-rounded" aria-hidden="true">{{ resources.blockingIcon }}</span>{{ resources.formatBlockingPolicies(blocking().length) }}
+      </p>
+      @for (policy of blocking(); track $index) {
+        <p class="small">{{ policy.name }}</p>
+      }
+      @if (pullRequest().isAutoComplete) {
+        <p class="small auto-then">{{ resources.autoCompleteThen }}</p>
+      }
+    </div>
+  }
+  @if (failure(); as failure) {
+    <p class="failure" role="alert">
+      <span class="material-symbols-rounded" aria-hidden="true">{{ resources.failureIcon }}</span><span class="grow">{{ failure }}</span>
+    </p>
+  }
+  <div class="grow"></div>
+  @if (pending(); as pending) {
+    <div class="confirm" role="alert">
+      <p class="confirm-text">{{ confirmTextOf(pending) }}</p>
+      <div class="actions">
+        <button type="button" nol-button [variant]="secondary" class="cancel" (click)="cancel()">{{ dismissLabelOf(pending.action) }}</button>
+        <button type="button" nol-button class="confirm-action" (click)="confirm(pending)">{{ confirmLabelOf(pending.action) }}</button>
+      </div>
+    </div>
+  } @else {
+    <div class="actions">
+      @if (pullRequest().isAutoComplete) {
+        <button type="button" nol-button [variant]="secondary" class="cancel-auto-complete" [disabled]="isWriting()" (click)="askCancelAutoComplete()">
+          {{ resources.cancelAutoCompleteAction }}
+        </button>
+      } @else if (mergeType(); as mergeType) {
+        <button type="button" nol-button [variant]="secondary" class="set-auto-complete" [disabled]="!canAutoComplete()" (click)="askAutoComplete(mergeType)">
+          {{ resources.setAutoCompleteAction }}
+        </button>
+      } @else {
+        <button type="button" nol-button [variant]="secondary" class="set-auto-complete" disabled>{{ resources.setAutoCompleteAction }}</button>
+      }
+    </div>
+    <div class="actions">
+      <button type="button" nol-button [variant]="secondary" class="abandon" [disabled]="isWriting()" (click)="askAbandon()">{{ resources.abandonAction }}</button>
+      @if (mergeType(); as mergeType) {
+        <button type="button" nol-button class="complete-merge" [disabled]="!canComplete()" (click)="askComplete(mergeType)">{{ resources.completeMergeAction }}</button>
+      } @else {
+        <button type="button" nol-button class="complete-merge" disabled>{{ resources.completeMergeAction }}</button>
+      }
+    </div>
+  }
+</aside>

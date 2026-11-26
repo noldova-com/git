@@ -20,17 +20,18 @@ describe("ProgramRequest", () => {
   const limits = new ProgramLimits(1, 1);
   const signal = new AbortController().signal;
 
-  test("every run sets the C locale, no prompts and no pager, and inherits only the named variables", () => {
+  test("every run sets the C locale, no prompts and no pager, only a read takes pathspecs literally through the environment, and inherits only the named variables", () => {
     const request = new ProgramRequest(ProgramRun.runGh(Access.Write, ["pr", "create"], "/work", limits), signal);
+    const read = new ProgramRequest(ProgramRun.runGh(Access.Read, ["pr", "view"], "/work", limits), signal);
 
     assert.deepEqual(request.environment, {
       LC_ALL: "C",
       GIT_TERMINAL_PROMPT: "0",
       GH_PROMPT_DISABLED: "1",
       GCM_INTERACTIVE: "never",
-      GIT_PAGER: "cat",
-      GIT_LITERAL_PATHSPECS: "1"
+      GIT_PAGER: "cat"
     });
+    assert.deepEqual(read.environment, { ...request.environment, GIT_LITERAL_PATHSPECS: "1" });
     assert.deepEqual(request.inherit, [
       "HOME",
       "HOMEDRIVE",

@@ -20,7 +20,7 @@ describe("PullDivergedException", () => {
     const error = new PullDivergedException();
 
     assert.equal(error.name, "PullDivergedException");
-    assert.equal(error.message, "This branch and its upstream each have commits the other doesn't, so a pull can't fast-forward it. Merge or rebase it in your editor or a terminal.");
+    assert.equal(error.message, "This branch and its upstream each have commits the other doesn't, so a pull can't fast-forward it. Merge or rebase it: in History, drag the upstream onto the branch.");
     assert.equal(error.code, FailureCode.Git);
     assert.equal(error.gitCode, GitCode.Diverged);
     assert.equal(error.output, null);

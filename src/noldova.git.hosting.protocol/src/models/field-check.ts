@@ -34,6 +34,13 @@ export class FieldCheck {
     return reader.readValue(field) === null ? null : reader.readOneOf(field, members);
   }
 
+  public static requireMember<T extends string>(value: string, members: readonly T[], field: string, reader?: JsonReader): T {
+    const member: T | undefined = members.find(t => t === value);
+    if (member === undefined)
+      FieldCheck.fail(field, Resources.formatMemberExpected(members), reader);
+    return member;
+  }
+
   public static requireText(value: string, field: string, reader?: JsonReader): void {
     if (value.trim().length === 0)
       FieldCheck.fail(field, Resources.nonBlankTextExpected, reader);

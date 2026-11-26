@@ -1,0 +1,141 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  display: block;
+  container-type: inline-size;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--nol-text);
+  background-color: var(--nol-panel);
+}
+
+.notice {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  margin: var(--nol-space-3);
+  padding: var(--nol-space-2) var(--nol-view-padding-inline);
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: var(--nol-radius-medium);
+  background-color: var(--nol-raised);
+  color: var(--nol-text-muted);
+}
+
+.notice-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.notice-icon {
+  flex: none;
+  color: var(--nol-status-failed);
+}
+
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.head {
+  display: flex;
+  flex: none;
+  gap: var(--nol-space-2);
+  align-items: center;
+  padding: var(--nol-space-2) var(--nol-space-3);
+  border-bottom: var(--nol-border-width) solid var(--nol-border);
+}
+
+.title {
+  margin: 0;
+  color: var(--nol-text-strong);
+  font-size: var(--nol-text-title);
+  font-weight: var(--nol-weight-emphasis);
+  white-space: nowrap;
+}
+
+.subtitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filters {
+  display: flex;
+  flex: none;
+  gap: var(--nol-space-2);
+}
+
+.new {
+  flex: none;
+}
+
+.chip {
+  display: inline-flex;
+  gap: var(--nol-space-1);
+  align-items: center;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  border-radius: var(--nol-radius-small);
+  box-shadow: inset 0 0 0 var(--nol-border-width) var(--nol-border);
+  color: var(--nol-text-strong);
+  font-size: var(--nol-text-label);
+  white-space: nowrap;
+}
+
+.chip.filter {
+  border: 0;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.chip.filter:hover {
+  background-color: var(--nol-hover);
+}
+
+.chip.filter:focus-visible {
+  outline: var(--nol-border-width) solid var(--nol-accent);
+  outline-offset: calc(-1 * var(--nol-border-width));
+}
+
+.chip-icon {
+  font-size: 0.875rem;
+}
+
+.muted {
+  color: var(--nol-text-muted);
+}
+
+.small {
+  font-size: var(--nol-text-label);
+}
+
+.capped {
+  margin: var(--nol-space-1) var(--nol-space-2);
+}
+
+@container (max-width: 48rem) {
+  .head {
+    flex-wrap: wrap;
+  }
+}

@@ -17,11 +17,6 @@ import { Resources } from "../resources.ts";
 import { type JsonObject, JsonValue } from "./json-value.ts";
 import type { NpmCommand } from "./npm-command.ts";
 
-// Installs every archive packed so far into the repository's node_modules, as an outside user installs them, so the parts built
-// after them and the tests import the packed packages, never their sources. Each install names all of them, since npm removes
-// a package the install doesn't name that the lock doesn't list either. It also names the version node_modules holds of each
-// @noldova/ package the root package.json pins, since an install otherwise takes the lockfile's version back, and the Module
-// range workflow installs Noldova Desktop's newest version in range, and the versions it pins, without saving them.
 export class PackageInstall {
   private readonly root: string;
   private readonly npm: NpmCommand;
@@ -49,17 +44,41 @@ export class PackageInstall {
         for (const name of Object.keys(pins).filter(t => t.startsWith(Resources.noldovaPrefix)))
           names.add(name);
     }
+    const archives = await this.readLockedArchivesAsync();
     const kept: string[] = [];
     for (const name of [...names].sort()) {
       const file = path.join(this.root, Resources.nodeModulesFolder, ...name.split(Resources.pathSeparator), Resources.manifestFile);
       if (!existsSync(file))
         continue;
+      const archive = archives.get(name);
+      if (archive !== undefined) {
+        kept.push(archive);
+        continue;
+      }
       const version: unknown = (await this.readObjectAsync(file, file))[Resources.versionField];
       if (typeof version !== "string")
         throw new InstalledVersionMissingException(file);
       kept.push(Resources.formatPackageSpec(name, version));
     }
     return kept;
+  }
+
+  private async readLockedArchivesAsync(): Promise<ReadonlyMap<string, string>> {
+    const archives = new Map<string, string>();
+    const file = path.join(this.root, Resources.lockFile);
+    if (!existsSync(file))
+      return archives;
+    const packages: unknown = (await this.readObjectAsync(file, Resources.lockFile))[Resources.lockPackagesField];
+    if (!JsonValue.isObject(packages))
+      return archives;
+    for (const [key, entry] of Object.entries(packages)) {
+      if (!key.startsWith(Resources.lockModulesPrefix) || !JsonValue.isObject(entry))
+        continue;
+      const resolved: unknown = entry[Resources.lockResolvedField];
+      if (typeof resolved === "string" && resolved.startsWith(Resources.fileProtocol))
+        archives.set(key.slice(Resources.lockModulesPrefix.length), path.resolve(this.root, resolved.slice(Resources.fileProtocol.length)));
+    }
+    return archives;
   }
 
   private async readObjectAsync(file: string, name: string): Promise<JsonObject> {

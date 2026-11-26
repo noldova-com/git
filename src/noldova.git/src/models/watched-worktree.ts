@@ -9,6 +9,7 @@
 import type { FSWatcher } from "node:fs";
 
 import { WatchStart } from "../enums/watch-start.ts";
+import type { FolderTreeWatch } from "../services/folder-tree-watch.ts";
 import type { RepositoryFolders } from "./repository-folders.ts";
 
 export class WatchedWorktree {
@@ -20,8 +21,14 @@ export class WatchedWorktree {
   public poll: AbortController | null = null;
   public fingerprint: string | null = null;
   public isScheduled: boolean = false;
-  public isForced: boolean = false;
+  public writing: number = 0;
+  public generation: number = 0;
   public isPolledAlways: boolean = false;
+  public isTreeWatched: boolean = false;
+  public folderTree: FolderTreeWatch | null = null;
+  public readonly changed: Set<string> = new Set();
+  public treeQuiet: NodeJS.Timeout | null = null;
+  public treeLongest: NodeJS.Timeout | null = null;
   public running: Promise<void> = Promise.resolve();
   public started: Promise<WatchStart> = Promise.resolve(WatchStart.Stopped);
 

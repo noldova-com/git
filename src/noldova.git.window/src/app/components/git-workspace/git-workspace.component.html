@@ -1,0 +1,124 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<div class="page">
+  <main class="panel" [attr.aria-label]="title()">
+    <div class="toolbar">
+      @if (renaming(); as name) {
+        @if (workspace(); as current) {
+          <input #nameField nol-text-field class="name-field" type="text" name="workspaceName" [attr.aria-label]="resources.workspaceNameLabel" [ngModel]="name"
+            (ngModelChange)="renaming.set($event)" (keydown.enter)="rename(current)" (keydown.escape)="renaming.set(null)" (blur)="rename(current)" />
+        }
+      }
+      @else {
+        <span class="name">{{ title() }}</span>
+      }
+      <span class="small muted count-text">{{ resources.formatRepositoryCount(folders().length, chosen().size) }}</span>
+      <span class="separator" aria-hidden="true"></span>
+      <button type="button" nol-toolbar-button class="fetch-all" [icon]="resources.fetchAllIcon" [label]="resources.fetchAllTitle" [isShowingLabel]="true"
+        [isUnavailable]="isFetching() || folders().length === 0" (click)="fetchAllAsync()"></button>
+      @if (chosen().size > 0) {
+        <button type="button" nol-toolbar-button class="pull-chosen" [icon]="resources.pullIcon" [label]="resources.formatPullChosen(chosenBehind().length)"
+          [isShowingLabel]="true" [isUnavailable]="isWriting() || chosenBehind().length === 0" (click)="pullChosenAsync()"></button>
+        <button type="button" nol-toolbar-button class="new-branch" [icon]="resources.newBranchIcon" [label]="resources.formatNewBranchIn(chosen().size)"
+          [isShowingLabel]="true" [isUnavailable]="isWriting()" (click)="newBranchInChosen()"></button>
+      }
+      <button type="button" nol-toolbar-button class="add" [icon]="resources.addIcon" [label]="resources.addRepositoryTitle" [isShowingLabel]="true"
+        (click)="addRepositoryAsync()"></button>
+      @if (chosen().size > 0) {
+        @if (workspace(); as current) {
+          <button type="button" nol-toolbar-button class="move-up" [icon]="resources.moveUpIcon" [label]="resources.moveUpTitle" (click)="moveChosen(current, -1)"></button>
+          <button type="button" nol-toolbar-button class="move-down" [icon]="resources.moveDownIcon" [label]="resources.moveDownTitle" (click)="moveChosen(current, 1)"></button>
+        }
+        <button type="button" nol-toolbar-button class="remove" [icon]="resources.removeIcon" [label]="resources.formatRemoveRepositories(chosen().size)" [isShowingLabel]="true"
+          (click)="removeChosen()"></button>
+      }
+      <span class="grow"></span>
+      @if (workspace(); as current) {
+        <button nol-icon-button type="button" class="rename" [icon]="resources.renameIcon" [label]="resources.renameWorkspaceTitle" (click)="renaming.set(current.name)"></button>
+        <button nol-icon-button type="button" class="remove-workspace" [icon]="resources.deleteIcon" [label]="resources.removeWorkspaceTitle" (click)="removeWorkspace(current)"></button>
+      }
+      <label class="filter">
+        <span class="material-symbols-rounded" aria-hidden="true">{{ resources.filterIcon }}</span>
+        <input #filterField type="search" [placeholder]="resources.filterRepositoriesLabel" [attr.aria-label]="resources.filterRepositoriesLabel" [value]="filter()"
+          (input)="filter.set(filterField.value)" />
+      </label>
+    </div>
+    @if (result().length > 0) {
+      <div class="small result" role="status">
+        @for (line of result(); track $index) {
+          <p>{{ line }}</p>
+        }
+      </div>
+    }
+    <div class="table" role="table" [attr.aria-label]="title()">
+      <div class="tr th" role="row">
+        <span role="columnheader"><span class="visually-hidden">{{ resources.selectRepositoryLabel }}</span></span>
+        <span role="columnheader">{{ resources.repositoryColumn }}</span>
+        <span role="columnheader">{{ resources.branchColumn }}</span>
+        <span role="columnheader" class="sync-head">{{ resources.syncColumn }}</span>
+        <span role="columnheader" class="changes-head">{{ resources.changesColumn }}</span>
+        <span role="columnheader" class="pull-request-head">{{ resources.pullRequestColumn }}</span>
+        <span role="columnheader">{{ resources.checksColumn }}</span>
+        <span role="columnheader" class="open-head">{{ resources.openColumn }}</span>
+        <span role="columnheader">{{ resources.fetchedColumn }}</span>
+      </div>
+      @for (row of rows(); track row.folder) {
+        @let isChosen = chosen().has(row.folder);
+        <div nolGitVisible class="tr" role="row" [class.selected]="isChosen" [title]="row.folder" (visibleChange)="follow(row.folder, $event)">
+          <span role="cell">
+            <nol-checkbox class="select" [checked]="isChosen" (checkedChange)="select(row.folder, $event)"><span class="visually-hidden">{{ row.name }}</span></nol-checkbox>
+          </span>
+          <span role="cell" class="ic">
+            <span class="material-symbols-rounded" aria-hidden="true">{{ resources.folderIcon }}</span>
+            <button type="button" class="link name-cell" [title]="row.name" (click)="open(row.folder)">{{ row.name }}</button>
+          </span>
+          @if (row.failure(); as failure) {
+            <span role="cell" class="failure small" [title]="failure">{{ failure }}</span>
+          }
+          @else {
+            <span role="cell" class="ic branch">
+              @if (row.branch().length > 0) {
+                <span class="material-symbols-rounded" aria-hidden="true">{{ resources.statusBarBranchIcon }}</span>
+              }
+              <span class="ellipsis" [title]="row.branch()">{{ row.branch() }}</span>
+            </span>
+            <span role="cell" class="small sync">{{ row.sync() }}</span>
+          }
+          <span role="cell" class="small changes" [class.conflicts]="row.hasConflicts()">{{ row.changes() }}</span>
+          <span role="cell" class="small pull-request">
+            @if (row.pullRequest(); as pullRequest) {
+              @let words = around(row.pullRequestText(), pullRequest.label);
+              @let linkTitle = resources.formatPullRequestLinkTitle(row.pullRequestText(), pullRequest.title);
+              <span class="link" (click)="openPullRequest(row, pullRequest)"><span [title]="linkTitle">{{ words.before }}</span><nol-git-reference-text [text]="words.linked" [folder]="row.folder" [link]="pullRequest.url" /><span [title]="linkTitle">{{ words.after }}</span></span>
+            }
+            @else {
+              {{ row.pullRequestText() }}
+            }
+          </span>
+          <span role="cell" class="ic small checks">
+            @if (row.checksTone().length > 0) {
+              <span [class]="'dot ' + row.checksTone()" aria-hidden="true"></span>
+            }
+            {{ row.checks() }}
+          </span>
+          <span role="cell" class="small open" [title]="row.openTitle()">{{ row.open() }}</span>
+          <span role="cell" class="small muted fetched">{{ row.fetched() }}</span>
+        </div>
+      }
+      @empty {
+        <div class="empty">
+          <p>{{ folders().length === 0 ? resources.noRepositories : resources.noRepositoryMatches }}</p>
+          @if (folders().length === 0) {
+            <button nol-button type="button" (click)="addRepositoryAsync()">{{ resources.addRepositoryTitle }}</button>
+          }
+        </div>
+      }
+    </div>
+  </main>
+</div>

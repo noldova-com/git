@@ -40,7 +40,8 @@ describe("BranchPullRequest", () => {
         { name: "build", state: "Succeeded", url: "https://github.com/octocat/hello-world/actions/runs/1" },
         { name: "lint", state: "Running", url: null }
       ],
-      reviewDecision: "Waiting"
+      reviewDecision: "Waiting",
+      approvals: null
     });
     assert.deepEqual(BranchPullRequest.fromJson(JSON.parse(JSON.stringify(found.toJson()))), found);
   });
@@ -48,7 +49,7 @@ describe("BranchPullRequest", () => {
   it("takes no pull request and no checks for a branch without one, and returns it as JSON that reads back the same", () => {
     const none: BranchPullRequest = new BranchPullRequest(null, []);
 
-    assert.deepEqual(none.toJson(), { pullRequest: null, checks: [], reviewDecision: null });
+    assert.deepEqual(none.toJson(), { pullRequest: null, checks: [], reviewDecision: null, approvals: null });
     assert.deepEqual(BranchPullRequest.fromJson(none.toJson()), none);
     assert.equal(none.checksState, null);
   });
@@ -77,6 +78,23 @@ describe("BranchPullRequest", () => {
       { name: "HostingFieldException", field: "$.reviewDecision" });
     assert.throws(() => BranchPullRequest.fromJson({ pullRequest: pullRequest.toJson(), checks: [], reviewDecision: null }),
       { name: "HostingFieldException", field: "$.reviewDecision" });
+  });
+
+  it("carries a pull request's approvals when the host counts them, none by default, and reads an answer without them as none", () => {
+    const counted: BranchPullRequest = new BranchPullRequest(pullRequest, [build], ReviewDecision.Approved, 2);
+    const { approvals: _found, ...older } = new BranchPullRequest(pullRequest, [build]).toJson();
+
+    assert.deepEqual([counted.approvals, BranchPullRequest.fromJson(counted.toJson()).approvals, new BranchPullRequest(pullRequest, []).approvals,
+      BranchPullRequest.fromJson(older).approvals, BranchPullRequest.fromJson({ pullRequest: pullRequest.toJson(), checks: [], approvals: 0 }).approvals],
+    [2, 2, null, null, 0]);
+  });
+
+  it("refuses approvals without a pull request or below zero, naming the approvals", () => {
+    assert.throws(() => new BranchPullRequest(null, [], null, 1),
+      { name: "HostingArgumentException", parameterName: "approvals", message: "The argument approvals is invalid: expected no approvals, since there is no pull request." });
+    assert.throws(() => new BranchPullRequest(pullRequest, [], ReviewDecision.Waiting, -1), { name: "HostingArgumentException", parameterName: "approvals" });
+    assert.throws(() => BranchPullRequest.fromJson({ pullRequest: null, checks: [], approvals: 0 }), { name: "HostingFieldException", field: "$.approvals" });
+    assert.throws(() => BranchPullRequest.fromJson({ pullRequest: pullRequest.toJson(), checks: [], approvals: 1.5 }), { name: "JsonException", path: "$.approvals" });
   });
 
   it("refuses a review decision it doesn't know, naming its path", () => {

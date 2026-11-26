@@ -14,7 +14,9 @@ import { Resources } from "../resources.ts";
 export class RepositoryModule {
   public static readonly main: RepositoryModule = new RepositoryModule(Resources.mainModuleName, Resources.mainPackageName);
   public static readonly gitHub: RepositoryModule = new RepositoryModule(Resources.gitHubModuleName, Resources.gitHubPackageName, [RepositoryModule.main]);
-  public static readonly all: readonly RepositoryModule[] = [RepositoryModule.main, RepositoryModule.gitHub];
+  public static readonly azureDevOps: RepositoryModule = new RepositoryModule(Resources.azureDevOpsModuleName, Resources.azureDevOpsPackageName,
+    [RepositoryModule.main]);
+  public static readonly all: readonly RepositoryModule[] = [RepositoryModule.main, RepositoryModule.gitHub, RepositoryModule.azureDevOps];
   public static readonly shared: readonly IModulePackage[] = [{ folder: Resources.hostingProtocolFolder, name: Resources.hostingProtocolPackageName }];
 
   public readonly name: string;

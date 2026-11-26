@@ -1,0 +1,45 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (preview(); as preview) {
+  <section class="preview" [attr.aria-label]="resources.rebasePreviewLabel">
+    <section class="now">
+      <h3 class="caps">{{ resources.nowLabel }}</h3>
+      <div class="node"><span class="dot branch-dot"></span><span class="chip">{{ preview.branch }}</span></div>
+      <div class="node indented muted">{{ resources.formatCommitsFrom(preview.count, preview.base) }}</div>
+      <div class="node"><span class="dot onto-dot"></span><span class="chip">{{ preview.onto }}</span><span class="muted">{{ resources.formatAheadOfBase(preview.plan.ontoAhead) }}</span></div>
+    </section>
+    <section class="after">
+      <h3 class="caps">{{ resources.afterLabel }}</h3>
+      @for (name of preview.stacked; track name) {
+        <div class="node"><span class="dot stacked-dot"></span><span class="chip">{{ name }}</span><span class="muted">{{ resources.movedTooLabel }}</span></div>
+      }
+      <div class="node"><span class="dot branch-dot"></span><span class="chip">{{ preview.branch }}</span></div>
+      @for (subject of preview.after; track $index) {
+        <div class="node indented result"><nol-git-reference-text [text]="subject" [folder]="preview.folder" /></div>
+      }
+      <div class="node"><span class="dot onto-dot"></span><span class="chip">{{ preview.onto }}</span><span class="muted">{{ preview.ontoCommit }}</span></div>
+    </section>
+    @if (preview.stop; as stop) {
+      <div class="stop-card" role="status">
+        <div class="stop-title"><span class="check-icon warning material-symbols-rounded" aria-hidden="true">{{ resources.warningIcon }}</span><span class="strong">{{ resources.formatStepStops(stop.step) }}</span></div>
+        <p class="stop-text">{{ resources.formatStepStopsNote(stop.paths, preview.onto, stop.commit) }}</p>
+        @let stoppedAt = preview.stopped;
+        <div><button nol-button type="button" class="show-conflict" [variant]="secondary" [disabled]="stoppedAt === null"
+          [title]="stoppedAt === null ? resources.showConflictWaits : resources.showConflictLabel"
+          (click)="stoppedAt !== null && showConflict(preview.folder, stoppedAt)">{{ resources.showConflictLabel }}</button></div>
+      </div>
+    }
+    <div class="spacer"></div>
+    @if (preview.plan.pushed) {
+      <p class="pushed muted">{{ resources.pushedNote }}</p>
+    }
+  </section>
+} @else {
+  <p class="muted empty-view">{{ resources.rebasePreviewEmpty }}</p>
+}

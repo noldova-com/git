@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 import { type IPermissionRequest, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
-import { GitNames, type GitStatus, type StatusUpstream, UntrustedSource } from "@noldova/git.protocol";
+import { GitNames, type GitStatus, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
 import { CredentialsNeededException } from "../exceptions/credentials-needed.exception.ts";
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
@@ -22,6 +22,7 @@ import type { IGitWrite } from "../interfaces/i-git-write.ts";
 import { GitArguments } from "../models/git-arguments.ts";
 import { ProgramLimits } from "../models/program-limits.ts";
 import { ProgramRun } from "../models/program-run.ts";
+import { PulledBranch } from "../models/pulled-branch.ts";
 import type { RepositoryFolders } from "../models/repository-folders.ts";
 import { WritePermission } from "../models/write-permission.ts";
 import { Resources } from "../resources.ts";
@@ -30,6 +31,8 @@ import { LogReader } from "./log.reader.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
 export class PullWriter implements IGitWrite {
+  public readonly method: string = GitNames.pullMethod;
+  public readonly undo: UndoMode = UndoMode.Keep;
   private static readonly PULL_LIMITS: ProgramLimits = new ProgramLimits(Resources.writeOutputBytes, Resources.checkoutMilliseconds);
   private static readonly COUNT_LIMITS: ProgramLimits = new ProgramLimits(Resources.lineOutputBytes, Resources.gitReadMilliseconds);
   private static readonly PULL: GitArguments = new GitArguments(Resources.pullArguments);
@@ -81,7 +84,7 @@ export class PullWriter implements IGitWrite {
     throw new GitFailedException(Resources.pullCommand, output);
   }
 
-  private static pulledOf(status: GitStatus): { readonly branch: string; readonly upstream: StatusUpstream } {
+  private static pulledOf(status: GitStatus): PulledBranch {
     if (status.branch === null)
       throw new PullDetachedException();
     if (status.upstream === null || status.upstream.gone)
@@ -90,7 +93,7 @@ export class PullWriter implements IGitWrite {
       throw new PullConflictsException();
     if (status.upstream.ahead > 0 && status.upstream.behind > 0)
       throw new PullDivergedException();
-    return { branch: status.branch, upstream: status.upstream };
+    return new PulledBranch(status.branch, status.upstream);
   }
 
   private async hasDivergedAsync(top: string, signal?: AbortSignal): Promise<boolean> {

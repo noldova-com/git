@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { HostingNames } from "@noldova/git.hosting.protocol";
+import { HostCapabilities, HostCapability, HostingNames } from "@noldova/git.hosting.protocol";
 
 import { Resources } from "../resources.ts";
 
@@ -20,10 +20,19 @@ export class GitHubNames {
   public static readonly readReferenceMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.readReferenceMethod);
   public static readonly readBranchPullRequestMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.readBranchPullRequestMethod);
   public static readonly createPullRequestMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.createPullRequestMethod);
+  public static readonly readAuthorAvatarMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.readAuthorAvatarMethod);
+  public static readonly readPullRequestsMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.readPullRequestsMethod);
+  public static readonly readReviewRequestsMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.readReviewRequestsMethod);
+  public static readonly readCommitCommentsMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.readCommitCommentsMethod);
+  public static readonly readPullRequestMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.readPullRequestMethod);
+  public static readonly readPullRequestThreadsMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.readPullRequestThreadsMethod);
   public static readonly accessService: string = HostingNames.nameOf(GitHubNames.moduleId, Resources.accessMember);
   public static readonly signInChangedEvent: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.signInChangedEvent);
   public static readonly readTool: string = "git_github_read";
   public static readonly prChecksTool: string = "git_github_pr_checks";
   public static readonly prCreateTool: string = "git_github_pr_create";
   public static readonly manageAccessUrl: string = Resources.formatManageAccessUrl(GitHubNames.clientId);
+  public static readonly capabilities: HostCapabilities = new HostCapabilities([HostCapability.SignIn, HostCapability.ReadItem,
+    HostCapability.BranchPullRequest, HostCapability.CreatePullRequest, HostCapability.Checks, HostCapability.AuthorAvatars,
+    HostCapability.PullRequests]);
 }

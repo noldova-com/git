@@ -1,0 +1,15 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@for (across of shown(); track across.instance) {
+  <nol-git-workspace-across class="across" [attr.aria-label]="resources.acrossHeading" [rows]="across.rows" [runs]="across.runs" [reviews]="across.reviews"
+    (repositoryOpened)="across.page.open($event)" (pullRequestOpened)="across.page.openPullRequest($event.row, $event.pullRequest)"
+    (reviewOpened)="across.page.openReview($event)" (written)="across.page.readWritten($event)" />
+} @empty {
+  <p class="muted empty-view">{{ resources.workspaceAcrossEmpty }}</p>
+}

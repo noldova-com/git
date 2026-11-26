@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { GitBranches } from "@noldova/git.protocol";
 
 import { GitBranchMenuKind } from "../enums/git-branch-menu-kind.ts";
@@ -25,7 +26,7 @@ export class GitBranchMenuItem {
   }
 
   public static itemsOf(branches: GitBranches | null, query: string): readonly GitBranchMenuItem[] {
-    if (branches === null)
+    if (Object.isNull(branches))
       return [];
     const lower: string = query.toLowerCase();
     const matches = (name: string): boolean => name.toLowerCase().includes(lower);
@@ -43,6 +44,6 @@ export class GitBranchMenuItem {
 
   private static localNameOf(branch: string, remotes: readonly string[]): string {
     const remote: string | undefined = remotes.find(t => branch.startsWith(`${t}${Resources.slash}`));
-    return remote === undefined ? branch : branch.slice(remote.length + 1);
+    return Object.isUndefined(remote) ? branch : branch.slice(remote.length + 1);
   }
 }

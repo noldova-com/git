@@ -1,0 +1,138 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.complete {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nol-space-3);
+  box-sizing: border-box;
+  height: 100%;
+  padding: var(--nol-space-3);
+}
+
+.complete-title {
+  margin: 0;
+  color: var(--nol-text-strong);
+  font-size: var(--nol-text-title);
+  font-weight: var(--nol-weight-strong);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nol-space-1);
+  min-width: 0;
+  margin: 0;
+}
+
+.options {
+  gap: var(--nol-space-2);
+}
+
+.label {
+  margin: 0;
+  color: var(--nol-text-strong);
+  font-size: var(--nol-text-label);
+  font-weight: var(--nol-weight-strong);
+}
+
+.choice {
+  padding: var(--nol-space-1) var(--nol-space-2);
+  border-radius: var(--nol-radius-medium);
+}
+
+.choice.on {
+  background-color: var(--nol-selected);
+}
+
+.choice-label {
+  display: block;
+}
+
+.message {
+  box-sizing: border-box;
+  width: 100%;
+  resize: vertical;
+}
+
+.small {
+  display: block;
+  margin: 0;
+  font-size: var(--nol-text-label);
+}
+
+.muted {
+  color: var(--nol-text-muted);
+}
+
+.reading,
+.failure,
+.blocking-head {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  margin: 0;
+}
+
+.reading,
+.failure {
+  color: var(--nol-text-muted);
+  font-size: var(--nol-text-label);
+}
+
+.failure .material-symbols-rounded {
+  color: var(--nol-status-failed);
+}
+
+.blocking {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nol-space-1);
+  padding: var(--nol-space-3);
+  border: var(--nol-border-width) solid var(--nol-card-border);
+  border-radius: var(--nol-radius-medium);
+  background-color: var(--nol-raised);
+}
+
+.blocking-head {
+  gap: var(--nol-space-1);
+  color: var(--nol-text-strong);
+  font-weight: var(--nol-weight-strong);
+}
+
+.blocking-head .material-symbols-rounded {
+  color: var(--nol-warning);
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nol-space-2);
+}
+
+.confirm-text {
+  margin: 0;
+  font-size: var(--nol-text-label);
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  gap: var(--nol-space-2);
+  justify-content: flex-end;
+}

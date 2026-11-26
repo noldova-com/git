@@ -46,6 +46,13 @@ describe("ProgramRun", () => {
     assert.equal(run.signal, signal);
   });
 
+  test("a git write names its paths literally through pathspec magic, and a read leaves them as they are", () => {
+    const gitArguments = new GitArguments(["add"]).withPaths(["[ab].txt"]);
+
+    assert.deepEqual(ProgramRun.writeGit(gitArguments, "/work", "/work/.git", "/work/.git", limits).arguments, ["add", "--", ":(literal)[ab].txt"]);
+    assert.deepEqual(ProgramRun.readGit(gitArguments, "/work", limits).arguments, ["add", "--", "[ab].txt"]);
+  });
+
   test("a gh run keeps its access and names no git folder", () => {
     const run = ProgramRun.runGh(Access.Write, ["pr", "create"], "/work", limits);
 

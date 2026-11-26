@@ -12,9 +12,6 @@ import { ScriptException } from "../exceptions/script.exception.ts";
 import { TestTimes } from "../models/test-times.ts";
 import { Resources } from "../resources.ts";
 
-// Reports the times of the whole run's test files from Vitest's JSON report, naming each file over 1 second that README's list of
-// slower files doesn't name, each listed file over the time the list gives it, and each listed file the run no longer has. It never
-// fails for a time, since no check of npm test takes the clock as a pass condition; npm run test:timing is the timing check.
 class TestTimeCheck {
   public async runAsync(output: Writable): Promise<void> {
     const root = process.cwd();

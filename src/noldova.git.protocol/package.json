@@ -1,6 +1,6 @@
 {
   "name": "@noldova/git.protocol",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "The Git module's messages that its runtime and window parts exchange: status, diffs, worktrees and the protocol's failures.",
   "type": "module",
   "license": "MIT",

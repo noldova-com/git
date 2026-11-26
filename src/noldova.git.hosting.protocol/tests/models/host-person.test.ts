@@ -32,6 +32,13 @@ describe("HostPerson", () => {
     assert.deepEqual(HostPerson.fromJson(app.toJson()), app);
   });
 
+  it("takes the name the person shows and writes it in its JSON only when there is one", () => {
+    const named: HostPerson = new HostPerson("monalisa@fabrikam.test", null, null, undefined, "Mona Lisa");
+
+    assert.deepEqual([named.name, named.toJson(), HostPerson.fromJson(named.toJson()), HostPerson.fromJson({ login: "monalisa", avatar: null, url: null }).name],
+      ["Mona Lisa", { login: "monalisa@fabrikam.test", avatar: null, url: null, name: "Mona Lisa" }, named, null]);
+  });
+
   it("takes a PNG, JPEG, GIF or WebP avatar as a base64 data address of up to 64 KiB", () => {
     const avatars: readonly string[] = ["png", "jpeg", "gif", "webp"].map(t => `data:image/${t};base64,R0lGODlhAQABAAAAACw=`);
     const largest: string = `data:image/png;base64,${"A".repeat(87_384)}`;
@@ -39,7 +46,7 @@ describe("HostPerson", () => {
     assert.deepEqual([...avatars, largest].map(t => HostPerson.fromJson(new HostPerson("octocat", t, null).toJson()).avatar), [...avatars, largest]);
   });
 
-  it("refuses a blank login, an avatar that isn't a data image it takes and a profile page that isn't https, naming the parameter", () => {
+  it("refuses a blank login or name, an avatar that isn't a data image it takes and a profile page that isn't https, naming the parameter", () => {
     const expected = { name: "HostingArgumentException", parameterName: "avatar",
       message: "The argument avatar is invalid: expected a PNG, JPEG, GIF or WebP image of at most 64 KiB as a base64 data address." };
     const refused: readonly string[] = ["https://avatars.githubusercontent.com/u/583231", "data:image/svg+xml;base64,PHN2Zy8+",
@@ -52,10 +59,12 @@ describe("HostPerson", () => {
       assert.throws(() => new HostPerson("octocat", value, null), expected, value);
     for (const value of ["http://github.com/octocat", "github.com/octocat", " "])
       assert.throws(() => new HostPerson("octocat", null, value), { name: "HostingArgumentException", parameterName: "url" }, value);
+    assert.throws(() => new HostPerson("octocat", null, null, undefined, " "), { name: "HostingArgumentException", parameterName: "name" });
   });
 
   it("refuses JSON with a field it doesn't define or out of its range, naming the field by its path", () => {
-    assert.throws(() => HostPerson.fromJson({ ...author.toJson(), name: "The Octocat" }), { name: "HostingFieldException", field: "$.name" });
+    assert.throws(() => HostPerson.fromJson({ ...author.toJson(), email: "octocat@example.com" }), { name: "HostingFieldException", field: "$.email" });
+    assert.throws(() => HostPerson.fromJson({ ...author.toJson(), name: "" }), { name: "HostingFieldException", field: "$.name" });
     assert.throws(() => HostPerson.fromJson({ login: "", avatar: null, url: null }, "$.author"), { name: "HostingFieldException", field: "$.author.login" });
     assert.throws(() => HostPerson.fromJson({ login: "octocat", avatar: "avatar.png", url: null }), { name: "HostingFieldException", field: "$.avatar" });
     assert.throws(() => HostPerson.fromJson({ login: "octocat", avatar: null, url: "http://github.com/octocat" }), { name: "HostingFieldException", field: "$.url" });

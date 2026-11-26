@@ -6,9 +6,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 import { type IPermissionDetail, type IPermissionRequest, PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
-import { GitNames, type GitRemote, type GitStatus, type StatusUpstream, UntrustedSource } from "@noldova/git.protocol";
+import { GitNames, type GitRemote, type GitStatus, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
 import { CredentialsNeededException } from "../exceptions/credentials-needed.exception.ts";
+import { ForcePushNoUpstreamException } from "../exceptions/force-push-no-upstream.exception.ts";
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
 import type { GitFailureException } from "../exceptions/git-failure.exception.ts";
 import { HostKeyUnknownException } from "../exceptions/host-key-unknown.exception.ts";
@@ -17,7 +18,9 @@ import { NothingToPushException } from "../exceptions/nothing-to-push.exception.
 import { PushBehindException } from "../exceptions/push-behind.exception.ts";
 import { PushDetachedException } from "../exceptions/push-detached.exception.ts";
 import { PushNoRemoteException } from "../exceptions/push-no-remote.exception.ts";
+import { PushRemoteAheadException } from "../exceptions/push-remote-ahead.exception.ts";
 import { PushRejectedException } from "../exceptions/push-rejected.exception.ts";
+import { PushUpstreamMismatchException } from "../exceptions/push-upstream-mismatch.exception.ts";
 import { UpstreamNotSetException } from "../exceptions/upstream-not-set.exception.ts";
 import type { IGitWrite } from "../interfaces/i-git-write.ts";
 import type { IUntrustedText } from "../interfaces/i-untrusted-text.ts";
@@ -26,6 +29,7 @@ import { GitArguments } from "../models/git-arguments.ts";
 import { ProgramLimits } from "../models/program-limits.ts";
 import type { ProgramResult } from "../models/program-result.ts";
 import { ProgramRun } from "../models/program-run.ts";
+import { PushTarget } from "../models/push-target.ts";
 import type { RepositoryFolders } from "../models/repository-folders.ts";
 import { Required } from "../models/required.ts";
 import { WritePermission } from "../models/write-permission.ts";
@@ -37,6 +41,7 @@ import type { ProgramRunner } from "./program-runner.ts";
 import type { SessionBranches } from "./session-branches.ts";
 
 export class PushWriter implements IGitWrite {
+  public readonly undo: UndoMode = UndoMode.None;
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.writeOutputBytes, Resources.longWriteMilliseconds);
   private static readonly READ_LIMITS: ProgramLimits = new ProgramLimits(Resources.configOutputBytes, Resources.gitReadMilliseconds);
   private static readonly ONCE: readonly PermissionOption[] = [PermissionOption.AllowOnce, PermissionOption.Deny];
@@ -44,25 +49,34 @@ export class PushWriter implements IGitWrite {
   private readonly runner: ProgramRunner;
   private readonly hooks: HooksReader;
   private readonly branches: SessionBranches;
+  private readonly expected: string | null;
 
-  public constructor(runner: ProgramRunner, hooks: HooksReader, branches: SessionBranches) {
+  public constructor(runner: ProgramRunner, hooks: HooksReader, branches: SessionBranches, expected: string | null = null) {
     this.runner = runner;
     this.hooks = hooks;
     this.branches = branches;
+    this.expected = expected;
+  }
+
+  public get method(): string {
+    return this.expected === null ? GitNames.pushMethod : GitNames.forcePushMethod;
   }
 
   public refuse(status: GitStatus): void {
     const { tracked } = PushWriter.targetOf(status);
-    if (tracked === null)
+    if (tracked === null) {
+      if (this.expected !== null)
+        throw new ForcePushNoUpstreamException();
       return;
-    if (tracked.behind > 0)
+    }
+    if (tracked.behind > 0 && this.expected === null)
       throw new PushBehindException();
     if (tracked.ahead === 0)
       throw new NothingToPushException();
   }
 
   public async requestAsync(folders: RepositoryFolders, status: GitStatus, call: IWriteCall, signal?: AbortSignal): Promise<IPermissionRequest | null> {
-    const { branch, remote, target, excluded } = PushWriter.targetOf(status);
+    const { branch, remote, excluded } = PushWriter.targetOf(status);
     const [url, defaultBranch, count, commits, hooks] = await Promise.all([
       this.readAsync(new GitArguments([...Resources.pushUrlArguments, remote.name]), folders.top, signal),
       this.readDefaultBranchAsync(folders.top, remote, signal),
@@ -70,42 +84,44 @@ export class PushWriter implements IGitWrite {
       this.readAsync(new GitArguments([...Resources.pushLogArguments, Resources.headRevision, ...excluded]), folders.top, signal),
       this.hooks.readAsync(folders.top, Resources.pushHooks, signal)
     ]);
-    const isDefault = target === defaultBranch;
-    const isMade = target === branch && this.branches.has(call.session, folders.top, branch);
-    const isAlways = isMade && defaultBranch !== null && !isDefault;
+    const isDefault = branch === defaultBranch;
+    const isMade = this.branches.has(call.session, folders.top, branch);
+    const isAlways = isMade && defaultBranch !== null && !isDefault && this.expected === null;
     const lines = PushWriter.linesOf(commits);
     const total = Number(count.replace(Resources.lineEndPattern, ""));
     const details: IPermissionDetail[] = [
       { label: Resources.remoteLabel, kind: PermissionDetailKind.Text, value: Resources.formatRemoteLine(remote.name, MethodFailures.stripUserinfo(url.replace(Resources.lineEndPattern, ""))) },
-      { label: Resources.branchLabel, kind: PermissionDetailKind.Text, value: Resources.formatPushBranch(branch, target, isDefault, isMade) },
+      { label: Resources.branchLabel, kind: PermissionDetailKind.Text, value: Resources.formatPushBranch(branch, isDefault, isMade) },
       { label: Resources.commitsLabel, kind: PermissionDetailKind.Code, value: [...lines, ...(total > lines.length ? [Resources.formatMoreCommits(total - lines.length)] : [])].join(Resources.lineEnd) },
       WritePermission.hooksDetail(hooks)
     ];
     if (isDefault)
       details.push({ label: Resources.noteLabel, kind: PermissionDetailKind.Text, value: Resources.defaultNeverAlways });
+    if (this.expected !== null)
+      details.push({ label: Resources.replacesLabel, kind: PermissionDetailKind.Text, value: Resources.formatForceNote(remote.name, branch, this.expected.slice(0, Resources.shortIdLength)) });
     return WritePermission.create(
-      GitNames.pushMethod,
-      JSON.stringify(isAlways ? [folders.top, remote.name, target, call.session] : [folders.top, remote.name, target]),
-      Resources.formatPushTitle(total, remote.name, target),
+      this.method,
+      JSON.stringify(isAlways ? [folders.top, remote.name, branch, call.session] : [folders.top, remote.name, branch]),
+      this.expected === null ? Resources.formatPushTitle(total, remote.name, branch) : Resources.formatForcePushTitle(total, remote.name, branch),
       details,
       isAlways ? ToolRisk.Medium : ToolRisk.High,
       isAlways ? PushWriter.ALWAYS : PushWriter.ONCE);
   }
 
   public async runAsync(folders: RepositoryFolders, status: GitStatus, signal?: AbortSignal): Promise<void> {
-    const { branch, head, remote, target } = PushWriter.targetOf(status);
-    const gitArguments = new GitArguments([...Resources.pushArguments, remote.name, Resources.formatRefspec(head, target)]);
+    const { branch, head, remote } = PushWriter.targetOf(status);
+    const lease = this.expected === null ? [] : [Resources.formatLeaseOption(branch, this.expected)];
+    const gitArguments = new GitArguments([...Resources.pushOptions, ...lease, Resources.endOfArguments, remote.name, Resources.formatRefspec(head, branch)]);
     const result = await this.runner.runAsync(ProgramRun.writeGit(gitArguments, folders.top, folders.gitFolder, folders.commonGitFolder, PushWriter.LIMITS, signal));
     if (result.exit.code !== 0)
       throw PushWriter.failureOf(result);
     if (status.upstream !== null)
       return;
     await this.configureAsync(folders, Resources.formatBranchRemoteKey(branch), remote.name, signal);
-    await this.configureAsync(folders, Resources.formatBranchMergeKey(branch), Resources.formatBranchRef(target), signal);
+    await this.configureAsync(folders, Resources.formatBranchMergeKey(branch), Resources.formatBranchRef(branch), signal);
   }
 
-  private static targetOf(status: GitStatus):
-    { branch: string; head: string; remote: GitRemote; target: string; tracked: StatusUpstream | null; excluded: string[] } {
+  private static targetOf(status: GitStatus): PushTarget {
     const { branch, head, remote, upstream } = status;
     if (branch === null)
       throw new PushDetachedException();
@@ -115,15 +131,10 @@ export class PushWriter implements IGitWrite {
       throw new NothingToPushException();
     const prefix = Resources.formatRemotePrefix(remote.name);
     const onRemote = upstream !== null && upstream.name.startsWith(prefix) ? upstream : null;
+    if (onRemote !== null && onRemote.name.slice(prefix.length) !== branch)
+      throw new PushUpstreamMismatchException(branch, onRemote.name);
     const tracked = onRemote !== null && !onRemote.gone ? onRemote : null;
-    return {
-      branch,
-      head,
-      remote,
-      target: onRemote === null ? branch : onRemote.name.slice(prefix.length),
-      tracked,
-      excluded: tracked === null ? Resources.formatNotOnRemote(remote.name) : [Resources.formatExcludedRemoteRef(tracked.name)]
-    };
+    return new PushTarget(branch, head, remote, tracked, tracked === null ? Resources.formatNotOnRemote(remote.name) : [Resources.formatExcludedRemoteRef(tracked.name)]);
   }
 
   private async configureAsync(folders: RepositoryFolders, key: string, value: string, signal?: AbortSignal): Promise<void> {
@@ -165,7 +176,10 @@ export class PushWriter implements IGitWrite {
 
   private static failureOf(result: ProgramResult): GitFailureException {
     const output = PushWriter.untrusted(result.errors);
-    if (Resources.rejectedPattern.test(result.output.toString(Resources.utf8Encoding)))
+    const lines = result.output.toString(Resources.utf8Encoding);
+    if (Resources.remoteAheadPattern.test(lines))
+      return new PushRemoteAheadException(output);
+    if (Resources.rejectedPattern.test(lines))
       return new PushRejectedException(output);
     if (Resources.hostKeyFailedPattern.test(output.text))
       return new HostKeyUnknownException(output);

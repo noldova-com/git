@@ -9,6 +9,7 @@
 import { FileState, ProtocolException, StatusEntry, StatusUpstream, SubmoduleStatus } from "@noldova/git.protocol";
 
 import { UnreadableOutputException } from "../exceptions/unreadable-output.exception.ts";
+import { AheadBehind } from "../models/ahead-behind.ts";
 import { GitPath } from "../models/git-path.ts";
 import { ParsedStatus } from "../models/parsed-status.ts";
 import { Required } from "../models/required.ts";
@@ -20,7 +21,7 @@ export class StatusParser {
     let head: string | null = null;
     let branch: string | null = null;
     let upstream: string | null = null;
-    let aheadBehind: readonly [number, number] | null = null;
+    let aheadBehind: AheadBehind | null = null;
     const entries: StatusEntry[] = [];
     let truncated = isCut;
     try {
@@ -53,7 +54,7 @@ export class StatusParser {
       }
       if ((head !== null && !Resources.objectIdPattern.test(head)) || branch === "")
         throw StatusParser.unreadable(Resources.statusRefusedValuesPart);
-      const tracking = upstream === null ? null : new StatusUpstream(upstream, aheadBehind?.[0] ?? 0, aheadBehind?.[1] ?? 0, aheadBehind === null);
+      const tracking = upstream === null ? null : new StatusUpstream(upstream, aheadBehind?.ahead ?? 0, aheadBehind?.behind ?? 0, aheadBehind === null);
       return new ParsedStatus(branch, head, tracking, entries, truncated);
     } catch (error) {
       if (error instanceof ProtocolException)
@@ -73,11 +74,11 @@ export class StatusParser {
     return records;
   }
 
-  private static readAheadBehind(value: string): readonly [number, number] {
+  private static readAheadBehind(value: string): AheadBehind {
     const match = Resources.aheadBehindValuePattern.exec(value);
     if (match === null)
       throw StatusParser.unreadable(Resources.aheadBehindCountsPart);
-    return [Number(match[1]), Number(match[2])];
+    return new AheadBehind(Number(match[1]), Number(match[2]));
   }
 
   private static readEntry(record: Buffer, original: Buffer | null): StatusEntry {

@@ -1,0 +1,30 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (hasProvider()) {
+  <div class="row section">
+    <button type="button" class="toggle" [attr.aria-expanded]="isOpen()" (click)="toggle()">
+      <span class="ms">{{ isOpen() ? resources.sectionOpenIcon : resources.sectionClosedIcon }}</span>
+      <span class="caps grow">{{ resources.agentsLabel }}</span>
+    </button>
+    @if (worktrees() > 0) {
+      <span class="small muted worktrees">{{ resources.formatAgentWorktrees(worktrees()) }}</span>
+    }
+  </div>
+  @if (isOpen()) {
+    @for (run of runs(); track run.row.key) {
+      <button type="button" class="row run" [title]="run.row.worktree" (click)="open(run)">
+        <span class="ms agent">{{ resources.agentIcon }}</span>
+        <span class="grow name">{{ run.row.name }}</span>
+        <span [class]="'ms state ' + run.row.state" role="img" [attr.aria-label]="labelOf(run.row.state)">{{ iconOf(run.row.state) }}</span>
+      </button>
+    } @empty {
+      <div class="row small muted note">{{ resources.agentsEmpty }}</div>
+    }
+  }
+}

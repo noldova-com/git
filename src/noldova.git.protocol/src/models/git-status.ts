@@ -24,7 +24,9 @@ export class GitStatus {
     Resources.truncatedField,
     Resources.fingerprintField,
     Resources.operationField,
-    Resources.remoteField
+    Resources.remoteField,
+    Resources.uncheckedLfsFilesField,
+    Resources.fetchedAtField
   ];
 
   public readonly branch: string | null;
@@ -35,6 +37,8 @@ export class GitStatus {
   public readonly fingerprint: string;
   public readonly operation: GitOperation | null;
   public readonly remote: GitRemote | null;
+  public readonly uncheckedLfsFiles: number;
+  public readonly fetchedAt: string | null;
 
   public constructor(
     branch: string | null,
@@ -45,12 +49,17 @@ export class GitStatus {
     fingerprint: string,
     operation: GitOperation | null,
     remote: GitRemote | null,
+    uncheckedLfsFiles: number = 0,
+    fetchedAt: string | null = null,
     reader?: JsonReader) {
     if (branch !== null)
       FieldCheck.requireText(branch, Resources.branchField, reader);
     if (head !== null)
       FieldCheck.requireObjectId(head, Resources.headField, reader);
     FieldCheck.requireText(fingerprint, Resources.fingerprintField, reader);
+    FieldCheck.requireCount(uncheckedLfsFiles, Resources.uncheckedLfsFilesField, reader);
+    if (fetchedAt !== null && (!Resources.dateTimePattern.test(fetchedAt) || Number.isNaN(Date.parse(fetchedAt))))
+      FieldCheck.fail(Resources.fetchedAtField, Resources.dateTimeExpected, reader);
 
     this.branch = branch;
     this.head = head;
@@ -60,6 +69,8 @@ export class GitStatus {
     this.fingerprint = fingerprint;
     this.operation = operation;
     this.remote = remote;
+    this.uncheckedLfsFiles = uncheckedLfsFiles;
+    this.fetchedAt = fetchedAt;
   }
 
   public static fromJson(value: unknown, path?: string): GitStatus {
@@ -74,6 +85,8 @@ export class GitStatus {
       reader.readString(Resources.fingerprintField),
       FieldCheck.readNullableModel(reader, Resources.operationField, GitOperation.fromJson),
       FieldCheck.readNullableModel(reader, Resources.remoteField, GitRemote.fromJson),
+      reader.readInteger(Resources.uncheckedLfsFilesField),
+      reader.readNullableString(Resources.fetchedAtField),
       reader);
   }
 
@@ -86,7 +99,9 @@ export class GitStatus {
       [Resources.truncatedField]: this.truncated,
       [Resources.fingerprintField]: this.fingerprint,
       [Resources.operationField]: this.operation?.toJson() ?? null,
-      [Resources.remoteField]: this.remote?.toJson() ?? null
+      [Resources.remoteField]: this.remote?.toJson() ?? null,
+      [Resources.uncheckedLfsFilesField]: this.uncheckedLfsFiles,
+      [Resources.fetchedAtField]: this.fetchedAt
     };
   }
 }

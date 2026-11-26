@@ -23,20 +23,34 @@ import { ProgramResult } from "../models/program-result.ts";
 import type { ProgramRun } from "../models/program-run.ts";
 import { Required } from "../models/required.ts";
 import { Resources } from "../resources.ts";
+import type { CommandLog } from "./command-log.ts";
 import { WriteQueue } from "./write-queue.ts";
 
 export class ProgramRunner {
   private readonly context: Pick<IRuntimePartContext, "startProcessAsync">;
   private readonly writes: WriteQueue = new WriteQueue();
+  private readonly commands: CommandLog | null;
 
-  public constructor(context: Pick<IRuntimePartContext, "startProcessAsync">) {
+  public constructor(context: Pick<IRuntimePartContext, "startProcessAsync">, commands: CommandLog | null = null) {
     this.context = context;
+    this.commands = commands;
   }
 
   public async runAsync(run: ProgramRun): Promise<ProgramResult> {
-    if (run.commonGitFolder === null)
+    const commonGitFolder = run.commonGitFolder;
+    if (commonGitFolder === null)
       return await this.startAsync(run);
-    return await this.writes.runAsync(run.commonGitFolder, () => this.startAsync(run));
+    return await this.writes.runAsync(commonGitFolder, async () => {
+      const finish = run.isLogged ? this.commands?.start(commonGitFolder, run.arguments) : undefined;
+      let exitCode: number | null = null;
+      try {
+        const result = await this.startAsync(run);
+        exitCode = result.exit.code;
+        return result;
+      } finally {
+        finish?.(exitCode);
+      }
+    });
   }
 
   private async startAsync(run: ProgramRun): Promise<ProgramResult> {
@@ -46,7 +60,7 @@ export class ProgramRunner {
     const request = new ProgramRequest(run, signal);
     try {
       const process = await this.startProcessAsync(run, request, limit.signal);
-      const result = await this.collectAsync(process, request.program, run.limits.outputBytes, signal).finally(() => this.throwIfStopped(run, request, limit.signal));
+      const result = await this.collectAsync(process, run.input, request.program, run.limits.outputBytes, signal).finally(() => this.throwIfStopped(run, request, limit.signal));
       if (ProgramRunner.isIndexLocked(run, result))
         throw new IndexLockedException();
       return result;
@@ -66,9 +80,10 @@ export class ProgramRunner {
     }
   }
 
-  private async collectAsync(process: OwnedProcess, program: string, outputBytes: number, stop: AbortSignal): Promise<ProgramResult> {
+  private async collectAsync(process: OwnedProcess, input: Buffer, program: string, outputBytes: number, stop: AbortSignal): Promise<ProgramResult> {
     let stopping: Promise<unknown> = Promise.resolve();
-    process.input.end();
+    process.input.on("error", () => undefined);
+    process.input.end(input);
     const listening = addAbortListener(stop, () => void process.exited.then(() => {
       process.output.destroy();
       process.errors.destroy();

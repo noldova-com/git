@@ -1,0 +1,51 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@if (host(); as provider) {
+  <div class="row section">
+    <button type="button" class="toggle" [attr.aria-expanded]="isOpen()" (click)="toggle()">
+      <span class="ms">{{ isOpen() ? resources.sectionOpenIcon : resources.sectionClosedIcon }}</span>
+      <span class="caps grow">{{ resources.pullRequestsLabel }}</span>
+    </button>
+    <span class="small muted host">{{ resources.formatPullRequestsHost(provider.hostName, list()?.rows?.length ?? 0) }}</span>
+  </div>
+  @if (isOpen()) {
+    @switch (list()?.state ?? states.Reading) {
+      @case (states.SignedOut) {
+        <button type="button" class="row link" (click)="signIn(provider.signInPage)">{{ resources.pullRequestsSignIn }}</button>
+      }
+      @case (states.Failed) {
+        <div class="row failure" role="alert">
+          <span class="grow note" [title]="list()?.failure ?? ''">{{ list()?.failure }}</span>
+          <button type="button" class="retry" (click)="refresh()">{{ resources.tryAgainLabel }}</button>
+        </div>
+      }
+      @default {
+        @for (row of rows(); track row.url) {
+          <button type="button" class="row pull-request" [class.sel]="isShown(row)" [attr.aria-current]="isShown(row) ? 'true' : null" (click)="open(row)"
+            [nolContextMenuTriggerFor]="pullRequestMenu">
+            <span [class]="'dot ' + toneOf(row)"></span>
+            <span class="grow title" [title]="row.title">{{ resources.formatPullRequestRowText(row.label, row.title) }}</span>
+            <span class="small muted">{{ noteOf(row) }}</span>
+          </button>
+          <ng-template #pullRequestMenu>
+            <nol-menu>
+              <button nol-menu-item data-action="switch" [label]="resources.switchLabel" [icon]="resources.switchIcon" [disabled]="!canSwitch() || row.headBranch === current()"
+                (triggered)="switchTo.emit(row.headBranch)"></button>
+              <nol-menu-separator />
+              <button nol-menu-item data-action="open" [label]="resources.openInBrowserLabel" [icon]="resources.openLinkIcon" (triggered)="openInBrowser(row)"></button>
+              <button nol-menu-item data-action="copy" [label]="resources.copyLinkLabel" [icon]="resources.copyLinkIcon" (triggered)="copyLink(row)"></button>
+            </nol-menu>
+          </ng-template>
+        } @empty {
+          <div class="row small muted note">{{ list()?.state === states.Ready ? resources.pullRequestsEmpty : resources.pullRequestsReading }}</div>
+        }
+      }
+    }
+  }
+}

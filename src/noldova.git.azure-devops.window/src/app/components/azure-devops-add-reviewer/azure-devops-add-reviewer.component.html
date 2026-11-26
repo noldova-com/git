@@ -1,0 +1,39 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+<div class="add-reviewer" (keydown.escape)="close()">
+  <nol-text-field-box class="search" [icon]="resources.searchIcon">
+    <input #field nol-text-field type="search" [attr.aria-label]="resources.reviewerSearchLabel" [placeholder]="resources.reviewerSearchPlaceholder"
+      [disabled]="adding() !== null" (input)="search()" />
+  </nol-text-field-box>
+  @if (failure(); as failure) {
+    <p class="add-failure" role="alert">
+      <span class="material-symbols-rounded" aria-hidden="true">{{ resources.failureIcon }}</span>{{ failure }}
+    </p>
+  }
+  @if (found(); as found) {
+    <div class="found" role="group" [attr.aria-label]="resources.reviewerResultsLabel">
+      @for (person of shownOf(found); track person.descriptor) {
+        <button type="button" class="person" [disabled]="adding() !== null" (click)="addAsync(person)">
+          <nol-git-azure-devops-person-avatar [organization]="reference().owner" [login]="person.login" [name]="resources.formatAvatarName(person.login)" />
+          <span class="grow">
+            <span class="title">
+              <span class="name">{{ person.name }}</span>
+              @if (person.isGroup) {
+                <span class="kind small muted"><span class="material-symbols-rounded" aria-hidden="true">{{ resources.groupIcon }}</span>{{ resources.groupLabel }}</span>
+              }
+            </span>
+            <span class="small muted">{{ person.login }}</span>
+          </span>
+        </button>
+      } @empty {
+        <p class="muted">{{ resources.noPeopleFound }}</p>
+      }
+    </div>
+  }
+</div>

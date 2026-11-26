@@ -15,12 +15,19 @@ import { ConflictKind, FailureCode, FileState, GitCode, type JsonObject } from "
 import type { ParsedStatus } from "../../src/models/parsed-status.ts";
 import { StatusParser } from "../../src/services/status.parser.ts";
 
+interface IUnreadableFailure {
+  readonly name: string;
+  readonly code: FailureCode;
+  readonly gitCode: GitCode;
+  readonly message: string;
+}
+
 describe("StatusParser", () => {
   const HEAD = "0123456789abcdef0123456789abcdef01234567";
   const ID = "89abcdef0123456789abcdef0123456789abcdef";
   const output = (...records: readonly string[]): Buffer => Buffer.from(records.map(t => `${t}\0`).join(""));
-  const json = (parsed: ParsedStatus): JsonObject => parsed.toStatus(parsed.entries, "f", null, null).toJson();
-  const unreadable = (part: string): { name: string; code: FailureCode; gitCode: GitCode; message: string } =>
+  const json = (parsed: ParsedStatus): JsonObject => parsed.toStatus(parsed.entries, "f", null, null, 0, null, null).toJson();
+  const unreadable = (part: string): IUnreadableFailure =>
     ({ name: "UnreadableOutputException", code: FailureCode.Git, gitCode: GitCode.UnreadableOutput, message: `git status printed ${part} that the module can't read.` });
 
   test("reads the branch, HEAD, the upstream and every kind of entry", () => {
@@ -47,7 +54,7 @@ describe("StatusParser", () => {
     assert.deepEqual(json(status), {
       branch: "feature/login",
       head: HEAD,
-      upstream: { name: "origin/feature/login", ahead: 2, behind: 1, gone: false },
+      upstream: { name: "origin/feature/login", ahead: 2, behind: 1, gone: false, id: null },
       entries: [
         { path: "a file.txt", originalPath: null, index: FileState.Unmodified, worktree: FileState.Modified, conflict: null, submodule: null, indexCounts: null, worktreeCounts: null },
         { path: "added.txt", originalPath: null, index: FileState.Added, worktree: FileState.Unmodified, conflict: null, submodule: null, indexCounts: null, worktreeCounts: null },
@@ -63,7 +70,9 @@ describe("StatusParser", () => {
       truncated: false,
       fingerprint: "f",
       operation: null,
-      remote: null
+      remote: null,
+      uncheckedLfsFiles: 0,
+      fetchedAt: null
     });
   });
 
@@ -78,10 +87,10 @@ describe("StatusParser", () => {
 
   test("reads a repository with no commits, a detached HEAD, and a gone upstream", () => {
     assert.deepEqual(json(StatusParser.parse(output("# branch.oid (initial)", "# branch.head main"), false, 100)),
-      { branch: "main", head: null, upstream: null, entries: [], truncated: false, fingerprint: "f", operation: null, remote: null });
+      { branch: "main", head: null, upstream: null, entries: [], truncated: false, fingerprint: "f", operation: null, remote: null, uncheckedLfsFiles: 0, fetchedAt: null });
     assert.deepEqual(json(StatusParser.parse(output(`# branch.oid ${HEAD}`, "# branch.head (detached)", "# branch.upstream origin/old"), false, 100)),
-      { branch: null, head: HEAD, upstream: { name: "origin/old", ahead: 0, behind: 0, gone: true }, entries: [], truncated: false, fingerprint: "f", operation: null,
-        remote: null });
+      { branch: null, head: HEAD, upstream: { name: "origin/old", ahead: 0, behind: 0, gone: true, id: null }, entries: [], truncated: false, fingerprint: "f", operation: null,
+        remote: null, uncheckedLfsFiles: 0, fetchedAt: null });
   });
 
   test("keeps a path that isn't UTF-8 as its bytes beside a readable text, and reads output with no final separator", () => {

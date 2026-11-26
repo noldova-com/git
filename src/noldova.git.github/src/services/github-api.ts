@@ -14,6 +14,7 @@ import { HostingProtocolException } from "@noldova/git.hosting.protocol";
 import { CachedAnswer } from "../models/cached-answer.ts";
 import { Resources } from "../resources.ts";
 import type { Fetcher } from "../types/fetcher.ts";
+import { AnswerText } from "./answer-text.ts";
 
 export class GitHubApi {
   private readonly fetcher: Fetcher;
@@ -38,7 +39,7 @@ export class GitHubApi {
     const tag: string | null = cached?.tag ?? null;
     if (tag !== null)
       headers[Resources.ifNoneMatchHeader] = tag;
-    const response: Response = await this.fetchAsync(url, { headers }, signal);
+    const response: Response = await this.followAsync(url, { headers }, signal);
     if (response.status === Resources.notModifiedStatus && cached !== undefined)
       return this.reuse(url, cached, now, token);
     if (response.status === Resources.notFoundStatus) {
@@ -114,7 +115,7 @@ export class GitHubApi {
   private async fetchAsync(url: string, init: RequestInit, signal: AbortSignal): Promise<Response> {
     let response: Response;
     try {
-      response = await this.fetcher(url, { ...init, signal: AbortSignal.any([signal, AbortSignal.timeout(Resources.requestTimeout)]) });
+      response = await this.fetcher(url, { ...init, redirect: Resources.manualRedirect, signal: AbortSignal.any([signal, AbortSignal.timeout(Resources.requestTimeout)]) });
     }
     catch (error) {
       throw GitHubApi.unreachable(error, signal);
@@ -125,6 +126,26 @@ export class GitHubApi {
       throw GitHubApi.failure(FailureCode.Unauthorized, Resources.signedOutMessage);
     }
     return response;
+  }
+
+  private async followAsync(first: string, init: RequestInit, signal: AbortSignal): Promise<Response> {
+    let url: string = first;
+    for (let hop: number = 0; hop <= Resources.apiRedirects; hop++) {
+      const response: Response = await this.fetchAsync(url, init, signal);
+      if (!Resources.redirectStatuses.includes(response.status))
+        return response;
+      await GitHubApi.dropBodyAsync(response);
+      const next: URL | null = GitHubApi.apiUrlOf(response.headers.get(Resources.locationHeader), url);
+      if (next === null)
+        break;
+      url = next.href;
+    }
+    throw GitHubApi.failure(FailureCode.Unavailable, Resources.movedMessage);
+  }
+
+  private static apiUrlOf(address: string | null, base: string): URL | null {
+    const url: URL | null = address === null ? null : URL.parse(address, base);
+    return url !== null && url.origin === Resources.apiUrl && url.username.length === 0 && url.password.length === 0 ? url : null;
   }
 
   private static headersOf(token: string): Record<string, string> {
@@ -139,18 +160,24 @@ export class GitHubApi {
       await GitHubApi.dropBodyAsync(response);
       throw GitHubApi.failure(FailureCode.Unavailable, GitHubApi.rateLimitedMessage(response.headers.get(Resources.rateLimitResetHeader)));
     }
+    if (Resources.redirectStatuses.includes(response.status)) {
+      await GitHubApi.dropBodyAsync(response);
+      throw GitHubApi.failure(FailureCode.Unavailable, Resources.movedMessage);
+    }
     if (!response.ok) {
       await GitHubApi.dropBodyAsync(response);
       throw GitHubApi.failure(FailureCode.Unavailable, Resources.formatRefusedRequest(response.status));
     }
-    let body: string;
+    let body: string | null;
     try {
-      body = await response.text();
+      body = await AnswerText.readAsync(response, Resources.maximumAnswerBytes);
     }
     catch (error) {
       throw GitHubApi.unreachable(error, signal);
     }
     signal.throwIfAborted();
+    if (body === null)
+      throw GitHubApi.failure(FailureCode.Unavailable, Resources.answerTooLargeMessage);
     return body;
   }
 

@@ -35,6 +35,10 @@ export class GitArguments {
     return new GitArguments(this.options, this.revisions, [...this.paths, ...paths]);
   }
 
+  public withLiteralPaths(): GitArguments {
+    return new GitArguments(this.options, this.revisions, this.paths.map(t => `${Resources.literalPathMagic}${t}`));
+  }
+
   public withSettings(settings: readonly string[]): GitArguments {
     return new GitArguments([...settings, ...this.options], this.revisions, this.paths);
   }

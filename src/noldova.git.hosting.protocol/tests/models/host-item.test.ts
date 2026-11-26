@@ -134,7 +134,7 @@ describe("HostItem", () => {
 
     assert.throws(() => HostItem.fromJson({ ...json, reference: { ...reference.toJson(), number: 0 } }), { name: "HostingFieldException", field: "$.reference.number" });
     assert.throws(() => HostItem.fromJson({ ...json, author: { login: "", avatar: null, url: null } }, "$.pullRequest"), { name: "HostingFieldException", field: "$.pullRequest.author.login" });
-    assert.throws(() => HostItem.fromJson({ ...json, author: { ...author.toJson(), name: "The Octocat" } }), { name: "HostingFieldException", field: "$.author.name" });
+    assert.throws(() => HostItem.fromJson({ ...json, author: { ...author.toJson(), email: "octocat@example.com" } }), { name: "HostingFieldException", field: "$.author.email" });
     assert.throws(() => HostItem.fromJson({ ...json, changes: { ...changes.toJson(), headCommit: "abc" } }), { name: "HostingFieldException", field: "$.changes.headCommit" });
   });
 

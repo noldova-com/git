@@ -1,0 +1,30 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import assert from "node:assert/strict";
+
+import { describe, test } from "vitest";
+
+import { FailureCode } from "@noldova/git.protocol";
+
+import { ConflictGoneException } from "../../src/exceptions/conflict-gone.exception.ts";
+import { GitFailureException } from "../../src/exceptions/git-failure.exception.ts";
+
+describe("ConflictGoneException", () => {
+  test("carries its codes and message", () => {
+    const error = new ConflictGoneException();
+
+    assert.equal(error.name, "ConflictGoneException");
+    assert.equal(error.message, "That file is no longer in conflict, so there is nothing to read or resolve. Read the status again.");
+    assert.equal(error.code, FailureCode.Stale);
+    assert.equal(error.gitCode, null);
+    assert.equal(error.output, null);
+    assert.equal(error.cause, undefined);
+    assert.ok(error instanceof GitFailureException);
+  });
+});
