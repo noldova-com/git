@@ -31,7 +31,6 @@ import { GitWorkspaces } from "../../../../src/app/services/git-workspaces.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitLayout } from "../../../fixtures/git-layout.fixture.ts";
 
-/** The workspace page, the Workspaces view and its side panel. */
 class WorkspaceScreens {
   public readonly page: HTMLElement;
   public readonly view: HTMLElement;
@@ -59,7 +58,6 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     return resolved;
   };
 
-  /** The box of an element's own text, without its children's. */
   const textBox = (element: Element): DOMRect => {
     const range: Range = document.createRange();
     const text: Node | undefined = [...element.childNodes].find(t => t.nodeType === Node.TEXT_NODE && (t.textContent ?? "").trim().length > 0);
@@ -72,7 +70,6 @@ describe("GitWorkspaceComponent in the kit's look", () => {
   const pull = (number: number, passed: number, failing: number, pending: number, isDraft: boolean = false): GitPullRequestRow =>
     new GitPullRequestRow(String(number), `#${number}`, `Change ${number}`, `https://github.com/example-owner/site/pull/${number}`, isDraft, 1, passed, failing, pending, "branch");
 
-  /** The artboard's repositories: each one's branch, how far it is from its upstream, its changed files and its branch's pull request. */
   const repositories = [
     ["/work/git", "feature/kit-0.0.25", 3, 0, 3, GitBranchPullRequest.of(pull(214, 3, 0, 0), GitPullRequestState.Open, false)],
     ["/work/ui-components", "feature/kit-0.0.25", 1, 2, 1, GitBranchPullRequest.of(pull(1046, 2, 1, 0, true), GitPullRequestState.Draft, false)],
@@ -86,10 +83,6 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     return (await renderBothAsync()).page;
   }
 
-  /**
-   * Renders the page at 90rem by 24rem with the Across repositories view beside it at the dock's 22rem and the Workspaces view at the left dock's 15rem, once
-   * every row shows its checks.
-   */
   async function renderBothAsync(): Promise<WorkspaceScreens> {
     await page.viewport(1440, 900);
     localStorage.clear();
@@ -142,7 +135,6 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     sideElement.style.width = "15rem";
     sideElement.style.height = "24rem";
     side.autoDetectChanges();
-    // TestBed takes the earlier fixtures' root elements out of the page as it creates a component, so the page and the view go back beside the side.
     document.body.append(element, viewElement);
     await new Promise<void>(resolve => {
       const check = (): void => {
@@ -158,7 +150,6 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     return new WorkspaceScreens(element, viewElement, sideElement);
   }
 
-  /** Waits until done holds, checking again on each change under the root. */
   const untilAsync = (root: Node, done: () => boolean): Promise<void> => new Promise<void>(resolve => {
     const check = (): void => {
       if (!done())
@@ -317,7 +308,6 @@ describe("GitWorkspaceComponent in the kit's look", () => {
       [".pull-request .link", "#215 open · on #214"], [".fetched", "12 min ago"]] as const;
 
     expect([rem(box(row.children[2] ?? row).width) >= 8, table.scrollWidth - table.clientWidth]).toEqual([true, 0]);
-    /* The pull request link leaves its title to its words, so its tooltip never shows over the reference card. */
     const titleOf = (t: HTMLElement): string => t.matches(".pull-request .link") ? t.querySelector<HTMLElement>(":scope > span")?.title ?? "" : t.title;
     expect(cut.map(t => [getComputedStyle(t).textOverflow, titleOf(t).startsWith((t.textContent ?? "").trim())])).toEqual(cut.map(() => ["ellipsis", true]));
     expect(widest.map(([selector, text]) => {

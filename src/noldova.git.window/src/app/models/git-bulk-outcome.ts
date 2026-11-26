@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** One repository of a bulk push or pull that was skipped or failed, with why. */
 export class GitBulkOutcome {
   public readonly repository: string;
   public readonly reason: string;

@@ -16,7 +16,6 @@ import type { GitRefChip } from "../models/git-ref-chip.ts";
 import { Resources } from "../../resources.ts";
 import { GitProvidedPullRequests } from "../models/git-provided-pull-requests.ts";
 
-/** The pull request lists host modules give the repository panel, with the context each was given by, asked in the order they were given. */
 export class GitPullRequests {
   private static readonly provided: WritableSignal<readonly GitProvidedPullRequests[]> = signal<readonly GitProvidedPullRequests[]>([]);
 
@@ -26,7 +25,6 @@ export class GitPullRequests {
     return () => GitPullRequests.provided.update(t => t.filter(u => u !== provided));
   }
 
-  /** The first host that claims the remote, logging to its own part a host whose claim throws and passing over it. */
   public static of(remote: GitRemote): IGitPullRequests | null {
     for (const { context, pullRequests } of GitPullRequests.provided())
       try {
@@ -39,11 +37,6 @@ export class GitPullRequests {
     return null;
   }
 
-  /**
-   * The page of the host that claims the remote for a new pull request of the dropped branch, among its commit's `labels`, into the label it was
-   * dropped on, both named as the remote names them; `null` without a remote, a host that claims it and offers one, or the dropped branch on the
-   * remote at its commit, or for a remote branch of another remote.
-   */
   public static newPullRequestUrlOf(remote: GitRemote | null, source: GitRefChip, labels: readonly GitRefChip[], target: GitRefChip): string | null {
     if (Object.isNull(remote))
       return null;

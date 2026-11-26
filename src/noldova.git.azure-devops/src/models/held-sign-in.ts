@@ -8,7 +8,6 @@
 
 import type { AzureCredential } from "./azure-credential.ts";
 
-/** The token the sign-in holds, and the organization it signs in to. */
 export class HeldSignIn {
   public readonly token: AzureCredential;
   public readonly organization: string;

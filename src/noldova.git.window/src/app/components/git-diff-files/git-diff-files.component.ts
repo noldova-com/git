@@ -27,10 +27,6 @@ import { Resources } from "../../../resources.ts";
 import { GitFileLayoutButtonComponent } from "../git-file-layout-button/git-file-layout-button.component.ts";
 import { GitMarkedLine } from "../../models/git-marked-line.ts";
 
-/**
- * The files a diff changes, read from the repository: a header with their count and lines added and removed, a folder tree or flat list, and each file's diff under
- * its row once opened. Inside the Git view it follows the view's file layout and offers its layout button; elsewhere it shows folders.
- */
 @Component({
   selector: "nol-git-diff-files",
   imports: [FileBadgeComponent, GitFileLayoutButtonComponent],
@@ -49,17 +45,13 @@ export class GitDiffFilesComponent {
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly lineKinds: typeof GitDiffRowKind = GitDiffRowKind;
-  /** The layout the files follow and the layout button sets: the one given, else the Git view's; `null` for folders, with no button, outside both. */
   protected readonly chosen: Signal<WritableSignal<GitFileLayout> | null> = computed(() => this.layout() ?? this.state?.fileLayout ?? null);
   protected readonly diff: WritableSignal<GitDiff | null> = signal<GitDiff | null>(null);
-  /** The read diff's files, none until it is read. */
   private readonly files: WritableSignal<readonly DiffFile[]> = signal<readonly DiffFile[]>([]);
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly closed: WritableSignal<ReadonlySet<string>> = signal<ReadonlySet<string>>(new Set());
-  /** The files whose diff shows under their row, by path. */
   protected readonly open: WritableSignal<ReadonlySet<string>> = signal<ReadonlySet<string>>(new Set());
   protected readonly rows: Signal<readonly GitCommitFileRow[]> = computed(() => GitCommitFiles.rowsOf(this.files(), this.chosen()?.() ?? GitFileLayout.Folders, this.closed()));
-  /** The header's files and lines added and removed: the whole diff's when its budget cut it and Git counted it, else its files'. */
   protected readonly totals: Signal<DiffTotals> = computed(() => {
     const whole: DiffTotals | null = this.diff()?.totals ?? null;
     if (!Object.isNull(whole))
@@ -67,12 +59,9 @@ export class GitDiffFilesComponent {
     const { added, removed } = GitCommitFiles.totalsOf(this.files());
     return new DiffTotals(this.files().length, added, removed);
   });
-  /** The line a reveal marked, by its file's path and its row in the file's diff lines. */
   protected readonly marked: WritableSignal<GitMarkedLine | null> = signal<GitMarkedLine | null>(null);
-  /** The diff lines of each open file, by path. */
   protected readonly openLines: Signal<ReadonlyMap<string, readonly GitDiffRow[]>> = computed(() =>
     new Map(this.files().filter(t => this.open().has(t.path)).map(t => [t.path, GitDiffRow.rowsOf(t)])));
-  /** Each shown open file's diff lines cut into colored runs, by path: a file in a closed folder isn't read. */
   protected readonly openCodes: Signal<ReadonlyMap<string, readonly (readonly GitCodeSpan[])[]>> = computed(() => {
     const lines: ReadonlyMap<string, readonly GitDiffRow[]> = this.openLines();
     const codes: Map<string, readonly (readonly GitCodeSpan[])[]> = new Map<string, readonly (readonly GitCodeSpan[])[]>();
@@ -84,16 +73,12 @@ export class GitDiffFilesComponent {
     return codes;
   });
 
-  /** Whether the diff's read ended, with its files or a failure, so another part can tell whether it `holds` a file. */
   public readonly isRead: Signal<boolean> = computed(() => !Object.isNull(this.diff()) || !Object.isNull(this.failure()));
 
-  /** The repository's folder, an absolute path. */
   public readonly folder: InputSignal<string> = input.required<string>();
 
-  /** The changes to read, such as a range between two commits. */
   public readonly scope: InputSignal<DiffScope> = input.required<DiffScope>();
 
-  /** The layout the files follow, such as a pull request page's own; `null` follows the Git view's. */
   public readonly layout: InputSignal<WritableSignal<GitFileLayout> | null> = input<WritableSignal<GitFileLayout> | null>(null);
 
   public constructor() {
@@ -106,17 +91,14 @@ export class GitDiffFilesComponent {
     });
   }
 
-  /** A row's start inset in rem past the top level: its folder's icon, then a step per level; `null` at the top, which keeps its own. */
   protected insetOf(depth: number): number | null {
     return depth === 0 ? null : Resources.rowStartRem + depth * Resources.commitFileStepRem;
   }
 
-  /** A path's file name, which a renamed file's row says it came from. */
   protected nameOf(path: string): string {
     return path.slice(path.lastIndexOf("/") + 1);
   }
 
-  /** A file row's title: its path, and the whole path a renamed or copied file had before. */
   protected titleOf(row: GitCommitFileRow): string {
     return row.from.length > 0 ? `${row.key}${Resources.formatMovedFrom(row.from)}` : row.key;
   }
@@ -128,15 +110,10 @@ export class GitDiffFilesComponent {
     this.closed.set(closed);
   }
 
-  /** Whether the diff holds a file, so another part can open it with `reveal`. */
   public holds(path: string): boolean {
     return this.files().some(t => t.path === path);
   }
 
-  /**
-   * Opens a file's diff and the folders it is in, and scrolls its row into view once it shows; given a line of the file as the diff leaves it, it marks that line
-   * and scrolls it into view instead, or the row when no hunk shows the line.
-   */
   public reveal(path: string, line: number | null = null): void {
     const parts: readonly string[] = path.split(Resources.slash);
     const folders: ReadonlySet<string> = new Set(parts.slice(1).map((_, i) => parts.slice(0, i + 1).join(Resources.slash)));
@@ -157,12 +134,10 @@ export class GitDiffFilesComponent {
     }, { injector: this.injector });
   }
 
-  /** Whether a line of an open file's diff is the one a reveal marked. */
   protected isMarked(path: string, index: number): boolean {
     return this.marked()?.isAt(path, index) ?? false;
   }
 
-  /** The row of a file's diff lines that shows a line of the file as the diff leaves it, counting each hunk's header row as the lines do; -1 when none does. */
   private static rowIndexOf(file: DiffFile, line: number): number {
     let index: number = 0;
     for (const hunk of file.hunks) {

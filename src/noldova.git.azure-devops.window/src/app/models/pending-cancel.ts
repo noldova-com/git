@@ -8,7 +8,6 @@
 
 import type { CompleteAction } from "../enums/complete-action.ts";
 
-/** A write the Complete panel asks about that takes no merge type: cancelling auto-complete or abandoning the pull request. */
 export class PendingCancel {
   public readonly action: CompleteAction.CancelAutoComplete | CompleteAction.Abandon;
 

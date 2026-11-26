@@ -11,7 +11,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** `git.markerCheck`'s answer: the tracked files, staged or not, that still have a conflict marker line, as `git diff --check` finds them, each once. */
 export class GitMarkerCheck {
   private static readonly FIELDS: readonly string[] = [Resources.pathsField];
 

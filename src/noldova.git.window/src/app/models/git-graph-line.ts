@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** One stroke of a graph row, from a lane at the row's top or middle to a lane at its middle or bottom. */
 export class GitGraphLine {
   public readonly fromLane: number;
   public readonly fromMiddle: boolean;

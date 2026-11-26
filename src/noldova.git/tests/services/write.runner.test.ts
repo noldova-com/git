@@ -75,7 +75,6 @@ class RecordingWrite implements IGitWrite {
   }
 }
 
-// Reads the refs before a write as they are, and then fails as `failure` says, as a repository that can't be read after the write.
 class FailingAfterReader extends RefSnapshotReader {
   private reads: number = 0;
   public failure: Error = new Error("unread");
@@ -88,7 +87,6 @@ class FailingAfterReader extends RefSnapshotReader {
   }
 }
 
-/** A person's answer that runs no write, and the failure the write then ends with. */
 interface IUnansweredCase {
   readonly decision: PermissionDecision;
   readonly code: FailureCode;

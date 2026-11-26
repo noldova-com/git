@@ -19,10 +19,6 @@ import type { RepositoryFolders } from "../models/repository-folders.ts";
 import { Resources } from "../resources.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/**
- * Renames or deletes a branch, or makes or deletes a tag, leaving the worktree and index as they are; for the person's own click only.
- * A name that is already taken fails as the given exception, and any other failure as git's own message.
- */
 export class RefWriter implements IGitWrite {
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.writeOutputBytes, Resources.indexWriteMilliseconds);
   private readonly runner: ProgramRunner;
@@ -30,7 +26,6 @@ export class RefWriter implements IGitWrite {
   private readonly command: string;
   private readonly taken: GitFailureException | null;
   public readonly method: string;
-  /** The journal puts back the refs the write moved. */
   public readonly undo: UndoMode = UndoMode.Refs;
 
   public constructor(runner: ProgramRunner, method: string, gitArguments: readonly string[], command: string, taken: GitFailureException | null) {
@@ -43,7 +38,6 @@ export class RefWriter implements IGitWrite {
 
   public refuse(): void {}
 
-  /** Never asks: only the person's own click makes one, and no agent tool offers it. */
   public async requestAsync(): Promise<IPermissionRequest | null> {
     return null;
   }

@@ -13,7 +13,6 @@ import type { ILinkReferenceSource } from "@noldova/ui.components.angular";
 import type { IGitLinkReferences } from "../interfaces/i-git-link-references.ts";
 import { GitLinkReferenceSet } from "./git-link-reference-set.ts";
 
-/** The link sources host modules give the Git view, one per host, asked in the order they were given. */
 export class GitLinkReferences {
   private static readonly provided: WritableSignal<readonly IGitLinkReferences[]> = signal([]);
 

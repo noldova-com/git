@@ -20,7 +20,6 @@ import { GitFileLayout } from "../../../../src/app/enums/git-file-layout.ts";
 import { FixtureLine, GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { Wait } from "../../../fixtures/wait.fixture.ts";
 
-/** The rendered files, with the answers still to give the diff reads. */
 class OpenedFiles {
   public readonly fixture: ComponentFixture<GitDiffFilesComponent>;
   public readonly answers: (() => Promise<JsonValue>)[];
@@ -115,7 +114,6 @@ describe("GitDiffFilesComponent outside the Git view", () => {
   });
 
   describe("revealing a line", () => {
-    /** Two hunks of `src/app.ts`: new lines 3 and 4, the second removed, then new lines 20 to 22, with 21 added. */
     const twoHunks: GitDiff = new GitDiff([new DiffFile("src/app.ts", undefined, "src/app.ts", undefined, FileChange.Modified, null, null, false, null, [
       new DiffHunk(3, 2, 3, 1, "", [new DiffLine(LineKind.Context, 3, 3, "one"), new DiffLine(LineKind.Removed, 4, null, "gone")]),
       new DiffHunk(19, 2, 20, 3, "", [new DiffLine(LineKind.Context, 19, 20, "two"), new DiffLine(LineKind.Added, null, 21, "three"),

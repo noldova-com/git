@@ -29,7 +29,6 @@ import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 
 const screenshots: string = "../../../../../../_build/azure-devops-window/screenshots";
 
-/** The pull request's document and, docked at its right, the Pull request view, as the window lays them out. */
 @Component({
   selector: "nol-git-azure-devops-document",
   imports: [AzureDevOpsPullRequestComponent, AzureDevOpsPullRequestDetailComponent],
@@ -358,7 +357,6 @@ describe("AzureDevOpsPullRequestComponent in the kit's look", () => {
     ], [new HostBuild("PR validation", CheckState.Succeeded, "https://dev.azure.com/fabrikam/web/_build/results?buildId=7", 1_800_000_000_000, 1_800_000_372_000,
       "20261121.4")], false, "", 1, []));
     const root: HTMLElement = fixture.nativeElement;
-    // A view the person widened, as the dock's default width wraps this name's number under it.
     find(root, ".view").style.width = "32rem";
     const card = find(root, ".card");
     const border = Number.parseFloat(getComputedStyle(card).borderRightWidth);
@@ -378,7 +376,6 @@ describe("AzureDevOpsPullRequestComponent in the kit's look", () => {
     expect([requirement.textContent?.trim(), getComputedStyle(policyNumber).fontFamily, getComputedStyle(policyNumber).color, getComputedStyle(buildNumber).fontFamily,
       getComputedStyle(buildNumber).color, buildNumber.textContent]).toEqual(["Optional · running", getComputedStyle(probe).fontFamily, getComputedStyle(probe).color,
       getComputedStyle(probe).fontFamily, getComputedStyle(probe).color, "#20261121.4"]);
-    // The number sits on the name's baseline in another font, whose box can stand half a pixel off the name's on some systems.
     expect(Math.abs(centre(policyNumber.getBoundingClientRect()) - centre(name.getBoundingClientRect()))).toBeLessThanOrEqual(1);
     expect(policyNumber.getBoundingClientRect().left).toBeGreaterThan(name.getBoundingClientRect().left);
     AppearanceFixture.expectPixels(card.getBoundingClientRect().right - border - requirement.getBoundingClientRect().right, px(0.75));

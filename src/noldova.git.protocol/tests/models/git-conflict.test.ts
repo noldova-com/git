@@ -14,7 +14,6 @@ import { ConflictKind } from "../../src/enums/conflict-kind.ts";
 import { OperationKind } from "../../src/enums/operation-kind.ts";
 import { GitConflict } from "../../src/models/git-conflict.ts";
 
-/** A conflict's kind and the texts of its stages that kind has. */
 interface IConflictCase {
   readonly kind: ConflictKind;
   readonly base: string | null;

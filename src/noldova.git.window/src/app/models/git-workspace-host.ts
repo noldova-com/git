@@ -15,15 +15,11 @@ import { Resources } from "../../resources.ts";
 import type { GitWorkspaceRow } from "./git-workspace-row.ts";
 import { GitHostTally } from "./git-host-tally.ts";
 
-/** A row of the workspace page's Hosts: a host that claims the repositories' remotes, or the remotes no host claims, by how Git reaches them. */
 export class GitWorkspaceHost {
   public readonly key: string;
   public readonly name: string;
-  /** The host, whose settings a click opens, or null for remotes no host claims. */
   public readonly host: IGitPullRequests | null;
-  /** That someone is signed in, that nobody is, or how many remotes it holds. */
   public readonly detail: string;
-  /** The dot's kind: ok when signed in, signed-out when nobody is, else none. */
   public readonly tone: string;
 
   private constructor(key: string, name: string, host: IGitPullRequests | null, detail: string, tone: string) {
@@ -34,10 +30,6 @@ export class GitWorkspaceHost {
     this.tone = tone;
   }
 
-  /**
-   * The hosts of the rows' remotes, as far as reads show them, in the order of their first row, then the remotes no host claims; a host is signed
-   * out when any row's read says so, else signed in when one answered.
-   */
   public static listOf(rows: readonly GitWorkspaceRow[], hostOf: (remote: GitRemote) => IGitPullRequests | null): readonly GitWorkspaceHost[] {
     const hosts: Map<IGitPullRequests, GitHostTally> = new Map();
     const plain: Map<RemoteTransport, Set<string>> = new Map();

@@ -16,10 +16,6 @@ import { GitFolder } from "./git-folder.ts";
 import { GitRuntimeClient } from "./git-runtime-client.ts";
 import { GitStatusBar } from "./git-status-bar.ts";
 
-/**
- * Keeps the status bar on the open repository whatever the window shows: it follows the folder Git shows, watches it while it is open, and reads its status and
- * its writes' last command again after each change, so no view or tab has to be open for the branch, its fetch and its last command to show.
- */
 export class GitStatusFollower {
   private readonly context: IWindowPartContext;
   private readonly client: GitRuntimeClient;
@@ -31,7 +27,6 @@ export class GitStatusFollower {
     this.client = new GitRuntimeClient(context);
   }
 
-  /** Starts following the folder Git shows; the returned function stops, lets the folder go and hides the items. */
   public static follow(context: IWindowPartContext): () => void {
     const follower = new GitStatusFollower(context);
     const unlisten: () => void = follower.client.onChanged(folder => {
@@ -66,7 +61,6 @@ export class GitStatusFollower {
     void this.readAsync(folder);
   }
 
-  /** Reads the folder's status and last command and shows them; a later read wins over an earlier one still running, and one Git can't answer hides the items. */
   private async readAsync(folder: string): Promise<void> {
     const read: number = ++this.reads;
     try {

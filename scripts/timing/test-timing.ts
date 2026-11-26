@@ -16,10 +16,6 @@ import { Resources } from "../resources.ts";
 import { PackageBinary } from "../services/package-binary.ts";
 import { ProcessRunner } from "../services/process-runner.ts";
 
-// The timing check, apart from npm test since its pass condition is a time: it runs the root suite and each window part's specs a few
-// times, takes each test file's median time, and fails a file whose median is over 1 second that README's list of slower files doesn't
-// name, or a listed file whose median is over the time the list gives it plus the margin. It runs after npm run build, which packs and
-// installs the packages, and npm test, which installs the specs' browser.
 class TestTiming {
   private static readonly root: string = path.dirname(path.dirname(import.meta.dirname));
 

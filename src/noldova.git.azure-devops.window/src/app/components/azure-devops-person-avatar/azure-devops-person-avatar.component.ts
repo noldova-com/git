@@ -12,7 +12,6 @@ import { AvatarComponent, AvatarSize } from "@noldova/ui.components.angular";
 
 import { AzureDevOpsAuthorAvatars } from "../../services/azure-devops-author-avatars.ts";
 
-/** A person on a page with their Azure DevOps picture, read once they first come into view, and their initials until then or when there is none. */
 @Component({
   selector: "nol-git-azure-devops-person-avatar",
   templateUrl: "./azure-devops-person-avatar.component.html",
@@ -26,13 +25,9 @@ export class AzureDevOpsPersonAvatarComponent {
   protected readonly shown: Signal<string | null> = computed(() => this.image()
     ?? (this.isSeen() ? this.avatars.personAvatarOf(this.organization(), this.login()) ?? null : null));
 
-  /** The organization the person signs in to. */
   public readonly organization: InputSignal<string> = input.required<string>();
-  /** The person's sign-in name. */
   public readonly login: InputSignal<string> = input.required<string>();
-  /** The name the initials come from. */
   public readonly name: InputSignal<string> = input.required<string>();
-  /** A picture the page already has, shown without a read. */
   public readonly image: InputSignal<string | null> = input<string | null>(null);
   public readonly size: InputSignal<AvatarSize> = input<AvatarSize>(AvatarSize.Normal);
 

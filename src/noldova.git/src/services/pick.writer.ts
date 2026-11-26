@@ -25,10 +25,6 @@ import type { HooksReader } from "./hooks.reader.ts";
 import { LogReader } from "./log.reader.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/**
- * Cherry-picks a commit onto the current branch, or reverts it there, as a new commit, taking a merge against its first parent, as its detail shows it;
- * or merges the commit into the current branch, fast-forwarding where it can.
- */
 export class PickWriter implements IGitWrite {
   public readonly undo: UndoMode = UndoMode.Keep;
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.writeOutputBytes, Resources.longWriteMilliseconds);

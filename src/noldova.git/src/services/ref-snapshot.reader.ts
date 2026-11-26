@@ -17,7 +17,6 @@ import type { RepositoryFolders } from "../models/repository-folders.ts";
 import { Resources } from "../resources.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/** Reads where the local branches, tags and HEAD point, and with `withIndex` the index's tree, for the journal's record of a write. */
 export class RefSnapshotReader {
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.writeOutputBytes, Resources.gitReadMilliseconds);
   private static readonly LINE_LIMITS: ProgramLimits = new ProgramLimits(Resources.lineOutputBytes, Resources.gitReadMilliseconds);
@@ -48,10 +47,6 @@ export class RefSnapshotReader {
       index);
   }
 
-  /**
-   * The index's tree, or null while the index holds conflicts, which `write-tree` refuses; the repository's hooks are off for it, since
-   * `write-tree` may write the index, and the person's post-index-change hook is for the person's own writes.
-   */
   private async readIndexAsync(folders: RepositoryFolders, signal?: AbortSignal): Promise<string | null> {
     const tree = await this.runner.runAsync(
       ProgramRun.writeGit(RefSnapshotReader.TREE, folders.top, folders.gitFolder, folders.commonGitFolder, RefSnapshotReader.LINE_LIMITS, signal).unlogged());

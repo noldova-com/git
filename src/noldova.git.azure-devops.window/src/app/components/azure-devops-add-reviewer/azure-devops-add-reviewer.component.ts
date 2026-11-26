@@ -34,16 +34,12 @@ export class AzureDevOpsAddReviewerComponent {
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly adding: WritableSignal<string | null> = signal<string | null>(null);
 
-  /** The pull request the person adds a reviewer to. */
   public readonly reference: InputSignal<HostReference> = input.required<HostReference>();
 
-  /** The logins already listed as reviewers, which the results leave out. */
   public readonly reviewers: InputSignal<readonly string[]> = input<readonly string[]>([]);
 
-  /** The reviewer Azure DevOps added. */
   public readonly added: OutputEmitterRef<HostReviewer> = output<HostReviewer>();
 
-  /** The person closed the search. */
   public readonly closed: OutputEmitterRef<void> = output<void>();
 
   public constructor() {

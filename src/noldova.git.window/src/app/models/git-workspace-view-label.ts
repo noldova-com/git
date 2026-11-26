@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** How the workspace page's side panel shows a view: its icon and its name. */
 export class GitWorkspaceViewLabel {
   public readonly icon: string;
   public readonly name: string;

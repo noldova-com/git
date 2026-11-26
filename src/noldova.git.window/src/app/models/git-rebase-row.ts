@@ -11,14 +11,12 @@ import { type GitRebaseCommit, RebaseAction, RebaseStep } from "@noldova/git.pro
 import { Resources } from "../../resources.ts";
 import { GitRebaseRowPlan } from "./git-rebase-row-plan.ts";
 
-/** One row of the rebase screen: a commit of the branch, what the rebase does with it, and the message a reword or squash gives it. */
 export class GitRebaseRow {
   private static readonly FOLDS: ReadonlySet<RebaseAction> = new Set<RebaseAction>([RebaseAction.Squash, RebaseAction.Fixup]);
   private static readonly MESSAGES: ReadonlySet<RebaseAction> = new Set<RebaseAction>([RebaseAction.Reword, RebaseAction.Squash]);
 
   public readonly commit: GitRebaseCommit;
   public readonly action: RebaseAction;
-  /** The message the person wrote for a reword or squash, or `null` to take the default. */
   public readonly message: string | null;
 
   public constructor(commit: GitRebaseCommit, action: RebaseAction, message: string | null = null) {
@@ -43,10 +41,6 @@ export class GitRebaseRow {
     return new GitRebaseRow(this.commit, this.action, message);
   }
 
-  /**
-   * The rows for a plan's commits, oldest first: each picked in place, or, when folding, each commit whose subject names an earlier one moved after it and
-   * its earlier folds, a `squash!` commit as a squash and the others as fixups.
-   */
   public static arrange(commits: readonly GitRebaseCommit[], fold: boolean): GitRebaseRow[] {
     const rows: GitRebaseRow[] = [];
     for (const commit of commits) {
@@ -63,22 +57,16 @@ export class GitRebaseRow {
     return rows;
   }
 
-  /** The rows with the one at `from` moved to `to`. */
   public static move(rows: readonly GitRebaseRow[], from: number, to: number): GitRebaseRow[] {
     const moved = [...rows];
     moved.splice(to, 0, ...moved.splice(from, 1));
     return moved;
   }
 
-  /** Whether git can take the rows: the first one kept neither squashes nor fixes up, since there's nothing before it to fold into. */
   public static isValid(rows: readonly GitRebaseRow[]): boolean {
     return rows.find(t => t.action !== RebaseAction.Drop)?.folds !== true;
   }
 
-  /**
-   * The steps for git and the message each kept commit ends with, oldest first. A reword takes the message written, else its own; a squash takes the message
-   * written, else its group's so far with its own after it, as git's default; a fixup keeps its group's.
-   */
   public static planOf(rows: readonly GitRebaseRow[]): GitRebaseRowPlan {
     const steps: RebaseStep[] = [];
     const results: string[] = [];

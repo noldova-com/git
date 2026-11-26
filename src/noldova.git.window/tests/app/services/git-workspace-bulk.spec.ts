@@ -26,7 +26,6 @@ describe("GitWorkspaceBulk", () => {
   const target = (name: string, hasUpstream: boolean = true): GitBulkTarget =>
     new GitBulkTarget(`/work/${name}`, name, "feature/kit", hasUpstream ? "origin/feature/kit" : null, remote);
 
-  /** Answers each folder's status, and each push or pull, from maps by folder; a request this test doesn't list fails it. */
   const contextOf = (statuses: Readonly<Record<string, JsonValue>>, writes: Readonly<Record<string, Error | null>>): FakeWindowPartContext => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     context.answer("requestAsync", async (method, params) => {

@@ -213,7 +213,6 @@ export class Resources {
     return `${Resources.formatGitHubRepositoryAddress(owner, repository)}/${Resources.gitHubPullSegment}/${number}/${Resources.gitHubFilesSegment}`;
   }
 
-  /** GitHub's page that opens a pull request of `source` into `target` on the repository at `path`, such as `owner/repository`. */
   public static formatGitHubNewPullRequestAddress(path: string, source: string, target: string): string {
     const branch = (name: string): string => name.split(Resources.slash).map(t => encodeURIComponent(t)).join(Resources.slash);
     return `${Resources.gitHubReferenceProtocol}//${Resources.gitHubHost}/${path}/${Resources.gitHubCompareSegment}/${branch(target)}...${branch(source)}?expand=1`;

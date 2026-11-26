@@ -14,7 +14,6 @@ import { Resources } from "../resources.ts";
 
 export type Fetcher = (url: string, init: RequestInit) => Promise<Response>;
 
-/** Reads an author's picture from Gravatar by their email's SHA-256, asking for none rather than Gravatar's stand-in picture. */
 export class GravatarReader {
   private readonly fetcher: Fetcher;
   private readonly log: IModuleLog;
@@ -25,7 +24,6 @@ export class GravatarReader {
     this.log = log;
   }
 
-  /** The picture as a data address, or null when Gravatar has none or the read fails; a picture or a "none" is kept, a failure asked again next time. */
   public async readAsync(email: string, signal: AbortSignal): Promise<string | null> {
     const hash: string = createHash(Resources.digestAlgorithm).update(email.trim().toLowerCase()).digest(Resources.hexEncoding);
     const kept: string | null | undefined = this.kept.get(hash);

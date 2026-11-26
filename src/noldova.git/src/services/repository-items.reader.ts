@@ -17,10 +17,6 @@ import type { ProgramResult } from "../models/program-result.ts";
 import { Resources } from "../resources.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/**
- * Reads a repository's tags, newest first, its stashes, newest first, and the submodules its index holds, each cut at `Resources.repositoryItemsLimit`.
- * An entry the protocol refuses, such as a tag whose name is too long for one line, is left out and the answer says it was cut.
- */
 export class RepositoryItemsReader {
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.listOutputBytes, Resources.gitReadMilliseconds);
   private static readonly HAS_STASH: GitArguments = new GitArguments(Resources.stashExistsArguments);
@@ -85,7 +81,6 @@ export class RepositoryItemsReader {
     return text.split(Resources.lineEnd).filter(t => t.length > 0);
   }
 
-  /** The items the protocol takes, up to the limit, and whether any were left out, past the limit or refused. */
   private static kept<T>(records: readonly string[], make: (record: string) => T): KeptItems<T> {
     const items: T[] = [];
     let cut = records.length > Resources.repositoryItemsLimit;

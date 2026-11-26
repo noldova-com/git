@@ -11,7 +11,6 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { FocusKeeper } from "../../../src/app/services/focus-keeper.ts";
 
-/** A rendered list whose focus the keeper keeps, and the function that stops it. */
 class KeptList {
   public readonly root: HTMLElement;
   public readonly list: HTMLElement;

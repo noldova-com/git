@@ -49,7 +49,6 @@ function drainAsync(): Promise<void> {
 
 const live: Rig[] = [];
 
-/** A wait until a count is reached. */
 interface ICountWaiter {
   readonly count: number;
   readonly resolve: () => void;

@@ -101,7 +101,6 @@ export class GitHubReferenceSource implements ILinkReferenceSource {
     return this.homeFor(folder).shown;
   }
 
-  /** The folder's GitHub repository path, null when it has none, or undefined until its first read ends. */
   public knownHomeOf(folder: string): string | null | undefined {
     return this.homeFor(folder).read();
   }

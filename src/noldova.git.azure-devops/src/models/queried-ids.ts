@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** The work items' ids a query found, and whether it found as many as a batch holds, so more may exist. */
 export class QueriedIds {
   public readonly ids: readonly number[];
   public readonly isTruncated: boolean;

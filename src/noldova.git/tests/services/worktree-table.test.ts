@@ -57,7 +57,6 @@ describe("WorktreeTable", () => {
     assert.throws(() => table.insertPending(new WorktreeRecord("b", "/r", "/w/a", "noldova/b", BASE)), { code: "ERR_SQLITE_ERROR", message: "UNIQUE constraint failed: worktrees.path" });
   });
 
-  // The STRICT table refuses a value that isn't text, so only a stand-in row can hold one.
   test("fails a row whose column doesn't hold text as Unavailable", () => {
     const row: Record<string, SQLOutputValue> = { key: 1, repository: "/r", path: "/w", branch: "b", base: BASE, state: "Ready" };
     const database = new FakeModuleDatabase();

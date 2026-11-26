@@ -12,10 +12,6 @@ import { RebaseAction } from "../enums/rebase-action.ts";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/**
- * One row of an interactive rebase: the commit's full id, what to do with it, and the message a Reword or a Squash commits, which only those two
- * carry; a Squash's message is the whole squashed commit's.
- */
 export class RebaseStep {
   private static readonly FIELDS: readonly string[] = [Resources.idField, Resources.actionField, Resources.messageField];
 
@@ -47,7 +43,6 @@ export class RebaseStep {
       reader);
   }
 
-  /** Checks a rebase's steps: at least one and at most the limit, each commit once, and no Squash or Fixup before a step it can fold into. */
   public static requireSteps(steps: readonly RebaseStep[], reader?: JsonReader): void {
     const ids: ReadonlySet<string> = new Set(steps.map(t => t.id));
     const first: RebaseStep | undefined = steps.find(t => t.action !== RebaseAction.Drop);

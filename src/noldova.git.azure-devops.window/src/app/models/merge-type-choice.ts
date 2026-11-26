@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** One of Azure DevOps's merge types, as its Complete panel names it. */
 export class MergeTypeChoice {
   public readonly type: string;
   public readonly label: string;

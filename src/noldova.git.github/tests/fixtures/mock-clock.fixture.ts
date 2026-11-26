@@ -17,7 +17,6 @@ export class MockClock {
     vi.spyOn(timers, "setTimeout").mockImplementation(MockClock.waitAsync);
   }
 
-  /** Node's timers.setTimeout as the mock takes it, whose generic value it sees as unknown, so the value passes through without a cast. */
   private static waitAsync(delay?: number, value?: unknown, options?: TimerOptions): Promise<unknown> {
     const signal: AbortSignal | undefined = options?.signal;
     return new Promise<unknown>((resolve, reject) => {

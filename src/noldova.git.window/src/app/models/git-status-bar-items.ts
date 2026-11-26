@@ -8,7 +8,6 @@
 
 import type { StatusBarItem } from "@noldova/desktop.window";
 
-/** The status-bar items the window part registered for the Git panel's repository: its branch, its last fetch and its last command. */
 export class GitStatusBarItems {
   public readonly branch: StatusBarItem;
   public readonly fetched: StatusBarItem;

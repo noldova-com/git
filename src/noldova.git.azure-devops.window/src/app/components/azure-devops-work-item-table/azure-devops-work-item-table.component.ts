@@ -16,10 +16,6 @@ import { WorkItemTableRow } from "../../models/work-item-table-row.ts";
 import type { WorkItemRow } from "../../models/work-item-row.ts";
 import { Resources } from "../../../resources.ts";
 
-/**
- * Work items as rows under their parents: type, id, title, state, iteration and links; a click, Enter or Space chooses a row, and a parent's chevron
- * collapses or expands its children, every parent expanded at first; a row's pull request chip opens its first pull request's page.
- */
 @Component({
   selector: "nol-git-azure-devops-work-item-table",
   templateUrl: "./azure-devops-work-item-table.component.html",
@@ -30,25 +26,18 @@ export class AzureDevOpsWorkItemTableComponent {
 
   private readonly context: IWindowPartContext = inject(WindowPartTokens.context);
 
-  /** The rows, each work item under its parent. */
   public readonly rows: InputSignal<readonly WorkItemRow[]> = input.required<readonly WorkItemRow[]>();
 
-  /** The chosen work item, which its row marks; `null` for none. */
   public readonly selected: InputSignal<HostWorkItemDetail | null> = input<HostWorkItemDetail | null>(null);
 
-  /** The table's accessible name. */
   public readonly label: InputSignal<string> = input.required<string>();
 
-  /** What the table says when it has no rows. */
   public readonly empty: InputSignal<string> = input.required<string>();
 
-  /** The work item the person chose. */
   public readonly chosen: OutputEmitterRef<HostWorkItemDetail> = output<HostWorkItemDetail>();
 
-  /** The ids of the parents whose children the person collapsed. */
   private readonly collapsed: WritableSignal<ReadonlySet<number>> = signal<ReadonlySet<number>>(new Set());
 
-  /** The rows shown: each row's children are left out while it is collapsed. */
   protected readonly shown: Signal<readonly WorkItemTableRow[]> = computed(() => WorkItemTableRow.shownOf(this.rows(), this.collapsed()));
 
   protected toggle(event: Event, row: WorkItemTableRow): void {

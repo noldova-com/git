@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** The names the conflict screen shows over ours and theirs, and the commit of each side, or `null` when it has none. */
 export class ConflictLabels {
   public readonly ours: string;
   public readonly theirs: string;

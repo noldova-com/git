@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** A local branch and the commit it points at. */
 export class BranchTip {
   public readonly id: string;
   public readonly name: string;

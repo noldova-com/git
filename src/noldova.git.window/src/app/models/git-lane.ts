@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** A lane of the history's graph: the commit id it waits for, or null while it is free, its color, and whether a merge opened it for its second or later parent. */
 export class GitLane {
   public readonly waiting: string | null;
   public readonly color: number;
@@ -18,7 +17,6 @@ export class GitLane {
     this.isSide = isSide;
   }
 
-  /** The lane with nothing to wait for, keeping its color and side. */
   public freed(): GitLane {
     return new GitLane(null, this.color, this.isSide);
   }

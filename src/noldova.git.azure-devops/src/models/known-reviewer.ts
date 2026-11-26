@@ -8,7 +8,6 @@
 
 import type { AzureCredential } from "./azure-credential.ts";
 
-/** The signed-in person's id in an organization, with the token it was read with, so a later sign-in reads it again. */
 export class KnownReviewer {
   public readonly token: AzureCredential;
   public readonly id: string;

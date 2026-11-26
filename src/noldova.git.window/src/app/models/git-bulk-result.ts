@@ -8,7 +8,6 @@
 
 import type { GitBulkOutcome } from "./git-bulk-outcome.ts";
 
-/** How a bulk push or pull ended: the repositories it wrote, the ones it skipped and the ones that failed, each in the order it was given them. */
 export class GitBulkResult {
   public readonly done: readonly string[];
   public readonly skipped: readonly GitBulkOutcome[];

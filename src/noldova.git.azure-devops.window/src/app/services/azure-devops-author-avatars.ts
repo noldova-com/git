@@ -17,10 +17,6 @@ import type { IGitAvatars } from "@noldova/git.window";
 import { Resources } from "../../resources.ts";
 import { AzureDevOpsReferenceSource } from "./azure-devops-reference-source.ts";
 
-/**
- * Commit authors' and the pages' people's Azure DevOps pictures, read once per organization and email through the runtime part, shared by the Git view and
- * every page of a window part, and read again after the sign-in changes.
- */
 export class AzureDevOpsAuthorAvatars implements IGitAvatars {
   private static readonly shared: WeakMap<IWindowPartContext, AzureDevOpsAuthorAvatars> = new WeakMap();
 
@@ -42,7 +38,6 @@ export class AzureDevOpsAuthorAvatars implements IGitAvatars {
     });
   }
 
-  /** The context's pictures, made the first time the Git view or a page asks for them. */
   public static register(context: IWindowPartContext): AzureDevOpsAuthorAvatars {
     const known: AzureDevOpsAuthorAvatars | undefined = AzureDevOpsAuthorAvatars.shared.get(context);
     if (!Object.isUndefined(known))
@@ -74,7 +69,6 @@ export class AzureDevOpsAuthorAvatars implements IGitAvatars {
     return avatar();
   }
 
-  /** A person's picture in an organization by their sign-in name, read once with an author's of the same email, a few at a time; none for a group. */
   public personAvatarOf(organization: string, login: string): string | null | undefined {
     if (Resources.isGroupLogin(login))
       return null;

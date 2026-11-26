@@ -27,7 +27,6 @@ import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
 vi.mock(import("node:fs/promises"), { spy: true });
 
-/** Runs git, and hands back a command's output changed when its arguments end as one of the rewrites says. */
 class RewritingRunner extends ProgramRunner {
   public readonly rewrites: Map<string, (output: Buffer) => ProgramResult> = new Map();
 

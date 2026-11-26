@@ -51,10 +51,6 @@ export class PushWriter implements IGitWrite {
   private readonly branches: SessionBranches;
   private readonly expected: string | null;
 
-  /**
-   * Pushes the current branch; with `expected`, the commit the person saw on the upstream, it replaces the upstream's commits with
-   * `--force-with-lease`, which the remote refuses once its branch has moved from that commit.
-   */
   public constructor(runner: ProgramRunner, hooks: HooksReader, branches: SessionBranches, expected: string | null = null) {
     this.runner = runner;
     this.hooks = hooks;

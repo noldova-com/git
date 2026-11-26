@@ -23,7 +23,6 @@ import { TestPullRequestHost } from "../../../fixtures/test-pull-request-host.fi
 
 const reference: HostReference = new HostReference("git-azure-devops", "fabrikam", "3f2504e0-4f89-11d3-9a0c-0305e82c3301", 752);
 
-/** The host the next document gives its threads. */
 class Hosts {
   public static next: TestPullRequestHost = new TestPullRequestHost();
 }

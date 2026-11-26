@@ -28,7 +28,6 @@ const SECOND: string = "0123456789abcdef0123456789abcdef01234567";
 const OLD: number = Date.UTC(2026, 0, 5, 12);
 const NOW: number = Date.UTC(2026, 10, 23, 12);
 
-/** Fixes the clock the ages read, so an age doesn't depend on how long the test takes; only Date is faked, so the page's timers still run. */
 function pinNow(): void {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(NOW);

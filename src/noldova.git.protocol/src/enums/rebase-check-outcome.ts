@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** What a rebase step would do, worked out before the rebase starts, without touching the branch, the index or the working folder. */
 export const RebaseCheckOutcome = {
   Clean: "Clean",
   Conflicts: "Conflicts",

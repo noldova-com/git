@@ -19,7 +19,6 @@ import type { GitPullRequestRow } from "../../models/git-pull-request-row.ts";
 import { GitPullRequests } from "../../services/git-pull-requests.ts";
 import { Resources } from "../../../resources.ts";
 
-/** The repository panel's Pull requests section: the open pull requests of the current branch's remote, from the host that claims it. */
 @Component({
   selector: "nol-git-pull-requests",
   imports: [ContextMenuTriggerDirective, MenuComponent, MenuItemComponent, MenuSeparatorComponent],
@@ -33,22 +32,17 @@ export class GitPullRequestsComponent {
 
   public readonly folder: InputSignal<string> = input.required<string>();
   public readonly remote: InputSignal<GitRemote> = input.required<GitRemote>();
-  /** The current branch, whose own pull request's Switch to branch is off; null with none out. */
   public readonly current: InputSignal<string | null> = input<string | null>(null);
-  /** Whether a switch can start now: off while the panel writes or has no status to switch on. */
   public readonly canSwitch: InputSignal<boolean> = input<boolean>(false);
-  /** Asks the panel to switch to a pull request's source branch, which git makes from the remote's when it isn't here. */
   public readonly switchTo: OutputEmitterRef<string> = output<string>();
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly states: typeof GitPullRequestsState = GitPullRequestsState;
   protected readonly isOpen: WritableSignal<boolean> = signal(true);
-  /** The remote, kept while each status read gives an equal one, so the host reads again only for another remote. */
   private readonly shown: Signal<GitRemote> = computed(() => this.remote(), {
     equal: (a, b) => a.name === b.name && a.host === b.host && a.path === b.path && a.transport === b.transport
   });
   protected readonly host: Signal<IGitPullRequests | null> = computed(() => GitPullRequests.of(this.shown()));
-  /** The claiming host's list; the template reads it only while a host claims the remote. */
   protected readonly list: Signal<GitPullRequestList | null> = computed(() =>
     this.attempt(() => this.host()?.listFor(this.folder(), this.shown())() ?? null, null));
   protected readonly rows: Signal<readonly GitPullRequestRow[]> = computed(() => (this.list()?.rows ?? []).slice(0, Resources.shownPullRequests));
@@ -62,7 +56,6 @@ export class GitPullRequestsComponent {
     });
   }
 
-  /** Asks the host to read the pull requests again: on Try again, and when the window takes the focus. */
   protected refresh(): void {
     const host: IGitPullRequests | null = this.host();
     if (!Object.isNull(host))
@@ -73,7 +66,6 @@ export class GitPullRequestsComponent {
     this.isOpen.update(t => !t);
   }
 
-  /** The status dot's kind: failing checks first, then running ones, then passed ones. */
   protected toneOf(row: GitPullRequestRow): string {
     if (row.failing > 0)
       return "failed";
@@ -86,13 +78,11 @@ export class GitPullRequestsComponent {
     return Resources.formatPullRequestNote(row.failing, row.pending, row.approvals, row.isDraft);
   }
 
-  /** Whether the pull request's own page in the host is the window's active document, so its row shows selected. */
   protected isShown(row: GitPullRequestRow): boolean {
     const host: IGitPullRequests | null = this.host();
     return !Object.isNull(host) && this.attempt(() => host.isShown?.(this.folder(), row) === true, false);
   }
 
-  /** Opens the pull request in the host's own page when it has one, else its page in the browser. */
   protected open(row: GitPullRequestRow): void {
     const host: IGitPullRequests | null = this.host();
     if (!Object.isNull(host) && this.attempt(() => host.open?.(this.folder(), row) === true, false))
@@ -112,7 +102,6 @@ export class GitPullRequestsComponent {
     void this.context.runCommandAsync(Resources.openSettingsCommand, { [Resources.settingsPageArgument]: page }).catch((error: unknown) => this.errors.handleError(error));
   }
 
-  /** Runs a host's member, reporting what it throws and answering the fallback instead. */
   private attempt<T>(run: () => T, fallback: T): T {
     try {
       return run();

@@ -7,7 +7,6 @@
  */
 import type { LinkPlace } from "@noldova/desktop.window";
 
-/** A link the host row couldn't open, with the place it asked for, so Open again asks the same. */
 export class FailedLink {
   public readonly url: string;
   public readonly place: LinkPlace | null;

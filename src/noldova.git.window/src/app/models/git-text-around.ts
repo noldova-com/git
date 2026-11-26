@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** A text cut around the first time it writes what links: the words before it, what links, and the words after it. */
 export class GitTextAround {
   public readonly before: string;
   public readonly linked: string;

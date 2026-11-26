@@ -60,7 +60,6 @@ export class AzureDevOpsHostRowComponent implements OnInit {
   public readonly branch: InputSignal<string | null> = input.required<string | null>();
   public readonly head: InputSignal<string | null> = input.required<string | null>();
   public readonly remote: InputSignal<GitRemote> = input.required<GitRemote>();
-  /** The remote's project, whose work items the row opens; null for a remote that names none. */
   protected readonly place: Signal<WorkItemsPlace | null> = computed(() => WorkItemsPlace.ofRemote(this.remote()));
 
   public constructor() {
@@ -111,7 +110,6 @@ export class AzureDevOpsHostRowComponent implements OnInit {
       this.attempt.update(t => t + 1);
   }
 
-  /** Opens the remote's project's work items. */
   protected openBoard(place: WorkItemsPlace, document: string, title: string): void {
     this.context.openDocument(document, Resources.formatWorkItemsInstance(place.organization, place.project, null), title);
   }

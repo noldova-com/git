@@ -43,12 +43,10 @@ export class AzureDevOpsReferenceLinks {
       Number(pullRequest[2])));
   }
 
-  /** The link to a pull request its reference names, kept under the key its address by the repository's id gives. */
   public static ofPullRequest(reference: HostReference): AzureDevOpsReferenceLink {
     return new AzureDevOpsReferenceLink(reference, Resources.formatPullRequestKey(reference.owner, reference.repository, reference.number));
   }
 
-  /** The organization and project an Azure DevOps page's address names, such as a pull request's; null for another address or one that names no project. */
   public static projectOf(url: string): ProjectPlace | null {
     const address = URL.parse(url);
     if (Object.isNull(address) || !Resources.webProtocols.includes(address.protocol))

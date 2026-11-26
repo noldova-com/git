@@ -14,12 +14,7 @@ import { GitFolder } from "@noldova/git.window";
 import { WorkItemsPlace } from "../models/work-items-place.ts";
 import { Resources } from "../../resources.ts";
 
-/** Finds the open repository when it is the pull request's own, so the pull request's commits can show in its history. */
 export class AzureDevOpsLocalFolder {
-  /**
-   * The open repository's folder when its remote is the pull request's repository: the same organization, project and name, ignoring case; `null` for no open
-   * repository, another repository, a page address it can't read, or a status the window can't read, which it logs.
-   */
   public static async readAsync(context: IWindowPartContext, pullRequestUrl: string): Promise<string | null> {
     const folder: string | null = GitFolder.folder();
     const repository: string | null = AzureDevOpsLocalFolder.pageRepositoryOf(pullRequestUrl);
@@ -37,20 +32,17 @@ export class AzureDevOpsLocalFolder {
     }
   }
 
-  /** The pull request page's `organization/project/repository`, lowercase, or `null` for an address that isn't a pull request's page. */
   private static pageRepositoryOf(url: string): string | null {
     const found: RegExpExecArray | null = Resources.pullRequestPageRepositoryPattern.exec(url);
     return Object.isNull(found) ? null : AzureDevOpsLocalFolder.keyOf(found.slice(1));
   }
 
-  /** The remote's `organization/project/repository`, lowercase, or `null` for a remote that isn't an Azure DevOps repository. */
   private static remoteRepositoryOf(remote: GitRemote | null): string | null {
     const place: WorkItemsPlace | null = WorkItemsPlace.ofRemote(remote);
     const path: string = remote?.path ?? "";
     return Object.isNull(place) ? null : AzureDevOpsLocalFolder.keyOf([place.organization, encodeURIComponent(place.project), path.slice(path.lastIndexOf("/") + 1)]);
   }
 
-  /** The parts joined, each decoded from its address form and lowercase, so `Web%20Site` and `web site` match; `null` when a part is missing or can't be decoded. */
   private static keyOf(parts: readonly string[]): string | null {
     try {
       return parts.map(t => decodeURIComponent(t).toLowerCase()).join("/");

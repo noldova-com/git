@@ -98,7 +98,6 @@ describe("GitCommitDetailComponent reads", () => {
     await view.untilAsync(() => lines().length === 2);
     older.forEach(t => t(new GitPrediction(PredictionOutcome.Conflicts, ["src/a.ts"]).toJson()));
     await Promise.allSettled(reads.mock.results.flatMap(t => t.type === "return" ? [t.value] : []));
-    // The answers reach the predictions through a few more promises (each action's, then all of them), so their microtasks run first.
     for (let step = 0; step < 4; step++)
       await Promise.resolve();
     await view.fixture.whenStable();

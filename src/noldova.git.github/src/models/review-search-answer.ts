@@ -8,7 +8,6 @@
 
 import type { HostReviewRequest } from "@noldova/git.hosting.protocol";
 
-/** The account's review requests a search found, and whether the search was cut. */
 export class ReviewSearchAnswer {
   public readonly rows: readonly HostReviewRequest[];
   public readonly isCut: boolean;

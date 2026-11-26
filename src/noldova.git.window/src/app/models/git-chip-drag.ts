@@ -8,12 +8,10 @@
 
 import type { GitRefChip } from "./git-ref-chip.ts";
 
-/** A branch chip being dragged in the history, with its branch, its row's labels and its row's commit. */
 export class GitChipDrag {
   public readonly chip: GitRefChip;
   public readonly labels: readonly GitRefChip[];
   public readonly branch: string;
-  /** The commit of the chip's row. */
   public readonly id: string;
 
   public constructor(chip: GitRefChip, labels: readonly GitRefChip[], branch: string, id: string) {

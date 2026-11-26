@@ -27,13 +27,6 @@ import { Resources } from "../../../resources.ts";
 import { GitDiffFilesComponent } from "../git-diff-files/git-diff-files.component.ts";
 import { GitFileLayoutButtonComponent } from "../git-file-layout-button/git-file-layout-button.component.ts";
 
-/**
- * The pull request page's Files tab: the files its latest push changes. When the open repository is the pull request's and has that push's commits, it shows
- * the changes from local Git; otherwise it lists the paths the host names, never their contents, with a Fetch for a repository that lacks the commits. Both
- * follow the layout its button chooses: a tree, folders or a list.
- * It reads again when another repository is opened, and when the pull request's repository changes, as a fetch or a switch there may bring the push's
- * commits, it looks for them again without asking the host.
- */
 @Component({
   selector: "nol-git-pull-request-files",
   templateUrl: "./git-pull-request-files.component.html",
@@ -46,50 +39,36 @@ export class GitPullRequestFilesComponent {
   private readonly client: GitRuntimeClient = new GitRuntimeClient(this.context);
   private readonly attempt: WritableSignal<number> = signal<number>(0);
   private readonly diffFiles: Signal<GitDiffFilesComponent | undefined> = viewChild(GitDiffFilesComponent);
-  /** Whether the tab has yet to read, so it shows the handed-over answer instead. */
   private isFirstRead: boolean = true;
-  /** The line the tab last revealed or reported unrevealed, so it handles each once. */
   private revealed: GitFileLine | null = null;
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly secondary: ButtonVariant = ButtonVariant.Secondary;
   protected readonly list: WritableSignal<HostPullRequestFiles | null> = signal<HostPullRequestFiles | null>(null);
-  /** The open repository's folder when it is the pull request's. */
   protected readonly folder: WritableSignal<string | null> = signal<string | null>(null);
-  /** The latest push's changes from its common commit, once the open repository has both commits. */
   protected readonly scope: WritableSignal<DiffScope | null> = signal<DiffScope | null>(null);
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly isReading: WritableSignal<boolean> = signal<boolean>(true);
   protected readonly isFetching: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly fetchFailure: WritableSignal<string | null> = signal<string | null>(null);
-  /** How the tab lays its files out, the host's list and local Git's alike: a tree, folders or a list. */
   protected readonly layout: WritableSignal<GitFileLayout> = signal<GitFileLayout>(GitFileLayout.Folders);
-  /** The host's list's folders the person closed, by path. */
   protected readonly closed: WritableSignal<ReadonlySet<string>> = signal<ReadonlySet<string>>(new Set());
-  /** The host's list's files, which the rows lay out; none while no list is read. */
   private readonly files: WritableSignal<readonly HostPullRequestFile[]> = signal<readonly HostPullRequestFile[]>([]);
   protected readonly rows: Signal<readonly GitPathEntry<HostPullRequestFile>[]> = computed(() =>
     GitPathLayout.layout(this.files(), t => t.path, this.layout(), this.closed()));
 
-  /** The host that reads the tab's list and finds the pull request's repository on this computer. */
   public readonly host: InputSignal<IGitPullRequestHost> = input.required<IGitPullRequestHost>();
 
-  /** The pull request whose files it lists. */
   public readonly reference: InputSignal<HostReference> = input.required<HostReference>();
 
-  /** The pull request's page on its host, which names its repository, so the tab can tell whether the open repository is that one. */
   public readonly url: InputSignal<string> = input.required<string>();
 
-  /** The files as the page already read them, which the first read shows instead of reading them again; `null` to read them. Try again reads them anew. */
   public readonly answer: InputSignal<HostPullRequestFiles | null> = input<HostPullRequestFiles | null>(null);
 
-  /** A line to show in its file's diff once the tab has read, such as a comment thread's; `null` for none. */
   public readonly reveal: InputSignal<GitFileLine | null> = input<GitFileLine | null>(null);
 
-  /** The tab's count once read, such as `12` or `5000+`: the files local Git counts when the tab shows its changes, else the host's list's. */
   public readonly counted: OutputEmitterRef<string> = output<string>();
 
-  /** A line given in `reveal` that the tab can't show, as the changes from local Git aren't here or don't hold its file, so the page can show it elsewhere. */
   public readonly unrevealed: OutputEmitterRef<GitFileLine> = output<GitFileLine>();
 
   public constructor() {
@@ -137,12 +116,10 @@ export class GitPullRequestFilesComponent {
     this.attempt.update(t => t + 1);
   }
 
-  /** A row's start inset in rem past the top level, as the commit's files step in; `null` at the top, which keeps its own. */
   protected insetOf(depth: number): number | null {
     return depth === 0 ? null : Resources.rowStartRem + depth * Resources.commitFileStepRem;
   }
 
-  /** A path's file name, which picks its badge. */
   protected nameOf(path: string): string {
     return path.slice(path.lastIndexOf(Resources.slash) + 1);
   }
@@ -162,7 +139,6 @@ export class GitPullRequestFilesComponent {
     void this.fetchAsync(folder);
   }
 
-  /** Fetches with the existing fetch, as the History toolbar's Fetch does, then reads the tab again so it can show the changes. */
   private async fetchAsync(folder: string): Promise<void> {
     const done = this.tasks.add();
     this.isFetching.set(true);
@@ -217,8 +193,6 @@ export class GitPullRequestFilesComponent {
     return HostPullRequestFiles.fromJson(await this.context.requestAsync(this.host().readChangesMethod, reference.toJson()));
   }
 
-  /** The range from the common commit to the head commit when the repository has both; `null` when it lacks either, which a fetch brings. */
-  /** The files local Git counts in the changes the tab shows from it, as its header counts them; `null` when Git can't count them, which it logs. */
   private async totalsAsync(folder: string, scope: DiffScope): Promise<DiffTotals | null> {
     try {
       return DiffTotals.fromJson(await this.context.requestAsync(GitNames.diffTotalsMethod, new GitDiffParams(folder, scope).toJson()));
@@ -231,7 +205,6 @@ export class GitPullRequestFilesComponent {
     }
   }
 
-  /** Looks for the push's changes in local Git again once the pull request's repository changes, as a fetch or a switch there may bring its commits. */
   private async placeAsync(folder: string, list: HostPullRequestFiles): Promise<void> {
     if (Object.isNull(list.sourceCommit) || Object.isNull(list.commonCommit))
       return;

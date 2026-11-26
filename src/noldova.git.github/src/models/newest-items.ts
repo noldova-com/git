@@ -8,7 +8,6 @@
 
 import type { JsonReader } from "@noldova/context.json";
 
-/** The newest items of a list GitHub answers in pages, oldest first, and whether it has older ones they leave out. */
 export class NewestItems {
   public readonly items: readonly JsonReader[];
   public readonly hasMore: boolean;

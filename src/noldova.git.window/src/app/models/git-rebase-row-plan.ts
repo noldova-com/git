@@ -8,7 +8,6 @@
 
 import type { RebaseStep } from "@noldova/git.protocol";
 
-/** The rebase rows' steps for git and the message each kept commit ends with, oldest first. */
 export class GitRebaseRowPlan {
   public readonly steps: readonly RebaseStep[];
   public readonly results: readonly string[];

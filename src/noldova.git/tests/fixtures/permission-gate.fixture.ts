@@ -33,7 +33,6 @@ export class PermissionGateFixture implements IPermissionGate {
       throw answer;
   }
 
-  // Queues the next answers in order: null allows the request, and a failure refuses it.
   public answerNext(...answers: readonly (GitFailureException | null)[]): void {
     this.answers.push(...answers);
   }

@@ -8,7 +8,6 @@
 
 import type { CaptureRequest, CaptureResult, PreviewRequest, PreviewResult, RestoreRequest, RestoreResult } from "@noldova/checkpoints.protocol";
 
-/** The part of the checkpoints module's service a discard uses: it takes a checkpoint before, and an undo puts paths back from it. */
 export interface ICheckpoints {
   captureAsync(request: CaptureRequest, signal?: AbortSignal): Promise<CaptureResult>;
 

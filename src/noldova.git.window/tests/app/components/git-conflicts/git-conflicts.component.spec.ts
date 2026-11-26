@@ -29,7 +29,6 @@ import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts"
 import { Wait } from "../../../fixtures/wait.fixture.ts";
 
 describe("GitConflictsComponent", () => {
-  // As the runtime sends a merge: the merge head's id, and git's prepared message naming the branch.
   const mergeHead: string = "c0ffee0123456789abcdef0123456789abcdef01";
   const merge: GitOperation = new GitOperation(OperationKind.Merge, mergeHead, "Merge branch 'feature'");
   const both: GitConflict = new GitConflict("a.ts", ConflictKind.BothModified, OperationKind.Merge, "b\n", "ours\n", "theirs\n", "m\n", "main", "feature", null, null, false, false);
@@ -51,7 +50,6 @@ describe("GitConflictsComponent", () => {
   class Screen {
     public readonly context: FakeWindowPartContext;
     public readonly fixture: ComponentFixture<GitConflictsComponent>;
-    /** The Conflict view beside the document, which shows its current conflict while it is in front. */
     public readonly view: ComponentFixture<GitConflictDetailComponent>;
     public readonly folder: WritableSignal<string | null>;
     public readonly held: GitHeldRequests;
@@ -92,12 +90,10 @@ describe("GitConflictsComponent", () => {
       const view: ComponentFixture<GitConflictDetailComponent> = TestBed.createComponent(GitConflictDetailComponent);
       view.componentRef.setInput("instance", "selected");
       view.autoDetectChanges();
-      // TestBed takes the earlier fixtures' root elements out of the page as it creates a component, so the document goes back beside the view.
       document.body.append(fixture.nativeElement);
       return new Screen(context, fixture, view, folder, requests);
     }
 
-    /** The matches in the document, then in the Conflict view, as the window shows them side by side. */
     public all(selector: string): readonly Element[] {
       return [...this.element.querySelectorAll(selector), ...this.viewElement.querySelectorAll(selector)];
     }
@@ -246,7 +242,6 @@ describe("GitConflictsComponent", () => {
       "git.conflict": bothC.toJson()
     }, GitFixtures.folder, ["git.predict"]);
     await screen.untilAsync(() => screen.texts(".group").includes("Conflicts 1"));
-    // Each operation shows in the banner before the next, so the screen's effects see every one.
     const nextAsync = async (): Promise<void> => {
       const shown: string = screen.texts(".operation-text").join();
       step++;

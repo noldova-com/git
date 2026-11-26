@@ -10,10 +10,8 @@ import type { GitGraphRow } from "./git-graph-row.ts";
 import { GitRefChip } from "./git-ref-chip.ts";
 import type { GitChipSplit } from "./git-chip-split.ts";
 
-/** What one row of the history shows: the graph row, its labels, and the texts of its columns. */
 export class GitHistoryRow {
   public readonly graph: GitGraphRow;
-  /** Every label of the row's commit, the current branch first. */
   public readonly chips: readonly GitRefChip[];
   public readonly isChanges: boolean;
   public readonly isHead: boolean;
@@ -42,7 +40,6 @@ export class GitHistoryRow {
     return this.graph.commit.id;
   }
 
-  /** The labels the row shows, at most `limit` of them, and those past it, which the row's `+N` label lists in its tooltip. */
   public chipsWithin(limit: number): GitChipSplit {
     return GitRefChip.split(this.chips, limit);
   }

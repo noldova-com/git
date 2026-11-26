@@ -48,7 +48,6 @@ export class LogReader {
     return line.slice(0, last >= Resources.highSurrogateStart && last <= Resources.highSurrogateEnd ? Resources.lineLimit - 1 : Resources.lineLimit);
   }
 
-  /** The author date as git printed it, or the same moment in UTC when git printed a malformed offset, so one commit's date never fails the list. */
   public static dateOf(authoredAt: string, seconds: string): string {
     if (Resources.offsetDatePattern.test(authoredAt) || !Resources.epochSecondsPattern.test(seconds))
       return authoredAt;

@@ -17,11 +17,6 @@ import { LinkedHistory } from "../models/linked-history.ts";
 import { Resources } from "../../resources.ts";
 import { AzureDevOpsReferenceLinks } from "./azure-devops-reference-links.ts";
 
-/**
- * Reads the commits of a repository's recent history that name a work item: `git.status` for its remote and HEAD, then, for a repository on
- * Azure DevOps, one `git.graph` of its last 1,000 commits and one `git.messageReferences` for the `AB#N` their whole messages name, matched once
- * and kept for that HEAD, so every work item the page opens shares one read.
- */
 export class AzureDevOpsLinkedCommits {
   private readonly context: IWindowPartContext;
   private kept: KeptHistory | null = null;
@@ -30,7 +25,6 @@ export class AzureDevOpsLinkedCommits {
     this.context = context;
   }
 
-  /** The repository's linked history; a read the window fails is logged and answers none, and isn't kept. */
   public async readAsync(folder: string): Promise<LinkedHistory> {
     let method: string = GitNames.statusMethod;
     try {

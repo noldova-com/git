@@ -16,7 +16,6 @@ import { GitRuntimeClient } from "./git-runtime-client.ts";
 import { GitViewStateService } from "./git-view-state.service.ts";
 
 export class GitRepositorySummaries {
-  /** How many repositories a read, a fetch or a bulk write of the workspace works on at a time. */
   public static readonly AT_ONCE: number = 4;
 
   private readonly context: IWindowPartContext;
@@ -25,7 +24,6 @@ export class GitRepositorySummaries {
   private readonly watchers: Map<string, number> = new Map();
   private readonly reading: Set<string> = new Set();
   private readonly readAgain: Set<string> = new Set();
-  /** The folders {@link readMissingAsync} read while no row followed them, whose first watch needs no read of its own. */
   private readonly fresh: Set<string> = new Set();
   private readonly fetching: Set<string> = new Set();
   private readonly unfollow: () => void;
@@ -69,10 +67,6 @@ export class GitRepositorySummaries {
     return GitRepositorySummaries.eachAsync(folders, t => this.readAsync(t));
   }
 
-  /**
-   * Reads each folder that, when its turn comes, has no summary and no read underway, at most {@link AT_ONCE} at a time: such as when a page
-   * opens, and the rows on screen have read their own first. A folder it reads before its row is followed isn't read again when it is.
-   */
   public readMissingAsync(folders: readonly string[]): Promise<void> {
     return GitRepositorySummaries.eachAsync(folders, async t => {
       if (!Object.isNull(this.summarySignalOf(t)()) || this.reading.has(t))
@@ -94,7 +88,6 @@ export class GitRepositorySummaries {
     this.watchers.clear();
   }
 
-  /** Runs the work on each item once, at most {@link AT_ONCE} at a time. */
   public static async eachAsync<T>(items: readonly T[], work: (item: T) => Promise<void>): Promise<void> {
     const queue: T[] = [...new Set(items)];
     const next = async (): Promise<void> => {

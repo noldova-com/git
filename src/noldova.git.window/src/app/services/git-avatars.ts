@@ -11,10 +11,6 @@ import "@noldova/context.core";
 
 import type { IGitAvatars } from "../interfaces/i-git-avatars.ts";
 
-/**
- * The commit authors' pictures: each host module's first, asked in the order they were given, then the fallback's.
- * A host still reading holds the fallback back, so a picture doesn't change once shown.
- */
 export class GitAvatars {
   private static readonly provided: WritableSignal<readonly IGitAvatars[]> = signal([]);
   private static readonly fallbacks: WritableSignal<readonly IGitAvatars[]> = signal([]);
@@ -27,7 +23,6 @@ export class GitAvatars {
     return GitAvatars.add(GitAvatars.fallbacks, avatars);
   }
 
-  /** The author's picture as a data address, or null while none is known. */
   public static imageOf(folder: string, email: string, commitId: string): string | null {
     for (const avatars of [...GitAvatars.provided(), ...GitAvatars.fallbacks()]) {
       const image: string | null | undefined = avatars.avatarOf(folder, email, commitId);

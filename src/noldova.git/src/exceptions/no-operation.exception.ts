@@ -12,7 +12,6 @@ import type { IUntrustedText } from "../interfaces/i-untrusted-text.ts";
 import { Resources } from "../resources.ts";
 import { GitFailureException } from "./git-failure.exception.ts";
 
-/** A continue or abort found no operation in progress. */
 export class NoOperationException extends GitFailureException {
   public override readonly code: FailureCode = FailureCode.Stale;
   public override readonly gitCode: GitCode | null = null;

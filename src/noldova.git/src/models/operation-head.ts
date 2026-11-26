@@ -8,7 +8,6 @@
 
 import type { OperationKind } from "@noldova/git.protocol";
 
-/** The file in the git folder that a stopped operation leaves, and the operation it marks. */
 export class OperationHead {
   public readonly file: string;
   public readonly kind: OperationKind;

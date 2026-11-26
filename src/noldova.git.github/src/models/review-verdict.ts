@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** A review's state, such as approved, and the login of its author when the author is one whose review counts, or `null` otherwise. */
 export class ReviewVerdict {
   public readonly login: string | null;
   public readonly state: string;

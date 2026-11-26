@@ -8,7 +8,6 @@
 
 import type { GitPrediction } from "@noldova/git.protocol";
 
-/** What an action on a commit would do, with the label its line names the action by. */
 export class GitLabeledPrediction {
   public readonly label: string;
   public readonly prediction: GitPrediction;

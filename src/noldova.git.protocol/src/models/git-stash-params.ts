@@ -11,7 +11,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** A stash of a folder's changes on the status it is based on, with its message or none, and its untracked files only when asked. */
 export class GitStashParams {
   private static readonly FIELDS: readonly string[] = [Resources.folderField, Resources.messageField, Resources.includeUntrackedField, Resources.basedOnField];
 

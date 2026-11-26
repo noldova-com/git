@@ -11,7 +11,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** A fetch of a folder on the status it is based on: of the current branch's remote, or of every remote with `allRemotes`, which is false when left out. */
 export class GitFetchParams {
   private static readonly FIELDS: readonly string[] = [Resources.folderField, Resources.basedOnField, Resources.allRemotesField];
 

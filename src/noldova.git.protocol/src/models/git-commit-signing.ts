@@ -12,7 +12,6 @@ import { SigningFormat } from "../enums/signing-format.ts";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** `git.commitSigning`'s answer: whether git signs a new commit, from `commit.gpgsign`, and the format it signs in, from `gpg.format`. */
 export class GitCommitSigning {
   private static readonly FIELDS: readonly string[] = [Resources.signsField, Resources.formatField];
 

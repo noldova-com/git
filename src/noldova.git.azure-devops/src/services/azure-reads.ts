@@ -36,11 +36,9 @@ export class AzureReads {
   private readonly api: AzureApi;
   private readonly signIn: IAzureToken;
   private readonly log: IModuleLog;
-  /** A shared read runs to its end whatever its first caller's signal does, as other callers wait on it too. */
   private static readonly unstopped: AbortSignal = new AbortController().signal;
   private readonly types: Map<string, Promise<WorkItemTypeStates>> = new Map();
   private typesToken: AzureCredential | null = null;
-  /** The signed-in person's id in the organization, from its connectionData, with the token it was read with. */
   private reviewer: KnownReviewer | null = null;
 
   public constructor(api: AzureApi, signIn: IAzureToken, log: IModuleLog) {
@@ -49,10 +47,6 @@ export class AzureReads {
     this.log = log;
   }
 
-  /**
-   * The pull request as an item, with the lines it adds and removes and the files it changes at its latest push, which Azure DevOps gives only file by file;
-   * counts it can't read, or past 5000 files, stay unknown rather than failing the item.
-   */
   public async readReferenceAsync(reference: HostReference, signal: AbortSignal): Promise<HostItem | null> {
     const token: AzureCredential | null = Resources.isOwnReference(reference) ? this.tokenFor(reference.owner) : null;
     if (token === null)
@@ -92,10 +86,6 @@ export class AzureReads {
     return this.signIn.token === token ? pullRequest : null;
   }
 
-  /**
-   * The merge types the pull request's target branch allows, in {@link Resources.mergeTypes} order: those every "Limit merge types" policy on it
-   * allows, or all of them when none applies; `null` when signed out of its organization or when Azure DevOps doesn't show it.
-   */
   public async readMergeTypesAsync(reference: HostReference, signal: AbortSignal): Promise<readonly string[] | null> {
     const token: AzureCredential | null = Resources.isOwnReference(reference) ? this.tokenFor(reference.owner) : null;
     if (token === null)
@@ -111,7 +101,6 @@ export class AzureReads {
     return this.signIn.token === token ? types : null;
   }
 
-  /** The merge types the pull request's policies allow, as {@link readMergeTypesAsync} answers them, read with the given token. */
   public async readAllowedMergeTypesAsync(organization: string, project: string, number: number, token: AzureCredential,
     signal: AbortSignal): Promise<readonly string[]> {
     const evaluations: JsonReader | null = await this.api.getAsync(Resources.formatPolicyEvaluationsUrl(organization, project, number), token, signal);
@@ -130,7 +119,6 @@ export class AzureReads {
     return this.signIn.token === token ? threads : [];
   }
 
-  /** The commits the pull request brings, the newest first, at most 250; signed out, or for another host, organization or repository id, none. */
   public async readPullRequestCommitsAsync(reference: HostReference, signal: AbortSignal): Promise<HostPullRequestCommits> {
     const none: HostPullRequestCommits = new HostPullRequestCommits([], false);
     const token: AzureCredential | null = Resources.isOwnReference(reference) ? this.tokenFor(reference.owner) : null;
@@ -147,7 +135,6 @@ export class AzureReads {
     return this.signIn.token === token ? commits : none;
   }
 
-  /** The pull request's pushes, the newest first, at most 100; signed out, or for another host, organization or repository id, none. */
   public async readPullRequestUpdatesAsync(reference: HostReference, signal: AbortSignal): Promise<HostPullRequestUpdates> {
     const none: HostPullRequestUpdates = new HostPullRequestUpdates([], false);
     const token: AzureCredential | null = Resources.isOwnReference(reference) ? this.tokenFor(reference.owner) : null;
@@ -164,10 +151,6 @@ export class AzureReads {
     return this.signIn.token === token ? updates : none;
   }
 
-  /**
-   * The files the pull request changes at its latest push against its target branch, paths and change kinds only, at most 1000, with that push's head and
-   * common commits; signed out, or for another host, organization or repository id, none.
-   */
   public async readPullRequestChangesAsync(reference: HostReference, signal: AbortSignal): Promise<HostPullRequestFiles> {
     const none: HostPullRequestFiles = new HostPullRequestFiles(null, null, [], false);
     const token: AzureCredential | null = Resources.isOwnReference(reference) ? this.tokenFor(reference.owner) : null;
@@ -177,10 +160,6 @@ export class AzureReads {
     return this.signIn.token === token && files !== null ? files : none;
   }
 
-  /**
-   * The files the pull request changes at its latest push, with that push's head and common commits, read `changesPage` changes at a time while a page comes
-   * back full and stopping past `maximumCount`, which `hasMore` says; null when it has no push or Azure DevOps finds none.
-   */
   private async readFilesAsync(reference: HostReference, token: AzureCredential, signal: AbortSignal): Promise<HostPullRequestFiles | null> {
     const latest: HostPullRequestUpdate | undefined = await this.readLatestAsync(reference, token, signal);
     if (latest === undefined)
@@ -200,23 +179,17 @@ export class AzureReads {
       files.length > HostPullRequestFiles.maximumCount);
   }
 
-  /** The pull request's latest push; undefined when it has none or Azure DevOps finds none. */
   private async readLatestAsync(reference: HostReference, token: AzureCredential, signal: AbortSignal): Promise<HostPullRequestUpdate | undefined> {
     const iterations: JsonReader | null = await this.api.getAsync(Resources.formatPullRequestIterationsUrl(reference.owner, reference.repository, reference.number),
       token, signal);
     return iterations === null ? undefined : AzureApi.read(() => iterations.readObjectArray(Resources.valueField).map(AzureReads.pullRequestUpdateOf)).at(-1);
   }
 
-  /** The files among a push's changes, leaving out folders. */
   private static changedFilesOf(entries: readonly JsonReader[]): readonly HostPullRequestFile[] {
     return entries.filter(t => t.readObject(Resources.itemField).readOptionalString(Resources.gitObjectTypeField) !== Resources.treeObjectType)
       .flatMap(AzureReads.pullRequestFilesOf);
   }
 
-  /**
-   * The lines the pull request adds and removes and the files it changes, from each file's line blocks between its common and head commits, asked for
-   * `fileDiffsBatch` files at a time; null past 5000 files, without a common commit, or when Azure DevOps can't answer in time, which the log says why, though a sign-out still fails.
-   */
   private async readCountsAsync(reference: HostReference, project: string, token: AzureCredential, signal: AbortSignal)
     : Promise<ChangeCounts | null> {
     try {
@@ -240,10 +213,6 @@ export class AzureReads {
     }
   }
 
-  /**
-   * The lines the files add and remove, asked in one request; a batch Azure DevOps refuses is asked again in halves, so one it refuses for its size still counts,
-   * and a single file it refuses fails the count.
-   */
   private async readLinesAsync(reference: HostReference, project: string, base: string, head: string, files: readonly HostPullRequestFile[], token: AzureCredential,
     signal: AbortSignal): Promise<LineCounts> {
     try {
@@ -270,7 +239,6 @@ export class AzureReads {
     return new LineCounts(lines.reduce((sum, t) => sum + t.added, 0), lines.reduce((sum, t) => sum + t.removed, 0));
   }
 
-  /** A file as a file diffs request names it: an added file by its path alone, a deleted one by its original path alone, since the other side has none. */
   private static fileDiffParamsOf(file: HostPullRequestFile): JsonValue {
     const path: string = Resources.formatAzurePath(file.path);
     if (file.kind === FileChangeKind.Added)
@@ -280,7 +248,6 @@ export class AzureReads {
     return { [Resources.pathField]: path, [Resources.originalPathField]: Resources.formatAzurePath(file.previousPath ?? file.path) };
   }
 
-  /** The lines added and removed across the files' blocks: an added block's lines in the head, a deleted one's in the base, and an edited one's both. */
   private static linesOf(files: readonly JsonReader[]): LineCounts {
     let added: number = 0;
     let removed: number = 0;
@@ -294,7 +261,6 @@ export class AzureReads {
     return new LineCounts(added, removed);
   }
 
-  /** The paths of the files that keep the pull request from merging, at most 100; signed out, or for another host, organization or repository id, none. */
   public async readPullRequestConflictsAsync(reference: HostReference, signal: AbortSignal): Promise<HostPullRequestConflicts> {
     const none: HostPullRequestConflicts = new HostPullRequestConflicts([], false);
     const token: AzureCredential | null = Resources.isOwnReference(reference) ? this.tokenFor(reference.owner) : null;
@@ -341,10 +307,6 @@ export class AzureReads {
     return this.signIn.token === token ? answer : none;
   }
 
-  /**
-   * The pull request that brought the commit in, the one holding it before the one whose merge made it, with its checks, votes and approvals;
-   * none when no pull request did, signed out, or for another organization or host.
-   */
   public async readCommitPullRequestAsync(query: CommitQuery, signal: AbortSignal): Promise<BranchPullRequest> {
     const none: BranchPullRequest = new BranchPullRequest(null, []);
     const repository: AzureRepository | null = AzureRepository.parse(query.host, query.path);
@@ -358,11 +320,6 @@ export class AzureReads {
     return this.signIn.token === token ? answer : none;
   }
 
-  /**
-   * The people's comments on a commit: in the pull request that brought it in, those in the threads made on an iteration whose source commit it
-   * is, capped at 100, with the pull request's files page as of the latest such iteration; none when no pull request did, signed out, or for
-   * another organization or host.
-   */
   public async readCommitCommentsAsync(query: CommitQuery, signal: AbortSignal): Promise<HostCommitComments> {
     const none: HostCommitComments = HostCommitComments.none();
     const repository: AzureRepository | null = AzureRepository.parse(query.host, query.path);
@@ -383,10 +340,6 @@ export class AzureReads {
     return this.signIn.token === token ? answer : none;
   }
 
-  /**
-   * The repository's active pull requests, the newest first, each with its approving votes and its builds and other policies as checks; signed
-   * out, the signed-out list, and for another organization or host, none.
-   */
   public async readPullRequestsAsync(query: RepositoryQuery, signal: AbortSignal): Promise<HostPullRequestList> {
     if (this.signIn.token === null)
       return HostPullRequestList.signedOut();
@@ -408,11 +361,6 @@ export class AzureReads {
     return this.signIn.token === token ? list : HostPullRequestList.signedOut();
   }
 
-  /**
-   * The repository's active pull requests' heads, the newest first, at most 100 and whether there are more, each with its title, page, and head and
-   * base branch, for finding stacks: one read of the list and none for each pull request. Signed out, the signed-out list, and for another
-   * organization or host, none.
-   */
   public async readPullRequestHeadsAsync(query: RepositoryQuery, signal: AbortSignal): Promise<HostPullRequestHeads> {
     if (this.signIn.token === null)
       return HostPullRequestHeads.signedOut();
@@ -431,18 +379,12 @@ export class AzureReads {
     return this.signIn.token === token ? heads : HostPullRequestHeads.signedOut();
   }
 
-  /** The repository's active pull requests, the newest first, one past the limit so a longer answer shows as cut, and none for a repository that is gone. */
   private async readActiveAsync(repository: AzureRepository, limit: number, token: AzureCredential, signal: AbortSignal): Promise<readonly JsonReader[]> {
     const pulls: JsonReader | null = await this.api.getAsync(Resources.formatActivePullRequestsUrl(repository.organization, repository.project, repository.name,
       limit + 1), token, signal);
     return pulls === null ? [] : AzureApi.read(() => pulls.readObjectArray(Resources.valueField));
   }
 
-  /**
-   * The repository's active pull requests that list the signed-in person as a reviewer who hasn't voted yet, the newest first, at most 100, and
-   * whether there were more. Azure DevOps matches only the person's own reviewer entry, so a review asked of a group they are in isn't among them.
-   * Signed out, the signed-out list, and for another organization or host, none.
-   */
   public async readReviewRequestsAsync(query: RepositoryQuery, signal: AbortSignal): Promise<HostReviewRequestList> {
     if (this.signIn.token === null)
       return HostReviewRequestList.signedOut();
@@ -480,10 +422,6 @@ export class AzureReads {
     return this.signIn.token === token ? workItem : null;
   }
 
-  /**
-   * The query's work items, each parent before its children, and whether its search stopped at its limit, a WIQL query at its 200; the ancestors added
-   * afterwards don't count. No items, not truncated, signed out or for another host or organization than the token's.
-   */
   public async readWorkItemsAsync(query: WorkItemsQuery, signal: AbortSignal): Promise<HostWorkItemList> {
     const token: AzureCredential | null = query.host === AzureDevOpsNames.moduleId ? this.tokenFor(query.organization) : null;
     if (token === null || !Resources.organizationPattern.test(query.organization))
@@ -558,10 +496,6 @@ export class AzureReads {
     return AzureApi.read(() => AzureReads.detailOf(organization, answer, project, fields, type));
   }
 
-  /**
-   * The type, read once for each project and account: a read under way is shared, so it runs to its end whatever one caller's signal does, and a read that
-   * fails is dropped so the next caller asks again.
-   */
   private async readTypeAsync(organization: string, project: string, name: string, token: AzureCredential,
     signal: AbortSignal): Promise<WorkItemTypeStates> {
     if (this.typesToken !== token) {
@@ -640,10 +574,6 @@ export class AzureReads {
     return read;
   }
 
-  /**
-   * The pull request's policies; on one completed or abandoned, a policy Azure DevOps still shows queued or running never ran before it closed and won't
-   * now, so it shows as not applying.
-   */
   private async readPoliciesAsync(item: HostItem, project: string, token: AzureCredential,
     signal: AbortSignal): Promise<readonly EvaluatedPolicy[]> {
     const evaluations: JsonReader | null = await this.api.getAsync(Resources.formatPolicyEvaluationsUrl(item.reference.owner, project, item.reference.number),
@@ -652,7 +582,6 @@ export class AzureReads {
     return item.closedAt === null ? read : read.map(t => new EvaluatedPolicy(AzureReads.closedPolicyOf(t.policy), t.isBuild, t.buildId));
   }
 
-  /** The newest build of each pipeline the pull request ran, as its page shows them, not every run of every push. */
   private async readBuildsAsync(item: HostItem, project: string, token: AzureCredential,
     signal: AbortSignal): Promise<readonly RanBuild[]> {
     const { owner, repository, number } = item.reference;
@@ -660,7 +589,6 @@ export class AzureReads {
     return builds === null ? [] : AzureApi.read(() => builds.readObjectArray(Resources.valueField).map(AzureReads.buildOf));
   }
 
-  /** The pull request that brought the commit in: the one holding it before the one whose merge made it; null when none did. */
   private async readCommitPullAsync(repository: AzureRepository, commit: string, token: AzureCredential, signal: AbortSignal): Promise<JsonReader | null> {
     const found: JsonReader | null = await this.api.postAsync(Resources.formatPullRequestQueryUrl(repository.organization, repository.project, repository.name),
       token, { [Resources.queriesField]: [Resources.commitQueryType, Resources.lastMergeCommitQueryType]
@@ -708,7 +636,6 @@ export class AzureReads {
     }
   }
 
-  /** Whether the pull request lists the reviewer as a reviewer who hasn't voted, which is what asking them for a review leaves. */
   private static waitsOn(pull: JsonReader, reviewer: string): boolean {
     return pull.readObjectArray(Resources.reviewersField).some(t => t.hasField(Resources.idField) && t.readString(Resources.idField) === reviewer
       && t.readInteger(Resources.voteField) === 0);
@@ -719,7 +646,6 @@ export class AzureReads {
     return new HostReviewRequest(item.reference, item.title, item.url, item.state === ReferenceState.Draft, item.createdAt);
   }
 
-  /** The pull request as an item, with the lines it adds and removes and the files it changes when they're given. */
   private static itemOf(organization: string, pull: JsonReader, counts: ChangeCounts | null = null): HostItem {
     const repository: JsonReader = pull.readObject(Resources.repositoryField);
     const number: number = pull.readInteger(Resources.pullRequestIdField);
@@ -847,7 +773,6 @@ export class AzureReads {
       count > HostCommitComments.maximumCount, Resources.formatIterationPage(page, Math.max(...made)));
   }
 
-  /** The iteration a thread was made on, from its pull request context; 0, which no iteration is, for a thread with none. */
   private static threadIterationOf(thread: JsonReader): number {
     const context: JsonReader | null = thread.hasField(Resources.pullRequestThreadContextField) ? thread.readNullableObject(Resources.pullRequestThreadContextField)
       : null;
@@ -892,11 +817,6 @@ export class AzureReads {
       Date.parse(iteration.readString(Resources.createdDateField)), iteration.readObject(Resources.sourceRefCommitField).readString(Resources.commitIdField), common);
   }
 
-  /**
-   * The changed file of a change entry: Azure DevOps joins the change types, such as `edit, rename`, names a moved file's old path, and names a deleted file
-   * only by that old path; an entry that names no path is left out.
-   */
-  /** A text field Azure DevOps may leave out or send as null, as it does for some changes' paths. */
   private static textOf(reader: JsonReader, name: string): string | undefined {
     return reader.hasField(name) ? reader.readNullableString(name) ?? undefined : undefined;
   }
@@ -917,12 +837,10 @@ export class AzureReads {
       ? new HostPullRequestFile(path, FileChangeKind.Renamed, AzureReads.repositoryPathOf(original)) : new HostPullRequestFile(path, FileChangeKind.Modified, null)];
   }
 
-  /** A path in the repository from Azure DevOps' form, which starts with a slash: `/src/app.ts` is `src/app.ts`. */
   private static repositoryPathOf(path: string): string {
     return path.replace(Resources.leadingSlashesPattern, Resources.emptyText);
   }
 
-  /** A person by their unique name, which signs them in and is often their email address, with the display name they show when it isn't blank. */
   private static personOf(identity: JsonReader): HostPerson {
     const name: string = identity.readOptionalString(Resources.displayNameField)?.trim() ?? "";
     return new HostPerson(identity.readNonBlankString(Resources.uniqueNameField), null, null, undefined, name.length > 0 ? name : null);
@@ -935,13 +853,11 @@ export class AzureReads {
       reviewer.hasField(Resources.isRequiredField) && reviewer.readBoolean(Resources.isRequiredField));
   }
 
-  /** A group's unique name is a descriptor, such as "vstfs:///Classification/TeamProject/<id>\Web", so a group goes by its display name, "[Project]\Web", as the people search names it. */
   private static reviewingOf(reviewer: JsonReader): HostPerson {
     const name: string = reviewer.readOptionalString(Resources.displayNameField) ?? "";
     return AzureReads.isGroup(reviewer) && name.trim().length > 0 ? new HostPerson(name, null, null) : AzureReads.personOf(reviewer);
   }
 
-  /** A policy, whether it's a build policy, and the id of the build its evaluation ran, from the evaluation's context; null when it ran none. */
   private static policyOf(evaluation: JsonReader): EvaluatedPolicy {
     const configuration: JsonReader = evaluation.readObject(Resources.configurationField);
     const type: JsonReader = configuration.readObject(Resources.typeField);
@@ -953,7 +869,6 @@ export class AzureReads {
     return new EvaluatedPolicy(policy, type.readString(Resources.idField) === Resources.buildPolicyType, buildId);
   }
 
-  /** The policy with the number of the build its evaluation ran, when the pull request's builds hold that build and it has one. */
   private static withBuildNumber(policy: HostPolicy, buildId: number | null, builds: readonly RanBuild[]): HostPolicy {
     const number: string | null = buildId === null ? null : builds.find(t => t.id === buildId)?.build.number ?? null;
     return number === null ? policy : new HostPolicy(policy.name, policy.state, policy.isBlocking, policy.url, number);
@@ -973,7 +888,6 @@ export class AzureReads {
     return [isSquash ? Resources.legacySquashMergeType : Resources.legacyMergeType];
   }
 
-  /** The merge type the pull request's auto-complete completes it with, from its `completionOptions`; null when auto-complete isn't set or names none. */
   private static autoCompleteMergeTypeOf(pull: JsonReader): string | null {
     if (!pull.hasField(Resources.autoCompleteSetByField) || !pull.hasField(Resources.completionOptionsField))
       return null;
@@ -981,7 +895,6 @@ export class AzureReads {
     return options.hasField(Resources.mergeStrategyField) ? options.readNonBlankString(Resources.mergeStrategyField) : null;
   }
 
-  /** A build and its id, which a build policy's evaluation names; null when Azure DevOps gives none. */
   private static buildOf(build: JsonReader): RanBuild {
     const status: string = build.readString(Resources.statusField);
     const state: CheckState = status === Resources.completedStatus ? Resources.buildResults.get(build.readString(Resources.resultField)) ?? CheckState.Failed
@@ -1000,7 +913,6 @@ export class AzureReads {
       ? new HostPolicy(policy.name, PolicyState.NotApplicable, policy.isBlocking, policy.url, policy.buildNumber) : policy;
   }
 
-  /** A build as a check; on a completed or abandoned pull request, one still waiting to start never will, so it counts as not run. */
   private static checkOfBuild(build: HostBuild, item: HostItem): HostCheck {
     return new HostCheck(build.name, item.closedAt !== null && build.state === CheckState.Queued ? CheckState.Neutral : build.state, build.url);
   }
@@ -1009,10 +921,6 @@ export class AzureReads {
     return new HostCheck(policy.name, Resources.policyChecks[policy.state], policy.url);
   }
 
-  /**
-   * The people's votes, leaving out groups': Azure DevOps copies a member's vote onto each group they voted for, so a group's vote would count that person
-   * again.
-   */
   private static votesOf(pull: JsonReader): readonly number[] {
     return AzureApi.read(() => pull.readObjectArray(Resources.reviewersField).filter(t => !AzureReads.isGroup(t)).map(t => t.readInteger(Resources.voteField)));
   }

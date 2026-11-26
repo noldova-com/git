@@ -14,10 +14,6 @@ import { Resources } from "../../../resources.ts";
 import type { GitBulkTarget } from "../../models/git-bulk-target.ts";
 import { GitWorkspaceOverview } from "../../models/git-workspace-overview.ts";
 
-/**
- * Asks once before the workspace pushes a branch in several repositories, naming each repository, the branch and the upstream and remote it goes
- * to, and each repository it skips for having no upstream. It answers true for Push, and false for Cancel, Close or Escape.
- */
 @Component({
   selector: "nol-git-bulk-push-dialog",
   imports: [ButtonComponent, DialogComponent],
@@ -32,7 +28,6 @@ export class GitBulkPushDialogComponent {
   protected readonly resources: typeof Resources = Resources;
   protected readonly secondary: ButtonVariant = ButtonVariant.Secondary;
   protected readonly title: Signal<string> = computed(() => Resources.formatPushAllTitle(this.branch()));
-  /** What each repository will push, or that it is skipped, in the order the card lists them. */
   protected readonly lines: Signal<readonly string[]> = computed(() => this.targets().map(t => Object.isNull(t.upstream) ? Resources.formatPushSkipped(t.repository, t.branch)
     : Resources.formatPushTarget(t.repository, t.branch, t.upstream, GitWorkspaceOverview.placeOf(t.remote))));
 }

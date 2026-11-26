@@ -13,10 +13,6 @@ import { type GitCommand, GitFolderParams, type GitStatus } from "@noldova/git.p
 import { Resources } from "../../resources.ts";
 import { GitStatusBarItems } from "../models/git-status-bar-items.ts";
 
-/**
- * The window's status-bar items for the Git panel's repository: its branch, or detached commit, with how far it is ahead of and behind its upstream,
- * how long ago it last fetched, and the last git command a write ran there, which opens the command log.
- */
 export class GitStatusBar {
   private static readonly HIDDEN: StatusBarItemState = new StatusBarItemState("", { isHidden: true });
   private static readonly MINUTE: number = 60_000;
@@ -26,7 +22,6 @@ export class GitStatusBar {
   private static commandFolder: string | null = null;
   private static command: GitCommand | null = null;
 
-  /** Takes the branch, fetch and command items the window part registered, and keeps the fetch age current; the returned function lets them go again. */
   public static provide(branch: StatusBarItem, fetched: StatusBarItem, command: StatusBarItem): () => void {
     const items: GitStatusBarItems = new GitStatusBarItems(branch, fetched, command);
     GitStatusBar.items = items;
@@ -38,14 +33,12 @@ export class GitStatusBar {
     };
   }
 
-  /** Shows the folder's status, or hides the items while there is no repository or its status isn't read. */
   public static show(folder: string | null, status: GitStatus | null): void {
     GitStatusBar.folder = folder;
     GitStatusBar.status = status;
     GitStatusBar.refresh();
   }
 
-  /** Shows the last command the folder's writes ran, or the command log's name before the first; hidden without a folder. */
   public static showCommand(folder: string | null, command: GitCommand | null): void {
     GitStatusBar.commandFolder = folder;
     GitStatusBar.command = command;
@@ -79,7 +72,6 @@ export class GitStatusBar {
     });
   }
 
-  /** How long before `now` the repository last fetched, with the time itself as the tooltip; hidden while it never has. */
   public static fetchedStateOf(folder: string | null, status: GitStatus | null, now: Date): StatusBarItemState {
     const fetchedAt = Object.isNull(folder) ? null : status?.fetchedAt ?? null;
     if (Object.isNull(fetchedAt))

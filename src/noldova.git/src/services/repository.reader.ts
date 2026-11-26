@@ -54,7 +54,6 @@ export class RepositoryReader {
     return new RepositoryFolders(path.resolve(top), path.resolve(gitFolder), path.resolve(commonGitFolder));
   }
 
-  /** Whether git keeps the repository's refs in a reftable, as `extensions.refStorage` says, rather than as files under `refs`. */
   public async isReftableAsync(folders: RepositoryFolders, signal?: AbortSignal): Promise<boolean> {
     const result = await this.runner.runAsync(ProgramRun.readGit(RepositoryReader.REF_STORAGE, folders.top, RepositoryReader.LIMITS, signal));
     if (result.exit.code === Resources.configNotFoundExitCode)

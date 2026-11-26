@@ -12,7 +12,6 @@ import { GitDetailView } from "@noldova/git.window";
 import type { WorkItemChoice } from "../models/work-item-choice.ts";
 import { Resources } from "../../resources.ts";
 
-/** The Work item view of each window, which shows the work item chosen in the document in front that chooses work items. */
 export class WorkItemSelection {
   private static readonly windows: WeakMap<IWindowPartContext, GitDetailView<WorkItemChoice>> = new WeakMap();
 

@@ -21,7 +21,6 @@ import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { FakeAnswerer } from "../fixtures/fake-answerer.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
-/** A tool's failure, by its code and the module's own code for it. */
 interface IToolRefusal {
   readonly code: ToolFailureCode;
   readonly moduleCode: string | null;
@@ -51,7 +50,6 @@ describe("The Git agent tools", () => {
     cleanUps.add(() => repository.disposeAsync());
     supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
     cleanUps.add(() => supervisor.disposeAsync());
-    // Noldova Desktop answers a module's declared setting with its value; these tests take the defaults.
     supervisor.context.settings.answer("read", () => null);
     part = new RuntimePart();
     await part.activateAsync(supervisor.context);

@@ -19,9 +19,7 @@ export class HostPullRequestHead {
   public readonly reference: HostReference;
   public readonly title: string;
   public readonly url: string;
-  /** The branch it merges from, without refs/heads/, such as "feature/sign-in". */
   public readonly headBranch: string;
-  /** The branch it merges into, without refs/heads/, such as "main", or null when the host didn't say. */
   public readonly baseBranch: string | null;
 
   public constructor(reference: HostReference, title: string, url: string, headBranch: string, baseBranch: string | null, reader?: JsonReader) {

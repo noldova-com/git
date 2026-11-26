@@ -182,7 +182,6 @@ class Panel {
     await this.untilAsync(() => this.isDisabled(".message"));
   }
 
-  /** Clicks the button and gives the confirm it asks, none when it is held. */
   public async askAsync(selector: string): Promise<string[]> {
     await this.clickAsync(selector);
     return this.texts(".confirm");

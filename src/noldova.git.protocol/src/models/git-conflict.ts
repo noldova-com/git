@@ -113,12 +113,10 @@ export class GitConflict {
     };
   }
 
-  /** A side's commit, or `null` when the field is `null` or absent, as it is in a conflict an older runtime read. */
   private static readCommit(reader: JsonReader, field: string): string | null {
     return reader.hasField(field) ? reader.readNullableString(field) : null;
   }
 
-  /** Requires a side's text exactly when the kind has the side and the file isn't binary. */
   private static requireSide(value: string | null, has: boolean, binary: boolean, field: string, reader: JsonReader | undefined): void {
     if ((value !== null) !== (has && !binary))
       FieldCheck.fail(field, binary ? Resources.binaryTextExpected : Resources.conflictStageExpected, reader);

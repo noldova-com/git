@@ -13,10 +13,6 @@ import {
 
 import type { ICheckpoints } from "../../src/interfaces/i-checkpoints.ts";
 
-/**
- * The checkpoints module's service as a discard and its undo see it: it keeps each request and answers with the result a test sets, a taken
- * checkpoint and a planned and carried-out restore by default. `onRestore` runs as a restore is carried out, for a test to put files back.
- */
 export class FakeCheckpoints implements ICheckpoints {
   public static readonly id: string = "01928f6e-7a3b-7c4d-8e5f-0a1b2c3d4e5f";
   private static readonly STATE: string = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";

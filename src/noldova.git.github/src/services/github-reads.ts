@@ -27,7 +27,6 @@ export class GitHubReads {
   private readonly api: GitHubApi;
   private readonly signIn: IGitHubToken;
   private readonly avatars: GitHubAvatars;
-  /** The account's last review request search, with its token and when it started, shared by every repository's read while it is held. */
   private reviewSearch: ReviewSearch | null = null;
 
   public constructor(api: GitHubApi, signIn: IGitHubToken, avatars: GitHubAvatars) {
@@ -68,10 +67,6 @@ export class GitHubReads {
     return this.signIn.token === token ? answer : none;
   }
 
-  /**
-   * The repository's open pull requests, the most recently updated first, each with its approvals and the checks on its head commit; signed out,
-   * the signed-out list, and for a repository off github.com, none.
-   */
   public async readPullRequestsAsync(query: RepositoryQuery, signal: AbortSignal): Promise<HostPullRequestList> {
     const none: HostPullRequestList = new HostPullRequestList([], false);
     const token: string | null = this.signIn.token;
@@ -89,12 +84,6 @@ export class GitHubReads {
     return this.signIn.token === token ? list : HostPullRequestList.signedOut();
   }
 
-  /**
-   * The open pull requests on the repository that ask the signed-in person for a review, their own or a team's, the newest first. They come from
-   * one search of the account's review requests, held for a minute whether it answered or failed, so a workspace's repositories, and a window
-   * taking the focus again, never search more often than that; a cut search marks every repository's list as having more. Signed out, the
-   * signed-out list, and for a repository off github.com, none.
-   */
   public async readReviewRequestsAsync(query: RepositoryQuery, signal: AbortSignal): Promise<HostReviewRequestList> {
     const token: string | null = this.signIn.token;
     const repository: GitHubRepository | null = GitHubRepository.parse(query.path);
@@ -111,11 +100,6 @@ export class GitHubReads {
       .toSorted((a, b) => b.createdAt - a.createdAt), isCut);
   }
 
-  /**
-   * The review comments on a commit: its own comments, and in the pull request that brought it in, the review comments made on it, one page of
-   * 100 of each, capped when a page was full. The page to open is the first comment's own, kept only when it is an https page on github.com;
-   * signed out, for a repository off github.com, with no comments, or with a page elsewhere, none.
-   */
   public async readCommitCommentsAsync(query: CommitQuery, signal: AbortSignal): Promise<HostCommitComments> {
     const none: HostCommitComments = HostCommitComments.none();
     const token: string | null = this.signIn.token;
@@ -135,10 +119,6 @@ export class GitHubReads {
     return this.signIn.token === token ? answer : none;
   }
 
-  /**
-   * A commit author's GitHub picture as a data address, or null: a GitHub no-reply email names the account itself, and signed in, the commit's
-   * author on GitHub names it otherwise.
-   */
   public async readAuthorAvatarAsync(query: AuthorQuery, signal: AbortSignal): Promise<string | null> {
     if (query.host !== Resources.host)
       return null;
@@ -158,11 +138,6 @@ export class GitHubReads {
     return this.signIn.token === token ? avatar : null;
   }
 
-  /**
-   * A pull request for its page: the pull request with its author's picture, its description, its commit count, its reviewers by their latest review
-   * and the ones it still asks, the check runs on its head as builds, its auto-merge and whether it conflicts with its base, which GitHub answers only
-   * once it has worked it out. Signed out, for another host, or for one GitHub can't show, none.
-   */
   public async readPullRequestAsync(reference: HostReference, signal: AbortSignal): Promise<HostPullRequest | null> {
     const token: string | null = this.signIn.token;
     const repository: GitHubRepository | null = GitHubRepository.parse(Resources.formatRepositoryName(reference.owner, reference.repository));
@@ -181,13 +156,6 @@ export class GitHubReads {
     return this.signIn.token === token ? pullRequest : null;
   }
 
-  /**
-   * A pull request's comments as threads, oldest first: each conversation comment a thread of its own with no path, and each review comment with its
-   * replies a thread on its file and line, the newest 100 of each kind, with whether there are older ones. GitHub lists comments oldest first, so it
-   * starts at the page the pull request's counts put the newest 100 on and reads on while pages come back full, which finds the comments that came
-   * after a count it read earlier. GitHub's REST API keeps no thread state, so every thread has none. Signed out, for another host, or for a pull
-   * request GitHub can't show, none.
-   */
   public async readPullRequestThreadsAsync(reference: HostReference, signal: AbortSignal): Promise<HostPullRequestThreads> {
     const none: HostPullRequestThreads = new HostPullRequestThreads([], false);
     const token: string | null = this.signIn.token;
@@ -265,15 +233,10 @@ export class GitHubReads {
     }
   }
 
-  /** Every review on the pull request, oldest first, as GitHub lists them. */
   private readReviewsAsync(repository: GitHubRepository, number: number, token: string, signal: AbortSignal): Promise<readonly JsonReader[]> {
     return this.readPagesAsync(page => repository.pathOf(Resources.formatReviewsPath(number, page)), Resources.reviewsPageSize, token, signal);
   }
 
-  /**
-   * The newest 100 comments of a list GitHub answers oldest first, 100 to a page, from the page a count of them puts the newest on, and on while pages
-   * come back full, so comments added since the count are read too; it has more when it started past the first page or read past 100.
-   */
   private async readNewestAsync(pathOf: (page: number) => string, count: number, token: string, signal: AbortSignal): Promise<NewestItems> {
     const kept: number = Resources.newestCommentsCount;
     const first: number = count <= kept ? 1 : Math.floor((count - kept) / Resources.commentsPageSize) + 1;
@@ -287,7 +250,6 @@ export class GitHubReads {
     }
   }
 
-  /** Every item of a list GitHub answers in pages, page after page until one comes back short; a list GitHub can't show has none. */
   private async readPagesAsync(pathOf: (page: number) => string, pageSize: number, token: string, signal: AbortSignal): Promise<readonly JsonReader[]> {
     const items: JsonReader[] = [];
     for (let page: number = 1; ; page++) {
@@ -382,7 +344,6 @@ export class GitHubReads {
       || commitComments.length >= Resources.commentsPageSize || reviewComments.length >= Resources.commentsPageSize, url.href);
   }
 
-  /** A repository's owner and name as GitHub matches them, ignoring case. */
   private static repositoryKeyOf(owner: string, name: string): string {
     return `${owner}/${name}`.toLowerCase();
   }
@@ -436,11 +397,6 @@ export class GitHubReads {
       mergeableState === Resources.unknownMergeableState ? null : mergeableState === Resources.dirtyMergeableState);
   }
 
-  /**
-   * The people who reviewed the pull request, each by their latest approval or request for changes, or as having commented when they gave neither or
-   * it was dismissed, then the people and teams it still asks for a review; asking someone again shows them as asked. The author, whose replies in a
-   * review's threads GitHub keeps as reviews of their own, and a review not yet submitted are left out, as GitHub's own list leaves them.
-   */
   private static reviewersOf(pull: JsonReader, reviews: readonly JsonReader[]): HostReviewer[] {
     const author: string | null = pull.readNullableObject(Resources.userField)?.readNonBlankString(Resources.loginField) ?? null;
     const people: Map<string, HostPerson> = new Map<string, HostPerson>();
@@ -469,7 +425,6 @@ export class GitHubReads {
     return [...reviewed, ...[...asked, ...teams].map(t => new HostReviewer(t, 0, Resources.reviewRequestedLabel, false))];
   }
 
-  /** A check run as a build, dated when it started and, once it has finished, when it finished. */
   private static buildOf(run: JsonReader): HostBuild {
     const check: HostCheck = GitHubReads.checkOf(run);
     const startedAt: string | null = run.readNullableString(Resources.startedAtField);
@@ -479,12 +434,6 @@ export class GitHubReads {
       completedAt === null || !isFinished ? null : Date.parse(completedAt));
   }
 
-  /**
-   * Conversation comments each as a thread of its own, and review comments grouped under the comment they reply to, oldest first; a comment with no
-   * text, such as a review comment GitHub keeps for a suggestion's lines alone, is left out. GitHub numbers conversation comments and review comments
-   * apart, so a thread's id is its first comment's id doubled, plus one for a review comment's thread, which keeps the two kinds apart; its comments
-   * keep GitHub's own ids.
-   */
   private static threadsOf(conversation: readonly JsonReader[], reviews: readonly JsonReader[]): HostThread[] {
     const onFiles: Map<number, HostThread> = new Map<number, HostThread>();
     for (const comment of reviews.filter(GitHubReads.hasText)) {
@@ -518,7 +467,6 @@ export class GitHubReads {
     return Math.min(...thread.comments.map(t => t.publishedAt));
   }
 
-  /** A comment, by the account GitHub shows as ghost once its author's account is gone. */
   private static commentOf(comment: JsonReader, parent: number | null): HostComment {
     const user: JsonReader | null = comment.readNullableObject(Resources.userField);
     return new HostComment(comment.readInteger(Resources.idField), parent, user === null ? new HostPerson(Resources.ghostLogin, null, null) : GitHubReads.personOf(user),

@@ -25,7 +25,6 @@ import { GitConflictsComponent } from "../../../../src/app/components/git-confli
 import { GitResolving } from "../../../../src/app/services/git-resolving.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 
-/** The conflicts document and the Conflict view beside it. */
 class ConflictScreens {
   public readonly document: HTMLElement;
   public readonly view: HTMLElement;
@@ -66,7 +65,6 @@ describe("GitConflictDetailComponent in the kit's look", () => {
     });
   };
 
-  /** The conflicts document and the Conflict view beside it, with a merge's conflicted file open and its conflict active. */
   const renderAsync = async (viewWidth: string): Promise<ConflictScreens> => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     GitFixtures.answerWith(context, {
@@ -86,7 +84,6 @@ describe("GitConflictDetailComponent in the kit's look", () => {
     view.componentRef.setInput("instance", "selected");
     view.autoDetectChanges();
     const documentElement: HTMLElement = fixture.nativeElement;
-    // TestBed takes the earlier fixtures' root elements out of the page as it creates a component, so the document goes back beside the view.
     document.body.append(documentElement);
     const viewElement: HTMLElement = view.nativeElement;
     documentElement.style.width = "70rem";

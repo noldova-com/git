@@ -50,7 +50,6 @@ export class RequestAnswers {
     });
   }
 
-  /** Leaves a method's requests, such as the pictures a page reads on the side, out of what was asked and answered, failing each. */
   public ignore(method: string): this {
     this.ignored.add(method);
     return this;

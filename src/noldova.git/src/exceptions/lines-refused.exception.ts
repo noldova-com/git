@@ -11,7 +11,6 @@ import { FailureCode, type GitCode } from "@noldova/git.protocol";
 import type { IUntrustedText } from "../interfaces/i-untrusted-text.ts";
 import { GitFailureException } from "./git-failure.exception.ts";
 
-/** Refuses staging or unstaging chosen lines: the file isn't a changed text file, or no chosen line is an added or removed one. */
 export class LinesRefusedException extends GitFailureException {
   public override readonly code: FailureCode = FailureCode.Refused;
   public override readonly gitCode: GitCode | null = null;

@@ -10,7 +10,6 @@ import { describe, expect, it } from "vitest";
 
 import { GitPendingSwitch } from "../../../src/app/services/git-pending-switch.ts";
 
-/** A promise the test settles when it chooses. */
 class Gate {
   public readonly promise: Promise<void>;
   public readonly resolve: () => void;

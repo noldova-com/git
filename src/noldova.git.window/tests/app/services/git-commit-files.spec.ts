@@ -14,7 +14,6 @@ import type { GitCommitFileRow } from "../../../src/app/models/git-commit-file-r
 import { GitCommitFiles } from "../../../src/app/services/git-commit-files.ts";
 import { GitLineCounts } from "../../../src/app/models/git-line-counts.ts";
 
-/** How a test file differs from a plain modified one: the path it moved from, whether it is binary, and its similarity. */
 interface IFileOptions {
   readonly from?: string;
   readonly binary?: boolean;

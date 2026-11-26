@@ -13,7 +13,6 @@ import type { GitWorkspaceAcross } from "../models/git-workspace-across.ts";
 import { Resources } from "../../resources.ts";
 import { GitDetailView } from "./git-detail-view.ts";
 
-/** The Across repositories view of each window, which shows what spans the repositories of the workspace page in front. */
 export class GitWorkspaceAcrossViews {
   private static readonly windows: WeakMap<IWindowPartContext, GitDetailView<GitWorkspaceAcross>> = new WeakMap();
 

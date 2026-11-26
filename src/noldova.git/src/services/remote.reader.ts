@@ -48,10 +48,6 @@ export class RemoteReader {
     return result.output.toString(Resources.utf8Encoding);
   }
 
-  /**
-   * Reads the URL git itself fetches from, with the url.<base>.insteadOf rewrites applied, which the raw configuration lacks;
-   * when git can't answer, as for a configuration it can't load as remotes, the configured URL, so the status still reads.
-   */
   private async readUrlAsync(top: string, name: string, configured: string, signal?: AbortSignal): Promise<GitRemote> {
     const result = await this.runner.runAsync(ProgramRun.readGit(new GitArguments([...Resources.remoteUrlArguments, name]), top, RemoteReader.LIMITS, signal));
     const url: string = result.exit.code !== 0 || result.isTruncated ? configured : result.output.toString(Resources.utf8Encoding).replace(Resources.lineEndPattern, "");
@@ -65,7 +61,6 @@ export class RemoteReader {
     return chosen ?? null;
   }
 
-  /** Each remote whose url key has a value, in the configuration's order, with its first URL. */
   private static urlsOf(output: string): ReadonlyMap<string, string> {
     const urls = new Map<string, string>();
     for (const record of output.split(Resources.recordSeparator)) {
@@ -77,13 +72,11 @@ export class RemoteReader {
     return urls;
   }
 
-  /** The key's last value, the one git uses. */
   private static valueOf(output: string, key: string): string | null {
     const record: string | undefined = output.split(Resources.recordSeparator).findLast(t => RemoteReader.keyOf(t) === key);
     return record === undefined ? null : record.slice(key.length + 1);
   }
 
-  /** A record's key, or "" for a key without a value, which git -z writes without a line end. */
   private static keyOf(record: string): string {
     const line: number = record.indexOf(Resources.lineEnd);
     return line < 0 ? "" : record.slice(0, line);

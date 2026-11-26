@@ -20,7 +20,6 @@ import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 import { azureStatus, bug, childrenQuery, detailOf, githubStatus, history, HOST, INSTANCE, itemOf, listOf, messages, noMessages, NOW, Page, pr482, PROJECT,
   pullRequest, story, task, tasks, urlOf } from "../../../fixtures/work-items-page.fixture.ts";
 
-/** Fixes the clock the ages read to the one the history's commits are dated from; only Date is faked, so the page's timers still run. */
 function pinNow(): void {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(NOW);

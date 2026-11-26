@@ -14,12 +14,6 @@ interface IWaitingRead<T> {
   users: number;
 }
 
-/**
- * Queues reads in lanes, such as one per repository and kind of read, and lets callers that ask for the same read while it still waits in its lane
- * share its answer, so a burst of
- * identical requests after a change runs once; a read that has started is never shared, since it may miss the change that prompted the later
- * request. A shared read is cancelled only once every caller that waits on it has cancelled.
- */
 export class SharedReads<T> {
   private readonly queue: KeyQueue;
   private readonly waiting: Map<string, IWaitingRead<T>> = new Map();

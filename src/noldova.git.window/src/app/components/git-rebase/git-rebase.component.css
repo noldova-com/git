@@ -98,7 +98,6 @@
 
 .step {
   display: grid;
-  /* The check gives way before the message, down to its icon, when the steps panel is narrow. */
   grid-template-columns: 1.25rem 7rem 4.5rem minmax(5.5rem, 1fr) minmax(0, 12rem);
   gap: 0.5rem;
   align-items: center;
@@ -261,7 +260,6 @@
   color: var(--nol-text-muted);
 }
 
-/* In a window too short for the head, the rows and the options at once, the whole panel scrolls, so the rows and Start rebase stay reachable. */
 @container rebase (height < 34rem) {
   .steps-panel {
     overflow-y: auto;
@@ -273,14 +271,12 @@
   }
 }
 
-/* In a narrow window the title wraps whole. */
 @container rebase (width < 40rem) {
   .title {
     white-space: normal;
   }
 }
 
-/* With too little room for the check's words, the column shows its icon, and the words stay for a screen reader. */
 @container rebase (width < 45rem) {
   .check-text {
     position: absolute;

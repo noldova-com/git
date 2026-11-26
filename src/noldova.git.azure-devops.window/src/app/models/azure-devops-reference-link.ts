@@ -11,7 +11,6 @@ import type { HostReference, WorkItemQuery } from "@noldova/git.hosting.protocol
 export class AzureDevOpsReferenceLink {
   public readonly query: WorkItemQuery | HostReference;
   public readonly key: string;
-  /** The project a work item's link names, or null when it names none or isn't a work item's. */
   public readonly project: string | null;
 
   public constructor(query: WorkItemQuery | HostReference, key: string, project: string | null = null) {

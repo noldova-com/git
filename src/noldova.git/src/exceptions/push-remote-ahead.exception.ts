@@ -12,7 +12,6 @@ import type { IUntrustedText } from "../interfaces/i-untrusted-text.ts";
 import { Resources } from "../resources.ts";
 import { GitFailureException } from "./git-failure.exception.ts";
 
-/** The remote refused the push as not a fast-forward: it has commits the branch doesn't, which the last fetch may not show. */
 export class PushRemoteAheadException extends GitFailureException {
   public override readonly code: FailureCode = FailureCode.Git;
   public override readonly gitCode: GitCode | null = GitCode.PushBehind;

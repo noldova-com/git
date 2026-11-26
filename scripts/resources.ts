@@ -95,7 +95,6 @@ export class Resources {
   public static readonly pinFields: readonly string[] = ["dependencies", "peerDependencies", "optionalDependencies"];
   public static readonly dependencyFields: readonly string[] = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"];
   public static readonly moduleFields: readonly string[] = ["id", "version", "displayName", "description", "parts", "dependencies", "noldovaDesktop", "contributes"];
-  /** The fields a module.json may leave out: the modules it uses when the app includes them, each at one exact version. */
   public static readonly optionalModuleFields: readonly string[] = ["optionalDependencies"];
   public static readonly declarationTextFields: readonly string[] = ["displayName", "description"];
   public static readonly contributionKinds: readonly string[] = [

@@ -30,7 +30,6 @@ import { BranchDialog } from "../../services/branch-dialog.ts";
 import { WorkItemSelection } from "../../services/work-item-selection.ts";
 import { AzureDevOpsPersonAvatarComponent } from "../azure-devops-person-avatar/azure-devops-person-avatar.component.ts";
 
-/** The Work item view: the work item chosen in the document in front, with its fields, tasks, development and the open repository's commits that name it. */
 @Component({
   selector: "nol-git-azure-devops-work-item-detail",
   templateUrl: "./azure-devops-work-item-detail.component.html",
@@ -60,7 +59,6 @@ export class AzureDevOpsWorkItemDetailComponent {
   });
   protected readonly linked: WritableSignal<LinkedHistory> = signal<LinkedHistory>(LinkedHistory.none);
 
-  /** The view's one instance, which its tab opened with. */
   public readonly instance: InputSignal<string> = input.required<string>();
 
   public constructor() {
@@ -115,7 +113,6 @@ export class AzureDevOpsWorkItemDetailComponent {
     return this.linked().partsOf(commit.subject);
   }
 
-  /** The work item a chip in a commit's subject names: one the document or the view has read, else read for the chip beside the shown item; `null` until it comes. */
   protected chipItemOf(choice: WorkItemChoice, id: number): HostWorkItem | null {
     const shown: HostWorkItem = choice.detail.item;
     const read: HostWorkItemDetail | undefined = [...choice.known, ...this.children()].find(t => t.item.id === id && t.item.organization === shown.organization);

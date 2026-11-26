@@ -12,7 +12,6 @@ import { GitMessageReferenceKind } from "../enums/git-message-reference-kind.ts"
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** Asks which of the newest limit commits of a folder's repository, in `git.graph`'s order, name references of a kind in their messages. */
 export class GitMessageReferencesParams {
   private static readonly FIELDS: readonly string[] = [Resources.folderField, Resources.kindField, Resources.limitField];
 

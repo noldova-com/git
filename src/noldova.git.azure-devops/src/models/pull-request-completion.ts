@@ -11,15 +11,11 @@ import { HostReference } from "@noldova/git.hosting.protocol";
 
 import { Resources } from "../resources.ts";
 
-/** A person's Complete merge: the pull request as the page showed it, how to merge it and what to do after. */
 export class PullRequestCompletion {
   public readonly reference: HostReference;
-  /** The pull request's last merge source commit when the page read it. */
   public readonly sourceCommit: string;
   public readonly targetBranch: string;
-  /** One of {@link Resources.mergeTypes}. */
   public readonly mergeType: string;
-  /** The merge commit's message, or `null` for {@link Resources.fastForwardMergeType}, which writes none. */
   public readonly message: string | null;
   public readonly completeWorkItems: boolean;
   public readonly deleteSourceBranch: boolean;
@@ -35,7 +31,6 @@ export class PullRequestCompletion {
     this.deleteSourceBranch = deleteSourceBranch;
   }
 
-  /** The completion a window sent, or `null` when it names another organization's pull request or a value out of range. */
   public static fromJson(value: unknown): PullRequestCompletion | null {
     const reader: JsonReader = JsonReader.fromValue(value);
     const reference: HostReference = HostReference.fromJson(reader.readObject(Resources.referenceField).toJson());

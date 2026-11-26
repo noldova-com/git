@@ -20,10 +20,8 @@ import { GitFixtures } from "./git-fixtures.fixture.ts";
 
 export class GitViewFixture {
   public readonly context: FakeWindowPartContext;
-  /** The component the fixture looks in: the Git panel, or the Commit view beside it. */
   public readonly fixture: ComponentFixture<object>;
   public readonly folder: WritableSignal<string | null>;
-  /** The Git panel's root element, which a Commit view fixture shows beside the view. */
   public readonly panel: HTMLElement;
 
   private constructor(context: FakeWindowPartContext, fixture: ComponentFixture<object>, folder: WritableSignal<string | null>, panel: HTMLElement) {
@@ -53,10 +51,6 @@ export class GitViewFixture {
     return view;
   }
 
-  /**
-   * The Git panel and the Commit view beside it, which follows the folder's viewed commit as the history document in front does; the fixture looks in the view.
-   * @param active Whether that history document is the window's active document; while it isn't, the view keeps the commit it showed.
-   */
   public static async renderCommitAsync(answers: Readonly<Record<string, JsonValue | Error | (() => JsonValue | Error)>>, selector: string = ".detail",
     providers: readonly (Provider | EnvironmentProviders)[] = [], active: Signal<boolean> = signal(true)): Promise<GitViewFixture> {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
@@ -68,7 +62,6 @@ export class GitViewFixture {
     const fixture: ComponentFixture<GitCommitDetailViewComponent> = TestBed.createComponent(GitCommitDetailViewComponent);
     fixture.componentRef.setInput("instance", "selected");
     fixture.autoDetectChanges();
-    // TestBed takes the earlier fixtures' root elements out of the page as it creates a component, so the panel goes back beside the view.
     document.body.append(panel.nativeElement);
     const view: GitViewFixture = new GitViewFixture(context, fixture, folder, panel.nativeElement);
     await view.waitForAsync(selector);
@@ -113,7 +106,6 @@ export class GitViewFixture {
     await this.fixture.whenStable();
   }
 
-  /** Opens the menu of the trigger that matches the selector and chooses its row with the label, then waits for the menu to close. */
   public async chooseAsync(trigger: string, label: string): Promise<void> {
     const rows = (): readonly HTMLElement[] => [...document.querySelectorAll<HTMLElement>("button[nol-menu-item]")];
     await this.clickAsync(trigger);

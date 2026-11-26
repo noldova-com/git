@@ -88,7 +88,6 @@ function wordsOf(node: Node): string {
   return words.filter(t => t.length > 0).join(" ").replace(/\s+/g, " ");
 }
 
-/** Keeps every fixture's root in the document, where the default renderer takes the page's away once the view's is made, so both show as the window shows them. */
 class SideBySideRenderer extends TestComponentRenderer {
   public override insertRootElement(rootElementId: string): void {
     const root: HTMLDivElement = document.createElement("div");
@@ -106,9 +105,7 @@ class Page {
   public readonly context: FakeWindowPartContext = new FakeWindowPartContext();
   public readonly requests: RequestAnswers = new RequestAnswers(this.context).ignore(AzureDevOpsNames.readPersonAvatarMethod);
   public fixture: ComponentFixture<AzureDevOpsPullRequestComponent> | null = null;
-  /** The Pull request view beside the page, as the window docks it. */
   public view: ComponentFixture<AzureDevOpsPullRequestDetailComponent> | null = null;
-  /** Whether the page is the window's active document. */
   public readonly active: WritableSignal<boolean> = signal(true);
 
   public constructor(threads: readonly HostThread[] = [], signIn: HostSignIn | Error = HostSignIn.signedIn(new HostAccount("monalisa@fabrikam.test", "Mona Lisa", null, []))) {
@@ -193,13 +190,10 @@ class Page {
     await this.view?.whenStable();
   }
 
-  /** The first element the selector matches on the page, then in the Pull request view; null for none. */
   public query(selector: string): Element | null {
     return this.element.querySelector(selector) ?? this.detail.querySelector(selector);
   }
 
-  /** The elements the selector matches on the page, then in the Pull request view. */
-  /** The Files tab's files, each as its change letter and path, leaving out the folder rows its layout adds. */
   public files(): string[] {
     return this.queryAll("nol-git-pull-request-files .row:not(.folder)").map(t => `${t.querySelector(".letter")?.textContent ?? ""} ${t.getAttribute("title") ?? ""}`);
   }
@@ -208,7 +202,6 @@ class Page {
     return [...this.element.querySelectorAll<T>(selector), ...this.detail.querySelectorAll<T>(selector)];
   }
 
-  /** The texts the selector matches on the page, then in the Pull request view. */
   public texts(selector: string): string[] {
     return [...this.element.querySelectorAll(selector), ...this.detail.querySelectorAll(selector)].map(wordsOf);
   }
@@ -1196,7 +1189,6 @@ describe("AzureDevOpsPullRequestComponent", () => {
       [new DiffHunk(40, 1, 40, 2, "", [new DiffLine(LineKind.Context, 40, 40, "const a = 1;"), new DiffLine(LineKind.Added, null, 41, "const b = 2;")])], false)],
     0, 0, false);
 
-    /** A page whose open repository is the pull request's, with the push's commits, so its Files tab shows the changes from local Git as `diff` holds them. */
     function cloned(diff: GitDiff): Page {
       onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/site")));
       const page = new Page([thread]);

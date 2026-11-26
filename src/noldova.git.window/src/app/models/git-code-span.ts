@@ -16,7 +16,6 @@ import type { GitDiffRow } from "./git-diff-row.ts";
 type TokenizerState = ILineTokenizer["initialState"];
 type LineTokens = ReturnType<ILineTokenizer["tokenizeLine"]>;
 
-/** A run of a diff row's text, with the class that colors it as its token kind, or an empty class for plain text. */
 export class GitCodeSpan {
   public readonly text: string;
   public readonly className: string;
@@ -26,11 +25,6 @@ export class GitCodeSpan {
     this.className = className;
   }
 
-  /**
-   * Each row of a diff cut into runs by the tokenizer, its sign plain. The new side's state carries through context and added rows and
-   * the old side's through context and removed rows, as each side's file reads; a hunk's header or a note starts both again. Without a
-   * tokenizer each row is one plain run.
-   */
   public static rowsOf(rows: readonly GitDiffRow[], tokenizer: ILineTokenizer | null): readonly (readonly GitCodeSpan[])[] {
     if (Object.isNull(tokenizer))
       return rows.map(t => [new GitCodeSpan(t.text)]);

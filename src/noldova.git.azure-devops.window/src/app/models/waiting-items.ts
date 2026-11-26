@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** A project's work items that wait to be read together, by their ids. */
 export class WaitingItems {
   public readonly organization: string;
   public readonly project: string;

@@ -10,7 +10,6 @@ import "@noldova/context.core";
 
 import type { WorkItemRow } from "./work-item-row.ts";
 
-/** A row the work item table shows, with whether it has children under it and whether the person collapsed them. */
 export class WorkItemTableRow {
   public readonly row: WorkItemRow;
   public readonly hasChildren: boolean;
@@ -22,7 +21,6 @@ export class WorkItemTableRow {
     this.isCollapsed = isCollapsed;
   }
 
-  /** The rows in their order, leaving out every row under a collapsed one; a row has children when the row after it is deeper. */
   public static shownOf(rows: readonly WorkItemRow[], collapsed: ReadonlySet<number>): readonly WorkItemTableRow[] {
     const shown: WorkItemTableRow[] = [];
     let hiddenUnder: number | null = null;

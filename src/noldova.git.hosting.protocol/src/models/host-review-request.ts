@@ -20,7 +20,6 @@ export class HostReviewRequest {
   public readonly title: string;
   public readonly url: string;
   public readonly isDraft: boolean;
-  /** When it was opened, in milliseconds since the Unix epoch. */
   public readonly createdAt: number;
 
   public constructor(reference: HostReference, title: string, url: string, isDraft: boolean, createdAt: number, reader?: JsonReader) {

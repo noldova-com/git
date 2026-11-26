@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** A path's blob in the index, by its id and size in bytes. */
 export class IndexBlob {
   public readonly id: string;
   public readonly size: number;

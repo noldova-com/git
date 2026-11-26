@@ -12,7 +12,6 @@ import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 import { HostPullRequestUpdate } from "./host-pull-request-update.ts";
 
-/** The pushes to a pull request, the newest first, and whether the host has more than the list holds. */
 export class HostPullRequestUpdates {
   public static readonly maximumCount: number = Resources.maximumPullRequestUpdates;
 

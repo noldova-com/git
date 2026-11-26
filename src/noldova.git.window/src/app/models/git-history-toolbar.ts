@@ -8,7 +8,6 @@
 
 import type { GitHistoryAction } from "../enums/git-history-action.ts";
 
-/** One of the history's toolbars: its title and its group of actions. */
 export class GitHistoryToolbar {
   public readonly title: string;
   public readonly actions: readonly GitHistoryAction[];

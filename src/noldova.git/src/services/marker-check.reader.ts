@@ -15,11 +15,9 @@ import { ProgramRun } from "../models/program-run.ts";
 import { Resources } from "../resources.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/** Finds the tracked files, staged or not, that still have a conflict marker line, as `git diff --check` against HEAD finds them; it changes nothing. */
 export class MarkerCheckReader {
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.diffOutputBytes, Resources.gitReadMilliseconds);
   private static readonly ARGUMENTS: GitArguments = new GitArguments(Resources.markerCheckArguments, [Resources.headLabel], Resources.markerCheckPaths);
-  /** The byte each C escape letter stands for, the reverse of the quoting the diff parser reads. */
   private static readonly ESCAPED_BYTES: ReadonlyMap<string, number> = new Map([...Resources.cEscapes].map(([byte, letter]) => [letter, byte]));
   private readonly runner: ProgramRunner;
 
@@ -27,25 +25,18 @@ export class MarkerCheckReader {
     this.runner = runner;
   }
 
-  /** Each leftover marker line as git prints it, such as `src/a.ts:3: leftover conflict marker`, in its order. */
   public async readLinesAsync(top: string, signal?: AbortSignal): Promise<readonly string[]> {
     const result = await this.runner.runAsync(ProgramRun.readGit(MarkerCheckReader.ARGUMENTS, top, MarkerCheckReader.LIMITS, signal));
-    // A cut answer may hide a marker past the cut, so it fails rather than lets a continue run.
     if (result.exit.code === null || result.exit.code >= Resources.gitFatalExitCode || result.isTruncated)
       throw new GitFailedException(Resources.diffCommand, { text: result.errors.toString(Resources.utf8Encoding), source: UntrustedSource.Repository });
     return result.output.toString(Resources.utf8Encoding).match(Resources.leftoverMarkerPattern) ?? [];
   }
 
-  /** The files with a leftover marker line, each once, in git's order. */
   public async readAsync(top: string, signal?: AbortSignal): Promise<GitMarkerCheck> {
     const lines = await this.readLinesAsync(top, signal);
     return new GitMarkerCheck([...new Set(lines.map(t => MarkerCheckReader.unquote(t.replace(Resources.leftoverMarkerEndPattern, ""))))]);
   }
 
-  /**
-   * A path as git names it: as it is, or, when git quoted it, decoded from its C escapes, whose octal ones are the bytes of its UTF-8 text.
-   * Git quotes every path that starts with a quote, so an unquoted path never does.
-   */
   private static unquote(name: string): string {
     if (!name.startsWith(Resources.quoteMark))
       return name;

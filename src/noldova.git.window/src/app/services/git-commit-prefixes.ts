@@ -14,7 +14,6 @@ import type { IGitCommitPrefixes } from "../interfaces/i-git-commit-prefixes.ts"
 import type { IProvidedGitCommitPrefixes } from "../interfaces/i-provided-git-commit-prefixes.ts";
 import { Resources } from "../../resources.ts";
 
-/** The commit message prefixes host modules give the commit box, with the context each was given by, asked in the order they were given. */
 export class GitCommitPrefixes {
   private static readonly provided: WritableSignal<readonly IProvidedGitCommitPrefixes[]> = signal([]);
 
@@ -24,7 +23,6 @@ export class GitCommitPrefixes {
     return () => GitCommitPrefixes.provided.update(t => t.filter(u => u !== provided));
   }
 
-  /** The first prefix a host gives the branch, logging to its own part a host whose answer throws and passing over it. */
   public static prefixFor(folder: string, branch: string): string | null {
     for (const provided of GitCommitPrefixes.provided())
       try {

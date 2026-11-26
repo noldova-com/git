@@ -11,10 +11,8 @@ import { HostReference } from "@noldova/git.hosting.protocol";
 
 import { Resources } from "../resources.ts";
 
-/** A person's Abandon: the pull request as the page showed it. */
 export class PullRequestAbandonment {
   public readonly reference: HostReference;
-  /** The pull request's last merge source commit when the page read it. */
   public readonly sourceCommit: string;
 
   public constructor(reference: HostReference, sourceCommit: string) {
@@ -22,7 +20,6 @@ export class PullRequestAbandonment {
     this.sourceCommit = sourceCommit;
   }
 
-  /** The abandonment a window sent, or `null` when it names another organization's pull request or a commit that isn't a whole id. */
   public static fromJson(value: unknown): PullRequestAbandonment | null {
     const reader: JsonReader = JsonReader.fromValue(value);
     const reference: HostReference = HostReference.fromJson(reader.readObject(Resources.referenceField).toJson());

@@ -65,7 +65,6 @@ describe("PredictionReader", () => {
     await cleanUps.runAsync();
   });
 
-  /** A cherry-pick's or a revert's predictions on the git these tests run: each unavailable on a git older than 2.40, whose merge-tree takes no merge base, as Apple's git on a Mac. */
   const onThisGitAsync = async (predictions: readonly GitPrediction[]): Promise<readonly GitPrediction[]> =>
     await repository.hasGitAsync(Resources.mergeBaseOptionVersion) ? predictions : predictions.map(() => new GitPrediction(PredictionOutcome.Unavailable, []));
   const idOf = async (revision: string): Promise<string> => (await repository.runGitAsync(["rev-parse", revision])).trim();

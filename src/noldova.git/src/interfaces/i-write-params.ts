@@ -8,7 +8,6 @@
 
 import type { IFolderParams } from "./i-folder-params.ts";
 
-/** A write's parameters: its repository, and the status fingerprint the window based the write on. */
 export interface IWriteParams extends IFolderParams {
   readonly basedOn: string;
 }

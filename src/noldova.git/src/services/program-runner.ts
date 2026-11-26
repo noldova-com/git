@@ -31,7 +31,6 @@ export class ProgramRunner {
   private readonly writes: WriteQueue = new WriteQueue();
   private readonly commands: CommandLog | null;
 
-  /** Runs programs through the context; with a command log, it records each git command a write runs there. */
   public constructor(context: Pick<IRuntimePartContext, "startProcessAsync">, commands: CommandLog | null = null) {
     this.context = context;
     this.commands = commands;

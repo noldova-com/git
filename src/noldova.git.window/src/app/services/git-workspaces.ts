@@ -12,17 +12,12 @@ import { JsonReader } from "@noldova/context.json";
 import { GitWorkspace } from "../models/git-workspace.ts";
 import { GitWindowStorage } from "./git-window-storage.ts";
 
-/**
- * The person's workspaces, in the order they made them, kept in the window's storage: a setting can't hold a list of them, and each
- * setting shows on a settings page.
- */
 export class GitWorkspaces {
   private static readonly KEY: string = "git.workspaces";
   private static readonly workspaces: WritableSignal<readonly GitWorkspace[]> = signal<readonly GitWorkspace[]>([]);
 
   public static readonly list: Signal<readonly GitWorkspace[]> = GitWorkspaces.workspaces.asReadonly();
 
-  /** Reads the workspaces kept in the window's storage again; a workspace that no longer reads is dropped, and the others stay. */
   public static restore(): void {
     const list: GitWorkspace[] = [];
     for (const value of GitWindowStorage.readArray(GitWorkspaces.KEY))
@@ -30,7 +25,6 @@ export class GitWorkspaces {
         list.push(GitWorkspace.fromJson(JsonReader.fromValue(value)));
       }
       catch {
-        // A workspace that no longer reads is dropped; the others stay.
       }
     GitWorkspaces.workspaces.set(list);
   }
@@ -39,7 +33,6 @@ export class GitWorkspaces {
     return GitWorkspaces.workspaces().find(t => t.id === id) ?? null;
   }
 
-  /** Makes a workspace with a name and no repositories, and returns it. */
   public static create(name: string): GitWorkspace {
     const workspace: GitWorkspace = new GitWorkspace(crypto.randomUUID(), name, []);
     GitWorkspaces.save([...GitWorkspaces.workspaces(), workspace]);

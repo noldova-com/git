@@ -13,10 +13,6 @@ import { IconButtonComponent, MenuComponent, MenuItemComponent, MenuTriggerDirec
 import { Resources } from "../../../resources.ts";
 import { GitViewStateService } from "../../services/git-view-state.service.ts";
 
-/**
- * The button that lists the repository's recent writes, newest first, each with what it did and when; choosing one that can be undone undoes it,
- * through the same path as the discard banner's Undo. The list is read again each time the button opens it.
- */
 @Component({
   selector: "nol-git-undo-menu",
   imports: [IconButtonComponent, MenuComponent, MenuItemComponent, MenuTriggerDirective, TooltipDirective],

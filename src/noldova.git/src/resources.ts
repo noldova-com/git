@@ -210,10 +210,6 @@ export class Resources {
   public static readonly gitCommandLength: number = 2;
   public static readonly zeroIdPattern: RegExp = /^0+$/v;
   public static readonly branchesReadBytes: number = 8 * 1024 * 1024;
-  /**
-   * Each local branch's ref, its commit, its committer date with its offset, the same date in seconds since 1970 for when git prints that offset malformed, and how far it is from its upstream, such as `ahead 2, behind 1`, which `LC_ALL=C`
-   * keeps in English, a tab between each.
-   */
   public static readonly branchHeadsArguments: readonly string[] = [
     "for-each-ref", "--format=%(refname)%09%(objectname)%09%(committerdate:iso-strict)%09%(committerdate:unix)%09%(upstream:track,nobracket)%00", "refs/heads"];
   public static readonly trackSeparator: string = "\t";
@@ -224,16 +220,10 @@ export class Resources {
   public static readonly remoteBranchRefsArguments: readonly string[] = ["for-each-ref", "--format=%(refname)"];
   public static readonly defaultRemoteArguments: readonly string[] = ["config", "--get", "checkout.defaultRemote"];
   public static readonly remoteHeadsArguments: readonly string[] = ["for-each-ref", "--format=%(refname)%00", "refs/remotes"];
-  /**
-   * Each remote branch's ref, then the commits it has that HEAD lacks and those HEAD has that it lacks, a space between, each record ending in NUL;
-   * the counts are empty for a ref that names no commit, such as a tree, and the record is trimmed to its ref.
-   */
   public static readonly remoteTracksArguments: readonly string[] = ["for-each-ref", "--format=%(refname)%09%(ahead-behind:HEAD)%00", "refs/remotes"];
   public static readonly remoteTrackPattern: RegExp = /^refs\/remotes\/([^\t]+)(?:\t(\d+) (\d+))?$/v;
-  /** Whether HEAD names a commit; it exits 1 before the first commit. */
   public static readonly headCommitCheckArguments: readonly string[] = ["rev-parse", "--verify", "--quiet", "HEAD"];
   public static readonly noCommitExitCode: number = 1;
-  /** The oldest git whose `for-each-ref` prints `%(ahead-behind:HEAD)`. */
   public static readonly aheadBehindVersion: GitVersion = new GitVersion(2, 41);
   public static readonly forEachRefCommand: string = "for-each-ref";
   public static readonly remoteCommand: string = "remote";
@@ -262,29 +252,19 @@ export class Resources {
   public static readonly changeDebounceMilliseconds: number = 200;
   public static readonly changePollMilliseconds: number = 5_000;
   public static readonly cookieTouchMilliseconds: number = 100;
-  /** How long a worktree's files stay quiet before the module checks what changed, and the longest a stream of changes holds that check back. */
   public static readonly treeQuietMilliseconds: number = 300;
   public static readonly treeLongestWaitMilliseconds: number = 2_000;
-  /** How often a shown worktree whose files the module watches is checked anyway, for a change the file system didn't report. */
   public static readonly backstopPollMilliseconds: number = 60_000;
-  /**
-   * How each system's worktrees are watched: one watch of the whole tree where the system has one, a watch of each folder git doesn't ignore on Linux,
-   * whose watch covers one folder; elsewhere the module checks a shown worktree every few seconds.
-   */
   public static readonly treeWatches: Readonly<Record<string, TreeWatch>> = { win32: TreeWatch.Whole, darwin: TreeWatch.Whole, linux: TreeWatch.Folders };
-  /** The most folders the module watches one at a time in a worktree, leaving the rest of the system's watches to other programs; past it, it checks every few seconds. */
   public static readonly treeFoldersLimit: number = 10_000;
   public static readonly checkIgnoreCommand: string = "check-ignore";
-  /** check-ignore refuses the literal pathspecs every read sets, so it turns them off; it takes each path from its input as a name, never a pattern. */
   public static readonly checkIgnoreArguments: readonly string[] = ["--no-literal-pathspecs", Resources.checkIgnoreCommand, "--stdin", "-z"];
   public static readonly ignoreFileName: string = ".gitignore";
   public static readonly dotGitName: string = ".git";
-  /** The most folders the ignore check remembers before it starts over. */
   public static readonly ignoredFoldersLimit: number = 10_000;
   public static readonly watchedGitFiles: readonly string[] = ["HEAD", "index"];
   public static readonly branchRefsFolder: readonly string[] = ["refs", "heads"];
   public static readonly packedRefsFile: string = "packed-refs";
-  /** Where a repository whose refs git keeps in a reftable has them, and the file git rewrites as the last step of every ref change there. */
   public static readonly reftableFolder: string = "reftable";
   public static readonly reftableListFile: string = "tables.list";
   public static readonly reftableStorage: string = "reftable";
@@ -320,7 +300,6 @@ export class Resources {
   public static readonly lfsFilterName: string = "lfs";
   public static readonly catFileCommand: string = "cat-file";
   public static readonly lfsAttributeArguments: readonly string[] = ["check-attr", "--stdin", "-z", "filter"];
-  /** Names each path's index entry as `:0:<path>`, one per NUL, and answers each with its object id and size on a line, or a line saying it is missing. */
   public static readonly lfsIndexArguments: readonly string[] = ["cat-file", "--batch-check=%(objectname) %(objectsize)", "-z"];
   public static readonly lfsBlobsArguments: readonly string[] = ["cat-file", "--batch"];
   public static readonly indexEntryPrefix: string = ":0:";
@@ -329,18 +308,11 @@ export class Resources {
   public static readonly lfsVersionPattern: RegExp = /^version https:\/\/(?:git-lfs|hawser)\.github\.com\/spec\/v1$/u;
   public static readonly lfsOidPattern: RegExp = /^oid sha256:([0-9a-f]{64})$/u;
   public static readonly lfsSizePattern: RegExp = /^size (\d{1,15})$/u;
-  /** Git LFS's pointers are smaller than this; a bigger blob isn't one. */
   public static readonly lfsPointerBytes: number = 1024;
-  /**
-   * How many bytes one status read hashes to check LFS files. A file past it stays as Git reported it, modified, and the status counts it in
-   * `uncheckedLfsFiles`, so nothing shows it as changed without saying so; a later read checks it once the answers before it are remembered.
-   */
   public static readonly lfsHashBytes: number = 1024 * 1024 * 1024;
-  /** How many pointers and answers the LFS check remembers before it starts over. */
   public static readonly lfsCacheEntries: number = 10_000;
   public static readonly filterNamesArguments: readonly string[] = ["config", "--show-scope", "--name-only", "--get-regexp", "^filter\\..+\\.(clean|smudge|process)$"];
   public static readonly stageIndexArguments: readonly string[] = ["ls-files", "-z", "--stage"];
-  /** How many tags, stashes and submodules one read lists of each. */
   public static readonly repositoryItemsLimit: number = 500;
   public static readonly tagListArguments: readonly string[] = ["for-each-ref", "--sort=-creatordate", "--format=%(refname:strip=2)%00%(*objectname)%00%(objectname)"];
   public static readonly tagsRef: string = "refs/tags";
@@ -360,13 +332,9 @@ export class Resources {
   public static readonly submoduleRecurseArguments: readonly string[] = ["config", "--type=bool", "--get", "submodule.recurse"];
   public static readonly configTrue: string = "true";
   public static readonly configNotFoundExitCode: number = 1;
-  /** Whether a new commit is signed, as git reads the setting as a boolean; it exits 1 when unset and 128 for a value that isn't a boolean. */
   public static readonly commitSignsArguments: readonly string[] = ["config", "--type=bool", "--get", "commit.gpgsign"];
-  /** The format git signs in; it exits 1 when unset, and git then signs with OpenPGP. */
   public static readonly signingFormatArguments: readonly string[] = ["config", "--get", "gpg.format"];
-  /** The line end git prints after a setting's value. */
   public static readonly configValueEnd: RegExp = /\n$/v;
-  /** The `gpg.format` values git knows, each to its format; git refuses to sign with any other. */
   public static readonly signingFormats: ReadonlyMap<string, SigningFormat> = new Map([["openpgp", SigningFormat.OpenPgp], ["ssh", SigningFormat.Ssh], ["x509", SigningFormat.X509]]);
   public static readonly filterSubmodulesLimit: number = 256;
   public static readonly repositoryConfigScopes: ReadonlySet<string> = new Set(["local", "worktree"]);
@@ -397,9 +365,7 @@ export class Resources {
   public static readonly diffCommand: string = "diff";
   public static readonly differentExitCode: number = 1;
   public static readonly cachedOption: string = "--cached";
-  /** Quotes unusual paths, keeps blank context lines, and refreshes stat-only changes away, so a file whose content is unchanged never lists without its section. */
   public static readonly diffSettings: readonly string[] = ["-c", "core.quotePath=true", "-c", "diff.suppressBlankEmpty=false", "-c", "diff.autoRefreshIndex=true"];
-  /** Turns on git's recorded resolutions for every merge, cherry-pick, revert, rebase and continue, so a conflict resolved once is resolved again. */
   public static readonly rerereSettings: readonly string[] = ["-c", "rerere.enabled=true"];
   public static readonly diffFormatOptions: readonly string[] = ["-z", "--raw", "--patch", "--no-abbrev", "--no-color", "--no-ext-diff", "--no-textconv", "--src-prefix=a/", "--dst-prefix=b/", "--unified=3", "--ignore-submodules=none", "--submodule=short"];
   public static readonly trackedDiffArguments: readonly string[] = [...Resources.diffSettings, "--literal-pathspecs", "diff", ...Resources.diffFormatOptions, "--find-renames", "--no-relative"];
@@ -413,7 +379,6 @@ export class Resources {
   public static readonly backslashByte: number = 0x5c;
   public static readonly deleteByte: number = 0x7f;
   public static readonly combinedEntryPrefix: string = "::";
-  /** A `--raw` entry's modes, ids and change letter, then the rename's or copy's similarity score in percent, as in `R092`. */
   public static readonly rawEntryPattern: RegExp = /^:(\d{6}) (\d{6}) ([0-9a-f]+) ([0-9a-f]+) ([A-Z])(\d*)$/v;
   public static readonly combinedEntryPattern: RegExp = /^::(\d{6}) \d{6} (\d{6}) /v;
   public static readonly hunkPattern: RegExp = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@ ?(.*)$/sv;
@@ -440,7 +405,6 @@ export class Resources {
   public static readonly reverseOption: string = "--reverse";
   public static readonly standardInput: string = "-";
   public static readonly applyCommand: string = "apply";
-  /** Where the patch begins after `--raw -z`'s list, and its first hunk. */
   public static readonly patchStartMark: Buffer = Buffer.from("\u0000diff --git ");
   public static readonly firstHunkMark: Buffer = Buffer.from("\n@@ -");
   public static readonly oldFileMark: string = "--- ";
@@ -465,7 +429,6 @@ export class Resources {
   public static readonly pushLogArguments: readonly string[] = ["log", "-z", "--no-color", "--no-show-signature", "--no-notes", "--encoding=UTF-8", "--format=%h%x00%s", Resources.formatMaxCount(Resources.shownCommitsLimit)];
   public static readonly lineEndPattern: RegExp = /\r?\n$/v;
   public static readonly rejectedPattern: RegExp = /^!/mv;
-  /** A rejected ref whose reason says the remote has commits the branch doesn't, in `git push --porcelain`'s output. */
   public static readonly remoteAheadPattern: RegExp = /^!.*\((?:non-fast-forward|fetch first)\)$/mv;
   public static readonly pushRemoteAhead: string = "The remote has commits this branch doesn't. Fetch, then push again; git's output comes with the failure as untrusted text.";
   public static readonly hostKeyFailedPattern: RegExp = /Host key verification failed/v;
@@ -488,24 +451,16 @@ export class Resources {
   public static readonly stashPushArguments: readonly string[] = ["stash", "push"];
   public static readonly includeUntrackedOption: string = "--include-untracked";
   public static readonly stashMessageOption: string = "--message";
-  /**
-   * The whole working folder as the stash's pathspec, after its options, so `git stash push --include-untracked` cleans its untracked files with a pathspec
-   * that reads the same whether or not pathspecs are taken literally, rather than its own `:/`.
-   */
   public static readonly stashWholeFolder: readonly string[] = ["--", "."];
   public static readonly stashIdArguments: readonly string[] = ["rev-parse", "--verify", "--quiet", "refs/stash"];
   public static readonly stashPopArguments: readonly string[] = ["stash", "pop", "--index", "--quiet"];
   public static readonly stashLabel: string = "Stash";
-  /** What an undo of a stash compares: the newest stash, HEAD, and the commit the stash was made on. */
-  /** Reads the commit a stash was made on, its first parent. */
   public static formatStashBaseArguments(id: string): readonly string[] {
     return ["rev-parse", "--verify", "--quiet", `${id}^1`];
   }
-  /** Reads a stash's third parent, which holds its untracked files; it fails quietly for a stash without one. */
   public static formatStashUntrackedParentArguments(id: string): readonly string[] {
     return ["rev-parse", "--verify", "--quiet", `${id}^3`];
   }
-  /** Lists the untracked files a stash holds in its third parent, each name NUL-ended. */
   public static formatStashUntrackedArguments(id: string): readonly string[] {
     return ["ls-tree", "-r", "--name-only", "-z", `${id}^3`];
   }
@@ -558,14 +513,11 @@ export class Resources {
   public static readonly pickEmptyPattern: RegExp = /is now empty|nothing to commit|nothing added to commit/u;
   public static readonly shortIdLength: number = 7;
   public static readonly commitSubjectLabel: string = "Commit";
-  /** How much of a commit's message after its subject one read keeps. */
   public static readonly commitBodyBytes: number = 64 * 1024;
   public static readonly commitDetailArguments: readonly string[] = ["log", "-1", "--no-color", "--no-show-signature", "--no-notes", "--encoding=UTF-8",
     "--format=%cn%x00%ce%x00%cI%x00%b"];
   public static readonly commitSignatureArguments: readonly string[] = ["log", "-1", "--no-color", "--no-notes", "--encoding=UTF-8", "--format=%G?%x00%GS%x00%GK"];
-  /** Where the person's own configuration names its signing programs and allowed signers; their keys come back lowercased. */
   public static readonly signingConfigArguments: readonly string[] = ["config", "--show-scope", "--get-regexp", "^gpg\\."];
-  /** Each setting that runs a program or decides whom a signature verifies, with the value a check uses when the person's configuration names none. */
   public static readonly signingSettings: ReadonlyMap<string, string> = new Map([
     ["gpg.mintrustlevel", "undefined"],
     ["gpg.ssh.program", "ssh-keygen"],
@@ -573,14 +525,12 @@ export class Resources {
     ["gpg.ssh.allowedsignersfile", "/dev/null"],
     ["gpg.ssh.defaultkeycommand", ""]
   ]);
-  /** Another name for `gpg.program`, which wins over it when the person's configuration names both. */
   public static readonly openPgpProgramSetting: string = "gpg.openpgp.program";
   public static readonly gpgProgramSetting: string = "gpg.program";
   public static readonly defaultGpgProgram: string = "gpg";
   public static readonly signatureVerified: string = "G";
   public static readonly signatureNone: string = "N";
   public static readonly commitObjectArguments: readonly string[] = ["cat-file", "commit"];
-  /** The headers that carry a commit's signature, so a commit git can't check, as when its signing program is missing, still reads as signed. */
   public static readonly signatureHeaders: readonly string[] = ["gpgsig ", "gpgsig-sha256 "];
   public static readonly headersEnd: string = "\n\n";
 
@@ -606,7 +556,6 @@ export class Resources {
   public static readonly controlPattern: RegExp = /\p{Cc}/gv;
   public static readonly replacementCharacter: string = String.fromCodePoint(0xfffd);
   public static readonly lineLimit: number = 1000;
-  /** A date git printed with an offset the protocol takes; git prints a malformed offset, such as a commit's +051800, as +518:00. */
   public static readonly offsetDatePattern: RegExp = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+\-]\d{2}:\d{2}$/v;
   public static readonly epochSecondsPattern: RegExp = /^\d{1,11}$/v;
   public static readonly millisecondsPerSecond: number = 1000;
@@ -649,7 +598,6 @@ export class Resources {
   public static readonly aheadBehindCountsPart: string = "ahead and behind counts";
   public static readonly statusRefusedValuesPart: string = "values the status model refuses";
   public static readonly userinfoPattern: RegExp = /(?<=[A-Za-z][A-Za-z0-9+.\-]*:\/\/)[^\/\s@]*@/gv;
-  /** The user name of an scp-style address, `name@host:path`, at a word's start, as git prints it in an address or in ssh's output. */
   public static readonly scpUserinfoPattern: RegExp = /(?<=^|[\s'"<\(])[^\/\s@:'"<\(]+@(?=[A-Za-z0-9.\-\[\]]+:)/gmv;
   public static readonly errorsOutputBytes: number = 64 * 1024;
   public static readonly indexLockedPattern: RegExp = /^fatal: Unable to create '[^\n]*[\\\/]index\.lock': File exists\./mv;
@@ -676,11 +624,8 @@ export class Resources {
   public static readonly edgeSlashesPattern: RegExp = /^\/+|\/+$/gv;
   public static readonly pathBatchBytes: number = 24_000;
   public static readonly pathQuotingCost: number = 3;
-  /** What every run sets; a write's hooks inherit it, so it holds nothing that changes how a hook's own git commands read pathspecs. */
   public static readonly programEnvironment: Readonly<Record<string, string>> = { LC_ALL: "C", GIT_TERMINAL_PROMPT: "0", GH_PROMPT_DISABLED: "1", GCM_INTERACTIVE: "never", GIT_PAGER: "cat" };
-  /** A read's environment, which also takes every pathspec literally; a read runs no hook to inherit it. */
   public static readonly readEnvironment: Readonly<Record<string, string>> = { ...Resources.programEnvironment, GIT_LITERAL_PATHSPECS: "1" };
-  /** The pathspec magic a write puts before each path it names, so git takes the path literally without the environment that hooks inherit. */
   public static readonly literalPathMagic: string = ":(literal)";
   public static readonly inheritedEnvironment: readonly string[] = ["HOME", "HOMEDRIVE", "HOMEPATH", "APPDATA", "LOCALAPPDATA", "XDG_CONFIG_HOME", "SSH_AUTH_SOCK", "DBUS_SESSION_BUS_ADDRESS", "GH_CONFIG_DIR", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "no_proxy"];
   public static readonly gitProgram: string = "git";
@@ -703,7 +648,6 @@ export class Resources {
   public static readonly rebaseRangeArguments: readonly string[] = ["rev-list", "--no-merges", "--right-only"];
   public static readonly undoMoved: string = "Something the write changed has moved since, so undoing it would lose that change.";
   public static readonly undoOtherWorktree: string = "The write was made in another worktree of this repository, so it can only be undone there.";
-  /** The checkpoints module's service, which a discard takes a checkpoint through when the app includes the module. */
   public static readonly checkpointsService: string = "checkpoints.service";
   public static readonly checkpointsMethods: readonly string[] = ["captureAsync", "previewRestoreAsync", "restoreAsync"];
   public static readonly checkpointIdentityPrefix: string = "git-";
@@ -723,7 +667,6 @@ export class Resources {
   public static readonly commandLogLimit: number = 200;
   public static readonly commandLineLimit: number = 1000;
   public static readonly configOption: string = "-c";
-  /** A command-line word that reads the same without quotes. */
   public static readonly unquotedWordPattern: RegExp = /^[^\s"']+$/u;
   public static readonly millisecondsPattern: RegExp = /\.\d{3}Z$/u;
   public static readonly utcSuffix: string = "Z";
@@ -765,14 +708,10 @@ export class Resources {
   public static readonly mergeFileArguments: readonly string[] = ["merge-file", "-p", "--zdiff3"];
   public static readonly mergeFileCommand: string = "merge-file";
   public static readonly labelOption: string = "-L";
-  /** The largest stage the conflict read takes as text; a larger one counts as binary, so only whole-side choices are offered. */
   public static readonly conflictTextBytes: number = 4 * 1024 * 1024;
-  /** The largest merged text, which holds the three stages and their markers. */
   public static readonly mergedTextBytes: number = 16 * 1024 * 1024;
-  /** How far into a stage git looks for a NUL byte to call it binary. */
   public static readonly binaryProbeBytes: number = 8000;
   public static readonly textModes: readonly string[] = ["100644", "100755"];
-  /** Each conflict kind by the unmerged stages present, base 1, ours 2 and theirs 3. */
   public static readonly stageKinds: ReadonlyMap<string, ConflictKind> = new Map([["123", ConflictKind.BothModified], ["23", ConflictKind.BothAdded],
     ["1", ConflictKind.BothDeleted], ["2", ConflictKind.AddedByUs], ["3", ConflictKind.AddedByThem], ["13", ConflictKind.DeletedByUs],
     ["12", ConflictKind.DeletedByThem]]);
@@ -785,7 +724,6 @@ export class Resources {
   public static readonly rebaseHeadFile: string = "REBASE_HEAD";
   public static readonly ontoFile: string = "onto";
   public static readonly shortBranchArguments: readonly string[] = ["symbolic-ref", "--quiet", "--short", "HEAD"];
-  /** The commit at `HEAD`, then its branch's short name, or `HEAD` when it is detached, in one run. */
   public static readonly headCommitAndNameArguments: readonly string[] = ["rev-parse", "HEAD", "--abbrev-ref", "HEAD"];
   public static readonly pointingRefArguments: readonly string[] = ["for-each-ref", "--count=1", "--format=%(refname:short)"];
   public static readonly pointingRefPatterns: readonly string[] = ["refs/heads", "refs/remotes"];
@@ -797,7 +735,6 @@ export class Resources {
   public static readonly continueMarkersLeft: string = "A file still has conflict marker lines, staged or not. Fix them before continuing; the files come with the failure as untrusted text.";
   public static readonly noOperation: string = "No merge, rebase, cherry-pick or revert is in progress, so there is nothing to continue or abort.";
   public static readonly fileOutsideRepository: string = "The file's folder leads outside the repository, so the module doesn't write it. Nothing changed.";
-  /** The choices each conflict kind offers; the kinds with two texts merge them, the others offer their sides only. */
   public static readonly offeredResolutions: Readonly<Record<ConflictKind, readonly ConflictResolution[]>> = {
     [ConflictKind.BothModified]: [ConflictResolution.Text, ConflictResolution.Ours, ConflictResolution.Theirs],
     [ConflictKind.BothAdded]: [ConflictResolution.Text, ConflictResolution.Ours, ConflictResolution.Theirs],
@@ -816,12 +753,10 @@ export class Resources {
   public static readonly markerCheckArguments: readonly string[] = ["diff", "--check", "--no-color", "--no-ext-diff"];
   public static readonly markerCheckPaths: readonly string[] = ["."];
   public static readonly leftoverMarkerPattern: RegExp = /^.*:\d+: leftover conflict marker$/gmu;
-  /** What follows a leftover marker line's path: its line number and git's words. */
   public static readonly leftoverMarkerEndPattern: RegExp = /:\d+: leftover conflict marker$/u;
   public static readonly quoteMark: string = "\"";
   public static readonly backslash: string = "\\";
   public static readonly octalEscapePattern: RegExp = /^[0-7]{3}$/u;
-  /** Accepts the message git prepared, as a person pressing save in the editor would, so a continue never waits for an editor. */
   public static readonly acceptEditorSettings: readonly string[] = ["-c", "core.editor=true"];
   public static readonly continueOption: string = "--continue";
   public static readonly operationCommands: Readonly<Record<OperationKind, string>> = {
@@ -913,7 +848,6 @@ export class Resources {
     return `Couldn't tell which changed files git ignores in ${folder}, so the module reads its status anyway: ${failure}`;
   }
 
-  /** How a system's worktrees are watched; a system the module names no watch for checks a shown worktree every few seconds. */
   public static treeWatchOf(platform: string): TreeWatch {
     return Resources.treeWatches[platform] ?? TreeWatch.None;
   }
@@ -1210,7 +1144,6 @@ export class Resources {
     return `refs/remotes/${remote}/HEAD`;
   }
 
-  /** The local branches whose tips the ref holds, each ref ending in NUL. */
   public static formatMergedBranchesArguments(ref: string): readonly string[] {
     return ["for-each-ref", "--format=%(refname)%00", `--merged=${ref}`, "refs/heads"];
   }
@@ -1311,10 +1244,8 @@ export class Resources {
   public static readonly mergeTreeCommand: string = "merge-tree";
   public static readonly mergeTreeArguments: readonly string[] = ["merge-tree", "--write-tree", "--name-only", "--no-messages", "-z"];
   public static readonly mergeTreeConflictsExitCode: number = 1;
-  /** The oldest git whose `merge-tree` takes `--merge-base`, which a cherry-pick's and a revert's prediction need. */
   public static readonly mergeBaseOptionVersion: GitVersion = new GitVersion(2, 40);
   public static readonly mergeDriverArguments: readonly string[] = ["config", "--show-scope", "--name-only", "--get-regexp", "^merge\\..+\\.driver$"];
-  /** A commit's parents, one a line, then the tree HEAD points at. */
   public static readonly predictRevisionsArguments: readonly string[] = ["rev-parse"];
   public static readonly revParseCommand: string = "rev-parse";
   public static readonly mergeBaseCommand: string = "merge-base";
@@ -1336,7 +1267,6 @@ export class Resources {
   }
 
   public static readonly rebaseTooLong: string = "The branch has more commits past the base than an interactive rebase lists, so it wasn't read.";
-  /** The most commits an interactive rebase lists, as the protocol's step limit. */
   public static readonly maximumRebaseCommits: number = 500;
   public static readonly revListCommand: string = "rev-list";
   public static readonly mergeBaseArguments: readonly string[] = ["merge-base"];
@@ -1344,13 +1274,11 @@ export class Resources {
   public static readonly rangeCountArguments: readonly string[] = ["rev-list", "--count"];
   public static readonly rebaseLogArguments: readonly string[] = ["log", "-z", "--reverse", "--topo-order", "--no-merges", "--no-color", "--no-show-signature", "--no-notes", "--encoding=UTF-8", "--format=%H%n%B"];
   public static readonly branchTipsArguments: readonly string[] = ["for-each-ref", "--format=%(objectname) %(refname:short)", "refs/heads"];
-  /** The prefixes `git rebase --autosquash` folds by, each ending with the separator. */
   public static readonly foldPrefixes: readonly string[] = ["fixup! ", "squash! ", "amend! "];
   public static readonly foldPrefixEnd: string = "! ";
   public static readonly abbreviatedIdPattern: RegExp = /^[0-9a-f]{4,64}$/u;
   public static readonly trailingNewlines: RegExp = /\n+$/u;
 
-  /** The oldest git whose `merge-tree` merges trees as well as commits, which replaying a rebase's steps on each other's results needs. */
   public static readonly mergeTreesVersion: GitVersion = new GitVersion(2, 45);
 
   public static formatFirstParentRevision(id: string): string {
@@ -1367,7 +1295,6 @@ export class Resources {
 
   public static readonly rebaseStopped: string = "The rebase stopped on conflicts. Resolve them, stage the files and continue, or abort.";
   public static readonly rebaseCommand: string = "rebase";
-  /** The todo comes from the write's input through `sequence.editor`, and git's own reordering is off, so git runs exactly the steps given. */
   public static readonly rebaseArguments: readonly string[] = ["rebase", "--interactive", "--no-autosquash", "--empty=drop"];
   public static readonly rebaseUpdateRefsOption: string = "--update-refs";
   public static readonly sequenceEditorSettings: readonly string[] = ["-c", "sequence.editor=cat >"];
@@ -1380,7 +1307,6 @@ export class Resources {
   public static readonly fixupMessageCommand: string = "fixup -C";
   public static readonly dropCommand: string = "drop";
   public static readonly commitTreeCommand: string = "commit-tree";
-  /** Reads the message from the input, then takes the parent and the tree. */
   public static readonly commitTreeArguments: readonly string[] = ["commit-tree", "-F", "-", "-p"];
   public static readonly branchRefTipsArguments: readonly string[] = ["for-each-ref", "--format=%(objectname) %(refname)", "refs/heads"];
   public static readonly rebaseSubjectsArguments: readonly string[] = ["log", "--no-walk=unsorted", "--ignore-missing", "-z", "--no-color", "--no-show-signature", "--encoding=UTF-8", "--format=%H %s"];

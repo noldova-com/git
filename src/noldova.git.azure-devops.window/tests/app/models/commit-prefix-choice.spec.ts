@@ -11,7 +11,6 @@ import { describe, expect, it } from "vitest";
 
 import { CommitPrefixChoice } from "../../../src/app/models/commit-prefix-choice.ts";
 
-/** JSON a choice refuses, and the path of the field it names. */
 interface IRefusal {
   readonly json: JsonValue;
   readonly path: string;

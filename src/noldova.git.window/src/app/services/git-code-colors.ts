@@ -10,10 +10,6 @@ import { DestroyRef, ErrorHandler, inject, Injectable, signal, type WritableSign
 import "@noldova/context.core";
 import { CodeLanguage, ShikiLineTokenizer } from "@noldova/editor.angular";
 
-/**
- * The editor's tokenizers, which color a file's code as the merge editor does: each language's tokenizer loads once, the first time a
- * screen asks for a file in it, and every screen of the window shares it until the window closes.
- */
 @Injectable({ providedIn: "root" })
 export class GitCodeColors {
   private readonly errors: ErrorHandler = inject(ErrorHandler);
@@ -24,10 +20,6 @@ export class GitCodeColors {
     inject(DestroyRef).onDestroy(() => this.loading.forEach(t => void t.then(tokenizer => tokenizer?.[Symbol.dispose](), () => undefined)));
   }
 
-  /**
-   * The tokenizer of the path's language, or `null` with no path, while it loads, when no language fits the path, or when it failed to
-   * load, which goes to the error handler; read in a computed or an effect, it follows the load.
-   */
   public tokenizerOf(path: string | null): ShikiLineTokenizer | null {
     const language: string | null = Object.isNull(path) ? null : CodeLanguage.forPath(path)?.id ?? null;
     if (Object.isNull(language))

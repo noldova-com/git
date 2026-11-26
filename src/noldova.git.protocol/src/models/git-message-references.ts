@@ -12,7 +12,6 @@ import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 import { GitMessageReference } from "./git-message-reference.ts";
 
-/** The answer of `git.messageReferences`: the commits whose messages name references, in `git.graph`'s order, and whether older commits went unread. */
 export class GitMessageReferences {
   private static readonly FIELDS: readonly string[] = [Resources.commitsField, Resources.truncatedField];
 

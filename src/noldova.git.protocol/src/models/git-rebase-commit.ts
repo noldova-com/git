@@ -11,10 +11,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/**
- * One of the commits a rebase would replay: its full id, its whole message, and for a `fixup!` or `squash!` commit the full id of the earlier
- * commit in the rebase that its subject names, or `null`.
- */
 export class GitRebaseCommit {
   private static readonly FIELDS: readonly string[] = [Resources.idField, Resources.messageField, Resources.fixupOfField];
 
@@ -33,7 +29,6 @@ export class GitRebaseCommit {
     this.fixupOf = fixupOf;
   }
 
-  /** The message's first line. */
   public get subject(): string {
     const end: number = this.message.indexOf(Resources.newline);
     return end < 0 ? this.message : this.message.slice(0, end);

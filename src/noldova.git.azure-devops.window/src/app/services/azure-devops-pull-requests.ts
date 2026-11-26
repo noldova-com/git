@@ -36,9 +36,7 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
   private readonly reviewReads: Map<string, number> = new Map();
   private readonly branches: Map<string, WritableSignal<GitBranchPullRequest | null>> = new Map();
   private readonly commits: Map<string, WritableSignal<GitBranchPullRequest | null>> = new Map();
-  /** Each remote and commit's review comments, kept once read; a failed read is dropped so the next ask reads again. */
   private readonly comments: Map<string, WritableSignal<GitCommitComments | null>> = new Map();
-  /** Each remote's open pull requests' heads and bases, apart from its list, kept once read; a failed read is dropped so the next ask reads again. */
   private readonly stacks: Map<string, WritableSignal<GitPullRequestList | null>> = new Map();
   private readonly context: IWindowPartContext;
   private readonly remember: (url: string, reference: HostReference) => void;
@@ -46,7 +44,6 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
   public readonly hostName: string = Resources.hostName;
   public readonly signInPage: string = Resources.accountsPage;
 
-  /** Takes the window's context, and where to remember each pull request's page address, which names its repository, with the reference that names it by id. */
   public constructor(context: IWindowPartContext, remember: (url: string, reference: HostReference) => void) {
     this.context = context;
     this.remember = remember;
@@ -145,7 +142,6 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
     return AzureDevOpsPullRequests.listIn(this.lists, key);
   }
 
-  /** Reads the repository's review requests; a read that fails keeps the rows the last one gave. */
   private async readReviewsAsync(query: RepositoryQuery): Promise<void> {
     const key: string = AzureDevOpsPullRequests.keyOf(query);
     const list = AzureDevOpsPullRequests.listIn(this.reviews, key);
@@ -240,7 +236,6 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
     }
   }
 
-  /** Reads a remote's open pull requests' heads and bases; a failed read is logged and forgotten, so the next ask reads again. */
   private async readStacksAsync(query: RepositoryQuery, key: string, answer: WritableSignal<GitPullRequestList | null>): Promise<void> {
     try {
       const found = HostPullRequestHeads.fromJson(await this.context.requestAsync(AzureDevOpsNames.readPullRequestHeadsMethod, query.toJson()));
@@ -254,7 +249,6 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
     }
   }
 
-  /** Reads a commit's review comments; a failed read is logged and forgotten, so the next time the commit's detail asks it reads again. */
   private async readCommentsAsync(query: CommitQuery, key: string, answer: WritableSignal<GitCommitComments | null>): Promise<void> {
     try {
       const found = HostCommitComments.fromJson(await this.context.requestAsync(AzureDevOpsNames.readCommitCommentsMethod, query.toJson()));
@@ -300,7 +294,6 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
       row.url, row.isDraft, row.approvals, row.passed, row.failing, row.pending, row.headBranch, row.baseBranch);
   }
 
-  /** A head as a row of the stack list, which reads only its reference, page and branches, so it has no draft flag, approvals or checks. */
   private headRowOf(head: HostPullRequestHead): GitPullRequestRow {
     this.remember(head.url, head.reference);
     return new GitPullRequestRow(PullRequestDocument.instanceOf(head.reference), Resources.formatPullRequestReference(head.reference.number), head.title,

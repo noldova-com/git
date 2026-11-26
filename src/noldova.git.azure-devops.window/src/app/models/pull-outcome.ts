@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** What pulling after a merge leaves to show: a note when it pulled or a failure when it couldn't, each null when it has none. */
 export class PullOutcome {
   public readonly note: string | null;
   public readonly failure: string | null;

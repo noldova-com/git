@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** A lane a commit's line runs to in the history's graph, with the line's color. */
 export class GitLaneTarget {
   public readonly lane: number;
   public readonly color: number;

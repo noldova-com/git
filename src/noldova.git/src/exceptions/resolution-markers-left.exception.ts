@@ -12,7 +12,6 @@ import type { IUntrustedText } from "../interfaces/i-untrusted-text.ts";
 import { Resources } from "../resources.ts";
 import { GitFailureException } from "./git-failure.exception.ts";
 
-/** The resolved text still holds a conflict marker line. */
 export class ResolutionMarkersLeftException extends GitFailureException {
   public override readonly code: FailureCode = FailureCode.Git;
   public override readonly gitCode: GitCode | null = GitCode.Conflict;

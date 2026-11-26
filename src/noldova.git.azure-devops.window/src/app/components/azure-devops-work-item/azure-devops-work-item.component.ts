@@ -51,7 +51,6 @@ export class AzureDevOpsWorkItemComponent {
     const chosen: number | null = this.chosen();
     return rows.find(t => t.detail.item.id === chosen)?.detail ?? rows[0]?.detail ?? null;
   });
-  /** The chosen work item with its project and the work items read, which the Work item view shows while this document is in front. */
   protected readonly choice: Signal<WorkItemChoice | null> = computed(() => {
     const place: WorkItemsPlace | null = this.place();
     const detail: HostWorkItemDetail | null = this.selected();
@@ -62,7 +61,6 @@ export class AzureDevOpsWorkItemComponent {
   protected readonly isReading: WritableSignal<boolean> = signal<boolean>(true);
   protected readonly isTruncated: WritableSignal<boolean> = signal<boolean>(false);
 
-  /** The project as the document's instance: `organization/project` or `organization/project/id`; empty for the open repository's project. */
   public readonly instance: InputSignal<string> = input.required<string>();
 
   public constructor() {
@@ -93,7 +91,6 @@ export class AzureDevOpsWorkItemComponent {
     this.attempt.update(t => t + 1);
   }
 
-  /** Shows the row's work item in the Work item view, bringing its tab to the front. */
   protected choose(place: WorkItemsPlace, detail: HostWorkItemDetail): void {
     this.chosen.set(detail.item.id);
     this.selection.showInFront(this.choiceOf(place, detail));

@@ -17,11 +17,6 @@ import type { GitVersionReader } from "./git-version.reader.ts";
 import { MergeTreeReader } from "./merge-tree.reader.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/**
- * Works out what merging a commit into HEAD, or cherry-picking or reverting it there, would do, with `git merge-tree`, which touches neither the working folder
- * nor the index. The repository's own filters are switched off, as for a status, and a merge driver its own configuration names makes the answer `Unavailable`,
- * so the read runs nothing the repository names.
- */
 export class PredictionReader {
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.lineOutputBytes, Resources.gitReadMilliseconds);
   private static readonly UNAVAILABLE: GitPrediction = new GitPrediction(PredictionOutcome.Unavailable, []);

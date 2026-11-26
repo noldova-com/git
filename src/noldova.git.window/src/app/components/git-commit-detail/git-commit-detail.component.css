@@ -148,7 +148,6 @@
   min-width: 0;
 }
 
-/* A file a predicted conflict names, drawn as the commit's ref chips are: the file's mark and its name, the whole path in its tooltip. */
 .prediction-file {
   display: inline-flex;
   align-items: center;
@@ -322,7 +321,6 @@ button.link:hover {
   font-size: 0.75rem;
 }
 
-/* The review comments end the card's note in its own text, as the board draws them; a click opens them rather than the pull request. */
 .pull-request-comments {
   padding: 0;
   border: 0;

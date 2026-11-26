@@ -11,7 +11,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** The parameters of `git.renameBranch`: the folder, the branch, its new name and the status fingerprint the person saw. */
 export class GitBranchRenameParams {
   private static readonly FIELDS: readonly string[] = [Resources.folderField, Resources.nameField, Resources.newNameField, Resources.basedOnField];
 

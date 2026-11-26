@@ -25,7 +25,6 @@ import { GitPullRequests } from "../../../src/app/services/git-pull-requests.ts"
 import { GitWorkspacePullRequests } from "../../../src/app/services/git-workspace-pull-requests.ts";
 import { GitFixtures } from "../../fixtures/git-fixtures.fixture.ts";
 
-/** The service under test, with what it reported. */
 class ReportedPullRequests {
   public readonly pullRequests: GitWorkspacePullRequests;
   public readonly reported: unknown[];
@@ -44,12 +43,10 @@ describe("GitWorkspacePullRequests", () => {
   const summaryOf = (remote: GitRemote | null, branch: string | null = "main", commit: string = head): GitRepositorySummary =>
     new GitRepositorySummary(folder, GitFixtures.status([], null, { remote, branch, head: commit }), false, null);
   const row: GitPullRequestRow = new GitPullRequestRow("214", "#214", "Draw lanes", "https://github.com/example-owner/site/pull/214", false, 0, 0, 0, 0, "main");
-  /** A branch's pull request as text: where the read stands, its pull request's label and state, whether it waits for reviews, and its counts. */
   const textOf = (shown: GitBranchPullRequest | null | undefined): string =>
     Object.isNullOrUndefined(shown) ? String(shown)
       : `${shown.state} ${shown.pullRequest?.label ?? "-"} ${shown.pullRequestState ?? "-"} ${shown.isWaitingForReview} ${shown.passed}/${shown.failing}/${shown.pending}`;
 
-  /** Provides a GitHub host whose members answer from the given parts, and a handler that collects what the service reports. */
   const setUp = (host: Partial<IGitPullRequests> = {}): ReportedPullRequests => {
     const errors: ErrorHandler = new ErrorHandler();
     const reported: unknown[] = [];
@@ -60,7 +57,6 @@ describe("GitWorkspacePullRequests", () => {
     return new ReportedPullRequests(new GitWorkspacePullRequests(errors), reported);
   };
 
-  /** The host the test provided, which claims the GitHub remotes. */
   const hostOf = (): IGitPullRequests => {
     const found: IGitPullRequests | null = GitPullRequests.of(remoteOf());
     if (Object.isNull(found))

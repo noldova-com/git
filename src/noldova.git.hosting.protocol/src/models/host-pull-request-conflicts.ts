@@ -11,7 +11,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** The paths of the files that keep a pull request from merging, at most 100, and whether the host has more than the list holds. */
 export class HostPullRequestConflicts {
   public static readonly maximumCount: number = Resources.maximumPullRequestConflicts;
 

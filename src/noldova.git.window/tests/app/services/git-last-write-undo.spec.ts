@@ -20,7 +20,6 @@ import { GitFixtures } from "../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../fixtures/git-held-requests.fixture.ts";
 import { Wait } from "../../fixtures/wait.fixture.ts";
 
-/** A window that refuses a second undo provider, as Noldova Desktop does. */
 class UndoTakenException extends WindowException {
   public constructor() {
     super("Another part provides Undo.");
@@ -37,7 +36,6 @@ describe("GitLastWriteUndo", () => {
   const journalOf = (...entries: readonly GitJournalEntry[]): JsonValue => new GitJournal(entries).toJson();
   const statusOf = (fingerprint: string): JsonValue => GitFixtures.status([], null, { fingerprint }).toJson();
 
-  /** The context, the folder Git shows, and the provider the window was given; providing starts once `provide` runs. */
   interface ISetUp {
     readonly context: FakeWindowPartContext;
     readonly shown: WritableSignal<string | null>;

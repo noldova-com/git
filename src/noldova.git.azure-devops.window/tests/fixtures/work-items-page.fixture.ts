@@ -23,7 +23,6 @@ import { Wait } from "./wait.fixture.ts";
 
 export const HOST: string = "git-azure-devops";
 export const PROJECT: string = "Sample Project";
-/** The time the history's commits are dated from; a spec that reads their ages fixes Date to it. */
 export const NOW: number = Date.UTC(2026, 10, 23, 12);
 export const INSTANCE: string = "fabrikam/Sample%20Project";
 const REPOSITORY: string = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
@@ -217,7 +216,6 @@ export class Page {
     await this.settleAsync();
   }
 
-  /** Opens the menu the selector's chip opens, picks the item labelled the choice, and answers the items' labels, the checked one marked `* `. */
   public async chooseAsync(selector: string, choice: string): Promise<readonly string[]> {
     const items = (): HTMLElement[] => [...document.querySelectorAll<HTMLElement>("button[nol-menu-item]")];
     const labelOf = (item: HTMLElement): string => item.querySelector(".nol-menu-item-label")?.textContent?.trim() ?? "";

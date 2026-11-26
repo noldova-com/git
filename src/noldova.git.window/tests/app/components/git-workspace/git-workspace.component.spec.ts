@@ -44,11 +44,8 @@ describe("GitWorkspaceComponent", () => {
 
     public readonly context: FakeWindowPartContext;
     public readonly fixture: ComponentFixture<GitWorkspaceComponent>;
-    /** The Across repositories view beside the page, which shows the page's repositories while it is in front. */
     public readonly view: ComponentFixture<GitWorkspaceAcrossViewComponent>;
-    /** The Workspaces view in the left dock, which shows the views and hosts of the page in front. */
     public readonly side: ComponentFixture<GitWorkspacesComponent>;
-    /** Whether the page is the window's active document. */
     public readonly active: WritableSignal<boolean>;
 
     public constructor(context: FakeWindowPartContext, fixture: ComponentFixture<GitWorkspaceComponent>, view: ComponentFixture<GitWorkspaceAcrossViewComponent>,
@@ -72,10 +69,6 @@ describe("GitWorkspaceComponent", () => {
       return this.side.nativeElement;
     }
 
-    /**
-     * Renders the page, answering each folder's status from a map, a clean one for any other, and each fetch once the gate opens; a request named
-     * with its folder, such as "git.branches /work/b", answers from the other map, and any other branches read finds only main.
-     */
     public static render(instance: string, statuses: Readonly<Record<string, JsonValue | Error>> = {}, gate: Promise<void> = Promise.resolve(),
       answers: Readonly<Record<string, JsonValue | Error>> = {}): Screen {
       const context: FakeWindowPartContext = new FakeWindowPartContext();
@@ -111,17 +104,14 @@ describe("GitWorkspaceComponent", () => {
       view.autoDetectChanges();
       const side: ComponentFixture<GitWorkspacesComponent> = TestBed.createComponent(GitWorkspacesComponent);
       side.autoDetectChanges();
-      // TestBed takes the earlier fixtures' root elements out of the page as it creates a component, so the page and the view go back beside the side.
       document.body.append(fixture.nativeElement, view.nativeElement);
       return new Screen(context, fixture, view, side, active);
     }
 
-    /** The matches in the page, then in the Across repositories view, then in the Workspaces view, as the window shows them side by side. */
     public all<T extends Element = Element>(selector: string): readonly T[] {
       return [...this.element.querySelectorAll<T>(selector), ...this.viewElement.querySelectorAll<T>(selector), ...this.sideElement.querySelectorAll<T>(selector)];
     }
 
-    /** Reads an element's text as a person sees it: each piece of text, such as an icon's name and a label, apart. */
     public static textOf(element: Element): string {
       const walker: TreeWalker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
       const pieces: string[] = [];
@@ -145,7 +135,6 @@ describe("GitWorkspaceComponent", () => {
       return this.all(selector).length > 0;
     }
 
-    /** Clicks the match at an index, counted from 0, or the first. */
     public click(selector: string, index: number = 0): void {
       const found: HTMLElement | undefined = this.all<HTMLElement>(selector)[index];
       if (Object.isUndefined(found))
@@ -156,7 +145,6 @@ describe("GitWorkspaceComponent", () => {
       this.side.detectChanges();
     }
 
-    /** Ticks the checkbox of a row, counted from 0 below the header. */
     public select(row: number): void {
       this.click(`.tr:not(.th):nth-child(${row + 2}) nol-checkbox input`);
     }
@@ -170,7 +158,6 @@ describe("GitWorkspaceComponent", () => {
       return this.context.callsOf("requestAsync").filter(t => t[0] === method).map(t => JsonReader.fromValue(t[1]).readString("folder"));
     }
 
-    /** Waits until done holds, checking again on each change to the page and after each request it makes. */
     public untilAsync(done: () => boolean): Promise<void> {
       if (done())
         return Promise.resolve();
@@ -205,7 +192,6 @@ describe("GitWorkspaceComponent", () => {
     return workspace;
   };
 
-  /** The element's box in rem. */
   const rem = (element: Element): DOMRect => {
     const size: number = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
     const rect: DOMRect = element.getBoundingClientRect();

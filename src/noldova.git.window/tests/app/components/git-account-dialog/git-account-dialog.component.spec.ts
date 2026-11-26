@@ -26,7 +26,6 @@ class TestSignInComponent {
   }
 }
 
-/** An open account dialog's element, and a count of each time it said it closed. */
 class OpenedDialog {
   public readonly host: HTMLElement;
   public readonly closes: number[];

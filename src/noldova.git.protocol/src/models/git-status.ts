@@ -38,7 +38,6 @@ export class GitStatus {
   public readonly operation: GitOperation | null;
   public readonly remote: GitRemote | null;
   public readonly uncheckedLfsFiles: number;
-  /** When the repository last fetched, from its `FETCH_HEAD`, or `null` when it never has. */
   public readonly fetchedAt: string | null;
 
   public constructor(

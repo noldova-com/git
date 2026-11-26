@@ -43,7 +43,6 @@ describe("GitHistoryComponent references in the kit's look", () => {
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
   };
 
-  /** A colour as the document computes it, for a property the probe sets to it. */
   const resolve = (property: "color" | "textDecorationColor", color: string): string => {
     const probe: HTMLSpanElement = document.createElement("span");
     probe.style[property] = color;

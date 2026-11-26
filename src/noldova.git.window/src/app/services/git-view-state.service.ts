@@ -36,11 +36,8 @@ export class GitViewStateService {
   private reads: number = 0;
   private opened: number = 0;
   private branchLoads: number = 0;
-  /** The prefix the message was last filled with, so that a message still holding it untouched counts as empty. */
   private prefilled: string = "";
-  /** Counts the signing reads, so that only the newest one's answer shows. */
   private signingReads: number = 0;
-  /** The last signing read's answer and the folder it is for. */
   private readonly signing: WritableSignal<GitSigningRead | null> = signal<GitSigningRead | null>(null);
 
   public readonly folder: Signal<string | null> = GitFolder.folder;
@@ -55,28 +52,20 @@ export class GitViewStateService {
   public readonly readFailure: WritableSignal<string> = signal("");
   public readonly gitVersion: WritableSignal<string | null> = signal(null);
   public readonly busy: WritableSignal<boolean> = signal(false);
-  /** The last discard, while it can still be undone from the checkpoint taken before it: until the next write or another folder. */
   public readonly discarded: WritableSignal<GitJournalEntry | null> = signal(null);
-  /** The force push offered after a push was refused as behind, until the next write or another folder. */
   public readonly forcePushOffer: WritableSignal<GitForcePushOffer | null> = signal(null);
-  /** Whether the view offers a fetch, after the remote refused a push for commits the last fetch hadn't seen; until the next write or another folder. */
   public readonly fetchOffered: WritableSignal<boolean> = signal(false);
-  /** The repository's recent writes, newest first, all the journal keeps, as the last read of the journal found them. */
   public readonly recentActions: WritableSignal<readonly GitJournalEntry[]> = signal([]);
-  /** How the lists of changed files are laid out; the file groups and the commit's files all follow it. */
   public readonly fileLayout: WritableSignal<GitFileLayout> = signal(GitFileLayout.Folders);
   public readonly message: WritableSignal<string> = signal("");
-  /** Whether the commit card amends the last commit rather than making a new one. */
   public readonly amending: WritableSignal<boolean> = signal(false);
   public readonly groups: Signal<readonly GitFileGroup[]> = computed(() => GitFileGroup.groupsOf(this.status()?.entries ?? []));
   public readonly conflicts: Signal<number> = computed(() => this.countOf(GitFileGroupKind.Conflicts));
   public readonly staged: Signal<number> = computed(() => this.countOf(GitFileGroupKind.Staged));
-  /** Whether git signs a new commit in the folder's repository, and in which format; null until it is read for this folder, or when it can't be. */
   public readonly commitSigning: Signal<GitCommitSigning | null> = computed(() => {
     const read = this.signing();
     return !Object.isNull(read) && read.folder === this.folder() ? read.signing : null;
   });
-  /** The prefix a host gives a new commit's message on the current branch, or null without one, a folder or a branch. */
   public readonly prefix: Signal<string | null> = computed(() => {
     const folder: string | null = this.folder();
     const branch: string | null = this.status()?.branch ?? null;
@@ -157,10 +146,6 @@ export class GitViewStateService {
     }
   }
 
-  /**
-   * Reads how the folder's repository signs commits, with each status read and when the window takes the focus, since Git's configuration can change
-   * without a change event; the last answer for the folder stays while the read runs, only the newest read's answer shows, and a failure is logged.
-   */
   public async loadSigningAsync(): Promise<void> {
     const folder: string | null = this.folder();
     if (Object.isNull(folder))
@@ -211,19 +196,16 @@ export class GitViewStateService {
     return diff;
   }
 
-  /** Reads a conflicted file's stages, Git's merge of them and its sides' names. */
   public conflictAsync(path: string): Promise<GitConflict> {
     const folder: string | null = this.folder();
     return Object.isNull(folder) ? Promise.reject(new StatusMissingException()) : this.client.conflictAsync(folder, path);
   }
 
-  /** Finds the tracked files, staged or not, that still have a conflict marker line. */
   public markerCheckAsync(): Promise<GitMarkerCheck> {
     const folder: string | null = this.folder();
     return Object.isNull(folder) ? Promise.reject(new StatusMissingException()) : this.client.markerCheckAsync(folder);
   }
 
-  /** Resolves a conflicted file with its resolved text, one side's whole file, or its deletion, and stages it. */
   public resolveConflictAsync(path: string, resolution: ConflictResolution, text: string | null): Promise<void> {
     return this.writeAsync((folder, basedOn) => this.client.resolveConflictAsync(folder, path, resolution, text, basedOn));
   }
@@ -244,7 +226,6 @@ export class GitViewStateService {
     return this.writeAsync((folder, basedOn) => this.client.unstageAsync(folder, paths, basedOn));
   }
 
-  /** Discards paths' working-folder changes, then offers to undo it when the runtime took a checkpoint first. */
   public discardAsync(paths: readonly string[]): Promise<void> {
     return this.writeAsync(async (folder, basedOn) => {
       await this.client.discardAsync(folder, paths, basedOn);
@@ -253,18 +234,15 @@ export class GitViewStateService {
     });
   }
 
-  /** Puts the last discard's paths back from its checkpoint. */
   public undoDiscardAsync(): Promise<void> {
     const entry: GitJournalEntry | null = this.discarded();
     return Object.isNull(entry) ? Promise.resolve() : this.undoEntryAsync(entry);
   }
 
-  /** Undoes one write of the journal; the runtime refuses one that can't be undone, or whose refs or index moved since. */
   public undoEntryAsync(entry: GitJournalEntry): Promise<void> {
     return this.writeAsync((folder, basedOn) => this.client.undoAsync(folder, entry.id, basedOn));
   }
 
-  /** Reads the journal again for the recent actions, keeping the last list when it can't be read. */
   public async readRecentActionsAsync(): Promise<void> {
     const folder: string | null = this.folder();
     const journal: GitJournal | null = Object.isNull(folder) ? null : await this.readJournalAsync(folder);
@@ -272,13 +250,11 @@ export class GitViewStateService {
       this.recentActions.set([...journal.entries].reverse());
   }
 
-  /** Whether a discard now takes a checkpoint first, so it can be undone; false when the journal can't be read. */
   public async canUndoDiscardAsync(): Promise<boolean> {
     const folder: string | null = this.folder();
     return !Object.isNull(folder) && (await this.readJournalAsync(folder))?.checkpoints === true;
   }
 
-  /** Stages the chosen lines of one file's worktree changes, or unstages them from its staged ones, as the diff numbers them. */
   public stageLinesAsync(path: string, lines: readonly number[], staged: boolean): Promise<void> {
     return this.writeAsync((folder, basedOn) => staged ? this.client.unstageLinesAsync(folder, path, lines, basedOn) : this.client.stageLinesAsync(folder, path, lines, basedOn));
   }
@@ -294,10 +270,6 @@ export class GitViewStateService {
     return this.writeAsync((folder, basedOn) => this.client.createBranchAsync(folder, name, basedOn));
   }
 
-  /**
-   * Pushes the branch. Refused because the upstream has commits the branch doesn't, it offers a force push over the commit the status shows there
-   * when the last fetch saw them, and otherwise, the remote having refused it, a fetch.
-   */
   public pushAsync(): Promise<void> {
     const offer: GitForcePushOffer | null = GitForcePushOffer.of(this.status());
     return this.writeAsync(async (folder, basedOn) => {
@@ -315,17 +287,14 @@ export class GitViewStateService {
     });
   }
 
-  /** Fetches the current branch's remote, so the status shows its upstream as the remote has it. */
   public fetchAsync(): Promise<void> {
     return this.writeAsync((folder, basedOn) => this.client.fetchAsync(folder, basedOn));
   }
 
-  /** Force pushes over the upstream's commits, only while the remote still points at the commit the offer showed. */
   public forcePushAsync(offer: GitForcePushOffer): Promise<void> {
     return this.writeAsync((folder, basedOn) => this.client.forcePushAsync(folder, offer.expected, basedOn));
   }
 
-  /** Makes a branch at the commit, and answers whether it was made. */
   public async createBranchAtAsync(name: string, id: string): Promise<boolean> {
     let made: boolean = false;
     await this.writeAsync(async (folder, basedOn) => {
@@ -335,7 +304,6 @@ export class GitViewStateService {
     return made;
   }
 
-  /** Rebases the current branch onto the commit with the steps, and answers whether it ran to its end or to an edit step; a stop on conflicts fails, as a pick does, with the failure shown. */
   public async rebaseAsync(onto: string, steps: readonly RebaseStep[], updateRefs: boolean): Promise<boolean> {
     let ran: boolean = false;
     await this.writeAsync(async (folder, basedOn) => {
@@ -345,7 +313,6 @@ export class GitViewStateService {
     return ran;
   }
 
-  /** Makes a tag at the commit, and answers whether it was made. */
   public async createTagAsync(name: string, id: string): Promise<boolean> {
     let made: boolean = false;
     await this.writeAsync(async (folder, basedOn) => {
@@ -355,7 +322,6 @@ export class GitViewStateService {
     return made;
   }
 
-  /** Turns amending on with the last commit's whole message in the field, or off with the field emptied; the message stays when it can't be read. */
   public async setAmendingAsync(amending: boolean): Promise<void> {
     const folder: string | null = this.folder();
     const head: string | null = this.status()?.head ?? null;
@@ -454,7 +420,6 @@ export class GitViewStateService {
     await this.refreshAsync();
   }
 
-  /** Watches the folder; a folder that isn't a repository is no failure, since the view says so, and the window's focus checks it again. */
   private async watchAsync(folder: string): Promise<void> {
     const opened: number = this.opened;
     try {
@@ -483,7 +448,6 @@ export class GitViewStateService {
     }
   }
 
-  /** The folder's journal, or null when the runtime can't read it. */
   private async readJournalAsync(folder: string): Promise<GitJournal | null> {
     try {
       return await this.client.journalAsync(folder);

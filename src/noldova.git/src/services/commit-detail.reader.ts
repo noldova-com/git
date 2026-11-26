@@ -15,7 +15,6 @@ import { ProgramRun } from "../models/program-run.ts";
 import { Resources } from "../resources.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/** Reads what a graph row leaves out of a commit: its committer and when, then its message after the subject, cut at `Resources.commitBodyBytes`. */
 export class CommitDetailReader {
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.commitBodyBytes, Resources.gitReadMilliseconds);
   private readonly runner: ProgramRunner;

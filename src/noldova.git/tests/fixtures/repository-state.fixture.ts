@@ -13,7 +13,6 @@ import type { IGitWrite } from "../../src/interfaces/i-git-write.ts";
 import type { IWriteCall } from "../../src/interfaces/i-write-call.ts";
 import type { RepositoryFolders } from "../../src/models/repository-folders.ts";
 
-/** A repository's folders and the status read in them, which a write's test runs the write against. */
 export class RepositoryState {
   public readonly folders: RepositoryFolders;
   public readonly status: GitStatus;

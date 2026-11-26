@@ -51,7 +51,6 @@ export class AzureDevOpsPullRequestComponent {
   private readonly tasks: PendingTasks = inject(PendingTasks);
   private readonly attempt: WritableSignal<number> = signal<number>(0);
 
-  /** What the Commits, Files and Conflicts tabs read from Azure DevOps. */
   protected readonly host: AzureDevOpsPullRequestHost = new AzureDevOpsPullRequestHost(this.context);
   private readonly dates: Intl.DateTimeFormat = new Intl.DateTimeFormat(undefined, Resources.openDateFormat);
   private readonly votes: WritableSignal<ReadonlyMap<string, HostReviewer>> = signal<ReadonlyMap<string, HostReviewer>>(new Map());
@@ -59,7 +58,6 @@ export class AzureDevOpsPullRequestComponent {
   private generation: number = 0;
   private pullAfter: KeptPull | null = null;
   private references: AzureDevOpsReferenceSource | null = null;
-  /** The comment thread whose line the Files tab reveals, which the page shows on Azure DevOps when the tab can't. */
   private revealing: ThreadLine | null = null;
   private readonly readAt: WritableSignal<number> = signal<number>(0);
 
@@ -81,18 +79,13 @@ export class AzureDevOpsPullRequestComponent {
   protected readonly commitsTab: PullRequestTab = PullRequestTab.Commits;
   protected readonly filesTab: PullRequestTab = PullRequestTab.Files;
   protected readonly conflictsTab: PullRequestTab = PullRequestTab.Conflicts;
-  /** The tab the page shows; a tab opened once keeps its answer while another shows. */
   protected readonly tab: WritableSignal<PullRequestTab> = signal<PullRequestTab>(PullRequestTab.Overview);
   protected readonly opened: WritableSignal<ReadonlySet<PullRequestTab>> = signal<ReadonlySet<PullRequestTab>>(new Set());
   protected readonly counts: WritableSignal<ReadonlyMap<PullRequestTab, string>> = signal<ReadonlyMap<PullRequestTab, string>>(new Map());
-  /** The Files tab's files as the page read them once the pull request showed: `undefined` while that read runs, `null` when it failed, so the tab reads them. */
   protected readonly files: WritableSignal<HostPullRequestFiles | null | undefined> = signal<HostPullRequestFiles | null | undefined>(undefined);
-  /** The line of a comment thread that the Files tab shows in its file's diff, or `null`. */
   protected readonly reveal: WritableSignal<GitFileLine | null> = signal<GitFileLine | null>(null);
-  /** The Updates tab's pushes as the page read them once the pull request showed, as {@link files} holds the Files tab's. */
   protected readonly updates: WritableSignal<HostPullRequestUpdates | null | undefined> = signal<HostPullRequestUpdates | null | undefined>(undefined);
 
-  /** The pull request as the Pull request view shows it, with the reviewers as the person's votes have them, while the page shows one. */
   private readonly choice: Signal<PullRequestChoice | null> = computed(() => {
     const pullRequest: HostPullRequest | null = this.pullRequest();
     return Object.isNull(pullRequest) ? null : new PullRequestChoice(pullRequest, this.reviewersOf(pullRequest), this.readAt(), {
@@ -101,7 +94,6 @@ export class AzureDevOpsPullRequestComponent {
     });
   });
 
-  /** The pull request's reference as the document's instance: `organization/repository/number`. */
   public readonly instance: InputSignal<string> = input.required<string>();
 
   public constructor() {
@@ -155,10 +147,6 @@ export class AzureDevOpsPullRequestComponent {
     this.opened.update(t => new Set([...t, tab]));
   }
 
-  /**
-   * Shows a comment thread's line: in the Files tab's changes from local Git when the open repository is the pull request's, else on Azure DevOps, which the
-   * page also falls back to when the tab can't show the line.
-   */
   protected goToLine(pullRequest: HostPullRequest, target: ThreadLine): void {
     void this.goToLineAsync(pullRequest, target);
   }
@@ -183,7 +171,6 @@ export class AzureDevOpsPullRequestComponent {
     }
   }
 
-  /** Shows on Azure DevOps the comment thread whose line the Files tab couldn't show, the only line the page gives the tab. */
   protected unrevealed(pullRequest: HostPullRequest): void {
     const target: ThreadLine | null = this.revealing;
     if (!Object.isNull(target))
@@ -198,7 +185,6 @@ export class AzureDevOpsPullRequestComponent {
     this.counts.update(t => new Map([...t, [tab, count]]));
   }
 
-  /** The Commits tab's count: the one it read, else the pull request's own, which Azure DevOps leaves out past 100. */
   protected commitBadgeOf(pullRequest: HostPullRequest): string | null {
     return this.counts().get(PullRequestTab.Commits) ?? (Object.isNull(pullRequest.commitCount) ? null : String(pullRequest.commitCount));
   }
@@ -330,7 +316,6 @@ export class AzureDevOpsPullRequestComponent {
     }
   }
 
-  /** Reads the Files and Updates tabs' answers in the background, so their counts show before they open and each tab shows the answer read here. */
   private readTabsEarly(reference: HostReference, isCurrent: () => boolean): void {
     void this.readEarlyAsync(this.host.readChangesMethod, reference, t => HostPullRequestFiles.fromJson(t), this.files, PullRequestTab.Files,
       t => new TabSize(t.files.length, t.hasMore), isCurrent);
@@ -338,7 +323,6 @@ export class AzureDevOpsPullRequestComponent {
       t => new TabSize(t.updates.length, t.hasMore), isCurrent);
   }
 
-  /** Reads one tab's answer and counts it; a failure only leaves the tab without a count, to read when it opens. */
   private async readEarlyAsync<T>(method: string, reference: HostReference, parse: (answer: JsonValue) => T, held: WritableSignal<T | null | undefined>,
     tab: PullRequestTab, sizeOf: (read: T) => TabSize, isCurrent: () => boolean): Promise<void> {
     const done = this.tasks.add();

@@ -11,10 +11,6 @@ import { ButtonComponent, ButtonVariant, DialogComponent } from "@noldova/ui.com
 
 import { Resources } from "../../../resources.ts";
 
-/**
- * Asks before a row's working-folder changes are discarded, saying what is lost: an untracked file is deleted, and a
- * tracked one goes back to what is staged, and says whether it can be undone. It answers true for Discard, and false for Cancel, Close or Escape.
- */
 @Component({
   selector: "nol-git-discard-dialog",
   imports: [ButtonComponent, DialogComponent],
@@ -27,7 +23,6 @@ export class GitDiscardDialogComponent {
 
   public readonly path: InputSignal<string> = input.required<string>();
   public readonly untracked: InputSignal<boolean> = input.required<boolean>();
-  /** Whether a checkpoint is kept first, so the discard can be undone. */
   public readonly undoable: InputSignal<boolean> = input.required<boolean>();
   public readonly answered: OutputEmitterRef<boolean> = output<boolean>();
 }

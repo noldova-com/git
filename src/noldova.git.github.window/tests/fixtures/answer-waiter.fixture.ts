@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** A test waiting until a number of requests have been answered, and how to let it go on. */
 export class AnswerWaiter {
   public readonly count: number;
   public readonly resolve: () => void;

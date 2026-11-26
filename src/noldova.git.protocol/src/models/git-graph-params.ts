@@ -11,7 +11,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** Asks for the graph of a folder's repository: at most limit commits, after skipping the newest skip ones, so a long history comes in pages. */
 export class GitGraphParams {
   private static readonly FIELDS: readonly string[] = [Resources.folderField, Resources.limitField, Resources.skipField];
 

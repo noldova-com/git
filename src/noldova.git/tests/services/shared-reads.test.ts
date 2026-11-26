@@ -13,7 +13,6 @@ import { describe, test } from "vitest";
 import { KeyQueue } from "../../src/services/key-queue.ts";
 import { SharedReads } from "../../src/services/shared-reads.ts";
 
-/** A read held in a queue until the test releases it, and its end. */
 interface IBlockedRead {
   readonly release: () => void;
   readonly done: Promise<void>;

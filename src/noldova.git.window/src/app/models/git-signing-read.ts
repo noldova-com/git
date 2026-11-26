@@ -8,7 +8,6 @@
 
 import type { GitCommitSigning } from "@noldova/git.protocol";
 
-/** A signing read's answer and the folder it is for. */
 export class GitSigningRead {
   public readonly folder: string;
   public readonly signing: GitCommitSigning;

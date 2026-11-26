@@ -13,7 +13,6 @@ import { UndoMode } from "../../src/enums/undo-mode.ts";
 import { GitJournalEntry } from "../../src/models/git-journal-entry.ts";
 import { GitRefMove } from "../../src/models/git-ref-move.ts";
 
-/** A change to a valid entry that the entry refuses, and the field it names. */
 interface IRefusal {
   readonly change: Record<string, unknown>;
   readonly field: string;

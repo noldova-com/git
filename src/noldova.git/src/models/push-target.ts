@@ -7,7 +7,6 @@
  */
 import type { GitRemote, StatusUpstream } from "@noldova/git.protocol";
 
-/** What a push sends: the current branch and its commit, the remote, its upstream there unless gone, and the revisions that leave out what the remote has. */
 export class PushTarget {
   public readonly branch: string;
   public readonly head: string;

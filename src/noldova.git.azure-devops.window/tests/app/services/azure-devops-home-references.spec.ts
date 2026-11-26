@@ -15,7 +15,6 @@ import { AzureDevOpsReferenceLink } from "../../../src/app/models/azure-devops-r
 import { AzureDevOpsHomeReferences } from "../../../src/app/services/azure-devops-home-references.ts";
 import { AzureDevOpsReferenceLooks } from "../../../src/app/services/azure-devops-reference-looks.ts";
 
-/** A link the source was asked about, by its address and its text. */
 interface IAskedReference {
   readonly url: string;
   readonly text: string;

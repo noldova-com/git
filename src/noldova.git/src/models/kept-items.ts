@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** The items the protocol takes, up to the limit, and whether any were left out, past the limit or refused. */
 export class KeptItems<T> {
   public readonly items: T[];
   public readonly cut: boolean;

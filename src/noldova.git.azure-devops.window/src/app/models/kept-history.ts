@@ -8,7 +8,6 @@
 
 import type { LinkedHistory } from "./linked-history.ts";
 
-/** A repository's linked history, under the key of the folder and HEAD it was read at. */
 export class KeptHistory {
   public readonly key: string;
   public readonly history: LinkedHistory;

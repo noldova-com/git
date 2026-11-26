@@ -71,7 +71,6 @@ describe("LinesWriter", () => {
   };
   const failed = (command: string) => (error: unknown): boolean =>
     error instanceof GitFailedException && error.command === command && error.output !== null && error.output.text.length > 0;
-  /** A runner that breaks the index just before the first git run that `breaks` picks, as another process might. */
   class BreakingRunner extends ProgramRunner {
     private readonly breaks: (run: ProgramRun) => boolean;
     private broken: boolean = false;

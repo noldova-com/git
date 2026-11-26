@@ -33,7 +33,6 @@ export class GitVersionReader {
       throw new GitTooOldException(GitVersionReader.versionOf(output));
   }
 
-  /** Whether the person's git is at least this version, for a feature newer than the oldest git the module takes. */
   public async atLeastAsync(folder: string, version: GitVersion): Promise<boolean> {
     return GitVersionReader.isAtLeast(await this.readAsync(folder), version);
   }

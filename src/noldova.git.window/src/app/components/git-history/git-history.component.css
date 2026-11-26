@@ -409,7 +409,6 @@
   color: var(--nol-avatar-orange-text);
 }
 
-/* As the history narrows, as beside another document, the columns narrow, then the rows give up the author and age; the toolbar row fits itself. */
 @container history (width < 64rem) {
   .grow-row {
     grid-template-columns: 9rem var(--graph-width) minmax(0, 1fr) 8rem 5.5rem;
@@ -417,7 +416,6 @@
 }
 
 @container history (width < 44rem) {
-  /* A row shows one label here, which keeps 8rem beside its +N. */
   .grow-row {
     grid-template-columns: 10rem var(--graph-width) minmax(0, 1fr);
   }

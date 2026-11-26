@@ -12,10 +12,6 @@ import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 import { HostPullRequestFile } from "./host-pull-request-file.ts";
 
-/**
- * The files a pull request changes at its latest push, at most 1000, and whether the host has more; with that push's head commit and the commit its changes
- * count from, so a repository that has both can show the changes itself. A pull request the host doesn't show has neither commit and no files.
- */
 export class HostPullRequestFiles {
   public static readonly maximumCount: number = Resources.maximumPullRequestFiles;
 

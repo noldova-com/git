@@ -23,10 +23,6 @@ import { Resources } from "../resources.ts";
 import { LogReader } from "./log.reader.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/**
- * Moves the current branch to a commit, keeping the index and working folder (soft), the working folder only (mixed), or local changes,
- * refusing where they would be overwritten (keep); with no commit, undoes the last commit softly, so its changes stay staged.
- */
 export class ResetWriter implements IGitWrite {
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.writeOutputBytes, Resources.longWriteMilliseconds);
   private static readonly READ_LIMITS: ProgramLimits = new ProgramLimits(Resources.lineOutputBytes, Resources.gitReadMilliseconds);
@@ -39,7 +35,6 @@ export class ResetWriter implements IGitWrite {
   public readonly method: string;
   public readonly undo: UndoMode;
 
-  /** Resets to the commit `id`, or with null undoes the last commit. */
   public constructor(runner: ProgramRunner, mode: ResetMode, id: string | null) {
     this.runner = runner;
     this.mode = id === null ? ResetMode.Soft : mode;
@@ -78,7 +73,6 @@ export class ResetWriter implements IGitWrite {
       throw new GitFailedException(Resources.resetCommand, { text: result.errors.toString(Resources.utf8Encoding), source: UntrustedSource.Repository });
   }
 
-  /** The commit to move to: the one given, or the last commit's first parent, which the branch's first commit doesn't have. */
   private async targetAsync(top: string, signal?: AbortSignal): Promise<string> {
     if (this.id !== null)
       return this.id;

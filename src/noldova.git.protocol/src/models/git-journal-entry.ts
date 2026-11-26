@@ -12,11 +12,6 @@ import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 import { GitRefMove } from "./git-ref-move.ts";
 
-/**
- * One write in a repository's journal: its id, the method that wrote, when, the branch checked out before and after (null when detached or
- * unborn), the refs it moved, how it is undone, for an index write the index's tree before and after, and for a discard the checkpoint
- * taken before it with the paths an undo puts back from it.
- */
 export class GitJournalEntry {
   private static readonly FIELDS: readonly string[] = [
     Resources.idField, Resources.methodField, Resources.atField, Resources.branchField, Resources.branchAfterField, Resources.movesField, Resources.undoField,

@@ -39,7 +39,6 @@ export class FilePresence {
     }
   }
 
-  /** What is at the path itself, a link included whether or not its target is there, or null when nothing is. */
   public static async entryAsync(file: string): Promise<Stats | null> {
     try {
       return await lstat(file);

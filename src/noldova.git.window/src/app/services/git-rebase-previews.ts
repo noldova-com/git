@@ -13,7 +13,6 @@ import type { GitRebasePreview } from "../models/git-rebase-preview.ts";
 import { Resources } from "../../resources.ts";
 import { GitDetailView } from "./git-detail-view.ts";
 
-/** The Rebase preview view of each window, which shows the interactive rebase document in front as its branch will be after. */
 export class GitRebasePreviews {
   private static readonly windows: WeakMap<IWindowPartContext, GitDetailView<GitRebasePreview>> = new WeakMap();
 

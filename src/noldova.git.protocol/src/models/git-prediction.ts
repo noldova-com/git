@@ -12,7 +12,6 @@ import { PredictionOutcome } from "../enums/prediction-outcome.ts";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** `git.predict`'s answer: what the write would do, and the paths that would conflict, which only `Conflicts` has. */
 export class GitPrediction {
   private static readonly FIELDS: readonly string[] = [Resources.outcomeField, Resources.pathsField];
 

@@ -23,10 +23,6 @@ import { Resources } from "../resources.ts";
 import { LogReader } from "./log.reader.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/**
- * Fetches the current branch's remote, so the status shows its upstream as the remote has it, or every remote with `git fetch --all`; the branch, index and
- * working folder stay as they are. Only the person's own click runs it, and no agent tool offers it.
- */
 export class FetchWriter implements IGitWrite {
   public readonly method: string = GitNames.fetchMethod;
   public readonly undo: UndoMode = UndoMode.None;
@@ -41,16 +37,11 @@ export class FetchWriter implements IGitWrite {
     this.allRemotes = allRemotes;
   }
 
-  /**
-   * Refuses a detached HEAD, a branch with no upstream and one whose upstream is gone, since git would have no remote of the branch's to fetch; a fetch of
-   * every remote needs no branch of its own.
-   */
   public refuse(status: GitStatus): void {
     if (!this.allRemotes && (status.branch === null || status.upstream === null || status.upstream.gone))
       throw new FetchNoUpstreamException();
   }
 
-  /** Never asks: only the person's own click makes one, and no agent tool offers it. */
   public async requestAsync(): Promise<IPermissionRequest | null> {
     return null;
   }

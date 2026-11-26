@@ -9,12 +9,9 @@
 import type { IGitPullRequests } from "../interfaces/i-git-pull-requests.ts";
 import type { GitPullRequestRow } from "./git-pull-request-row.ts";
 
-/** A pull request that asks the signed-in person for a review, as the workspace page's Needs you lists it: the row, its repository and its host. */
 export class GitWorkspaceReview {
   public readonly row: GitPullRequestRow;
-  /** The listed repository's folder it was read for, which the host's open() takes. */
   public readonly folder: string;
-  /** The repository's name, as the workspace's rows show it. */
   public readonly repository: string;
   public readonly host: IGitPullRequests;
 

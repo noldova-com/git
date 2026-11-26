@@ -22,7 +22,6 @@ import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 import { Wait } from "../../../fixtures/wait.fixture.ts";
 
-/** A mounted history, with the errors it reported. */
 class MountedHistory {
   public readonly fixture: ComponentFixture<GitHistoryComponent>;
   public readonly element: HTMLElement;
@@ -56,7 +55,6 @@ describe("GitHistoryComponent branch drops", () => {
   };
   const chip = (element: HTMLElement, name: string): HTMLElement =>
     [...element.querySelectorAll<HTMLElement>(".chip")].find(t => t.querySelector(".ellipsis")?.textContent === name) ?? element.ownerDocument.createElement("span");
-  /** Drags one chip onto another, at the given point; whether the target took the drag over, and whether it took the drop. */
   const drag = (element: HTMLElement, from: string, to: string, at: DOMPoint = new DOMPoint(200, 150)): readonly boolean[] => {
     chip(element, from).dispatchEvent(new DragEvent("dragstart", { bubbles: true }));
     const over: DragEvent = new DragEvent("dragover", { bubbles: true, cancelable: true });
@@ -66,7 +64,6 @@ describe("GitHistoryComponent branch drops", () => {
     return [over.defaultPrevented, dropped.defaultPrevented];
   };
   const until = (done: () => boolean): Promise<void> => Wait.until(done);
-  /** The element's text, its children's texts apart by a space. */
   const text = (element: HTMLElement, selector: string): string => {
     const found: Element | null = element.querySelector(selector);
     const parts: string[] = Object.isNull(found) ? [] : found.children.length === 0 ? [found.textContent ?? ""] : [...found.children].map(t => t.textContent ?? "");

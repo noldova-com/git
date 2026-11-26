@@ -36,16 +36,12 @@ export class GitPullRequestCommitsComponent {
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly isReading: WritableSignal<boolean> = signal<boolean>(true);
 
-  /** The host that reads the tab's list and finds the pull request's repository on this computer. */
   public readonly host: InputSignal<IGitPullRequestHost> = input.required<IGitPullRequestHost>();
 
-  /** The pull request whose commits it lists. */
   public readonly reference: InputSignal<HostReference> = input.required<HostReference>();
 
-  /** The pull request's page on its host, from which a commit's page is made when the open repository can't show it. */
   public readonly url: InputSignal<string> = input.required<string>();
 
-  /** The tab's count once read, such as `12` or `250+`. */
   public readonly counted: OutputEmitterRef<string> = output<string>();
 
   public constructor() {

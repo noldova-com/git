@@ -22,7 +22,6 @@ function rowOf(id: number, depth: number): WorkItemRow {
 
 const rows: readonly WorkItemRow[] = [rowOf(1, 0), rowOf(2, 1), rowOf(3, 2), rowOf(4, 1), rowOf(5, 0), rowOf(6, 0)];
 
-/** A shown row's work item, and whether it has children and is collapsed. */
 interface IShownRow {
   readonly id: number;
   readonly hasChildren: boolean;

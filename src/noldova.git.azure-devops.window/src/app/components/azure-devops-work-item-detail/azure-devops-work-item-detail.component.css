@@ -40,7 +40,6 @@
   font-variation-settings: "FILL" 1;
 }
 
-/* A work item's number in the text's own font, as Azure DevOps sets it, with figures of one width so the column lines up. */
 .id {
   color: var(--nol-text-muted);
   font-variant-numeric: tabular-nums;
@@ -232,7 +231,6 @@
   font-size: 0.875rem;
 }
 
-/* Azure DevOps' own drawing of a type's icon, which fills its square where a symbol leaves a margin, so it is drawn 0.875em inside the symbol's 1em. */
 .type-image {
   width: 0.875em;
   height: 0.875em;

@@ -110,12 +110,10 @@ export class GitRuntimeClient {
     return GitCommitSignature.fromJson(await this.context.requestAsync(GitNames.commitSignatureMethod, new GitCommitDetailParams(folder, id).toJson()));
   }
 
-  /** Whether git signs a new commit in the folder's repository, and in which format. */
   public async commitSigningAsync(folder: string): Promise<GitCommitSigning> {
     return GitCommitSigning.fromJson(await this.context.requestAsync(GitNames.commitSigningMethod, new GitFolderParams(folder).toJson()));
   }
 
-  /** How far each remote branch is ahead of and behind HEAD; none on a git older than 2.41. */
   public async remoteTracksAsync(folder: string): Promise<GitRemoteTracks> {
     return GitRemoteTracks.fromJson(await this.context.requestAsync(GitNames.remoteTracksMethod, new GitFolderParams(folder).toJson()));
   }
@@ -216,7 +214,6 @@ export class GitRuntimeClient {
     await this.context.requestAsync(GitNames.pushMethod, new GitPushParams(folder, basedOn).toJson());
   }
 
-  /** Force pushes the current branch, replacing its upstream's commits only while the remote still points at `expected`. */
   public async undoCommitAsync(folder: string, basedOn: string): Promise<void> {
     await this.context.requestAsync(GitNames.undoCommitMethod, new GitUndoCommitParams(folder, basedOn).toJson());
   }
@@ -225,7 +222,6 @@ export class GitRuntimeClient {
     await this.context.requestAsync(GitNames.forcePushMethod, new GitForcePushParams(folder, expected, basedOn).toJson());
   }
 
-  /** Fetches the current branch's remote; the branch, index and working folder stay as they are. */
   public async stashAsync(folder: string, message: string | null, includeUntracked: boolean, basedOn: string): Promise<void> {
     await this.context.requestAsync(GitNames.stashMethod, new GitStashParams(folder, message, includeUntracked, basedOn).toJson());
   }

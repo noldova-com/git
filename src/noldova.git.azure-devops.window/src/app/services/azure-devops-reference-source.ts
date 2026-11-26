@@ -61,7 +61,6 @@ export class AzureDevOpsReferenceSource implements ILinkReferenceSource {
     void this.readSignInAsync();
   }
 
-  /** The context's source, made and registered the first time a context asks for it. */
   public static register(context: IWindowPartContext): AzureDevOpsReferenceSource {
     const known = AzureDevOpsReferenceSource.sources.get(context);
     if (!Object.isUndefined(known))
@@ -76,7 +75,6 @@ export class AzureDevOpsReferenceSource implements ILinkReferenceSource {
     AzureDevOpsReferenceSource.sources.delete(context);
   }
 
-  /** Remembers a pull request's page address, which names its repository, so a link to it shows the pull request its reference names by the repository's id. */
   public rememberPage(url: string, reference: HostReference): void {
     this.pages.delete(url);
     this.pages.set(url, AzureDevOpsReferenceLinks.ofPullRequest(reference));
@@ -117,7 +115,6 @@ export class AzureDevOpsReferenceSource implements ILinkReferenceSource {
     return home;
   }
 
-  /** The organization and project of a folder's remote, once its organization is read; null before, or when its remote names no project. */
   public placeOf(folder: string): WorkItemsPlace | null {
     return this.places.get(folder) ?? null;
   }
@@ -232,10 +229,6 @@ export class AzureDevOpsReferenceSource implements ILinkReferenceSource {
     return AzureDevOpsReferenceLooks.pullRequestOf(read, await this.avatarOfAsync(read.reference.owner, read.author));
   }
 
-  /**
-   * The pull request with the counts local Git gives for its latest push, when the open repository is its own and has the push's commits, as the Files tab
-   * shows them: Azure DevOps miscounts the lines of a large file's diff. Otherwise, or when a read fails, which it logs, it keeps Azure DevOps' counts.
-   */
   private async countedLocallyAsync(item: HostItem): Promise<HostItem> {
     const { changes } = item;
     if (Object.isNull(changes))
@@ -262,7 +255,6 @@ export class AzureDevOpsReferenceSource implements ILinkReferenceSource {
     }
   }
 
-  /** A person's picture in an organization, as the card shows it with them; none for no one, for a group, or when it can't be read. */
   private async avatarOfAsync(organization: string, person: HostPerson | null): Promise<string | null> {
     if (Object.isNull(person) || !Object.isNull(person.avatar) || Resources.isGroupLogin(person.login))
       return person?.avatar ?? null;

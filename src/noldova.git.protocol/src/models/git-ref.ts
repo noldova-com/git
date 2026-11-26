@@ -12,7 +12,6 @@ import { RefKind } from "../enums/ref-kind.ts";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** A label on a commit; its name is the short name, such as main, origin/main or v1.2.0, and empty for a detached HEAD. */
 export class GitRef {
   private static readonly FIELDS: readonly string[] = [Resources.kindField, Resources.nameField];
 

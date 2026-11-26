@@ -24,7 +24,6 @@ export class GitFolder {
   private static readonly shown: WritableSignal<string | null> = signal<string | null>(null);
   private static readonly pages: WritableSignal<readonly GitFolderPage[]> = signal<readonly GitFolderPage[]>([]);
   private static readonly active: Signal<GitFolderPage | undefined> = computed(() => GitFolder.pages().find(t => t.active()));
-  /** The followed document that was active last, kept while a document that follows none is in front. */
   private static readonly lastActive: Signal<GitFolderPage | undefined> = linkedSignal<GitFolderPage | undefined, GitFolderPage | undefined>({
     source: GitFolder.active,
     computation: (page, previous) => page ?? previous?.value
@@ -42,10 +41,6 @@ export class GitFolder {
     };
   }
 
-  /**
-   * Points the Git views at the repository a document shows, ahead of the provided folder, until the returned function is called or another
-   * document is shown; an app calls it for a repository it shows outside a history document.
-   */
   public static show(folder: string): () => void {
     GitFolder.shown.set(folder);
     return () => {
@@ -54,11 +49,6 @@ export class GitFolder {
     };
   }
 
-  /**
-   * Points the Git views at a document's repository while the document is the window's active one, ahead of any shown or provided folder, until the
-   * returned function is called; while a document that follows none is in front, the views keep the folder of the followed document that was active last, as
-   * long as it is followed. The views read the page's signals themselves, so they follow the tab in front even while a page gets no change detection.
-   */
   public static follow(folder: Signal<string>, active: Signal<boolean>): () => void {
     const page: GitFolderPage = new GitFolderPage(folder, active);
     GitFolder.pages.set([...GitFolder.pages(), page]);

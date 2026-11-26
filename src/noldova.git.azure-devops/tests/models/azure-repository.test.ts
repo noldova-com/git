@@ -17,7 +17,6 @@ function partsOf(host: string, path: string): readonly string[] | null {
   return repository === null ? null : [repository.organization, repository.project, repository.name];
 }
 
-/** A remote's host and path. */
 interface IRemote {
   readonly host: string;
   readonly path: string;

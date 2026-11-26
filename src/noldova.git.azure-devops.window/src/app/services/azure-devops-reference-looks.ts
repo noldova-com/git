@@ -23,10 +23,6 @@ export class AzureDevOpsReferenceLooks {
         AzureDevOpsReferenceLooks.imageOf(Resources.pullRequestSymbols[ReferenceState.Open]));
   }
 
-  /**
-   * A work item's chip, with its type's icon as Azure DevOps draws it, or the type's symbol when it gave none, its assignee shown with the picture given, or
-   * none, and when it last changed when Azure DevOps said.
-   */
   public static workItemOf(item: HostWorkItem, avatar: string | null): LinkReference {
     const { type, assignee, iteration } = item;
     const color = AzureDevOpsReferenceLooks.colorOf(Resources.formatHexColor(type.color));
@@ -48,7 +44,6 @@ export class AzureDevOpsReferenceLooks {
       });
   }
 
-  /** A pull request's chip, its author shown with the picture given, or none, and the lines and files it changes when Azure DevOps gave them. */
   public static pullRequestOf(item: HostItem, avatar: string | null): LinkReference {
     const { reference, author, state, changes } = item;
     const diff: LinkReferenceDiff | null = Object.isNull(changes) ? null : AzureDevOpsReferenceLooks.diffOf(changes);

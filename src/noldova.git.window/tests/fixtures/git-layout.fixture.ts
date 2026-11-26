@@ -6,14 +6,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** Finds what a screen clips, pushes out of its host, scrolls sideways or draws over other text, as the geometry measures it. */
 import "@noldova/context.core";
 
 export class GitLayout {
-  /** How far, in CSS pixels, a box may pass another before it counts, for sub-pixel rounding. */
   private static readonly SLACK: number = 1;
 
-  /** Each problem in the screen under the root, as "what: element", empty when nothing clips, leaves the root, scrolls sideways or overlaps. */
   public static problemsOf(root: HTMLElement): readonly string[] {
     const shown: readonly HTMLElement[] = [...root.querySelectorAll<HTMLElement>("*")].filter(t => GitLayout.isShown(t));
     const texts: readonly HTMLElement[] = shown.filter(t => [...t.childNodes].some(u => u.nodeType === Node.TEXT_NODE && (u.textContent ?? "").trim().length > 0));
@@ -45,7 +42,6 @@ export class GitLayout {
     return box.width > GitLayout.SLACK && box.height > GitLayout.SLACK && getComputedStyle(element).visibility !== "hidden";
   }
 
-  /** The element's line boxes cut to every ancestor below the root that clips or scrolls its overflow, so what a scroll hides isn't counted. */
   private static visibleRectsOf(element: HTMLElement, root: HTMLElement): readonly DOMRect[] {
     let rects: DOMRect[] = [...element.getClientRects()];
     for (let parent: HTMLElement | null = element.parentElement; !Object.isNull(parent) && parent !== root; parent = parent.parentElement) {

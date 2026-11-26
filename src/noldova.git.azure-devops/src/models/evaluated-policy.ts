@@ -8,7 +8,6 @@
 
 import type { HostPolicy } from "@noldova/git.hosting.protocol";
 
-/** A pull request's policy, whether it's a build policy, and the id of the build its evaluation ran; null when it ran none. */
 export class EvaluatedPolicy {
   public readonly policy: HostPolicy;
   public readonly isBuild: boolean;

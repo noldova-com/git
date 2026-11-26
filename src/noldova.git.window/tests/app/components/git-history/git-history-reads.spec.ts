@@ -21,7 +21,6 @@ import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 
-/** A mounted history, with the errors it reported. */
 class MountedHistory {
   public readonly fixture: ComponentFixture<GitHistoryComponent>;
   public readonly element: HTMLElement;

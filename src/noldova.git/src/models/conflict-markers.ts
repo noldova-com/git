@@ -8,7 +8,6 @@
 
 import { Resources } from "../resources.ts";
 
-/** Finds git's conflict marker lines, seven `<`, `|`, `=` or `>` at a line's start, in a file's text. */
 export class ConflictMarkers {
   public static has(text: string): boolean {
     return Resources.conflictMarkerPattern.test(text);

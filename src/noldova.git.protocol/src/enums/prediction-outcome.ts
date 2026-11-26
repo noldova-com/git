@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** What a write would do, worked out without touching the working folder or the index. */
 export const PredictionOutcome = {
   UpToDate: "UpToDate",
   FastForward: "FastForward",

@@ -7,7 +7,6 @@
  */
 import type { Injector, Type } from "@angular/core";
 
-/** A host module's row component and the injector that gives it the module's window part context. */
 export class GitHostRowView {
   public readonly component: Type<unknown>;
   public readonly injector: Injector;

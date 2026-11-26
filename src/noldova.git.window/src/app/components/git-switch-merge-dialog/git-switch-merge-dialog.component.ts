@@ -12,7 +12,6 @@ import { ButtonComponent, ButtonVariant, DialogComponent } from "@noldova/ui.com
 import type { GitBranchDrop } from "../../models/git-branch-drop.ts";
 import { Resources } from "../../../resources.ts";
 
-/** Asks before a dropped branch merges into one that isn't current, naming both steps: the switch to it, then the merge. It answers true for Switch and merge, and false for Cancel, Close or Escape. */
 @Component({
   selector: "nol-git-switch-merge-dialog",
   imports: [ButtonComponent, DialogComponent],

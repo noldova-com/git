@@ -8,7 +8,6 @@
 
 import type { GitGraphCommit } from "@noldova/git.protocol";
 
-/** A commit the history has selected, which the Git panel shows in place of the changes: the repository's folder and the commit. */
 export class GitCommitView {
   public readonly folder: string;
   public readonly commit: GitGraphCommit;

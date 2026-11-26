@@ -8,7 +8,6 @@
 
 import type { HostSignIn } from "@noldova/git.hosting.protocol";
 
-/** A sign-in method the module registers, by its name, and the step it runs, which answers with the sign-in after it. */
 export class SignInMethod {
   public readonly name: string;
   public readonly run: () => HostSignIn | Promise<HostSignIn>;

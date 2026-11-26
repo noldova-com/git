@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** A pull request's or a commit's checks: how many passed, are failing and are pending. */
 export class GitCheckCounts {
   public static readonly NONE: GitCheckCounts = new GitCheckCounts(0, 0, 0);
 

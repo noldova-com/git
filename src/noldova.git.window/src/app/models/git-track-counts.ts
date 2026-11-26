@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** A branch's commits ahead of and behind what it is compared with. */
 export class GitTrackCounts {
   public static readonly NONE: GitTrackCounts = new GitTrackCounts(0, 0);
 

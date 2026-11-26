@@ -14,12 +14,6 @@ import type { GitVersionReader } from "./git-version.reader.ts";
 import { MergeTreeReader } from "./merge-tree.reader.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/**
- * Checks an interactive rebase's steps before it starts: each kept step's commit is replayed with `git merge-tree` against its first parent, onto the tree the
- * steps before it left, starting from the target, so a step answers `Clean`, `Folded` for a squash or fixup, or `Conflicts` with the paths, and the
- * next step goes on from the merged tree, conflict markers and all. A dropped step answers `Dropped`. It needs git 2.45, whose `merge-tree` merges trees, and
- * every step answers `Unavailable` on an older git or while the repository's own configuration names a merge driver. It changes no ref, index or file.
- */
 export class RebaseCheckReader {
   private readonly versions: GitVersionReader;
   private readonly merges: MergeTreeReader;

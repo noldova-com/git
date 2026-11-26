@@ -11,7 +11,6 @@ import type { Signal } from "@angular/core";
 import type { IGitPullRequests } from "../interfaces/i-git-pull-requests.ts";
 import type { GitBranchPullRequest } from "./git-branch-pull-request.ts";
 
-/** The host that claims a remote, with its answer for a commit's pull request. */
 export class GitPullRequestRead {
   public readonly host: IGitPullRequests;
   public readonly answer: Signal<GitBranchPullRequest | null>;

@@ -11,7 +11,6 @@ import { FailureCode, type GitCode } from "@noldova/git.protocol";
 import type { IUntrustedText } from "../interfaces/i-untrusted-text.ts";
 import { GitFailureException } from "./git-failure.exception.ts";
 
-/** The checkpoints module couldn't take the checkpoint before a discard, or put a discard's paths back from it. */
 export class CheckpointFailedException extends GitFailureException {
   public override readonly code: FailureCode = FailureCode.Unavailable;
   public override readonly gitCode: GitCode | null = null;

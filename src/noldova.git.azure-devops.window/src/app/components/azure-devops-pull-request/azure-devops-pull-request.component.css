@@ -236,7 +236,6 @@
   padding: var(--nol-space-3);
 }
 
-/* A tab whose answer the page still reads shows the tab's own notice, inside the pane's insets as the tab's is. */
 .pane > .notice {
   margin: 0;
 }

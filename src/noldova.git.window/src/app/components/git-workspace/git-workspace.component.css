@@ -144,7 +144,6 @@
 
 .table {
   display: grid;
-  /* A row is a subgrid whose 0.75rem padding comes out of the first and last tracks, so they hold 1.375rem and 5.5rem for the cells; the first keeps the checkbox clear of the repository's inset. The branch takes what the others leave, at least 8rem, all fitting a 1440px window. */
   grid-template-columns: 2.125rem 8rem minmax(8rem, 1fr) 5.5rem 5rem 8.5rem 5rem 6.5rem 6.25rem;
   align-content: start;
   column-gap: 0.5rem;
@@ -185,7 +184,6 @@
   background: var(--nol-selected);
 }
 
-/* The repository stays at the left, at the row's inset, while the table scrolls sideways, filled as its row over the panel, so the cells passing under it don't show. */
 .tr > :nth-child(2) {
   position: sticky;
   left: 0;
@@ -241,7 +239,6 @@
   color: var(--nol-warning);
 }
 
-/* The branch's pull request reads as the cells beside it, and links on hover. */
 .pull-request .link {
   display: inline-block;
   max-width: 100%;
@@ -297,10 +294,6 @@
   white-space: nowrap;
 }
 
-/*
- * As the window narrows, the table's lesser columns leave, the open count first, then the pull request, then changes and sync, so every row keeps
- * its repository, branch, checks and fetched time whole. The table is the window's content less 0.125rem.
- */
 @container (width < 59rem) {
   .table {
     grid-template-columns: 2.125rem 8rem minmax(8rem, 1fr) 5.5rem 5rem 8.5rem 5rem 6.25rem;
@@ -355,7 +348,6 @@
   }
 }
 
-/* Too narrow for the toolbar's buttons on one line, it wraps. */
 @container (max-width: 46.75rem) {
   .toolbar {
     flex-wrap: wrap;

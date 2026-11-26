@@ -17,11 +17,6 @@ import { Required } from "../models/required.ts";
 import { Resources } from "../resources.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/**
- * Finds which of the newest commits, in the graph's order, name Azure Boards' `AB#N` in their whole messages: git lists the commits' ids, then
- * keeps those whose messages match a fixed pattern, and each message is matched again here so a reference inside a longer word, path or link
- * doesn't count. The answer holds ids and numbers only, never message text.
- */
 export class MessageReferenceReader {
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.graphOutputBytes, Resources.gitReadMilliseconds);
   private static readonly HEAD: GitArguments = new GitArguments([...Resources.readCommitArguments, Resources.headRevision]);
@@ -57,7 +52,6 @@ export class MessageReferenceReader {
     return new GitMessageReferences(MessageReferenceReader.parse(matched.output.toString(Resources.utf8Encoding)), ids.length > limit);
   }
 
-  /** The distinct numbers of the `AB#N` references a message names on their own, in the order it first names them. */
   public static numbersOf(message: string): number[] {
     return [...new Set(Array.from(message.matchAll(Resources.azureBoardsReferencePattern), t => Number(t[1])))];
   }

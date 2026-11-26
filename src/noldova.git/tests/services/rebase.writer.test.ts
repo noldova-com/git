@@ -31,7 +31,6 @@ import { RepositoryState } from "../fixtures/repository-state.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
 
-/** A rebase step the test plans, by the revision it names, the action it takes and the message a reword or squash gives. */
 interface IPlannedStep {
   readonly revision: string;
   readonly action: RebaseAction;

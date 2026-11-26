@@ -15,10 +15,6 @@ import { UndoNotPossibleException } from "../exceptions/undo-not-possible.except
 import type { ICheckpoints } from "../interfaces/i-checkpoints.ts";
 import { Resources } from "../resources.ts";
 
-/**
- * Takes a working folder's checkpoints through the checkpoints module, when the app includes it and it is on, and puts paths back from one.
- * The folder's checkpoints are kept under an identity of its path, so Git's never mix with the app's own.
- */
 export class CheckpointStore {
   private readonly find: () => ICheckpoints | null;
 
@@ -26,21 +22,14 @@ export class CheckpointStore {
     this.find = find;
   }
 
-  /** Whether a discard now takes a checkpoint first: the app includes the checkpoints module and it is on. */
   public get isAvailable(): boolean {
     return this.find() !== null;
   }
 
-  /** Whether a service is the checkpoints module's, by the methods a discard and its undo call. */
   public static isCheckpoints(service: object): service is ICheckpoints {
     return Resources.checkpointsMethods.every(t => typeof Reflect.get(service, t) === "function");
   }
 
-  /**
-   * Takes a checkpoint of the working folder.
-   * @returns The checkpoint's id, or null when the checkpoints module is missing or off.
-   * @throws {CheckpointFailedException} When the module couldn't take it.
-   */
   public async captureAsync(top: string, label: string, signal?: AbortSignal): Promise<string | null> {
     const checkpoints = this.find();
     if (checkpoints === null)
@@ -51,11 +40,6 @@ export class CheckpointStore {
     return result.checkpoint.id;
   }
 
-  /**
-   * Puts paths back from a checkpoint, leaving every other path as it is.
-   * @throws {UndoNotPossibleException} When the checkpoints module is missing or off.
-   * @throws {CheckpointFailedException} When the module couldn't plan or carry out the restore.
-   */
   public async restoreAsync(top: string, checkpoint: string, paths: readonly string[], signal?: AbortSignal): Promise<void> {
     const checkpoints = this.find();
     if (checkpoints === null)

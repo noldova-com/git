@@ -20,7 +20,6 @@
   line-height: var(--nol-line-panel);
 }
 
-/* The spinner while a folder's first status is read sits at the body's insets, under its own class so the body still means a read status. */
 .body,
 .loading {
   display: flex;

@@ -15,10 +15,6 @@ export class Resources {
   public static readonly nameExpected: string = "a name of letters, digits, '.', '_' and '-', other than '.' and '..'";
   public static readonly pathExpected: string = "names of letters, digits, '.', '_', '-' and percent escapes such as '%20' but not of '/' or '\\' joined by '/', none of them '.' or '..', '%2e' counting as a dot";
   public static readonly namePattern: RegExp = /^(?!\.\.?$)[A-Za-z0-9._-]+$/;
-  /**
-   * Names joined by '/', each of letters, digits, '.', '_', '-' and percent escapes, so a name with a space or another character comes encoded; never an
-   * escaped '/' or '\', which would decode to another name.
-   */
   public static readonly pathPattern: RegExp = /^(?!(?:\.|%2[Ee]){1,2}(?:\/|$))(?:[A-Za-z0-9._-]|%(?!2[Ff]|5[Cc])[0-9A-Fa-f]{2})+(?:\/(?!(?:\.|%2[Ee]){1,2}(?:\/|$))(?:[A-Za-z0-9._-]|%(?!2[Ff]|5[Cc])[0-9A-Fa-f]{2})+)*$/;
   public static readonly commitExpected: string = "a full commit hash, 40 or 64 lowercase hexadecimal digits";
   public static readonly pullRequestStateExpected: string = "Open, Draft, Merged or Closed, the states of a pull request";

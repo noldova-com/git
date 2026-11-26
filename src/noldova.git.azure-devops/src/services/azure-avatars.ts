@@ -27,18 +27,10 @@ export class AzureAvatars {
     this.log = log;
   }
 
-  /**
-   * A commit author's Azure DevOps picture as a data address, or null: signed in to the repository's organization, the organization's user whose
-   * email is the author's, unless Azure DevOps made that user's picture itself.
-   */
   public readAuthorAvatarAsync(query: AuthorQuery, signal: AbortSignal): Promise<string | null> {
     return this.readByEmailAsync(query.host, query.path, query.email, signal);
   }
 
-  /**
-   * A person's Azure DevOps picture as a data address, or null: signed in to the organization, the organization's user whose email is the person's
-   * sign-in name, unless Azure DevOps made that user's picture itself; none, without asking, for a sign-in name that isn't an email.
-   */
   public async readPersonAvatarAsync(query: PersonQuery, signal: AbortSignal): Promise<string | null> {
     return Resources.emailPattern.test(query.login.trim()) ? this.readByEmailAsync(query.host, query.path, query.login, signal) : null;
   }

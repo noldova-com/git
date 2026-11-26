@@ -17,10 +17,6 @@ import { Resources } from "../resources.ts";
 import { LogReader } from "./log.reader.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/**
- * Checks a commit's signature with the signing programs and allowed signers of the person's own global or system configuration, or git's defaults,
- * so a view never runs a program the repository's configuration names.
- */
 export class CommitSignatureReader {
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.configOutputBytes, Resources.gitReadMilliseconds);
   private static readonly SETTINGS: GitArguments = new GitArguments(Resources.signingConfigArguments);
@@ -43,7 +39,6 @@ export class CommitSignatureReader {
       CommitSignatureReader.lineOf(signer), CommitSignatureReader.lineOf(key));
   }
 
-  /** `-c` settings that pin each signing setting to the person's own value, the last one in its global or system configuration, or git's default. */
   private async settingsAsync(top: string, signal?: AbortSignal): Promise<string[]> {
     const values = new Map(Resources.signingSettings);
     const result = await this.runner.runAsync(ProgramRun.readGit(CommitSignatureReader.SETTINGS, top, CommitSignatureReader.LIMITS, signal));
@@ -72,7 +67,6 @@ export class CommitSignatureReader {
     return settings.flatMap(t => [Resources.configOption, Resources.formatSetting(t.key, t.value)]);
   }
 
-  /** Whether the commit's own headers carry a signature, which git reports as none when it can't run the program that checks it. */
   private async carriesSignatureAsync(top: string, id: string, signal?: AbortSignal): Promise<boolean> {
     const gitArguments = new GitArguments(Resources.commitObjectArguments).withRevisions([id]);
     const result = await this.runner.runAsync(ProgramRun.readGit(gitArguments, top, CommitSignatureReader.LIMITS, signal));

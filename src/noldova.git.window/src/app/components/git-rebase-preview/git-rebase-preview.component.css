@@ -19,7 +19,6 @@
   line-height: var(--nol-line-panel);
 }
 
-/* The pushed note sits at the view's foot, under whatever the preview shows. */
 .preview {
   display: flex;
   flex-direction: column;
@@ -72,7 +71,6 @@
   white-space: nowrap;
 }
 
-/* A note beside a chip gives way before the branch's name does. */
 .node > .muted {
   flex: 0 100 auto;
   min-width: 0;

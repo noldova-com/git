@@ -19,8 +19,6 @@ import type { JsonValue } from "@noldova/git.protocol";
 
 import { WorktreeTable } from "../../src/services/worktree-table.ts";
 
-// Noldova Desktop's own process supervisor, module database and tool registry behind its FakeRuntimePartContext, so that Git's tests run real
-// processes the way the runtime starts them. Only GIT_CONFIG_NOSYSTEM is added, so that no machine's system configuration reaches a test, and what a test adds.
 export class DesktopFixture {
   private static readonly MODULE: string = "git";
   private static readonly ISOLATION: Readonly<Record<string, string>> = { GIT_CONFIG_NOSYSTEM: "1" };
@@ -82,7 +80,6 @@ export class DesktopFixture {
     return new DesktopFixture(folder, lock, shell, database, environment, added);
   }
 
-  // Another context on the same processes and database, with tools of its own, as a later runtime hands a part that activates again.
   public createContext(): FakeRuntimePartContext {
     return this.createContextOn(this.createRegistry());
   }

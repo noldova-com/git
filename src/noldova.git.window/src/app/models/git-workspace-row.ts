@@ -19,7 +19,6 @@ import type { GitPullRequestList } from "./git-pull-request-list.ts";
 import type { GitPullRequestRow } from "./git-pull-request-row.ts";
 import type { GitRepositorySummary } from "./git-repository-summary.ts";
 
-/** One repository's row on a workspace's page, with the texts its cells show. */
 export class GitWorkspaceRow {
   public readonly folder: string;
   public readonly name: string;
@@ -27,45 +26,22 @@ export class GitWorkspaceRow {
   public readonly branch: Signal<string>;
   public readonly sync: Signal<string>;
   public readonly changes: Signal<string>;
-  /** How long ago the repository last fetched, as of its last read. */
   public readonly fetched: Signal<string>;
-  /** Why the last read or fetch failed, which the row shows in place of its branch and sync. */
   public readonly failure: Signal<string | null>;
-  /** How many files have conflicts, as of the last read. */
   public readonly conflicts: Signal<number>;
   public readonly hasConflicts: Signal<boolean>;
-  /** The current branch's pull request, which the row's Pull request cell opens, or null. */
   public readonly pullRequest: Signal<GitPullRequestRow | null>;
-  /**
-   * The open list the page finds stacks in, from the host that claims the repository's remote: its stack list or its open list, undefined when it
-   * has neither, null before an answer. Only stacks read it.
-   */
   public readonly openList: Signal<GitPullRequestList | null | undefined>;
-  /** The open pull request the branch's is stacked on, its base being that one's head, or null. */
   public readonly stackedOn: Signal<GitPullRequestRow | null>;
-  /** The Pull request cell: the branch's pull request and the one it is stacked on, that it has none, or why the host can't tell. */
   public readonly pullRequestText: Signal<string>;
-  /** The Checks cell: the worst of the branch's pull request's checks, or of its head commit's without one. */
   public readonly checks: Signal<string>;
-  /** The Checks dot's kind: failed, pending, ok or none; empty while the host has no answer. */
   public readonly checksTone: Signal<string>;
-  /** How many of the checks the Checks cell counts failed: none while the host has no answer. */
   public readonly failing: Signal<number>;
-  /** Where the host's read of the branch's pull request stands, or null while no host reads it or before it answers. */
   public readonly hostState: Signal<GitPullRequestsState | null>;
-  /** The Open cell: how many pull requests the repository has open and how many fail their checks; empty while no host lists them or before it answers. */
   public readonly open: Signal<string>;
-  /** The Open cell's tooltip, in words; empty with the cell. */
   public readonly openTitle: Signal<string>;
-  /** The side panel's views that show the row. */
   public readonly views: Signal<ReadonlySet<GitWorkspaceView>>;
 
-  /**
-   * @param pullRequest The current branch's pull request: undefined while no host reads it for the repository's remote, null before the host answers.
-   * @param hasAgentsAtWork Whether an agent works in the repository or waits for the person.
-   * @param openList The host's list of the repository's open pull requests to find stacks in, when the page reads one; undefined by default.
-   * @param opened The host's whole list of the repository's open pull requests, which the Open cell counts; undefined by default.
-   */
   public constructor(folder: string, summary: Signal<GitRepositorySummary | null>, pullRequest: Signal<GitBranchPullRequest | null | undefined>,
     hasAgentsAtWork: Signal<boolean>, openList: Signal<GitPullRequestList | null | undefined> = signal(undefined),
     opened: Signal<GitPullRequestList | null | undefined> = signal(undefined)) {
@@ -107,7 +83,6 @@ export class GitWorkspaceRow {
     this.views = computed(() => GitWorkspaceRow.viewsOf(summary(), pullRequest(), hasAgentsAtWork()));
   }
 
-  /** The views that show a repository: behind, changed and waiting for review once a read shows it, and agents at work whenever one is. */
   public static viewsOf(summary: GitRepositorySummary | null, shown: GitBranchPullRequest | null | undefined, hasAgentsAtWork: boolean): ReadonlySet<GitWorkspaceView> {
     const views: Set<GitWorkspaceView> = new Set();
     if (hasAgentsAtWork)
@@ -123,18 +98,12 @@ export class GitWorkspaceRow {
     return views;
   }
 
-  /** The other open pull request in the list whose head is the pull request's base, or null; a host that didn't say the base stacks nothing. */
   public static stackedOnOf(row: GitPullRequestRow | null, list: GitPullRequestList | null | undefined): GitPullRequestRow | null {
     if (Object.isNull(row) || Object.isNull(row.baseBranch) || Object.isNullOrUndefined(list))
       return null;
     return list.rows.find(t => t.key !== row.key && t.headBranch === row.baseBranch) ?? null;
   }
 
-  /**
-   * The branch's pull request, such as "#214 open", "#1046 draft", "Review #533" or "#22 merged"; None when no host reads the repository's
-   * pull requests or the branch has none; that the host needs a sign-in or can't answer; nothing until a read shows the repository or while the
-   * host reads.
-   */
   public static pullRequestTextOf(summary: GitRepositorySummary | null, shown: GitBranchPullRequest | null | undefined): string {
     if (Object.isNull(summary) || summary.isUnread)
       return "";
@@ -154,7 +123,6 @@ export class GitWorkspaceRow {
     }
   }
 
-  /** The answer whose checks the row shows: a read one, or one that still reads with a pull request or checks from the last; else null. */
   public static countedOf(summary: GitRepositorySummary | null, shown: GitBranchPullRequest | null | undefined): GitBranchPullRequest | null {
     if (Object.isNull(summary) || summary.isUnread || Object.isNullOrUndefined(shown))
       return null;
@@ -163,7 +131,6 @@ export class GitWorkspaceRow {
     return shown.state === GitPullRequestsState.Reading && (!Object.isNull(shown.pullRequest) || shown.passed + shown.failing + shown.pending > 0) ? shown : null;
   }
 
-  /** Failing when any check failed, else Running while one runs or waits, else Passing when one passed, else None; nothing without an answer. */
   public static checksOf(row: GitBranchPullRequest | null): string {
     if (Object.isNull(row))
       return "";
@@ -184,7 +151,6 @@ export class GitWorkspaceRow {
     return row.passed > 0 ? "ok" : "none";
   }
 
-  /** The branch's name, where a detached head points, or that the repository has no commits; nothing until a read shows it. */
   public static branchOf(summary: GitRepositorySummary | null): string {
     if (Object.isNull(summary) || summary.isUnread)
       return "";
@@ -193,7 +159,6 @@ export class GitWorkspaceRow {
     return Object.isNull(summary.head) ? Resources.noCommitsYet : Resources.formatDetachedAt(summary.head.slice(0, 7));
   }
 
-  /** How far the branch is from its upstream, or that it has none or it's gone; nothing until a read shows it. */
   public static syncOf(summary: GitRepositorySummary | null): string {
     if (Object.isNull(summary) || summary.isUnread)
       return "";
@@ -202,14 +167,12 @@ export class GitWorkspaceRow {
     return summary.gone ? Resources.upstreamGone : Resources.formatSync(summary.ahead, summary.behind);
   }
 
-  /** How long ago it last fetched, or that it never has; nothing until a read shows it. */
   public static fetchedOf(summary: GitRepositorySummary | null, now: Date): string {
     if (Object.isNull(summary) || summary.isUnread)
       return "";
     return Object.isNull(summary.fetchedAt) ? Resources.neverFetched : CommitLabels.ageOf(summary.fetchedAt, now);
   }
 
-  /** Its conflicts, else how many files changed, or that a fetch is going; nothing until a read shows it. */
   public static changesOf(summary: GitRepositorySummary | null): string {
     if (Object.isNull(summary))
       return "";

@@ -14,7 +14,6 @@ import { FailureCode, FileChange, GitCode, LineKind } from "@noldova/git.protoco
 
 import { DiffParser } from "../../src/services/diff.parser.ts";
 
-/** The failure a test expects when git prints what the module can't read. */
 interface IUnreadableFailure {
   readonly name: string;
   readonly code: FailureCode;

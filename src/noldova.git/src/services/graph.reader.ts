@@ -18,7 +18,6 @@ import { Resources } from "../resources.ts";
 import { LogReader } from "./log.reader.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/** Reads the newest commits of every branch, remote branch and tag, with HEAD, in date order, and the labels on each. */
 export class GraphReader {
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.graphOutputBytes, Resources.gitReadMilliseconds);
   private static readonly HEAD: GitArguments = new GitArguments([...Resources.readCommitArguments, Resources.headRevision]);
@@ -43,7 +42,6 @@ export class GraphReader {
     return new GitGraph(commits.slice(0, limit), commits.length > limit);
   }
 
-  /** Turns git's full decorations, such as "HEAD -> refs/heads/main, refs/remotes/origin/main, tag: refs/tags/v1", into labels. */
   public static refsOf(decorations: string): GitRef[] {
     const refs: GitRef[] = [];
     for (const decoration of decorations.split(Resources.decorationSeparator).filter(t => t.length > 0)) {

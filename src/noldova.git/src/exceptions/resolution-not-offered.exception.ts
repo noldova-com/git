@@ -12,7 +12,6 @@ import type { IUntrustedText } from "../interfaces/i-untrusted-text.ts";
 import { Resources } from "../resources.ts";
 import { GitFailureException } from "./git-failure.exception.ts";
 
-/** The resolution asked for isn't one the file's conflict kind offers. */
 export class ResolutionNotOfferedException extends GitFailureException {
   public override readonly code: FailureCode = FailureCode.Refused;
   public override readonly gitCode: GitCode | null = null;

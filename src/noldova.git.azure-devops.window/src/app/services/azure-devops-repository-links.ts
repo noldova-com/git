@@ -15,10 +15,6 @@ import { WorkItemsPlace } from "../models/work-items-place.ts";
 import { Resources } from "../../resources.ts";
 import { WorkItemsPages } from "./work-items-pages.ts";
 
-/**
- * Gives the repository panel a My work items row for a repository on Azure DevOps, which opens that document for its remote's project and is selected while
- * a page of that project's work items is in front.
- */
 export class AzureDevOpsRepositoryLinks implements IGitRepositoryLinks {
   private readonly context: IWindowPartContext;
 

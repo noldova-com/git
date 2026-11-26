@@ -24,12 +24,6 @@ import { Resources } from "../resources.ts";
 import { FilePresence } from "./file-presence.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/**
- * Finds the Git LFS files that status calls modified only because reads run no filter: a file whose attributes say `filter=lfs`, whose index holds an LFS
- * pointer, and whose working copy is the pointer's content, by SHA-256 and size; a pointer checked out without smudging matches the index, so Git
- * never reports it. It runs no filter, only `check-attr` and `cat-file`, each once per read with the paths on its input, so any number of files is
- * checked; it hashes a file again only once its size, mtime or ctime moved, and counts the files its hash budget left unchecked.
- */
 export class LfsPointerReader {
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.listOutputBytes, Resources.gitReadMilliseconds);
   private static readonly ATTRIBUTES: GitArguments = new GitArguments(Resources.lfsAttributeArguments);
@@ -43,10 +37,6 @@ export class LfsPointerReader {
     this.runner = runner;
   }
 
-  /**
-   * The entries with each LFS file whose working copy matches its pointer counted unmodified in the worktree, and left out when nothing else changed,
-   * and how many LFS files the hash budget, or a path `cat-file` can't name, left as Git reported them.
-   */
   public async cleanAsync(top: string, entries: readonly StatusEntry[], signal?: AbortSignal): Promise<LfsCheck> {
     const candidates = entries.filter(t => t.worktree === FileState.Modified && t.conflict === null && t.submodule === null && t.pathBytes === undefined)
       .map(t => t.path);
@@ -92,7 +82,6 @@ export class LfsPointerReader {
     return tracked;
   }
 
-  /** Each file's index blob, by its `:0:` name; a file with no stage-0 entry is left out. */
   private async blobsAsync(top: string, files: readonly string[], signal?: AbortSignal): Promise<Map<string, IndexBlob>> {
     const names = LfsPointerReader.joined(files.map(t => Resources.indexEntryPrefix + t));
     const lines = (await this.runAsync(top, LfsPointerReader.INDEX, names, Resources.catFileCommand, signal)).toString(Resources.utf8Encoding).split(Resources.lineEnd);
@@ -105,7 +94,6 @@ export class LfsPointerReader {
     return blobs;
   }
 
-  /** Reads the blobs in one `cat-file --batch` and remembers each one's pointer, or `null` when it isn't one. */
   private async readPointersAsync(top: string, blobs: readonly string[], signal?: AbortSignal): Promise<void> {
     if (blobs.length === 0)
       return;
@@ -123,7 +111,6 @@ export class LfsPointerReader {
     }
   }
 
-  /** Whether the file is the pointer's content, or `null` when the hash budget can't cover it. */
   private async matchesAsync(file: string, blob: string, pointer: LfsPointer, budget: HashBudget, signal?: AbortSignal): Promise<boolean | null> {
     let stats: BigIntStats;
     try {

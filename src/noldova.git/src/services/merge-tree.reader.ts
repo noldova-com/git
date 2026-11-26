@@ -18,10 +18,6 @@ import { Resources } from "../resources.ts";
 import type { FilterOptionsReader } from "./filter-options.reader.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/**
- * Merges trees with `git merge-tree`, which writes objects but no ref and touches neither the working folder nor the index, with the repository's own
- * filters switched off, as for a status; and reads whether the repository's own configuration names a merge driver, which would make a merge run it.
- */
 export class MergeTreeReader {
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.lineOutputBytes, Resources.gitReadMilliseconds);
   private static readonly TREE_LIMITS: ProgramLimits = new ProgramLimits(Resources.writeOutputBytes, Resources.gitReadMilliseconds);
@@ -43,7 +39,6 @@ export class MergeTreeReader {
       .some(t => Resources.repositoryConfigScopes.has(t.slice(0, t.indexOf(Resources.tab))));
   }
 
-  /** The merged tree, holding conflict markers where it conflicts, and the paths that conflict. */
   public async mergeAsync(top: string, options: readonly string[], revisions: readonly string[], signal?: AbortSignal)
     : Promise<MergedTree> {
     const filters = await this.filters.readAsync(top, signal);
@@ -54,7 +49,6 @@ export class MergeTreeReader {
     return new MergedTree(tree, [...new Set(paths.filter(t => t.length > 0))]);
   }
 
-  /** Each revision's object id, in order, from one `git rev-parse`. */
   public async readIdsAsync(top: string, revisions: readonly string[], signal?: AbortSignal): Promise<string[]> {
     const gitArguments = new GitArguments([...Resources.predictRevisionsArguments, ...revisions]);
     const result = await this.runner.runAsync(ProgramRun.readGit(gitArguments, top, MergeTreeReader.LIMITS, signal));

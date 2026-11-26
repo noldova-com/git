@@ -11,7 +11,6 @@ import type { IUntrustedText } from "../interfaces/i-untrusted-text.ts";
 import { Resources } from "../resources.ts";
 import { GitFailureException } from "./git-failure.exception.ts";
 
-/** A branch whose upstream on its remote has another name, which a push would update, as git's default push refuses too. */
 export class PushUpstreamMismatchException extends GitFailureException {
   public override readonly code: FailureCode = FailureCode.Refused;
   public override readonly gitCode: GitCode | null = null;

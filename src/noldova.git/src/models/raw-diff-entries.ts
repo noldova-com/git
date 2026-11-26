@@ -7,7 +7,6 @@
  */
 import type { IRawDiffEntry } from "../interfaces/i-raw-diff-entry.ts";
 
-/** The raw entries `git diff --raw -z` lists before its patch, and the patch that follows them. */
 export class RawDiffEntries {
   public readonly entries: IRawDiffEntry[];
   public readonly patch: Buffer;

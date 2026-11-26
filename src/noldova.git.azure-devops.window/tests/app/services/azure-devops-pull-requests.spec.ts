@@ -42,7 +42,6 @@ const request: HostReviewRequest = new HostReviewRequest(new HostReference("git-
 const asked: GitPullRequestRow = new GitPullRequestRow(`fabrikam/${REPOSITORY}/533`, "!533", "Sign in with a passkey",
   "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/533", false, 0, 0, 0, 0, "");
 
-/** A pull request's page the list opened, by its address and its reference. */
 interface IOpenedPage {
   readonly url: string;
   readonly reference: HostReference;

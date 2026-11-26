@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** A git setting given on the command line for one run, as its key and value. */
 export class ConfigSetting {
   public readonly key: string;
   public readonly value: string;

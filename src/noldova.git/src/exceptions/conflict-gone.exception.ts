@@ -12,7 +12,6 @@ import type { IUntrustedText } from "../interfaces/i-untrusted-text.ts";
 import { Resources } from "../resources.ts";
 import { GitFailureException } from "./git-failure.exception.ts";
 
-/** The file asked for has no unmerged stages, because it was resolved, or never conflicted. */
 export class ConflictGoneException extends GitFailureException {
   public override readonly code: FailureCode = FailureCode.Stale;
   public override readonly gitCode: GitCode | null = null;

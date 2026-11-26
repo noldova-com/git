@@ -40,7 +40,6 @@ export class CommitWriter implements IGitWrite {
   private readonly message: string;
   private readonly amend: boolean;
 
-  /** Commits the staged changes, or with `amend` replaces the last commit with one that also holds them, under the message. */
   public constructor(runner: ProgramRunner, hooks: HooksReader, message: string, amend: boolean = false) {
     this.runner = runner;
     this.hooks = hooks;

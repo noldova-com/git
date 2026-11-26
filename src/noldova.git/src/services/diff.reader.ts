@@ -54,19 +54,12 @@ export class DiffReader {
     return new GitDiff(diff.files, diff.totalBytes, diff.omittedFiles, true, await this.countFilteredAsync(worktree, scope, paths, filters, signal));
   }
 
-  /**
-   * The whole diff's files and lines as `git diff --numstat` counts them, renames found as the diff finds them and a binary file's lines counting none: the
-   * tracked changes for the worktree, without its untracked files.
-   * @throws {UnreadableOutputException} When git's answer outgrows its limit.
-   */
   public async countAsync(worktree: string, scope: DiffScope, signal?: AbortSignal): Promise<DiffTotals> {
     const totals: DiffTotals | null = await this.countFilteredAsync(worktree, scope, [], await this.filters.readAsync(worktree, signal), signal);
     if (totals === null)
       throw new UnreadableOutputException(Resources.numstatCommand, Resources.lineCountsPart);
     return totals;
   }
-
-  /** The whole diff's totals, or `null` when git's answer outgrows its limit. */
 
   private async countFilteredAsync(worktree: string, scope: DiffScope, paths: readonly string[], filters: readonly string[], signal?: AbortSignal)
     : Promise<DiffTotals | null> {

@@ -15,7 +15,6 @@ import { GitHubReferenceLink } from "../../../src/app/models/github-reference-li
 import { GitHubLooks } from "../../../src/app/services/github-looks.ts";
 import { GitHubReferenceLooks } from "../../../src/app/services/github-reference-looks.ts";
 
-/** A reference's kind and state, and the labels GitHub gives them. */
 interface IKindLook {
   readonly kind: ReferenceKind;
   readonly state: ReferenceState;

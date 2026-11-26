@@ -118,7 +118,6 @@ export class LineCountsReader {
     }
   }
 
-  /** The file's bytes, opened once and read only up to the size its open handle had, or null when that size passes the limit, so a file that grows after the check never reads past the budget. */
   private static async readCappedAsync(file: string, limit: number): Promise<Buffer | null> {
     const handle = await open(file, "r");
     try {

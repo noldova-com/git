@@ -26,9 +26,7 @@ export class TestPullRequestHost implements IGitPullRequestHost {
   public readonly readThreadsMethod: string = TestPullRequestHost.threadsMethod;
   public replyToThreadMethod: string | null = TestPullRequestHost.replyMethod;
   public changeThreadMethod: string | null = TestPullRequestHost.changeMethod;
-  /** The people whose pictures were asked, each as `{owner}/{login}`. */
   public readonly askedPeople: string[] = [];
-  /** The picture each person's ask answers. */
   public avatar: string | null | undefined = null;
   public readonly asked: string[] = [];
   public folder: string | null = null;

@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/* The section's rows are the repository panel's own rows, spaced by its gap. */
 :host {
   display: contents;
 }
@@ -62,7 +61,6 @@ button.row {
   background: var(--nol-selected);
 }
 
-/* A pull request's row starts under the section title's text, as a branch row does under Branches. */
 .row:not(.section) {
   padding-left: 1.875rem;
 }
@@ -107,7 +105,6 @@ button.row {
   letter-spacing: 0.02em;
 }
 
-/* The dot starts the icon's 1rem column, where a branch's icon does, so a pull request's title starts where a branch's name does. */
 .dot {
   flex: none;
   width: 0.5rem;

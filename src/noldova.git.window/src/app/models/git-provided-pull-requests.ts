@@ -10,7 +10,6 @@ import type { IWindowPartContext } from "@noldova/desktop.window";
 
 import type { IGitPullRequests } from "../interfaces/i-git-pull-requests.ts";
 
-/** A host module's pull request list, with the context it was given by. */
 export class GitProvidedPullRequests {
   public readonly context: IWindowPartContext;
   public readonly pullRequests: IGitPullRequests;

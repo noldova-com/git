@@ -12,7 +12,6 @@ import { RebaseCheckOutcome } from "../enums/rebase-check-outcome.ts";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** What one step would do: its outcome, and the paths that would conflict, which only `Conflicts` has. */
 export class GitRebaseStepCheck {
   private static readonly FIELDS: readonly string[] = [Resources.outcomeField, Resources.pathsField];
 

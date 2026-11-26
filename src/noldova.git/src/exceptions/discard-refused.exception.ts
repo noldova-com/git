@@ -12,7 +12,6 @@ import type { IUntrustedText } from "../interfaces/i-untrusted-text.ts";
 import { Resources } from "../resources.ts";
 import { GitFailureException } from "./git-failure.exception.ts";
 
-/** A discard of a path with no working-folder change it can put back: unchanged, conflicted or a submodule. */
 export class DiscardRefusedException extends GitFailureException {
   public override readonly code: FailureCode = FailureCode.Refused;
   public override readonly gitCode: GitCode | null = null;

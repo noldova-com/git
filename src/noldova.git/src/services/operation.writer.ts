@@ -24,11 +24,6 @@ import type { HooksReader } from "./hooks.reader.ts";
 import { MarkerCheckReader } from "./marker-check.reader.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/**
- * Continues or aborts the merge, rebase, cherry-pick or revert in progress.
- * A continue is refused while a file is unmerged or still has marker lines; a rebase or a series that stops at its next conflict answers normally,
- * and the status after it shows the new conflicts.
- */
 export class OperationWriter implements IGitWrite {
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.writeOutputBytes, Resources.longWriteMilliseconds);
   private static readonly OPTIONS: readonly PermissionOption[] = [PermissionOption.AllowOnce, PermissionOption.Deny];
@@ -36,7 +31,6 @@ export class OperationWriter implements IGitWrite {
   private readonly runner: ProgramRunner;
   private readonly hooks: HooksReader;
   public readonly method: string;
-  /** Not undone from the journal: a continue's commit and an abort's reset come back by other means. */
   public readonly undo: UndoMode = UndoMode.None;
 
   public constructor(runner: ProgramRunner, hooks: HooksReader, method: string) {
@@ -85,7 +79,6 @@ export class OperationWriter implements IGitWrite {
     throw new GitFailedException(command, { text, source: UntrustedSource.Repository });
   }
 
-  /** Refuses the continue while a tracked file, staged or not, still has a conflict marker line, as `git diff --check` finds them. */
   private async checkMarkersAsync(top: string, signal?: AbortSignal): Promise<void> {
     const lines = await new MarkerCheckReader(this.runner).readLinesAsync(top, signal);
     if (lines.length > 0)

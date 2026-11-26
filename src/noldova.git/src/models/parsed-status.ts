@@ -22,7 +22,6 @@ export class ParsedStatus {
     this.truncated = truncated;
   }
 
-  /** The status, with the upstream's tracking ref at `upstreamId`, which the status output doesn't carry. */
   public toStatus(
     entries: readonly StatusEntry[],
     fingerprint: string,

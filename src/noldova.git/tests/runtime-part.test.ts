@@ -34,7 +34,6 @@ import { DesktopFixture } from "./fixtures/desktop.fixture.ts";
 import { FakeCheckpoints } from "./fixtures/fake-checkpoints.fixture.ts";
 import { RepositoryFixture } from "./fixtures/repository.fixture.ts";
 
-/** A write method, and the payload it's called with for the given fingerprint. */
 interface IWriteCase {
   readonly name: string;
   readonly payload: (basedOn: string) => JsonValue;

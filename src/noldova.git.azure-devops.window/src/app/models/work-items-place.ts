@@ -46,13 +46,11 @@ export class WorkItemsPlace {
     return Object.isNull(organization) || Object.isNull(project) ? null : new WorkItemsPlace(organization, project, null);
   }
 
-  /** The organization and project an Azure DevOps page's address names, such as a pull request's, without a work item; null when it names none. */
   public static ofPage(url: string): WorkItemsPlace | null {
     const place: ProjectPlace | null = AzureDevOpsReferenceLinks.projectOf(url);
     return Object.isNull(place) ? null : new WorkItemsPlace(place.organization, place.project, null);
   }
 
-  /** The decoded name in a URL or remote path, or `null` when there is none, it's blank, or it doesn't decode. */
   public static decode(text: string | undefined): string | null {
     if (Object.isUndefined(text))
       return null;

@@ -15,14 +15,12 @@ import { describe, it } from "vitest";
 import { CheckState } from "../../src/enums/check-state.ts";
 import { FieldCheck } from "../../src/models/field-check.ts";
 
-/** The failure a test expects when an argument is invalid. */
 interface IArgumentFailure {
   readonly name: string;
   readonly parameterName: string;
   readonly message: string;
 }
 
-/** The failure a test expects when a field is invalid. */
 interface IFieldFailure {
   readonly name: string;
   readonly field: string;

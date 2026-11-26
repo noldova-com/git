@@ -31,11 +31,6 @@ import { GitWorkspaceBulk } from "../../services/git-workspace-bulk.ts";
 import { GitBulkPushDialogComponent } from "../git-bulk-push-dialog/git-bulk-push-dialog.component.ts";
 import { GitReferenceTextComponent } from "../git-reference-text/git-reference-text.component.ts";
 
-/**
- * The Across repositories view's panel for the workspace page in front: a branch out in several repositories as one change, what needs the person, and the agents at
- * work. It shows only what the page's rows and the agents' runs already hold, and reads nothing of its own; its pushes and pulls go through
- * {@link GitWorkspaceBulk}, a push only after one confirm.
- */
 @Component({
   selector: "nol-git-workspace-across",
   imports: [ButtonComponent, GitReferenceTextComponent, ToolbarButtonComponent],
@@ -43,15 +38,12 @@ import { GitReferenceTextComponent } from "../git-reference-text/git-reference-t
   styleUrl: "./git-workspace-across.component.css"
 })
 export class GitWorkspaceAcrossComponent {
-  /** Every repository of the workspace, whether or not its row is on screen. */
   public readonly rows: InputSignal<readonly GitWorkspaceRow[]> = input.required<readonly GitWorkspaceRow[]>();
   public readonly runs: InputSignal<readonly GitWorkspaceRun[]> = input.required<readonly GitWorkspaceRun[]>();
-  /** The pull requests across the workspace that ask the person for a review, and whether a host listed only some. */
   public readonly reviews: InputSignal<GitWorkspaceReviews> = input<GitWorkspaceReviews>(new GitWorkspaceReviews([], false));
   public readonly repositoryOpened: OutputEmitterRef<string> = output<string>();
   public readonly pullRequestOpened: OutputEmitterRef<GitRowPullRequest> = output<GitRowPullRequest>();
   public readonly reviewOpened: OutputEmitterRef<GitWorkspaceReview> = output<GitWorkspaceReview>();
-  /** The folders a push or pull wrote to, or tried to, once it ends, for the page to read them again. */
   public readonly written: OutputEmitterRef<readonly string[]> = output<readonly string[]>();
 
   protected readonly resources: typeof Resources = Resources;
@@ -71,7 +63,6 @@ export class GitWorkspaceAcrossComponent {
     + this.stacks().length + this.behind().length > 0);
   protected readonly isQuiet: Signal<boolean> = computed(() => Object.isNull(this.shared()) && !this.hasNeeds() && this.working().length === 0);
   protected readonly isWriting: WritableSignal<boolean> = signal(false);
-  /** How the last push or pull ended, a line each. */
   protected readonly result: WritableSignal<readonly string[]> = signal<readonly string[]>([]);
 
   private readonly errors: ErrorHandler = inject(ErrorHandler);
@@ -87,7 +78,6 @@ export class GitWorkspaceAcrossComponent {
       this.repositoryOpened.emit(row.folder);
   }
 
-  /** Opens the failing checks' pull request, or the repository's history when its branch has none. */
   protected openFailing(row: GitWorkspaceRow): void {
     const pullRequest: GitPullRequestRow | null = row.pullRequest();
     if (Object.isNull(pullRequest))
@@ -100,12 +90,10 @@ export class GitWorkspaceAcrossComponent {
     return Resources.formatStack(stack.row.name, stack.pullRequests.map(t => t.label));
   }
 
-  /** Opens the stack's bottom pull request, the one to merge first. */
   protected openStack(stack: GitPullRequestStack): void {
     this.pullRequestOpened.emit(new GitRowPullRequest(stack.row, stack.bottom));
   }
 
-  /** Opens the run in the module that runs it; what the module throws is reported. */
   protected openRun(run: GitWorkspaceRun): void {
     try {
       run.provider.open(run.folder, run.row);
@@ -115,12 +103,10 @@ export class GitWorkspaceAcrossComponent {
     }
   }
 
-  /** Whether a push of the change has anything to push: a repository of it with an upstream. */
   protected canPush(shared: GitSharedBranch): boolean {
     return GitWorkspaceOverview.pushTargetsOf(shared).some(t => !Object.isNull(t.upstream));
   }
 
-  /** Asks once, naming the targets as they are now, and pushes what the confirm named on Push; any other answer pushes nothing. */
   protected confirmPush(shared: GitSharedBranch): void {
     const targets: readonly GitBulkTarget[] = GitWorkspaceOverview.pushTargetsOf(shared);
     const dialog = this.dialogs.open(GitBulkPushDialogComponent, ".cancel");
@@ -133,7 +119,6 @@ export class GitWorkspaceAcrossComponent {
     });
   }
 
-  /** Pulls the repositories that are only behind, which needs no confirm: a pull only fast-forwards, and each is checked again first. */
   protected pullAsync(): Promise<void> {
     const targets: readonly GitBulkTarget[] = GitWorkspaceOverview.pullTargetsOf(this.behind());
     return this.writeAsync(Resources.pulledVerb, targets, () => this.bulk.pullAsync(targets));

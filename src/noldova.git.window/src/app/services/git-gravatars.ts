@@ -12,7 +12,6 @@ import "@noldova/context.core";
 import type { IGitAvatars } from "../interfaces/i-git-avatars.ts";
 import type { GitRuntimeClient } from "./git-runtime-client.ts";
 
-/** The authors' Gravatar pictures, read once per email through the Git module and kept while the window part is active. */
 export class GitGravatars implements IGitAvatars {
   private readonly client: GitRuntimeClient;
   private readonly kept: Map<string, WritableSignal<string | null | undefined>> = new Map();

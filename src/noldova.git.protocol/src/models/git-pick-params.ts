@@ -11,7 +11,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** The parameters of `git.cherryPick`, `git.revert` and `git.merge`: the folder, the commit's full id and the status fingerprint the person saw. */
 export class GitPickParams {
   private static readonly FIELDS: readonly string[] = [Resources.folderField, Resources.idField, Resources.basedOnField];
 

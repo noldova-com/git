@@ -173,10 +173,6 @@ export class AzureDevOpsWindowPart implements IWindowPart {
       this.cards.set(cards);
   }
 
-  /**
-   * A command that opens a document for the project its arguments name as `{ "instance": "organization/project" }`, or for the open repository's without them;
-   * with no Azure DevOps repository open, it posts a notification that says so.
-   */
   private static openCommand(context: IWindowPartContext, name: string, title: string, icon: string, document: string, documentTitle: string,
     missing: string): CommandContribution {
     return new CommandContribution(name, title, icon, null, async (commandArguments: JsonValue) => {
@@ -191,7 +187,6 @@ export class AzureDevOpsWindowPart implements IWindowPart {
     });
   }
 
-  /** The open repository's project as a document instance; `null` with no repository open, a remote off Azure DevOps, or a status it can't read, which it logs. */
   private static async openProjectAsync(context: IWindowPartContext): Promise<string | null> {
     const folder: string | null = GitFolder.folder();
     if (Object.isNull(folder))

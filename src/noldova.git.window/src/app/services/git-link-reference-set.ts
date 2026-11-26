@@ -10,7 +10,6 @@ import type { Signal } from "@angular/core";
 import "@noldova/context.core";
 import type { ILinkReferenceSource, LinkReference, LinkReferenceMatch } from "@noldova/ui.components.angular";
 
-/** Several hosts' link sources as one: the first that knows a link draws it, and text matches that overlap an earlier one are dropped. */
 export class GitLinkReferenceSet implements ILinkReferenceSource {
   private readonly sources: readonly ILinkReferenceSource[];
 

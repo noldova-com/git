@@ -20,7 +20,6 @@ export class AzureDevOpsReferenceRead {
   public readonly link: AzureDevOpsReferenceLink;
   public readonly pending: LinkReference;
 
-  /** Shows the item's type and number until it's read, and while no one is signed in. */
   public constructor(link: AzureDevOpsReferenceLink, pending: LinkReference) {
     this.link = link;
     this.pending = pending;

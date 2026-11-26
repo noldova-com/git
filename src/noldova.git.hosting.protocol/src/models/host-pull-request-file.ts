@@ -12,7 +12,6 @@ import { FileChangeKind } from "../enums/file-change-kind.ts";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** A file a pull request changes: its path in the repository, what the pull request did to it, and for a moved file the path it had. */
 export class HostPullRequestFile {
   private static readonly FIELDS: readonly string[] = [Resources.pathField, Resources.kindField, Resources.previousPathField];
   private static readonly KINDS: readonly FileChangeKind[] = Object.values(FileChangeKind);

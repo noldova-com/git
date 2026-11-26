@@ -19,7 +19,6 @@ import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 import { Wait } from "../../../fixtures/wait.fixture.ts";
 
-/** A mounted command log, with the errors it reported and the folder the views show. */
 class MountedLog {
   public readonly fixture: ComponentFixture<GitCommandLogComponent>;
   public readonly element: HTMLElement;

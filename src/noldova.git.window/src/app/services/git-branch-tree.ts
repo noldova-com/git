@@ -11,18 +11,15 @@ import "@noldova/context.core";
 import { GitBranchRow } from "../models/git-branch-row.ts";
 import { GitBranchTreeNode } from "../models/git-branch-tree-node.ts";
 
-/** Lays branches out as trees, in folders split at `/`, showing only what the open rows hold. */
 export class GitBranchTree {
   private static readonly SEPARATOR: string = "/";
 
-  /** The local rows to show, a level in from their section: folders by name, then branches by name, and an open folder's contents; each key starts with `prefix`. */
   public static localRowsOf(prefix: string, branches: readonly string[], opened: ReadonlySet<string>): GitBranchRow[] {
     const rows: GitBranchRow[] = [];
     GitBranchTree.addLevel(rows, prefix, "", branches, 1, opened);
     return rows;
   }
 
-  /** The remote rows to show, a level in from their section: each remote, then, under an open one, its folders by name, then its branches by name. */
   public static remoteRowsOf(remotes: readonly string[], remoteBranches: readonly string[], opened: ReadonlySet<string>): GitBranchRow[] {
     const rows: GitBranchRow[] = [];
     for (const remote of remotes) {

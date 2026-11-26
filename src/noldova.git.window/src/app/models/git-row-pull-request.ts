@@ -9,7 +9,6 @@
 import type { GitPullRequestRow } from "./git-pull-request-row.ts";
 import type { GitWorkspaceRow } from "./git-workspace-row.ts";
 
-/** A workspace row's branch's pull request, which the Across repositories panel asks the page to open. */
 export class GitRowPullRequest {
   public readonly row: GitWorkspaceRow;
   public readonly pullRequest: GitPullRequestRow;

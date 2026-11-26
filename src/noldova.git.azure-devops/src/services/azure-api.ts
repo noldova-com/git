@@ -52,10 +52,6 @@ export class AzureApi {
       signal, true);
   }
 
-  /**
-   * An image as SVG markup, judged by its text rather than the type Azure DevOps names, or null, telling `dropped` why, when Azure DevOps refuses it or
-   * answers more than {@link Resources.maximumIconBytes} or text that isn't SVG; signed out, it fails as a read does.
-   */
   public async getSvgAsync(url: string, token: AzureCredential, signal: AbortSignal, dropped: (reason: string) => void): Promise<string | null> {
     const response: Response = await this.fetchAsync(url, token, {}, Resources.svgAccept, signal);
     if (Resources.signedOutStatuses.includes(response.status)) {
@@ -136,10 +132,6 @@ export class AzureApi {
     return new MethodFailureException(new Failure(code, message));
   }
 
-  /**
-   * Reads an answer, failing as Unavailable when it can't: the message names the refused field's path, such as `$.changeEntries.3.item.path`, which holds
-   * only the names the module reads and item numbers, never a value from the answer; an answer that isn't JSON, or isn't the object read, names none.
-   */
   public static read<T>(read: () => T): T {
     try {
       return read();
@@ -157,10 +149,6 @@ export class AzureApi {
     }
   }
 
-  /**
-   * Reads the answer's text up to `maximum` bytes, or answers `null` and stops reading once it passes them, rather than reading or parsing part of it, so no
-   * answer can fill the runtime's memory; a failure while reading is thrown as it is.
-   */
   public static async readCappedAsync(response: Response, maximum: number): Promise<string | null> {
     const chunks: Uint8Array[] = [];
     let size: number = 0;

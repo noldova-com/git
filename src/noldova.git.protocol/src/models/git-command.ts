@@ -11,7 +11,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** One git command a write ran: its id, when it started, its command line, how it ended and how long it took. */
 export class GitCommand {
   private static readonly FIELDS: readonly string[] = [Resources.idField, Resources.atField, Resources.lineField, Resources.exitCodeField, Resources.millisecondsField];
 

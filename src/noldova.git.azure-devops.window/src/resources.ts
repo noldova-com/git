@@ -41,11 +41,8 @@ export class Resources {
   public static readonly updatesCapped: string = "Showing the latest 100.";
   public static readonly moreMark: string = "+";
   public static readonly conflictsTab: string = "Conflicts";
-  /** The end of a pull request's page address, which a commit's page address takes the place of. */
   public static readonly pullRequestPagePattern: RegExp = /\/pullrequest\/\d+$/;
-  /** The slash Azure DevOps puts before a file's path from the repository's root, which Git's paths leave out. */
   public static readonly leadingSlashPattern: RegExp = /^\//;
-  /** A pull request's page on Azure DevOps, capturing its organization, project and repository as the address writes them. */
   public static readonly pullRequestPageRepositoryPattern: RegExp = /^https:\/\/dev\.azure\.com\/([^/]+)\/([^/]+)\/_git\/([^/]+)\/pullrequest\/\d+$/;
   public static readonly descriptionTitle: string = "Description";
   public static readonly noDescription: string = "No description.";
@@ -109,7 +106,6 @@ export class Resources {
   public static readonly organizationUnread: string = "Type the organization's name, or paste its address on dev.azure.com or visualstudio.com.";
   public static readonly tokenNote: string = "Make the token in this organization with these scopes. It's kept in this computer's secrets.";
   public static readonly tokenScopesLabel: string = "Token scopes";
-  /** The scopes a token needs for what the module reads and writes: pull requests and their votes and comments, work items, people's pictures and checks' builds. */
   public static readonly tokenScopes: readonly string[] = ["Code (Read & write)", "Work Items (Read & write)", "Graph (Read)", "Build (Read)"];
   public static readonly makeToken: string = "Make a token on Azure DevOps";
   public static readonly openIcon: IconName = "open_in_new";
@@ -127,7 +123,6 @@ export class Resources {
   public static readonly visualStudioSshHost: string = "vs-ssh.visualstudio.com";
   public static readonly visualStudioSuffix: string = ".visualstudio.com";
   public static readonly remotePathSeparator: string = "/";
-  /** The characters `encodeURIComponent` leaves that a hosting path doesn't take, which a remote's path escapes too. */
   public static readonly unescapedPattern: RegExp = /[!'()*~]/gu;
   public static readonly hostRowSignedOut: string = "Sign in in Settings → Accounts and hosts to see this branch's pull request and its checks.";
   public static readonly readingPullRequest: string = "Reading this branch's pull request on Azure DevOps.";
@@ -156,7 +151,6 @@ export class Resources {
   public static readonly mergeTypeTitle: string = "Merge type";
   public static readonly mergeTypeChoices: readonly MergeTypeChoice[] = [new MergeTypeChoice("noFastForward", "Merge, no fast-forward"),
     new MergeTypeChoice("squash", "Squash commit"), new MergeTypeChoice("rebase", "Rebase and fast-forward"), new MergeTypeChoice("rebaseMerge", "Semi-linear merge")];
-  /** The merge type that fast-forwards, so it writes no merge commit and takes no message. */
   public static readonly fastForwardMergeType: string = "rebase";
   public static readonly squashMergeType: string = "squash";
   public static readonly notAllowedByPolicy: string = "Not allowed by the branch policy";
@@ -250,7 +244,6 @@ export class Resources {
     [ReferenceState.ClosedDone]: "block",
     [ReferenceState.ClosedNotPlanned]: "block"
   };
-  /** The pull request page's state icons: the board's dot for an active pull request, the rows' own icons otherwise. */
   public static readonly pullRequestStateIcons: Readonly<Record<ReferenceState, IconName>> = { ...Resources.stateIcons, [ReferenceState.Open]: "radio_button_checked" };
   public static readonly stateColors: Readonly<Record<ReferenceState, string>> = {
     [ReferenceState.Open]: "var(--nol-status-ok)",
@@ -419,7 +412,6 @@ export class Resources {
     return Resources.workItemIcons.get(icon) ?? Resources.workItemFallbackIcon;
   }
 
-  /** A work item type's icon as Azure DevOps draws it, as a data address an image shows, or null when it gave none and the type's symbol stands in. */
   public static workItemImageOf(type: HostWorkItemType): string | null {
     return Object.isNull(type.image) ? null : Resources.svgImagePrefix + encodeURIComponent(type.image);
   }
@@ -435,12 +427,10 @@ export class Resources {
     return `${organization}/${repository}/${number}`;
   }
 
-  /** A commit's page in the pull request's repository on Azure DevOps, from the pull request's page. */
   public static formatCommitPage(pullRequestUrl: string, commitId: string): string {
     return pullRequestUrl.replace(Resources.pullRequestPagePattern, `/commit/${commitId}`);
   }
 
-  /** A comment thread on the pull request's page on Azure DevOps, in its Files view at the thread's file. */
   public static formatThreadPage(pullRequestUrl: string, path: string, threadId: number): string {
     return `${pullRequestUrl}?_a=files&path=${encodeURIComponent(path)}&discussionId=${threadId}`;
   }
@@ -461,7 +451,6 @@ export class Resources {
     return login.slice(login.lastIndexOf(Resources.groupSeparator) + 1);
   }
 
-  /** A person's name as the window shows it: the name they show on Azure DevOps, or without one, a group's "[Project]\Name" as its name alone and a login as it is. */
   public static formatPersonName(person: HostPerson): string {
     return person.name ?? Resources.formatAvatarName(person.login);
   }
@@ -474,19 +463,16 @@ export class Resources {
     return `opened ${date}`;
   }
 
-  /** The auto-complete line: the merge type it completes with, as the Complete panel names it, or that it completes by itself for a type it doesn't know. */
   public static formatAutoComplete(mergeType: string | null): string {
     const label: string | undefined = Resources.mergeTypeChoices.find(t => t.type === mergeType)?.label;
     return Object.isUndefined(label) ? Resources.autoComplete : `Auto-complete set: ${label.toLowerCase()} when policies pass`;
   }
 
-  /** What a policy's row ends with: Required or Optional, and "running" after it while the policy runs. */
   public static formatPolicyRequirement(isBlocking: boolean, isRunning: boolean): string {
     const requirement: string = isBlocking ? Resources.required : Resources.optional;
     return isRunning ? `${requirement} · ${Resources.running}` : requirement;
   }
 
-  /** A build's number as its row shows it, such as "#20261121.4". */
   public static formatBuildNumber(number: string): string {
     return `#${number}`;
   }
@@ -495,14 +481,12 @@ export class Resources {
     return `${passed} of ${required} required passed · branch ${branch}`;
   }
 
-  /** A reviewer's line under their name: the vote in Azure DevOps' words, or, without one, that none came yet, and whether it's optional. */
   public static formatReviewerNote(vote: number, label: string, isRequired: boolean): string {
     if (vote !== 0)
       return label;
     return isRequired ? Resources.noVoteYet : `${Resources.noVoteYet} · ${Resources.optional.toLowerCase()}`;
   }
 
-  /** Whether a reviewer's login names a group, as "[Project]\Name" does. */
   public static isGroupLogin(login: string): boolean {
     return login.startsWith(Resources.groupStart) && login.includes(Resources.groupEnd + Resources.groupSeparator);
   }
@@ -559,7 +543,6 @@ export class Resources {
     return `${Resources.formatOrganizationAddress(organization)}/_workitems/edit/${id}`;
   }
 
-  /** A pull request page's Files tab. */
   public static formatPullRequestFilesAddress(page: string): string {
     return `${page}?_a=files`;
   }
@@ -572,7 +555,6 @@ export class Resources {
     return `${Resources.formatOrganizationAddress(organization)}/${encodeURIComponent(project)}`;
   }
 
-  /** Azure DevOps' page that opens a pull request of `source` into `target`, branches without their `refs/heads/`. */
   public static formatNewPullRequestAddress(organization: string, project: string, repository: string, source: string, target: string): string {
     return `${Resources.formatProjectAddress(organization, project)}/_git/${encodeURIComponent(repository)}/pullrequestcreate`
       + `?sourceRef=${encodeURIComponent(source)}&targetRef=${encodeURIComponent(target)}`;
@@ -697,7 +679,6 @@ export class Resources {
   public static readonly remoteWebRepositoryPattern: RegExp = /^[^/]+\/[^/]+\/_git\/([^/]+)$/;
   public static readonly remoteSshRepositoryPattern: RegExp = /^v3\/[^/]+\/[^/]+\/([^/]+)$/;
   public static readonly remoteCollectionRepositoryPattern: RegExp = /^(?:DefaultCollection\/)?[^/]+\/_git\/([^/]+)$/;
-  /** A pull request page's address as the runtime writes it: its organization, project and repository. */
   public static readonly pullRequestAddressPattern: RegExp = /^https:\/\/dev\.azure\.com\/([^/]+)\/([^/]+)\/_git\/([^/]+)\/pullrequest\/\d+$/;
   public static readonly facetNames: Readonly<Record<WorkItemFacet, string>> = {
     [WorkItemFacet.Type]: "Type", [WorkItemFacet.State]: "State"
@@ -714,7 +695,6 @@ export class Resources {
   public static readonly linkedHistoryCap: string = "It covers the repository's last 1,000 commits.";
   public static readonly linkedCommitDateFormat: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
 
-  /** A commit's age as the design writes it, `12 min`, `2 h` or `3 d`, at least a minute; `null` past 30 days, when its date shows instead. */
   public static formatCommitAge(milliseconds: number): string | null {
     const minutes: number = Math.max(1, Math.floor(milliseconds / 60_000));
     if (minutes < 60)
@@ -794,7 +774,6 @@ export class Resources {
     return `${id} ${title}`;
   }
 
-  /** A filter chip's text, such as `Type: all` or `State: Active`. */
   public static formatFacetFilter(facet: WorkItemFacet, shown: string | null): string {
     return `${Resources.facetNames[facet]}: ${shown ?? Resources.facetAll[facet]}`;
   }
@@ -815,7 +794,6 @@ export class Resources {
     return Resources.formatCount(count, "child", "children");
   }
 
-  /** The work item's linked commits, as the board counts them, one to nine in words: "five commits on this branch". */
   public static formatBranchCommits(count: number): string {
     return `${GitCounts.format(count)} ${count === 1 ? "commit" : "commits"} on this branch`;
   }
@@ -856,24 +834,18 @@ export class Resources {
   }
 
   public static readonly boardsLabel: string = "The project's boards";
-  /** The command argument naming the project a command opens, as `organization/project`. */
   public static readonly instanceArgument: string = "instance";
   public static readonly projectInstanceExpected: string = "The command opens an Azure DevOps project named as organization/project.";
 
-  /** Git's group in the right dock, and a place after the Git view's tab in it. */
   public static readonly viewGroup: number = 0;
   public static readonly workItemViewLabel: string = "Work item";
-  /** The view beside Git that shows the work item chosen in the document in front, and its one instance. */
   public static readonly workItemView: string = "git-azure-devops.workItemDetail";
   public static readonly workItemViewInstance: string = "selected";
   public static readonly workItemViewIcon: IconName = "assignment";
-  /** A place in Git's group of the right dock. */
   public static readonly workItemViewOrder: number = 40;
   public static readonly noWorkItemChosen: string = "Select a work item to see it here.";
-  /** The view beside Git that shows the pull request whose document is in front, and its one instance. */
   public static readonly pullRequestView: string = "git-azure-devops.pullRequestDetail";
   public static readonly pullRequestViewInstance: string = "selected";
-  /** A place in Git's group of the right dock after the Work item tab. */
   public static readonly pullRequestViewOrder: number = 41;
   public static readonly noPullRequestShown: string = "Open a pull request to see its details here.";
   public static readonly chipItemsBatchSize: number = 200;

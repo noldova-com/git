@@ -14,13 +14,11 @@ import type { GitAgentRow } from "../../models/git-agent-row.ts";
 import { GitAgents } from "../../services/git-agents.ts";
 import { Resources } from "../../../resources.ts";
 
-/** A run's row with the provider that listed it, so a click goes back to that provider. */
 interface IListedRun {
   readonly provider: IGitAgents;
   readonly row: GitAgentRow;
 }
 
-/** The repository panel's Agents section: the agent runs working in the repository, from every module that runs agents. */
 @Component({
   selector: "nol-git-agents",
   templateUrl: "./git-agents.component.html",
@@ -54,7 +52,6 @@ export class GitAgentsComponent {
     this.attempt(() => run.provider.open(this.folder(), run.row), undefined);
   }
 
-  /** Runs a provider's member, reporting what it throws and answering the fallback instead. */
   private attempt<T>(run: () => T, fallback: T): T {
     try {
       return run();

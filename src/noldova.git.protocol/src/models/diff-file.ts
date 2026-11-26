@@ -42,7 +42,6 @@ export class DiffFile {
   public readonly submodule: SubmoduleChange | null;
   public readonly hunks: readonly DiffHunk[];
   public readonly truncated: boolean;
-  /** How alike a renamed or copied file is to the file it came from, in percent, as Git scores it; `null` for any other change. */
   public readonly similarity: number | null;
 
   public constructor(

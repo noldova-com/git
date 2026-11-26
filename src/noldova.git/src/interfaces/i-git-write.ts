@@ -13,11 +13,8 @@ import type { IWriteCheckpoint } from "./i-write-checkpoint.ts";
 import type { IWriteCall } from "./i-write-call.ts";
 
 export interface IGitWrite {
-  /** The write's method name, which its journal entry names. */
   readonly method: string;
-  /** How the journal undoes the write. */
   readonly undo: UndoMode;
-  /** The checkpoint the write took before it ran, which the journal keeps for its undo; none for most writes. */
   readonly checkpoint?: IWriteCheckpoint | null;
 
   refuse(status: GitStatus): void;

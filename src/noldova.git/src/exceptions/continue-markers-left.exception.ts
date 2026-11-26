@@ -12,7 +12,6 @@ import type { IUntrustedText } from "../interfaces/i-untrusted-text.ts";
 import { Resources } from "../resources.ts";
 import { GitFailureException } from "./git-failure.exception.ts";
 
-/** A continue found conflict marker lines left in a file, staged or not; the output names each file and line. */
 export class ContinueMarkersLeftException extends GitFailureException {
   public override readonly code: FailureCode = FailureCode.Git;
   public override readonly gitCode: GitCode | null = GitCode.Conflict;

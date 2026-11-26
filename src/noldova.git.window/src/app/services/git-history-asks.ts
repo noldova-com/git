@@ -11,7 +11,6 @@ import "@noldova/context.core";
 
 import { GitHistoryAsk } from "../models/git-history-ask.ts";
 
-/** The commit another page last asked a history to select, kept until that repository's history takes it. */
 export class GitHistoryAsks {
   private static readonly asked: WritableSignal<GitHistoryAsk | null> = signal<GitHistoryAsk | null>(null);
 
@@ -19,13 +18,11 @@ export class GitHistoryAsks {
     GitHistoryAsks.asked.set(new GitHistoryAsk(folder, commitId));
   }
 
-  /** The commit asked of a folder's history, or null when none waits for it. */
   public static askedOf(folder: string): GitHistoryAsk | null {
     const asked: GitHistoryAsk | null = GitHistoryAsks.asked();
     return !Object.isNull(asked) && asked.folder === folder ? asked : null;
   }
 
-  /** Marks an ask as taken, unless a newer one replaced it. */
   public static take(ask: GitHistoryAsk): void {
     if (GitHistoryAsks.asked() === ask)
       GitHistoryAsks.asked.set(null);

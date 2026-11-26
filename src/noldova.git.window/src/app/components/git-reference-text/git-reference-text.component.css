@@ -7,13 +7,10 @@
   text-decoration: underline;
 }
 
-/* A reference for its row reads as the row's text: the row decides how it looks. */
 .reference.linked {
   color: inherit;
 }
 
-/* On a line that cuts with an ellipsis, such as a history row's message, the parts shrink in a row: a chip, and what follows it, first, to its marks and its
-   text's ellipsis, then the text before it, each cut with its own ellipsis, so a chip after text shows what fits rather than going past the line's end. */
 :host(.line) {
   display: flex;
   align-items: baseline;
@@ -33,7 +30,6 @@
   flex-shrink: 1000;
 }
 
-/* A chip's own content is as wide as its whole text, so it would never shrink: it shrinks to its mark, its icon and its text's ellipsis, then the text before it. */
 :host(.line) > a[nol-link-reference-chip] {
   min-width: calc(var(--nol-reference-mark) + var(--nol-icon) + 2 * var(--nol-space-1) + 1em);
 }

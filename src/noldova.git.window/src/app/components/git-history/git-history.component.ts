@@ -47,13 +47,10 @@ import { GitBranchDropComponent } from "../git-branch-drop/git-branch-drop.compo
 import { GitReferenceTextComponent } from "../git-reference-text/git-reference-text.component.ts";
 import { GitSwitchMergeDialogComponent } from "../git-switch-merge-dialog/git-switch-merge-dialog.component.ts";
 
-/** A repository's history as a document: its toolbar, and every branch's commits as rows of labels, graph, message, author, age and id. */
-/** A branch dropped on another: the drop, what a merge of the two would do, whether that is still read, and where the dialog shows. */
 interface DroppedBranch {
   readonly drop: GitBranchDrop;
   readonly prediction: GitPrediction | null;
   readonly checking: boolean;
-  /** The host's page that opens a pull request of the dropped branch into the target, or `null` when the current branch's remote has none for them. */
   readonly request: string | null;
   readonly left: number;
   readonly top: number;
@@ -83,17 +80,13 @@ export class GitHistoryComponent {
   private readonly row: Signal<ElementRef<HTMLElement>> = viewChild.required<ElementRef<HTMLElement>>("row");
   private readonly actions: Signal<ElementRef<HTMLElement>> = viewChild.required<ElementRef<HTMLElement>>("actions");
   private readonly field: Signal<ElementRef<HTMLElement>> = viewChild.required<ElementRef<HTMLElement>>("field");
-  /** How many of the toolbars, from the start, fit the row; the rest are in its More menu. */
   private readonly fitting: WritableSignal<number> = signal(Resources.historyToolbars.length);
   private readonly injector: Injector = inject(Injector);
   private jumped: GitBranchView | null = null;
-  /** The branch chip being dragged, with its branch, its row's labels and commit; `null` while none is. */
   private dragged: GitChipDrag | null = null;
   private static lists = 0;
   private reading = 0;
-  /** The list's number among the History lists opened, so its rows' ids are unique in the window. */
   protected readonly list: number = ++GitHistoryComponent.lists;
-  /** The selected row's id, the list's active descendant, so a screen reader follows the selection; `null` while no row is selected. */
   protected readonly activeOption: Signal<string | null> = computed(() => {
     const at: number = this.rows().findIndex(t => t.id === this.selectedId());
     return at < 0 ? null : Resources.formatHistoryOptionId(this.list, at);
@@ -103,16 +96,12 @@ export class GitHistoryComponent {
   protected readonly resources: typeof Resources = Resources;
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly actionFailure: WritableSignal<string | null> = signal<string | null>(null);
-  /** That a commit another page asked for isn't among the loaded commits, or `null`. */
   protected readonly notLoaded: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly busy: WritableSignal<boolean> = signal(false);
   protected readonly selectedId: WritableSignal<string | null> = signal<string | null>(null);
-  /** The branch dropped on another, with its dialog's prediction and place, or `null` while no dialog shows. */
   protected readonly dropped: WritableSignal<DroppedBranch | null> = signal<DroppedBranch | null>(null);
   protected readonly filter: WritableSignal<string> = signal("");
-  /** Whether the toolbar row is wide enough for its buttons' labels. */
   protected readonly isWide: WritableSignal<boolean> = signal(true);
-  /** How many labels a row shows before its `+N` label: one in a narrow history, so that one stays readable. */
   protected readonly chipLimit: WritableSignal<number> = signal(Resources.rowChipLimit);
   protected readonly shownToolbars: Signal<typeof Resources.historyToolbars> = computed(() => Resources.historyToolbars.slice(0, this.fitting()));
   protected readonly hiddenToolbars: Signal<typeof Resources.historyToolbars> = computed(() => Resources.historyToolbars.slice(this.fitting()));
@@ -122,14 +111,11 @@ export class GitHistoryComponent {
   protected readonly lanes: Signal<number> = computed(() => Math.min(Resources.graphMaximumLanes, Math.max(1, ...this.rows().map(t => t.graph.width))));
   protected readonly graphPixels: Signal<number> = computed(() =>
     Math.max(Resources.graphMinimumPixels, Resources.graphLaneOffsetPixels * 2 + (this.lanes() - 1) * Resources.graphLanePixels));
-  /** The graph column's width, which the stylesheet's column templates read, so they can drop columns as the history narrows. */
   protected readonly graphWidth: Signal<string> = computed(() => `${this.graphPixels() / 16}rem`);
   protected readonly isLoading: Signal<boolean> = computed(() => !this.loaded() && Object.isNull(this.failure()));
   protected readonly ahead: Signal<number> = computed(() => this.status()?.upstream?.ahead ?? 0);
-  /** The status a pull or push is based on, or null while there is none or a write runs. */
   protected readonly writable: Signal<GitStatus | null> = computed(() => this.busy() ? null : this.status());
 
-  /** The repository's folder; the document's instance. */
   public readonly instance: InputSignal<string> = input.required<string>();
 
   public constructor() {
@@ -193,12 +179,10 @@ export class GitHistoryComponent {
 
   protected readonly trackRow = (_index: number, row: GitHistoryRow): string => row.id;
 
-  /** The row's author picture as a data address, or null to show their initials. */
   protected imageOf(row: GitHistoryRow): string | null {
     return GitAvatars.imageOf(this.instance(), row.graph.shown.email, row.graph.commit.id);
   }
 
-  /** Selects the clicked row, and brings the Commit view to the front of its group for its commit, or the Git view for the changes row. */
   protected select(row: GitHistoryRow): void {
     this.notLoaded.set(null);
     GitViewing.branch.set(null);
@@ -223,7 +207,6 @@ export class GitHistoryComponent {
     this.keepInView(rows.indexOf(next));
   }
 
-  /** Scrolls the list just enough to show a row the keyboard moved to, and reads the next page once it nears the end, as scrolling there does. */
   private keepInView(index: number): void {
     const viewport: CdkVirtualScrollViewport = this.viewport();
     const shown: number = Math.max(1, Math.floor(viewport.getViewportSize() / Resources.graphRowPixels));
@@ -244,10 +227,6 @@ export class GitHistoryComponent {
     return action === GitHistoryAction.Push ? Resources.formatPush(this.ahead()) : Resources.historyActionLabels[action];
   }
 
-  /**
-   * Whether the action can run now: a terminal always, undo commit, fetch, pull, push and branch while the status is read and no write runs, and stash
-   * then too while the folder has changes.
-   */
   protected canRun(action: GitHistoryAction): boolean {
     if (action === GitHistoryAction.Terminal)
       return true;
@@ -255,11 +234,6 @@ export class GitHistoryComponent {
     return !Object.isNull(status) && (action !== GitHistoryAction.Stash || status.entries.length > 0);
   }
 
-  /**
-   * Undoes the last commit, keeping its changes staged, runs a fetch, a pull or a push, stashes the changes with their untracked files, asks for a new branch's name and creates it at the current
-   * commit, or opens a terminal in the folder through the terminal module's command; the toolbar's other buttons are unavailable, so their clicks never
-   * reach here.
-   */
   protected run(action: GitHistoryAction): void {
     if (action === GitHistoryAction.Terminal) {
       this.context.runCommandAsync(Resources.newTerminalCommand, { [Resources.terminalFolderArgument]: this.instance() })
@@ -281,7 +255,6 @@ export class GitHistoryComponent {
     });
   }
 
-  /** The `+N` label's tooltip: the whole names of the labels the row leaves out. */
   protected moreTitle(chips: readonly GitRefChip[]): string {
     return Resources.formatMoreChipsTitle(chips.map(t => t.title));
   }
@@ -290,13 +263,11 @@ export class GitHistoryComponent {
     this.dragged = Object.isNull(chip.branch) ? null : new GitChipDrag(chip, row.chips, chip.branch, row.id);
   }
 
-  /** Takes a dragged branch over another branch's chip. */
   protected overBranch(event: DragEvent, chip: GitRefChip): void {
     if (!Object.isNull(this.dragged) && !Object.isNull(chip.branch) && chip.branch !== this.dragged.branch)
       event.preventDefault();
   }
 
-  /** Opens the drop dialog where a branch was dropped on another, and reads what a merge of the two would do when one is current. */
   protected dropBranch(event: DragEvent, chip: GitRefChip, row: GitHistoryRow): void {
     const dragged = this.dragged;
     this.dragged = null;
@@ -321,10 +292,6 @@ export class GitHistoryComponent {
     void this.writeAsync((folder, basedOn) => this.client.mergeAsync(folder, drop.sourceId, basedOn));
   }
 
-  /**
-   * Asks before switching to the drop's target and merging the dropped branch into it, naming both steps; with local changes it switches nothing and says
-   * so, since the switch would carry them along.
-   */
   protected switchMergeDropped(drop: GitBranchDrop): void {
     this.dropped.set(null);
     const status: GitStatus | null = this.writable();
@@ -345,13 +312,11 @@ export class GitHistoryComponent {
     });
   }
 
-  /** Opens the host's page that opens a pull request of the dropped branch into the target, in the browser. */
   protected requestDropped(url: string): void {
     this.dropped.set(null);
     void this.context.openLinkAsync(url, { place: LinkPlace.System }).catch((error: unknown) => this.errors.handleError(error));
   }
 
-  /** Opens the rebase screen for the current branch onto the target. */
   protected rebaseDropped(drop: GitBranchDrop): void {
     const folder: string = this.instance();
     this.dropped.set(null);
@@ -373,7 +338,6 @@ export class GitHistoryComponent {
     return `M${x1} ${y1}C${x1} ${middle} ${x2} ${middle} ${x2} ${y2}`;
   }
 
-  /** Selects a row, and shows its commit in the Commit view, or none for the changes row. */
   private show(id: string): void {
     const commit: GitGraphCommit | undefined = this.commits().find(t => t.commit.id === id);
     this.selectedId.set(id);
@@ -383,7 +347,6 @@ export class GitHistoryComponent {
       GitViewing.show(new GitCommitView(this.instance(), commit));
   }
 
-  /** Scrolls to and selects the newest commit of the branch the side panel picked, reading further pages until it shows or the history ends. */
   private jump(view: GitBranchView | null, commits: readonly GitGraphCommit[] | null): void {
     if (Object.isNull(view) || view === this.jumped || Object.isNull(commits))
       return;
@@ -399,7 +362,6 @@ export class GitHistoryComponent {
     this.showCentred(commit.commit.id);
   }
 
-  /** Selects the commit another page asked for once the history has read, or says it isn't among the loaded commits. */
   private reveal(ask: GitHistoryAsk | null, commits: readonly GitGraphCommit[] | null): void {
     if (Object.isNull(ask) || Object.isNull(commits))
       return;
@@ -413,16 +375,11 @@ export class GitHistoryComponent {
     this.showCentred(ask.commitId);
   }
 
-  /** Selects a commit and scrolls its row to the middle of the list. */
   private showCentred(id: string): void {
     this.show(id);
     this.centre(id, Resources.centringRenders);
   }
 
-  /**
-   * Scrolls a row to the middle of the list once the list has grown to hold every row: the list grows in a later render than the one that gave it the
-   * rows, after a microtask, so a list not yet grown tries again after the next microtask's render, a few times; a hidden list never grows, so it stops.
-   */
   private centre(id: string, renders: number): void {
     afterNextRender(() => {
       const viewport: CdkVirtualScrollViewport = this.viewport();
@@ -517,10 +474,6 @@ export class GitHistoryComponent {
     }
   }
 
-  /**
-   * Shows every toolbar, with labels while the row is wide enough, then, once drawn, keeps those that end before the room the filter needs at its
-   * narrowest, moving the rest into the More menu, whose button takes the room it needs.
-   */
   private fit(row: HTMLElement): void {
     const rem: number = parseFloat(getComputedStyle(row).fontSize);
     this.isWide.set(row.getBoundingClientRect().width >= Resources.historyLabelsRem * rem);
@@ -535,7 +488,6 @@ export class GitHistoryComponent {
     }, { injector: this.injector });
   }
 
-  /** Reads what merging the drop's other commit into the current branch would do, for the dialog still showing that drop; a Git failure leaves it out. */
   private async predictDropAsync(drop: GitBranchDrop, id: string): Promise<void> {
     let prediction: GitPrediction | null = null;
     try {

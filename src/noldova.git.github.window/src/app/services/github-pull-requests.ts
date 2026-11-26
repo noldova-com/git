@@ -23,7 +23,6 @@ export class GitHubPullRequests implements IGitPullRequests {
   private readonly reads: Map<string, number> = new Map();
   private readonly reviews: Map<string, WritableSignal<GitPullRequestList | null>> = new Map();
   private readonly reviewReads: Map<string, number> = new Map();
-  /** Each remote and commit's review comments, kept once read; a failed read is dropped so the next ask reads again. */
   private readonly comments: Map<string, WritableSignal<GitCommitComments | null>> = new Map();
   private readonly context: IWindowPartContext;
 
@@ -76,7 +75,6 @@ export class GitHubPullRequests implements IGitPullRequests {
     return GitHubPullRequests.listIn(this.lists, key);
   }
 
-  /** Reads the repository's review requests; a read that fails keeps the rows the last one gave, since the runtime holds a failed search a minute. */
   private async readReviewsAsync(query: RepositoryQuery): Promise<void> {
     const key: string = GitHubPullRequests.keyOf(query);
     const list = GitHubPullRequests.listIn(this.reviews, key);
@@ -98,7 +96,6 @@ export class GitHubPullRequests implements IGitPullRequests {
     }
   }
 
-  /** Reads a commit's review comments; a failed read is logged and forgotten, so the next time the commit's detail asks it reads again. */
   private async readCommentsAsync(query: CommitQuery, key: string, answer: WritableSignal<GitCommitComments | null>): Promise<void> {
     try {
       const found = HostCommitComments.fromJson(await this.context.requestAsync(GitHubNames.readCommitCommentsMethod, query.toJson()));

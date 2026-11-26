@@ -15,11 +15,6 @@ import { type HostWorkItem, HostWorkItemList, WorkItemScope, WorkItemsQuery } fr
 import { Resources } from "../../resources.ts";
 import { WaitingItems } from "../models/waiting-items.ts";
 
-/**
- * The work items a page's commit subjects name, for their chips: the ones a render asks for are read together, after it, through
- * `git-azure-devops.readWorkItems` by id, at most 200 ids a request and one request at a time, each item once for the page's life; `null` until it
- * comes, and for good when Azure DevOps doesn't show it, nobody is signed in, or the read fails, which is logged.
- */
 export class AzureDevOpsChipItems {
   private readonly context: IWindowPartContext;
   private readonly items: Map<string, WritableSignal<HostWorkItem | null>> = new Map();

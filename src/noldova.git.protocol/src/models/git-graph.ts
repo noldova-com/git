@@ -12,7 +12,6 @@ import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 import { GitGraphCommit } from "./git-graph-commit.ts";
 
-/** The newest commits of every branch, remote branch and tag, newest first with no parent before its children, and whether older ones were left out. */
 export class GitGraph {
   private static readonly FIELDS: readonly string[] = [Resources.commitsField, Resources.truncatedField];
 

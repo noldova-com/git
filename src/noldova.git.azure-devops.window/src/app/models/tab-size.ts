@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** How many items a pull request's tab read, and whether it has more than it read. */
 export class TabSize {
   public readonly size: number;
   public readonly hasMore: boolean;

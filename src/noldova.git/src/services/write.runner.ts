@@ -64,7 +64,6 @@ export class WriteRunner {
     });
   }
 
-  /** Records the write in the journal; a write that succeeded but whose refs can't be read again is left out, so it can't be undone. */
   private async recordAsync(folders: RepositoryFolders, write: IGitWrite, before: RefSnapshot, signal?: AbortSignal): Promise<void> {
     let after: RefSnapshot;
     try {

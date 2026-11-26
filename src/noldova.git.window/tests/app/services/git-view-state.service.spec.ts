@@ -27,7 +27,6 @@ import { GitViewStateService } from "../../../src/app/services/git-view-state.se
 import { FixtureLine, GitFixtures } from "../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../fixtures/git-held-requests.fixture.ts";
 
-/** The started view state, with the folder the views show. */
 class StartedState {
   public readonly state: GitViewStateService;
   public readonly chosen: WritableSignal<string | null>;

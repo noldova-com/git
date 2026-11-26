@@ -9,7 +9,6 @@
 export class Wait {
   private static readonly POLL_INTERVAL: number = 1;
 
-  /** Checks again until the check passes; a check that never does fails at the run's one limit, as no wait sets a limit of its own. */
   public static async until<T>(check: () => T | Promise<T>): Promise<T> {
     for (;;) {
       try {

@@ -11,7 +11,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** A commit whose message names references, with their numbers in the order the message first names them. */
 export class GitMessageReference {
   private static readonly FIELDS: readonly string[] = [Resources.idField, Resources.numbersField];
 

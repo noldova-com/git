@@ -12,7 +12,6 @@ import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 import { HostThread } from "./host-thread.ts";
 
-/** A pull request's comment threads, and whether the host has older comments than the threads hold. */
 export class HostPullRequestThreads {
   private static readonly FIELDS: readonly string[] = [Resources.threadsField, Resources.hasMoreField];
 

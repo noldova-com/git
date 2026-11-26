@@ -21,9 +21,7 @@ export class GitBranches {
   public readonly branches: readonly string[];
   public readonly remotes: readonly string[];
   public readonly remoteBranches: readonly string[];
-  /** How far each local branch with an upstream is from it, for the branches that are ahead or behind. */
   public readonly tracks: readonly GitBranchTrack[];
-  /** The commit each local branch points at. */
   public readonly tips: readonly GitBranchTip[];
 
   public constructor(current: string | null, branches: readonly string[], remotes: readonly string[], remoteBranches: readonly string[],

@@ -137,7 +137,6 @@ button.row:hover {
   font-variation-settings: "FILL" 1;
 }
 
-/* The box takes in the vote mark that hangs past the avatar's corner, and its negative margins keep the row's layout as the avatar alone. */
 .avatar {
   position: relative;
   display: inline-flex;
@@ -209,12 +208,10 @@ button.row:hover {
   text-overflow: ellipsis;
 }
 
-/* The Complete panel follows the lists, a border's width under them. */
 .complete-panel {
   border-top: var(--nol-border-width) solid var(--nol-border);
 }
 
-/* Azure DevOps' own drawing of a type's icon, which fills its square where a symbol leaves a margin, so it is drawn 0.875em inside the symbol's 1em. */
 .type-image {
   width: 0.875em;
   height: 0.875em;

@@ -13,18 +13,12 @@ import { Resources } from "../../resources.ts";
 import { AzureDevOpsReferenceLinks } from "../services/azure-devops-reference-links.ts";
 import { SubjectPart } from "./subject-part.ts";
 
-/**
- * The commits of a repository's recent history that name a work item, by the repository's link rules: in a repository on Azure DevOps, `#N` and
- * `AB#N` in a subject, and `AB#N` anywhere in the message, name its organization's work item N; elsewhere nothing does.
- */
 export class LinkedHistory {
   public static readonly none: LinkedHistory = new LinkedHistory(new Map(), null, false, false);
 
   private readonly byItem: ReadonlyMap<string, readonly GitCommit[]>;
   private readonly home: string | null;
-  /** Whether a repository on Azure DevOps was read, so the page has a history to show. */
   public readonly isRead: boolean;
-  /** Whether the history goes on past the commits read. */
   public readonly isTruncated: boolean;
 
   private constructor(byItem: ReadonlyMap<string, readonly GitCommit[]>, home: string | null, isRead: boolean, isTruncated: boolean) {
@@ -34,12 +28,10 @@ export class LinkedHistory {
     this.isTruncated = isTruncated;
   }
 
-  /** The commits that name a work item, newest first, or none. */
   public commitsOf(organization: string, id: number): readonly GitCommit[] {
     return this.byItem.get(Resources.formatWorkItemKey(organization, id)) ?? [];
   }
 
-  /** A subject cut into its plain text and the work items it names by the repository's link rules, in order; all plain outside Azure DevOps. */
   public partsOf(subject: string): readonly SubjectPart[] {
     const parts: SubjectPart[] = [];
     let end: number = 0;
@@ -55,10 +47,6 @@ export class LinkedHistory {
     return parts;
   }
 
-  /**
-   * Matches each commit's subject once against the link rules of the repository's organization, adding the `AB#N` its whole message names, as
-   * `git.messageReferences` found them, or none for a repository not on Azure DevOps.
-   */
   public static of(commits: readonly GitGraphCommit[], messages: readonly GitMessageReference[], home: string | null, isTruncated: boolean): LinkedHistory {
     if (Object.isNull(home))
       return LinkedHistory.none;

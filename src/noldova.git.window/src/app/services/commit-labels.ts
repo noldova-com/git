@@ -8,12 +8,10 @@
 
 import { Resources } from "../../resources.ts";
 
-/** The short texts a commit row shows: its age, its author's initials and the avatar color kept for an author's email. */
 export class CommitLabels {
   private static readonly MINUTE: number = 60_000;
   private static readonly HOUR: number = 60 * CommitLabels.MINUTE;
 
-  /** "now" under a minute, then minutes and hours, "Yesterday", the month and day this year, and the full date before it. */
   public static ageOf(iso: string, now: Date): string {
     const date: Date = new Date(iso);
     const time: number = date.getTime();
@@ -35,13 +33,11 @@ export class CommitLabels {
       : date.toLocaleDateString(Resources.dateLocale, { year: "numeric", month: "short", day: "numeric" });
   }
 
-  /** The first letters of the first and last words of a name, or its first letter alone. */
   public static initialsOf(name: string): string {
     const letters: string[] = name.split(/[\s._-]+/u).filter(t => t.length > 0).map(t => [...t].slice(0, 1).join(""));
     return [...letters.slice(0, 1), ...letters.slice(1).slice(-1)].join("").toLocaleUpperCase(Resources.dateLocale);
   }
 
-  /** One of the avatar colors, the same for the same email every time. */
   public static avatarOf(email: string): string {
     let hash = 0;
     for (const point of Array.from(email.toLowerCase(), t => t.codePointAt(0)))

@@ -10,7 +10,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** The answer of `git.mergedBranches`: the remote branch a remote's HEAD names, and the local branches whose tips it holds. */
 export class GitMergedBranches {
   private static readonly FIELDS: readonly string[] = [Resources.baseField, Resources.branchesField];
 

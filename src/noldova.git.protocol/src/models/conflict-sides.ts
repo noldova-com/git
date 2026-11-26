@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** Which of a conflict's three sides, the base, ours and theirs, exist for a kind of conflict. */
 export class ConflictSides {
   public readonly base: boolean;
   public readonly ours: boolean;

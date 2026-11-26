@@ -27,16 +27,11 @@ import { FilePresence } from "./file-presence.ts";
 import { OperationReader } from "./operation.reader.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/** One unmerged stage of a file: its mode and blob. */
 interface IStage {
   readonly mode: string;
   readonly id: string;
 }
 
-/**
- * Reads a conflicted file for the conflict screen: its base, ours and theirs stages, git's zdiff3 merge of them, and the names of the two sides.
- * It only reads: the merge runs over copies in a private temporary folder, never over the worktree or the index.
- */
 export class ConflictReader {
   private static readonly BASE: number = 1;
   private static readonly OURS: number = 2;
@@ -59,7 +54,6 @@ export class ConflictReader {
     if (kind === undefined)
       throw new ConflictGoneException();
     const operation = await OperationReader.readAsync(folders.gitFolder);
-    // Each git run costs a process start, which a busy machine stretches, so the reads that don't need each other run together.
     const [baseText, oursText, theirsText, labels] = await Promise.all([this.textAsync(folders.top, stages.get(ConflictReader.BASE), signal),
       this.textAsync(folders.top, stages.get(ConflictReader.OURS), signal), this.textAsync(folders.top, stages.get(ConflictReader.THEIRS), signal),
       this.labelsAsync(folders, operation, signal)]);
@@ -79,7 +73,6 @@ export class ConflictReader {
       binary, reused);
   }
 
-  /** The file's unmerged stages by their number: 1 for the base, 2 for ours and 3 for theirs; a side the conflict lacks is missing. */
   private async stagesAsync(top: string, file: string, signal?: AbortSignal): Promise<Map<number, IStage>> {
     const result = await this.runGitAsync(top, new GitArguments(Resources.unmergedArguments).withPaths([file]), ConflictReader.LIST_LIMITS,
       Resources.lsFilesCommand, signal);
@@ -92,7 +85,6 @@ export class ConflictReader {
     return stages;
   }
 
-  /** The stage's text, or `null` when it is missing, isn't a regular file, is too large, holds a NUL byte or isn't UTF-8. */
   private async textAsync(top: string, stage: IStage | undefined, signal?: AbortSignal): Promise<string | null> {
     if (stage === undefined || !Resources.textModes.includes(stage.mode))
       return null;
@@ -122,10 +114,6 @@ export class ConflictReader {
     }
   }
 
-  /**
-   * The names shown over ours and theirs, then their commits; a rebase replays your commits onto another branch, so its ours is that branch
-   * and its theirs your commit. Ours is always the commit at `HEAD`; theirs is the operation's head file's.
-   */
   private async labelsAsync(folders: RepositoryFolders, operation: GitOperation | null, signal?: AbortSignal): Promise<ConflictLabels> {
     if (operation?.kind === OperationKind.Rebase) {
       let onto: string | null = null;
@@ -154,29 +142,22 @@ export class ConflictReader {
       head.commit, ConflictReader.commitOf(from));
   }
 
-  /**
-   * The branch at `HEAD`, or `HEAD` when it is detached, and the commit at `HEAD`: one run, since each run costs a process start. When `HEAD`'s branch
-   * has no commit yet that run fails, so only then a second run reads the branch's name, and the commit is `null`.
-   */
   private async headAsync(top: string, signal?: AbortSignal): Promise<HeadCommit> {
     const result = await this.runner.runAsync(ProgramRun.readGit(ConflictReader.HEAD, top, ConflictReader.LIST_LIMITS, signal));
     const lines: readonly string[] = result.exit.code === 0 ? result.output.toString(Resources.utf8Encoding).trim().split(Resources.linePattern) : [];
     return new HeadCommit(lines.at(1) ?? await this.branchAsync(top, signal), ConflictReader.commitOf(lines.at(0) ?? null));
   }
 
-  /** The branch `HEAD` names, or `HEAD` when it is detached. */
   private async branchAsync(top: string, signal?: AbortSignal): Promise<string> {
     const result = await this.runner.runAsync(ProgramRun.readGit(ConflictReader.BRANCH, top, ConflictReader.LIST_LIMITS, signal));
     const branch = result.output.toString(Resources.utf8Encoding).trim();
     return result.exit.code === 0 && branch.length > 0 ? branch : Resources.headLabel;
   }
 
-  /** A side's commit from a head file's line or git's output, or `null` when there is none or it isn't a full object id. */
   private static commitOf(line: string | null): string | null {
     return line !== null && Resources.objectIdPattern.test(line) ? line : null;
   }
 
-  /** A branch, local or remote, at the commit, or else its short id. */
   private async nameAsync(top: string, id: string, signal?: AbortSignal): Promise<string> {
     if (!Resources.objectIdPattern.test(id))
       return Resources.incomingLabel;
@@ -193,7 +174,6 @@ export class ConflictReader {
     return result;
   }
 
-  /** The worktree file's text when it is a regular file small enough to read as UTF-8, else `null`. */
   private static async worktreeTextAsync(file: string): Promise<string | null> {
     try {
       const stats = await lstat(file);

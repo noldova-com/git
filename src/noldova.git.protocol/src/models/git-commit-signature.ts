@@ -12,7 +12,6 @@ import { SignatureState } from "../enums/signature-state.ts";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** `git.commitSignature`'s answer: whether the commit's signature checks out, and who signed it with which key; the signer and key are untrusted. */
 export class GitCommitSignature {
   private static readonly FIELDS: readonly string[] = [Resources.idField, Resources.stateField, Resources.signerField, Resources.keyField];
 

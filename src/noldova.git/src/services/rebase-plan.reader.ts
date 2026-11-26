@@ -18,11 +18,6 @@ import type { ProgramResult } from "../models/program-result.ts";
 import { Resources } from "../resources.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/**
- * Reads what rebasing HEAD onto a commit would replay, as `git rebase -i` lists it: the commits past the merge base, oldest first and without
- * merges, each `fixup!`, `squash!` or `amend!` commit paired with the earlier commit its subject names, the other local branches on those commits,
- * and whether the branch's upstream already has the oldest of them. It changes nothing.
- */
 export class RebasePlanReader {
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.lineOutputBytes, Resources.gitReadMilliseconds);
   private static readonly LIST_LIMITS: ProgramLimits = new ProgramLimits(Resources.listOutputBytes, Resources.gitReadMilliseconds);
@@ -51,7 +46,6 @@ export class RebasePlanReader {
     return new GitRebasePlan(branch, onto, base, ontoAhead, commits, stacked, pushed);
   }
 
-  /** Pairs each `fixup!`, `squash!` or `amend!` commit with the nearest earlier commit whose subject is the rest of its subject, or whose id starts with it. */
   public static pair(commits: readonly GitRebaseCommit[]): GitRebaseCommit[] {
     const paired: GitRebaseCommit[] = [];
     for (const commit of commits) {

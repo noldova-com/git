@@ -10,7 +10,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** The parameters of `git.undo`: the folder, the journal entry's id and the status fingerprint the person saw. */
 export class GitUndoParams {
   private static readonly FIELDS: readonly string[] = [Resources.folderField, Resources.idField, Resources.basedOnField];
 

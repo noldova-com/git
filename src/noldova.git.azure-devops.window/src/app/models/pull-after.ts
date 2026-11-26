@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** The local folder, and its branch, that the person asked to pull once the pull request merges. */
 export class PullAfter {
   public readonly folder: string;
   public readonly branch: string;

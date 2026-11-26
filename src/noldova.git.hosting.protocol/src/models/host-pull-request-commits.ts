@@ -12,7 +12,6 @@ import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 import { HostPullRequestCommit } from "./host-pull-request-commit.ts";
 
-/** The commits a pull request brings, the newest first, and whether the host has more than the list holds. */
 export class HostPullRequestCommits {
   public static readonly maximumCount: number = Resources.maximumPullRequestCommits;
 

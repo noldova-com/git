@@ -12,13 +12,11 @@ import type { GitRemote, GitStatus } from "@noldova/git.protocol";
 import { GitFileGroupKind } from "../enums/git-file-group-kind.ts";
 import { GitFileGroup } from "./git-file-group.ts";
 
-/** A repository's branch, how far it is from its upstream and its changes, as a workspace's row shows them. */
 export class GitRepositorySummary {
   public readonly folder: string;
   public readonly branch: string | null;
   public readonly head: string | null;
   public readonly upstream: string | null;
-  /** The remote of the branch's upstream, where its pull requests are, or null without one. */
   public readonly remote: GitRemote | null;
   public readonly ahead: number;
   public readonly behind: number;
@@ -28,7 +26,6 @@ export class GitRepositorySummary {
   public readonly conflicts: number;
   public readonly files: number;
   public readonly isTruncated: boolean;
-  /** When the repository last fetched, from its `FETCH_HEAD`, or null when it never has. */
   public readonly fetchedAt: string | null;
   public readonly isFetching: boolean;
   public readonly failure: string | null;
@@ -56,7 +53,6 @@ export class GitRepositorySummary {
     this.failure = failure;
   }
 
-  /** Whether no read of the repository has succeeded yet, so its branch, upstream and changes are unknown. */
   public get isUnread(): boolean {
     return Object.isNull(this.status);
   }

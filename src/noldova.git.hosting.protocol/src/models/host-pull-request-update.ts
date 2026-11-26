@@ -12,18 +12,14 @@ import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 import { HostPerson } from "./host-person.ts";
 
-/** One push to a pull request: its number, who pushed it and when, the commit it brought the pull request to and the commit its changes count from. */
 export class HostPullRequestUpdate {
   private static readonly FIELDS: readonly string[] = [Resources.numberField, Resources.authorField, Resources.createdAtField, Resources.sourceCommitField,
     Resources.commonCommitField];
 
   public readonly number: number;
   public readonly author: HostPerson | null;
-  /** When it was pushed, in milliseconds since the epoch. */
   public readonly createdAt: number;
-  /** The pull request's head commit after this update. */
   public readonly sourceCommit: string;
-  /** The commit the changes count from, the last one it shares with the target branch; null when the host names none. */
   public readonly commonCommit: string | null;
 
   public constructor(number: number, author: HostPerson | null, createdAt: number, sourceCommit: string, commonCommit: string | null, reader?: JsonReader) {

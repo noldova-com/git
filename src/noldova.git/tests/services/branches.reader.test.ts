@@ -55,7 +55,6 @@ describe("BranchesReader", () => {
 
   const readerOn = (runner: ProgramRunner): BranchesReader => new BranchesReader(runner, new GitVersionReader(runner));
 
-  /** A reader whose git reports this version, while its other commands run on the given runner. */
   const readerOnGit = (version: string, runner: ProgramRunner): BranchesReader => {
     const versions = new ScriptedRunnerFixture(supervisor.context);
     versions.answering = ["version", `git version ${version}\n`];

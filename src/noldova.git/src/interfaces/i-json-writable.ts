@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** A value that writes itself as JSON, such as a diff's file, hunk or line. */
 export interface IJsonWritable {
   toJson(): unknown;
 }

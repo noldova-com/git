@@ -15,12 +15,7 @@ import type { WorkItemsPlace } from "../models/work-items-place.ts";
 import { Resources } from "../../resources.ts";
 import { AzureDevOpsReferenceLinks } from "./azure-devops-reference-links.ts";
 
-/** Opens an Azure DevOps link in its page in the app, where the app has one. */
 export class AzureDevOpsPages {
-  /**
-   * Opens a pull request's link in its page and a work item's in the My work items page, at the work item; a work item's link without a project takes the
-   * home's when it's in the home's organization. Returns false, opening nothing, for any other link.
-   */
   public static open(context: IWindowPartContext, home: WorkItemsPlace | null, url: string): boolean {
     const link = AzureDevOpsReferenceLinks.of(url);
     if (Object.isNull(link))

@@ -21,7 +21,6 @@ import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
-/** A pull request's state, Azure DevOps' label and the icon for it, and when it closed, if it did. */
 interface IStateLook {
   readonly state: ReferenceState;
   readonly label: string;

@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** The control that takes the focus in the nearest surviving container, with the controls before it there. */
 export class FocusSurvivor {
   public readonly control: HTMLElement;
   public readonly before: readonly HTMLElement[];

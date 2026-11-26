@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** What a reset keeps: the index and working folder, the working folder only, or local changes, refusing when it would overwrite one. */
 export const ResetMode = {
   Soft: "Soft",
   Mixed: "Mixed",

@@ -15,10 +15,6 @@ import { Resources } from "../../../resources.ts";
 import { GitRuntimeClient } from "../../services/git-runtime-client.ts";
 import { GitViewStateService } from "../../services/git-view-state.service.ts";
 
-/**
- * The command log: the git commands a repository's writes ran, newest first, read again each time the repository changes. It watches its own
- * repository, wherever its tab is and whichever repository the Git view shows.
- */
 @Component({
   selector: "nol-git-command-log",
   templateUrl: "./git-command-log.component.html",
@@ -35,7 +31,6 @@ export class GitCommandLogComponent {
   protected readonly readFailure: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly commands: Signal<readonly GitCommand[]> = computed(() => [...this.log()?.commands ?? []].reverse());
 
-  /** The repository's folder; the view's instance. */
   public readonly instance: InputSignal<string> = input.required<string>();
 
   public constructor() {

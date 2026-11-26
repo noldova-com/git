@@ -9,7 +9,6 @@
 import type { CompleteAction } from "../enums/complete-action.ts";
 import type { MergeTypeChoice } from "./merge-type-choice.ts";
 
-/** A write the Complete panel asks about that merges: completing the pull request or setting auto-complete, with the merge type chosen when the person asked. */
 export class PendingMerge {
   public readonly action: CompleteAction.Complete | CompleteAction.SetAutoComplete;
   public readonly mergeType: MergeTypeChoice;

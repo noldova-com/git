@@ -66,7 +66,6 @@ describe("GitWorkspaceAcrossComponent", () => {
       return this.fixture.nativeElement;
     }
 
-    /** Renders the panel 22rem wide, answering each folder's status and each push or pull from maps by folder. */
     public static render(rows: readonly GitWorkspaceRow[], runs: readonly GitWorkspaceRun[] = [], statuses: Readonly<Record<string, GitStatus>> = {},
       writes: Readonly<Record<string, Error | null>> = {}): Panel {
       const context: FakeWindowPartContext = new FakeWindowPartContext();
@@ -120,7 +119,6 @@ describe("GitWorkspaceAcrossComponent", () => {
       return !Object.isNull(this.element.querySelector(selector));
     }
 
-    /** Clicks the element the selector matches, or the one at an index among several. */
     public click(selector: string, index: number = 0): void {
       const found: HTMLElement | undefined = [...this.element.querySelectorAll<HTMLElement>(selector)][index];
       if (Object.isUndefined(found))
@@ -133,7 +131,6 @@ describe("GitWorkspaceAcrossComponent", () => {
       return this.context.callsOf("requestAsync").filter(t => t[0] === method).map(t => JsonReader.fromValue(t[1]).readString("folder"));
     }
 
-    /** Waits until the panel has reported that many pushes or pulls ended, then until the page shows the last. */
     public async writtenAsync(count: number): Promise<void> {
       if (this.written.length < count)
         await new Promise<void>(resolve => this.waiters.push(() => {

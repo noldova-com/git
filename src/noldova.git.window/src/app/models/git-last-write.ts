@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** The newest write of a repository's journal that can be undone, with the status it was read with, which the undo is based on. */
 export class GitLastWrite {
   public readonly folder: string;
   public readonly id: string;

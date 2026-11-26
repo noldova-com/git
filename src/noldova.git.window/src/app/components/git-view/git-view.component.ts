@@ -49,9 +49,7 @@ export class GitViewComponent {
   protected readonly showsBranch: Signal<boolean> = GitViewOptions.showsBranch;
   protected readonly switching: Signal<string | null> = computed(() => GitPendingSwitch.branchOf(this.state.folder()));
   protected readonly empty: Signal<GitEmptyState | null> = computed(() => this.emptyOf(this.state.phase()));
-  /** Whether Get Git's page couldn't be opened, which shows a notice under the button until it is pressed again. */
   protected readonly linkFailed: WritableSignal<boolean> = signal(false);
-  /** The first conflicted file, which the operation banner's Resolve conflicts opens; null once every conflict is resolved. */
   protected readonly firstConflict: Signal<string | null> = computed(() =>
     this.state.groups().filter(t => t.kind === GitFileGroupKind.Conflicts).flatMap(t => t.rows)[0]?.path ?? null);
   protected readonly offersGit: Signal<boolean> = computed(() => this.state.phase() === GitViewPhase.GitMissing || this.state.phase() === GitViewPhase.GitTooOld);
@@ -81,7 +79,6 @@ export class GitViewComponent {
     void this.state.followAgainAsync();
   }
 
-  /** Opens the folder's conflict screen at a conflicted file. */
   protected openConflict(folder: string, path: string): void {
     GitResolving.open(folder, path);
     this.context.openDocument(Resources.conflictsDocumentName, folder, Resources.formatConflictsTitle(folder));
@@ -91,7 +88,6 @@ export class GitViewComponent {
     void this.state.undoDiscardAsync();
   }
 
-  /** Asks before the force push the refused push offered, then force pushes on Force push. */
   protected forcePush(offer: GitForcePushOffer): void {
     const dialog = this.dialogs.open(GitForcePushDialogComponent, ".cancel");
     dialog.componentRef?.setInput("offer", offer);
@@ -114,7 +110,6 @@ export class GitViewComponent {
     return Resources.formatOperation(Resources.operations[operation.kind], GitOperationName.of(operation), branch);
   }
 
-  /** Aborts the merge, rebase, cherry-pick or revert in progress, as the conflict screen's Abort does. */
   protected abortOperation(): void {
     void this.state.abortOperationAsync().catch((error: unknown) => this.errors.handleError(error));
   }

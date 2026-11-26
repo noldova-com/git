@@ -25,7 +25,6 @@ import { AzureDevOpsHostRowComponent } from "../../../../src/app/components/azur
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
-/** A pull request's state, the kit's colour for its icon, and when it closed, if it did. */
 interface IStateColour {
   readonly state: ReferenceState;
   readonly colour: string;

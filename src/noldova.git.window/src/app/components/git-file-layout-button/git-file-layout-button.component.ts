@@ -11,7 +11,6 @@ import { IconButtonComponent, MenuComponent, MenuItemComponent, MenuTriggerDirec
 import { Resources } from "../../../resources.ts";
 import type { GitFileLayout } from "../../enums/git-file-layout.ts";
 
-/** The button that chooses how the lists of changed files are laid out: a tree, folders or a list; every list that shares the layout follows the choice. */
 @Component({
   selector: "nol-git-file-layout-button",
   imports: [IconButtonComponent, MenuComponent, MenuItemComponent, MenuTriggerDirective, TooltipDirective],
@@ -20,6 +19,5 @@ import type { GitFileLayout } from "../../enums/git-file-layout.ts";
 export class GitFileLayoutButtonComponent {
   protected readonly resources: typeof Resources = Resources;
 
-  /** The layout it shows and sets, such as the Git view's, which its lists follow. */
   public readonly layout: InputSignal<WritableSignal<GitFileLayout>> = input.required<WritableSignal<GitFileLayout>>();
 }

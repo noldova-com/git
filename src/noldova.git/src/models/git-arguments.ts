@@ -35,7 +35,6 @@ export class GitArguments {
     return new GitArguments(this.options, this.revisions, [...this.paths, ...paths]);
   }
 
-  /** The same arguments with each path marked literal by pathspec magic, as a write names them. */
   public withLiteralPaths(): GitArguments {
     return new GitArguments(this.options, this.revisions, this.paths.map(t => `${Resources.literalPathMagic}${t}`));
   }

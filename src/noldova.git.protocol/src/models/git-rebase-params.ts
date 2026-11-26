@@ -12,10 +12,6 @@ import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 import { RebaseStep } from "./rebase-step.ts";
 
-/**
- * The parameters of `git.rebase`: the folder, the full id of the commit to rebase the current branch onto, the steps in the order they run,
- * whether the other local branches on the replayed commits move with them, and the status it is based on.
- */
 export class GitRebaseParams {
   private static readonly FIELDS: readonly string[] = [Resources.folderField, Resources.ontoField, Resources.stepsField, Resources.updateRefsField,
     Resources.basedOnField];

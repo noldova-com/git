@@ -13,7 +13,6 @@ import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 
 import { RecordedRequest } from "./recorded-request.fixture.ts";
 
-/** A window part context that answers each module method with its own handler and records the requests, events and log lines a test checks. */
 export class ReferenceContext extends FakeWindowPartContext {
   private readonly handlers: Map<string, (parameters: JsonValue) => JsonValue | Promise<JsonValue>> = new Map();
 

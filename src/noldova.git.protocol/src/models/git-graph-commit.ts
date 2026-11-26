@@ -13,7 +13,6 @@ import { FieldCheck } from "./field-check.ts";
 import { GitCommit } from "./git-commit.ts";
 import { GitRef } from "./git-ref.ts";
 
-/** A commit in the graph of every branch: the commit, its author's email and the labels that point at it. */
 export class GitGraphCommit {
   private static readonly FIELDS: readonly string[] = [Resources.commitField, Resources.emailField, Resources.refsField];
 

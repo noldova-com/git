@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/* The host leaves no box of its own, so the list and its notes sit in the commit detail's column as they did before they moved here. */
 :host {
   display: contents;
 }
@@ -148,7 +147,6 @@
   color: var(--nol-text-muted);
 }
 
-/* The line a reveal went to, such as a comment thread's: an accent bar at its start, over its added or context background. */
 .marked-line {
   box-shadow: inset 0.1875rem 0 0 var(--nol-accent);
 }

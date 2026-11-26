@@ -11,7 +11,6 @@ import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 import { GitBranchTrack } from "./git-branch-track.ts";
 
-/** The answer of `git.remoteTracks`: how far each remote branch that isn't level with HEAD is ahead of and behind it. */
 export class GitRemoteTracks {
   private static readonly FIELDS: readonly string[] = [Resources.tracksField];
 

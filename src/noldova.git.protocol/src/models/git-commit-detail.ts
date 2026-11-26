@@ -11,7 +11,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** What the graph's row leaves out of a commit: its message after the subject, and who committed it and when; all untrusted. */
 export class GitCommitDetail {
   private static readonly FIELDS: readonly string[] = [
     Resources.idField, Resources.bodyField, Resources.committerField, Resources.committerEmailField, Resources.committedAtField, Resources.truncatedField

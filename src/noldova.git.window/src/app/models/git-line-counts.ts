@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** The lines a diff adds and removes. */
 export class GitLineCounts {
   public static readonly NONE: GitLineCounts = new GitLineCounts(0, 0);
 

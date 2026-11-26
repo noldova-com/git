@@ -32,7 +32,6 @@ import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { FakeGhFixture } from "../fixtures/fake-gh.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 
-/** A stand-in for the run's time limit, which expires when the test says. */
 interface IClock {
   expire: () => void;
 }

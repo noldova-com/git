@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** An Azure DevOps address's organization, from its host or its first segment, and the path after it. */
 export class OrganizationPath {
   public readonly organization: string;
   public readonly path: string;

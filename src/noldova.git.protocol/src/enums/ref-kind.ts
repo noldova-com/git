@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** What a label on a commit names: where HEAD points, a local branch, a remote's branch or a tag. */
 export const RefKind = {
   Head: "Head",
   Branch: "Branch",

@@ -12,14 +12,8 @@ import type { IWriteCheckpoint } from "../interfaces/i-write-checkpoint.ts";
 import { RefSnapshot } from "../models/ref-snapshot.ts";
 import { Resources } from "../resources.ts";
 
-/**
- * Each repository's recent writes, by its common Git folder, so worktrees share one journal: the refs each write moved, from snapshots taken
- * before and after it, and how it is undone. It lives while the module runs and keeps the last writes, 50 unless the person's
- * `git.undoHistory` setting asks for another number from 1 to 500.
- */
 export class Journal {
   private readonly entries: Map<string, GitJournalEntry[]> = new Map();
-  /** The git folder of the worktree each kept entry was written in, by the entry's id. */
   private readonly worktrees: Map<string, string> = new Map();
   private readonly now: () => Date;
   private readonly limit: () => JsonValue;
@@ -30,14 +24,12 @@ export class Journal {
     this.limit = limit;
   }
 
-  /** The number of writes kept: the setting's whole number from 1 to 500, or 50 for anything else. */
   public static limitOf(value: JsonValue): number {
     return typeof value === "number" && Number.isInteger(value) && value >= Resources.journalLimitMinimum && value <= Resources.journalLimitMaximum
       ? value
       : Resources.journalLimit;
   }
 
-  /** @param gitFolder The git folder of the worktree the write ran in, its own one rather than the common one its worktrees share. */
   public record(commonGitFolder: string, gitFolder: string, method: string, undo: UndoMode, before: RefSnapshot, after: RefSnapshot, checkpoint: IWriteCheckpoint | null = null): GitJournalEntry {
     const hasIndex = undo === UndoMode.Index && before.index !== null && after.index !== null;
     const entry = new GitJournalEntry(
@@ -69,12 +61,10 @@ export class Journal {
     return this.entries.get(commonGitFolder)?.find(t => t.id === id) ?? null;
   }
 
-  /** The git folder of the worktree a kept entry was written in, or null once the entry is no longer kept. */
   public worktreeOf(id: string): string | null {
     return this.worktrees.get(id) ?? null;
   }
 
-  /** Takes an undone entry out, so it can't be undone twice. */
   public remove(commonGitFolder: string, id: string): void {
     const list = this.entries.get(commonGitFolder) ?? [];
     this.entries.set(commonGitFolder, list.filter(t => t.id !== id));

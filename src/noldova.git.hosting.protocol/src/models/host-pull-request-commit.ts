@@ -11,14 +11,12 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** A commit a pull request brings: its id, its message's first line, its author's name and when they wrote it. */
 export class HostPullRequestCommit {
   private static readonly FIELDS: readonly string[] = [Resources.idField, Resources.subjectField, Resources.authorField, Resources.authoredAtField];
 
   public readonly id: string;
   public readonly subject: string;
   public readonly author: string;
-  /** When the author wrote it, in milliseconds since the epoch. */
   public readonly authoredAt: number;
 
   public constructor(id: string, subject: string, author: string, authoredAt: number, reader?: JsonReader) {

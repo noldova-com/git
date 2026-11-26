@@ -26,20 +26,17 @@ import { PermissionGateFixture } from "../fixtures/permission-gate.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
 
-/** The failure a test expects, by the exception's name and its codes. */
 interface IExpectedFailure {
   readonly name: string;
   readonly code: FailureCode;
   readonly gitCode: GitCode | null;
 }
 
-/** The failure a test expects when git fails, with its message and the output that comes with it. */
 interface IExpectedGitFailure extends IExpectedFailure {
   readonly message: string;
   readonly output: IUntrustedText;
 }
 
-/** Two worktrees another tool added, one locked and one not. */
 interface IForeignWorktrees {
   readonly locked: string;
   readonly plain: string;

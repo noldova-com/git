@@ -24,7 +24,6 @@ import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 import { Wait } from "../../../fixtures/wait.fixture.ts";
 
-/** A mounted repository panel, with the folder the views show and the errors it reported. */
 class MountedRepository {
   public readonly fixture: ComponentFixture<GitRepositoryComponent>;
   public readonly element: HTMLElement;
@@ -39,7 +38,6 @@ class MountedRepository {
   }
 }
 
-/** The repository panel and the history beside it. */
 class PanelAndHistory {
   public readonly element: HTMLElement;
   public readonly history: HTMLElement;

@@ -12,18 +12,15 @@ import "@noldova/context.core";
 import { FollowedPage } from "../models/followed-page.ts";
 import type { WorkItemsPlace } from "../models/work-items-place.ts";
 
-/** The My work items pages open, each with the project it shows and whether it's the window's active document, so a project's row can show it in front. */
 export class WorkItemsPages {
   private static readonly pages: WritableSignal<readonly FollowedPage[]> = signal<readonly FollowedPage[]>([]);
 
-  /** Adds a page, with the project it shows, null until it knows, until the returned function is called. */
   public static follow(place: Signal<WorkItemsPlace | null>, active: Signal<boolean>): () => void {
     const page: FollowedPage = new FollowedPage(place, active);
     WorkItemsPages.pages.set([...WorkItemsPages.pages(), page]);
     return () => WorkItemsPages.pages.set(WorkItemsPages.pages().filter(t => t !== page));
   }
 
-  /** Whether a page showing the project, at any of its work items, is the window's active document. */
   public static isActive(organization: string, project: string): Signal<boolean> {
     return computed(() => WorkItemsPages.pages().some(({ place, active }) => {
       const shown: WorkItemsPlace | null = place();

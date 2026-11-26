@@ -11,7 +11,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** The parameters of `git.createTag`: the folder, the new tag's name, the commit it points at and the status fingerprint the person saw. */
 export class GitTagAtParams {
   private static readonly FIELDS: readonly string[] = [Resources.folderField, Resources.nameField, Resources.idField, Resources.basedOnField];
 

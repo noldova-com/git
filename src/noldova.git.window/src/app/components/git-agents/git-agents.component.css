@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/* The section's rows are the repository panel's own rows, spaced by its gap. */
 :host {
   display: contents;
 }
@@ -96,7 +95,6 @@ button.row {
   letter-spacing: 0.02em;
 }
 
-/* The robot takes the agents' own author colour, as the artboard draws it. */
 .agent {
   color: var(--nol-author-8);
 }

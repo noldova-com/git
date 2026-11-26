@@ -12,7 +12,6 @@ import { GitDetailView } from "@noldova/git.window";
 import type { PullRequestChoice } from "../models/pull-request-choice.ts";
 import { Resources } from "../../resources.ts";
 
-/** The Pull request view of each window, which shows the pull request whose document is in front, or the last one while another kind is. */
 export class PullRequestSelection {
   private static readonly windows: WeakMap<IWindowPartContext, GitDetailView<PullRequestChoice>> = new WeakMap();
 

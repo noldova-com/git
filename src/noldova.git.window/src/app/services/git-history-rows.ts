@@ -15,9 +15,7 @@ import { CommitLabels } from "./commit-labels.ts";
 import { GitGraphLayout } from "./git-graph-layout.ts";
 import { Resources } from "../../resources.ts";
 
-/** Builds the history's rows: the uncommitted changes on top of HEAD when there are any, then every commit, laid into lanes, with a filter that dims what it doesn't match. */
 export class GitHistoryRows {
-  /** Moves HEAD to the commit of the branch a switch is moving to, so the graph shows it at the click; the commits stay as they are when no switch runs or the branch isn't among them. */
   public static switchedTo(commits: readonly GitGraphCommit[], branch: string | null): readonly GitGraphCommit[] {
     if (Object.isNull(branch) || !commits.some(t => t.refs.some(r => r.kind === RefKind.Branch && r.name === branch)))
       return commits;

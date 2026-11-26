@@ -27,7 +27,6 @@ export class AzureDevOpsPullRequestUpdatesComponent {
   private readonly context: IWindowPartContext = inject(WindowPartTokens.context);
   private readonly tasks: PendingTasks = inject(PendingTasks);
   private readonly attempt: WritableSignal<number> = signal<number>(0);
-  /** Whether the tab has yet to read, so it shows the handed-over answer instead. */
   private isFirstRead: boolean = true;
   private readonly dates: Intl.DateTimeFormat = new Intl.DateTimeFormat(undefined, Resources.linkedCommitDateFormat);
 
@@ -38,16 +37,12 @@ export class AzureDevOpsPullRequestUpdatesComponent {
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly isReading: WritableSignal<boolean> = signal<boolean>(true);
 
-  /** The pull request whose pushes it lists. */
   public readonly reference: InputSignal<HostReference> = input.required<HostReference>();
 
-  /** The pull request's page on Azure DevOps, which names its repository, so a row can tell whether the open repository is that one. */
   public readonly url: InputSignal<string> = input.required<string>();
 
-  /** The pushes as the page already read them, which the tab shows instead of reading them again; `null` to read them. Try again reads them anew. */
   public readonly answer: InputSignal<HostPullRequestUpdates | null> = input<HostPullRequestUpdates | null>(null);
 
-  /** The tab's count once read, such as `3` or `100+`. */
   public readonly counted: OutputEmitterRef<string> = output<string>();
 
   public constructor() {

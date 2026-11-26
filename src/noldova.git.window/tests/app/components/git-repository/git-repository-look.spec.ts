@@ -125,7 +125,6 @@ describe("GitRepositoryComponent in the kit's look", () => {
       const fetchAll: HTMLElement | null = element.querySelector(".fetch-all");
       const newBranch: HTMLElement | null = element.querySelector(".new-branch");
       const headings: HTMLElement[] = [...element.querySelectorAll<HTMLElement>(".row.heading")];
-      // The kit's icon button takes its pointer target, the larger of its own size and the pointer's, which a probe measures.
       const probe: HTMLElement = document.body.appendChild(document.createElement("div"));
       probe.style.width = "var(--nol-icon-button-target)";
       const kit: number = rem(box(probe).width);

@@ -50,7 +50,6 @@ export class Resources {
   public static readonly avatarRedirectedAway: string = `the avatar server redirected more than ${Resources.avatarRedirects} times, or off its host`;
   public static readonly tokenNotForgotten: string = "The GitHub token couldn't be removed from this computer's secrets; it is no longer used.";
   public static readonly manualRedirect: NonNullable<RequestInit["redirect"]> = "manual";
-  /** How many redirects a read follows on GitHub's API, for GitHub's 301 to a renamed or transferred repository. */
   public static readonly apiRedirects: number = 1;
   public static readonly movedMessage: string = "GitHub answered that this was moved to an address the module doesn't follow. If the repository was renamed or transferred, update the remote to its new address.";
   public static readonly intervalField: string = "interval";
@@ -240,11 +239,8 @@ export class Resources {
   public static readonly totalCountField: string = "total_count";
   public static readonly incompleteResultsField: string = "incomplete_results";
   public static readonly repositoryUrlField: string = "repository_url";
-  /** The account's open pull requests that ask it for a review, its own or a team's, the most recently updated first, as many as one page holds. */
   public static readonly reviewRequestsPath: string = "/search/issues?q=is%3Apr+is%3Aopen+review-requested%3A%40me&sort=updated&order=desc&per_page=100";
-  /** What a review request's repository_url starts with, before the repository's owner and name. */
   public static readonly repositoryApiPrefix: string = "https://api.github.com/repos/";
-  /** How long the account's review request search is held: GitHub allows 30 searches a minute, so a workspace's repositories share one. */
   public static readonly reviewRequestsHeldFor: number = 60_000;
   public static readonly objectType: string = "object";
   public static readonly stringType: string = "string";

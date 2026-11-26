@@ -15,10 +15,6 @@ import { AzureDevOpsAuthorAvatars } from "./azure-devops-author-avatars.ts";
 import { AzureDevOpsLocalFolder } from "./azure-devops-local-folder.ts";
 import { Resources } from "../../resources.ts";
 
-/**
- * What the pull request page's Commits, Files and Conflicts tabs and its comment threads need from Azure DevOps: its reads, its thread writes, its commit pages,
- * its people's pictures and the pull request's repository here.
- */
 export class AzureDevOpsPullRequestHost implements IGitPullRequestHost {
   private readonly context: IWindowPartContext;
   private readonly avatars: AzureDevOpsAuthorAvatars;

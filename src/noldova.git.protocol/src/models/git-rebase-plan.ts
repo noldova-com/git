@@ -12,11 +12,6 @@ import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 import { GitRebaseCommit } from "./git-rebase-commit.ts";
 
-/**
- * `git.rebasePlan`'s answer: the current branch, or `null` on a detached HEAD; the commit it would go onto and the merge base; how many commits
- * the target has past the base; the commits to replay, oldest first; the other local branches that point at one of them, which `updateRefs` moves
- * too; and whether the branch's upstream already has any of them, so the rebase rewrites pushed history.
- */
 export class GitRebasePlan {
   private static readonly FIELDS: readonly string[] = [Resources.branchField, Resources.ontoField, Resources.baseField, Resources.ontoAheadField,
     Resources.commitsField, Resources.stackedField, Resources.pushedField];

@@ -8,7 +8,6 @@
 
 import type { Signal } from "@angular/core";
 
-/** A document that follows a repository: the folder it shows, and whether it is the window's active document. */
 export class GitFolderPage {
   public readonly folder: Signal<string>;
   public readonly active: Signal<boolean>;

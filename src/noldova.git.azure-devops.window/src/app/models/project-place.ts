@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** The organization and project an Azure DevOps page's address names. */
 export class ProjectPlace {
   public readonly organization: string;
   public readonly project: string;

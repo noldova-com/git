@@ -25,7 +25,6 @@ import { GitHubHostRowComponent } from "../../../../src/app/components/github-ho
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
-/** A pull request's state, GitHub's colour for its icon, null when the icon keeps its own, and when it closed, if it did. */
 interface IStateColour {
   readonly state: ReferenceState;
   readonly colour: string | null;

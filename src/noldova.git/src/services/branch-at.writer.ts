@@ -19,7 +19,6 @@ import type { RepositoryFolders } from "../models/repository-folders.ts";
 import { Resources } from "../resources.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/** Makes a branch at a commit without switching to it, so the worktree and index stay as they are; for the person's own click only. */
 export class BranchAtWriter implements IGitWrite {
   public readonly method: string = GitNames.createBranchAtMethod;
   public readonly undo: UndoMode = UndoMode.Refs;
@@ -36,7 +35,6 @@ export class BranchAtWriter implements IGitWrite {
 
   public refuse(): void {}
 
-  /** Never asks: only the person's own click makes one, and no agent tool offers it. */
   public async requestAsync(): Promise<IPermissionRequest | null> {
     return null;
   }

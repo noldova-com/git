@@ -51,7 +51,6 @@ export class GitFileGroupComponent {
   protected readonly open: WritableSignal<ReadonlySet<string>> = signal(new Set<string>());
   protected readonly wrapped: WritableSignal<ReadonlySet<string>> = signal(new Set<string>());
   protected readonly diffs: WritableSignal<ReadonlyMap<string, readonly GitDiffRow[]>> = signal(new Map<string, readonly GitDiffRow[]>());
-  /** The lines chosen in each open file's diff, by the file's row key, as the diff numbers them. */
   protected readonly chosen: WritableSignal<ReadonlyMap<string, ReadonlySet<number>>> = signal(new Map<string, ReadonlySet<number>>());
   protected readonly showsAll: WritableSignal<boolean> = signal(false);
   protected readonly shownRows: Signal<readonly GitFileRow[]> = computed(() => {
@@ -61,7 +60,6 @@ export class GitFileGroupComponent {
   protected readonly closed: WritableSignal<ReadonlySet<string>> = signal(new Set<string>());
   protected readonly items: Signal<readonly GitFileItem[]> = computed(() => GitFileTree.itemsOf(this.shownRows(), this.state.fileLayout(), this.closed()));
   protected readonly hiddenCount: Signal<number> = computed(() => this.group().rows.length - this.shownRows().length);
-  /** Each shown open diff's rows cut into colored runs, by its row's key: a closed diff, or one in a closed folder or past the shown files, isn't read. */
   protected readonly codes: Signal<ReadonlyMap<string, readonly (readonly GitCodeSpan[])[]>> = computed(() => {
     const open: ReadonlySet<string> = this.open();
     const diffs: ReadonlyMap<string, readonly GitDiffRow[]> = this.diffs();
@@ -75,7 +73,6 @@ export class GitFileGroupComponent {
   });
 
   public readonly group: InputSignal<GitFileGroup> = input.required<GitFileGroup>();
-  /** A Conflicts row's path, on its click or Enter, for its owner to open the conflict editor. */
   public readonly openConflict: OutputEmitterRef<string> = output<string>();
 
   public constructor() {
@@ -97,7 +94,6 @@ export class GitFileGroupComponent {
       this.load(row);
   }
 
-  /** A line's start inset in rem past the top level: its folder's icon, then a step per level; `null` at the top, which keeps its own. */
   protected insetOf(depth: number): number | null {
     return depth === 0 ? null : Resources.rowStartRem + depth * Resources.groupFileStepRem;
   }
@@ -114,7 +110,6 @@ export class GitFileGroupComponent {
     return this.diffs().get(row.key) ?? [new GitDiffRow(GitDiffRowKind.Meta, Resources.loadingDiff)];
   }
 
-  /** The open diff's rows cut into colored runs, or each row plain while its diff loads. */
   protected codesOf(row: GitFileRow): readonly (readonly GitCodeSpan[])[] {
     return this.codes().get(row.key) ?? GitCodeSpan.rowsOf(this.rowsOf(row), null);
   }
@@ -127,7 +122,6 @@ export class GitFileGroupComponent {
     this.chosen.update(t => new Map([...t, [row.key, GitFileGroupComponent.toggled(this.chosenOf(row), line)]]));
   }
 
-  /** A hunk's chosen lines, or all its added and removed lines when none of them is chosen. */
   protected linesOf(row: GitFileRow, hunk: GitDiffRow): readonly number[] {
     const chosen: ReadonlySet<number> = this.chosenOf(row);
     const lines: readonly number[] = hunk.hunk.filter(t => chosen.has(t));
@@ -155,7 +149,6 @@ export class GitFileGroupComponent {
     void (row.group === GitFileGroupKind.Staged ? this.state.unstageAsync([row.path]) : this.state.stageAsync([row.path]));
   }
 
-  /** Asks before a Changes row's working-folder changes are discarded, then discards them on Discard. */
   protected async discardAsync(row: GitFileRow): Promise<void> {
     const undoable: boolean = await this.state.canUndoDiscardAsync();
     const dialog = this.dialogs.open(GitDiscardDialogComponent, ".cancel");

@@ -11,7 +11,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** The parameters of `git.rebasePlan`: the folder and the full id of the commit the current branch would be rebased onto. */
 export class GitRebasePlanParams {
   private static readonly FIELDS: readonly string[] = [Resources.folderField, Resources.ontoField];
 

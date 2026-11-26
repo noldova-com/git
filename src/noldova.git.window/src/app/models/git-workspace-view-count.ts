@@ -8,7 +8,6 @@
 
 import type { GitWorkspaceView } from "../enums/git-workspace-view.ts";
 
-/** A view of the workspace page, with how many of the page's repositories it holds. */
 export class GitWorkspaceViewCount {
   public readonly view: GitWorkspaceView;
   public readonly count: number;

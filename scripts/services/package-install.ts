@@ -17,11 +17,6 @@ import { Resources } from "../resources.ts";
 import { type JsonObject, JsonValue } from "./json-value.ts";
 import type { NpmCommand } from "./npm-command.ts";
 
-// Installs every archive packed so far into the repository's node_modules, as an outside user installs them, so the parts built
-// after them and the tests import the packed packages, never their sources. Each install names all of them, since npm removes
-// a package the install doesn't name that the lock doesn't list either. It also names the version node_modules holds of each
-// @noldova/ package the root package.json pins, since an install otherwise takes the lockfile's version back, and the Module
-// range workflow installs Noldova Desktop's newest version in range, and the versions it pins, without saving them.
 export class PackageInstall {
   private readonly root: string;
   private readonly npm: NpmCommand;
@@ -68,7 +63,6 @@ export class PackageInstall {
     return kept;
   }
 
-  // A pinned package the lock resolves to a local archive isn't on the registry, so the install names that archive instead.
   private async readLockedArchivesAsync(): Promise<ReadonlyMap<string, string>> {
     const archives = new Map<string, string>();
     const file = path.join(this.root, Resources.lockFile);

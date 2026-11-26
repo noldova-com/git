@@ -12,7 +12,6 @@ import { PredictionAction } from "../enums/prediction-action.ts";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** The parameters of `git.predict`: the folder, the commit's full id and the write the prediction is for. */
 export class GitPredictParams {
   private static readonly FIELDS: readonly string[] = [Resources.folderField, Resources.idField, Resources.actionField];
 

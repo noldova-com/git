@@ -11,7 +11,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** The commit a local branch points at, and when it was committed. */
 export class GitBranchTip {
   private static readonly FIELDS: readonly string[] = [Resources.branchField, Resources.idField, Resources.committedAtField];
 

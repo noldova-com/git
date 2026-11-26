@@ -28,7 +28,6 @@ export class OperationReader {
     return null;
   }
 
-  /** The file's first line, trimmed, or `null` when the file is missing or that line is blank. */
   public static async readLineAsync(file: string): Promise<string | null> {
     try {
       const [line] = (await readFile(file, Resources.utf8Encoding)).split(Resources.linePattern);

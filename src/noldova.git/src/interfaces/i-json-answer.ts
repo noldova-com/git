@@ -8,7 +8,6 @@
 
 import type { JsonObject } from "@noldova/git.protocol";
 
-/** A read's answer, which the runtime sends to the window as its JSON. */
 export interface IJsonAnswer {
   toJson(): JsonObject;
 }

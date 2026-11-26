@@ -14,14 +14,12 @@ import { GitStash } from "./git-stash.ts";
 import { GitSubmodule } from "./git-submodule.ts";
 import { GitTag } from "./git-tag.ts";
 
-/** The answer of `git.repositoryItems`: the repository's tags, newest first, its stashes, newest first, and its submodules, by path. */
 export class GitRepositoryItems {
   private static readonly FIELDS: readonly string[] = [Resources.tagsField, Resources.stashesField, Resources.submodulesField, Resources.truncatedField];
 
   public readonly tags: readonly GitTag[];
   public readonly stashes: readonly GitStash[];
   public readonly submodules: readonly GitSubmodule[];
-  /** Whether any list was cut at its limit. */
   public readonly truncated: boolean;
 
   public constructor(tags: readonly GitTag[], stashes: readonly GitStash[], submodules: readonly GitSubmodule[], truncated: boolean) {

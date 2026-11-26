@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** The write a prediction is for: merging a commit into the current branch, or cherry-picking or reverting it there. */
 export const PredictionAction = {
   Merge: "Merge",
   CherryPick: "CherryPick",

@@ -29,7 +29,6 @@ import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 
-/** A rendered history, with the context it reads through. */
 class RenderedHistory {
   public readonly element: HTMLElement;
   public readonly context: FakeWindowPartContext;
@@ -40,7 +39,6 @@ class RenderedHistory {
   }
 }
 
-/** A promise the test settles when it chooses. */
 class Gate {
   public readonly promise: Promise<void>;
   public readonly open: () => void;

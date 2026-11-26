@@ -8,7 +8,6 @@
 
 import type { GitRebaseRow } from "./git-rebase-row.ts";
 
-/** Where the dragged rebase row would land, by index, and the rows as they would be. */
 export class GitRebaseLanding {
   public readonly to: number;
   public readonly rows: readonly GitRebaseRow[];

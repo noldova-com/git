@@ -44,7 +44,6 @@ describe("GitRebaseComponent in the kit's look", () => {
     return resolved;
   };
 
-  /** An element on the page with one style set, whose computed style resolves a token. */
   const probeOf = (property: string, value: string): HTMLElement => {
     const probe: HTMLSpanElement = document.createElement("span");
     probe.style.setProperty(property, value);
@@ -76,14 +75,12 @@ describe("GitRebaseComponent in the kit's look", () => {
     }
   });
 
-  /** The rebase document and the Rebase preview view beside it, as the window shows them. */
   interface IRendered {
     readonly fixture: ComponentFixture<GitRebaseComponent>;
     readonly document: HTMLElement;
     readonly view: HTMLElement;
   }
 
-  /** Renders the screen in a mode, at 70rem by 40rem unless told, with the Rebase preview view at the dock's width, once the view shows the preview. */
   async function renderAsync(mode: ThemeMode, width: string = "70rem", height: string = "40rem", viewWidth: string = "22rem"): Promise<IRendered> {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
     const context: FakeWindowPartContext = new FakeWindowPartContext();
@@ -101,7 +98,6 @@ describe("GitRebaseComponent in the kit's look", () => {
     view.componentRef.setInput("instance", "selected");
     view.autoDetectChanges();
     const element: HTMLElement = fixture.nativeElement;
-    // TestBed takes the earlier fixtures' root elements out of the page as it creates a component, so the document goes back beside the view.
     document.body.append(element);
     const viewElement: HTMLElement = view.nativeElement;
     element.style.width = width;

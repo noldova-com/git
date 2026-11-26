@@ -12,10 +12,6 @@ import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 import { GitRebaseStepCheck } from "./git-rebase-step-check.ts";
 
-/**
- * `git.rebaseCheck`'s answer: one check per step, in the steps' order. Once a step would conflict, the steps after it are checked against that
- * step's own commit, as if the conflict were resolved by taking it whole.
- */
 export class GitRebaseCheck {
   private static readonly FIELDS: readonly string[] = [Resources.stepsField];
 

@@ -19,7 +19,6 @@ export class AzureRepository {
     this.name = name;
   }
 
-  /** The repository a remote's host and path name, its project and repository names decoded from the percent escapes the path carries them in. */
   public static parse(host: string, path: string): AzureRepository | null {
     const full: string | null = AzureRepository.fullPathOf(host, path);
     if (full === null || !Resources.fullPathPattern.test(full))

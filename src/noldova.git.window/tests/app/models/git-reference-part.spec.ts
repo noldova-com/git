@@ -17,7 +17,6 @@ const ISSUE: string = "https://dev.azure.com/fabrikam/_workitems/edit/12";
 const OTHER: string = "https://dev.azure.com/fabrikam/_workitems/edit/5";
 const issue = signal<LinkReference | null>(new LinkReference("Bug 12", "Bug", new LinkReferenceImage("data:,")));
 
-/** A source that finds the matches it's given and knows only the issue's address. */
 function sourceOf(...matches: readonly LinkReferenceMatch[]): ILinkReferenceSource {
   return { find: t => t === ISSUE ? issue : null, findText: () => matches };
 }

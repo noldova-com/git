@@ -19,10 +19,6 @@ export class AzureDevOpsRemote {
       || (!Object.isNull(host) && host.endsWith(Resources.visualStudioSuffix));
   }
 
-  /**
-   * The remote's path as a query to the host carries it, each name percent-encoded but for letters, digits, `.`, `_` and `-`, since a project's or
-   * repository's name may hold a space or another character; a name git kept encoded, as an SSH remote keeps `%20`, is decoded first. Null without a path.
-   */
   public static pathOf(remote: GitRemote): string | null {
     const path: string | null = remote.path;
     return Object.isNull(path) ? null : path.split(Resources.remotePathSeparator).map(t => encodeURIComponent(WorkItemsPlace.decode(t) ?? t)

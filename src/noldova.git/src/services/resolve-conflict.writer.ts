@@ -30,13 +30,8 @@ import type { HooksReader } from "./hooks.reader.ts";
 import { LogReader } from "./log.reader.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/**
- * Resolves one conflicted file and stages it: writes the resolved text, takes one side's whole file, or deletes the file.
- * It refuses a choice the file's conflict kind doesn't offer, a text that still has marker lines, and a file that is no longer unmerged.
- */
 export class ResolveConflictWriter implements IGitWrite {
   public readonly method: string = GitNames.resolveConflictMethod;
-  /** Not undone from the journal: the resolved text replaced the worktree file, which an index tree doesn't hold. */
   public readonly undo: UndoMode = UndoMode.None;
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.writeOutputBytes, Resources.indexWriteMilliseconds);
   private static readonly OPTIONS: readonly PermissionOption[] = [PermissionOption.AllowOnce, PermissionOption.Deny];
@@ -104,7 +99,6 @@ export class ResolveConflictWriter implements IGitWrite {
     await this.runGitAsync(folders, Resources.resolveAddArguments, Resources.addCommand, signal);
   }
 
-  /** Writes the text over the worktree file, once its folder is known to be inside the repository even through links. */
   private async writeTextAsync(top: string): Promise<void> {
     const target = path.join(top, this.file);
     const [folder, root] = await Promise.all([realpath(path.dirname(target)), realpath(top)]);

@@ -68,7 +68,6 @@ class Test {
     return Resources.successExitCode;
   }
 
-  /** Runs the tests the filters choose, or the whole suite without filters, once the checks have passed. */
   private async runTestsAsync(values: readonly string[], options: readonly string[]): Promise<number> {
     const rootTests: readonly string[] = [
       ...Resources.vitestRun,
@@ -83,7 +82,6 @@ class Test {
       return await this.runStepsAsync([[...rootTests, ...Test.noGates, ...rootFilters]], Test.root);
     if (filters.length === 0) {
       const timed: readonly string[] = [...rootTests, ...(options.includes(Resources.skipTestDetails) ? [] : [Resources.defaultReporter]), ...Resources.testTimesReporter];
-      // Every window package runs even after a failure before it, so one run shows every failing package; the first failure is the exit code.
       const ran: number[] = [await this.runStepsAsync([timed, [Resources.testTimeCheckScript]], Test.root)];
       for (const folder of Test.windowFolders)
         ran.push(await this.runWindowAsync(folder, null));

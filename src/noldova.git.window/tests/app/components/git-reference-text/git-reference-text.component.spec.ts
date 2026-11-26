@@ -30,7 +30,6 @@ const READ: LinkReference = new LinkReference("Bug 12", "Bug", new LinkReference
   itemHref: ISSUE
 });
 
-/** A list row as the Git view has one: the whole row is a click target, with the text in it. */
 @Component({
   selector: "nol-git-reference-row",
   imports: [GitReferenceTextComponent],
@@ -50,7 +49,6 @@ class Row {
   public readonly context: FakeWindowPartContext = new FakeWindowPartContext();
   public readonly errors: unknown[] = [];
   private handled: () => void = () => undefined;
-  /** Settles once the error handler has a failure. */
   public readonly handledAsync: Promise<void> = new Promise(resolve => {
     this.handled = resolve;
   });

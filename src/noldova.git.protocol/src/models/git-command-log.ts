@@ -12,7 +12,6 @@ import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 import { GitCommand } from "./git-command.ts";
 
-/** The git commands a repository's writes ran while the module runs, oldest first. */
 export class GitCommandLog {
   private static readonly FIELDS: readonly string[] = [Resources.commandsField];
 

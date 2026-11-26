@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** What an interactive rebase does with one of the branch's commits. */
 export const RebaseAction = {
   Pick: "Pick",
   Reword: "Reword",

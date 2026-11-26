@@ -11,7 +11,6 @@ import { ResetMode } from "../enums/reset-mode.ts";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** The parameters of `git.reset`: the folder, the full id of the commit the current branch moves to, what the reset keeps, and the status fingerprint the person saw. */
 export class GitResetParams {
   private static readonly FIELDS: readonly string[] = [Resources.folderField, Resources.idField, Resources.modeField, Resources.basedOnField];
 

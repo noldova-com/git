@@ -8,7 +8,6 @@
 
 import type { Signal } from "@angular/core";
 
-/** A document a detail view follows: its choice, and whether it is the window's active document. */
 export class GitDetailPage<T> {
   public readonly choice: Signal<T | null>;
   public readonly active: Signal<boolean>;

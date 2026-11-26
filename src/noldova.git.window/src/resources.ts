@@ -60,7 +60,6 @@ export class Resources {
     [GitHostFeature.AutoComplete]: "Auto-complete"
   };
   public static readonly getGitAddress: string = "https://git-scm.com/downloads";
-  /** The controls the focus can move to when the one holding it goes, and the one holding it. */
   public static readonly focusableSelector: string = "button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex='-1'])";
   public static readonly focusedSelector: string = ":focus";
   public static readonly disabledAttribute: string = "disabled";
@@ -203,7 +202,6 @@ export class Resources {
     return `The Git view couldn't read how commits are signed: ${reason}`;
   }
 
-  /** The commit card's note that a new commit will be signed, by the format it is signed in. */
   public static readonly signingNotes: Readonly<Record<SigningFormat, string>> = {
     OpenPgp: "Signed with a GPG key", Ssh: "Signed with SSH key", X509: "Signed with an X.509 certificate"
   };
@@ -252,13 +250,10 @@ export class Resources {
     return `The repository panel passed over a host's pull requests, since its claim failed: ${reason}`;
   }
 
-  /** The Agents section header's note: how many worktrees its runs work in. */
   public static formatAgentWorktrees(count: number): string {
     return count === 1 ? "1 worktree" : `${count} worktrees`;
   }
 
-  /** The section header's note: the host's name, and when it has more pull requests than the section lists, that there are more. */
-  /** The Dashboard's Open cell: how many pull requests the repository has open, a + when the host has more than it listed, and how many of them fail their checks. */
   public static formatOpenPullRequests(open: number, hasMore: boolean, failing: number): string {
     if (open === 0)
       return Resources.noPullRequest;
@@ -275,12 +270,10 @@ export class Resources {
     return count > Resources.shownPullRequests ? `${hostName} · ${Resources.shownPullRequests}+` : hostName;
   }
 
-  /** A pull request's row in the repository panel: its label, then its title. */
   public static formatPullRequestRowText(label: string, title: string): string {
     return `${label}${Resources.peopleSeparator}${title}`;
   }
 
-  /** A pull request's note: its failing checks, else that checks run, else its reviews, else that it is a draft, else nothing. */
   public static formatPullRequestNote(failing: number, pending: number, approvals: number, isDraft: boolean): string {
     if (failing > 0)
       return `${failing} failing`;
@@ -347,7 +340,6 @@ export class Resources {
     return `Resolve the ${Resources.formatCount(files)} conflicted ${files === 1 ? "file" : "files"} to commit the ${Resources.operationNouns[operation]}.`;
   }
 
-  /** An operation in progress as the banner heads it: the branch it applies into, or "this branch" when HEAD is detached. */
   public static formatOperation(operation: string, from: string | null, into: string | null): string {
     const target: string = into ?? "this branch";
     return Object.isNull(from) ? `${operation} into ${target}` : `${operation} ${from} into ${target}`;
@@ -365,7 +357,6 @@ export class Resources {
     return `${Resources.switchBranchLabel}, ${name}`;
   }
 
-  /** The id of a History list's row, by the list's number among the open lists and the row's place, for the list's active descendant. */
   public static formatHistoryOptionId(list: number, index: number): string {
     return `git-history-${list}-option-${index}`;
   }
@@ -449,7 +440,6 @@ export class Resources {
 
   public static readonly historyDocumentName: string = "git.history";
   public static readonly graphPageSize: number = 2000;
-  /** How far past the view the history draws rows, so a fast scroll finds them drawn: about 40 rows, and up to 80 before it draws more. */
   public static readonly graphBufferPixels: number = 1200;
   public static readonly graphLoadAhead: number = 200;
   public static readonly openHistoryCommand: string = "git.openHistory";
@@ -470,9 +460,7 @@ export class Resources {
   public static readonly historyEmpty: string = "No commits yet.";
   public static readonly historyFailed: string = "The history couldn't be read.";
   public static readonly shortIdLength: number = 7;
-  /** A full commit id, SHA-1 or SHA-256. */
   public static readonly objectIdPattern: RegExp = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
-  /** The one branch or tag git's prepared merge message names, as `git fmt-merge-msg` writes it; a commit it names is an id. */
   public static readonly mergedNamePattern: RegExp = /^Merge (?:remote-tracking branch|branch|tag) '([^']+)'/u;
 
   public static formatCommitNotLoaded(id: string): string {
@@ -489,7 +477,6 @@ export class Resources {
   public static readonly headRevision: string = "HEAD";
   public static readonly listSeparator: string = ", ";
   public static readonly rowChipLimit: number = 2;
-  /** The history's width in rem under which a row shows one label, as the stylesheet's narrowest column template does. */
   public static readonly historyOneChipRem: number = 44;
   public static readonly dateLocale: string = "en-US";
   public static readonly ageNow: string = "now";
@@ -500,10 +487,6 @@ export class Resources {
   public static readonly columnMessage: string = "Message";
   public static readonly columnAuthor: string = "Author";
   public static readonly columnDate: string = "Date";
-  /**
-   * The history's toolbars in order, each a group of actions, as Noldova Desktop's view-hosted toolbar bands will take them: until then they share one
-   * row in the document, and those that don't fit move, from the end, into the row's More menu.
-   */
   public static readonly historyToolbars: readonly GitHistoryToolbar[] = [
     new GitHistoryToolbar("Undo", [GitHistoryAction.UndoCommit]),
     new GitHistoryToolbar("Sync", [GitHistoryAction.Fetch, GitHistoryAction.Pull, GitHistoryAction.Push]),
@@ -530,11 +513,8 @@ export class Resources {
     [GitHistoryAction.Stash]: "inventory_2",
     [GitHistoryAction.Terminal]: "terminal"
   };
-  /** The actions whose buttons show their label beside the glyph while the toolbar is wide enough; the rest show only the glyph. */
   public static readonly labeledHistoryActions: readonly GitHistoryAction[] = Object.values(GitHistoryAction).filter(t => t !== GitHistoryAction.Redo);
-  /** The toolbar's width in rem from which its buttons show their labels. */
   public static readonly historyLabelsRem: number = 60;
-  /** The room in rem the toolbar keeps between its last toolbar and the filter, and for the More button with its chevron and gap. */
   public static readonly historyToolbarGapRem: number = 0.25;
   public static readonly historyMoreRem: number = 2.75;
   public static readonly filterPlaceholder: string = "Filter: author, path, message";
@@ -547,7 +527,6 @@ export class Resources {
   public static readonly repositoryViewDefaultGroup: number = 0;
   public static readonly repositoryViewDefaultOrder: number = 10;
   public static readonly workspacesViewName: string = "git.workspaces";
-  /** In the left dock's first group, after the Repository view. */
   public static readonly workspacesViewDefaultGroup: number = 0;
   public static readonly workspacesViewDefaultOrder: number = 20;
   public static readonly repositoryLabel: string = "Repository";
@@ -563,7 +542,6 @@ export class Resources {
   public static readonly agentsLabel: string = "Agents";
   public static readonly agentIcon: IconName = "smart_toy";
   public static readonly agentsEmpty: string = "No agents work in this repository";
-  /** Each run state's icon and its spoken name, as the artboard draws them. */
   public static readonly agentStateIcons: Readonly<Record<GitAgentState, IconName>> = {
     [GitAgentState.Working]: "progress_activity",
     [GitAgentState.WaitingForYou]: "pan_tool",
@@ -577,7 +555,6 @@ export class Resources {
     [GitAgentState.Failed]: "Failed"
   };
   public static readonly pullRequestsLabel: string = "Pull requests";
-  /** The most pull requests the section lists; past it, the header says there are more. */
   public static readonly shownPullRequests: number = 20;
   public static readonly pullRequestsReading: string = "Reading pull requests…";
   public static readonly goToLine: string = "Go to line";
@@ -611,10 +588,8 @@ export class Resources {
   public static readonly tryAgainLabel: string = "Try again";
   public static readonly pullRequestsDraft: string = "Draft";
   public static readonly pullRequestsRunning: string = "checks running";
-  /** The window's command that opens Settings, and its argument naming the page. */
   public static readonly openSettingsCommand: string = "desktop.openSettings";
   public static readonly settingsPageArgument: string = "page";
-  /** The terminal module's command that opens a terminal in a new tab, and its argument naming the folder it starts in. */
   public static readonly newTerminalCommand: string = "terminal.new";
   public static readonly terminalFolderArgument: string = "folder";
   public static readonly tagsLabel: string = "Tags";
@@ -627,11 +602,8 @@ export class Resources {
   public static readonly sectionOpenIcon: IconName = "keyboard_arrow_down";
   public static readonly sectionClosedIcon: IconName = "chevron_right";
   public static readonly remoteIcon: IconName = "cloud";
-  /** A side panel row's start inset, in rem. */
   public static readonly rowInsetRem: number = 0.5;
-  /** The local branch tree's folders open and close by keys under this, apart from the sections' and remotes' keys. */
   public static readonly localTreeKey: string = "refs/heads/";
-  /** How far each level of the branch trees steps in, in rem: an icon and the gap after it. */
   public static readonly treeStepRem: number = 1.375;
   public static readonly worktreeIcon: IconName = "account_tree";
   public static readonly stashIcon: IconName = "inventory_2";
@@ -662,7 +634,6 @@ export class Resources {
   public static readonly openCommandLogCommand: string = "git.openCommandLog";
   public static readonly openCommandLogTitle: string = "Open the command log";
   public static readonly commandLogIcon: IconName = "receipt_long";
-  /** Opens a repository's Conflicts screen, for another module's page, such as a pull request's conflicts. */
   public static readonly openConflictsCommand: string = "git.openConflicts";
   public static readonly openConflictsTitle: string = "Open conflicts";
   public static readonly commandLogLabel: string = "Command log";
@@ -671,7 +642,6 @@ export class Resources {
   public static readonly commandDoneIcon: IconName = "check_circle";
   public static readonly commandFailedIcon: IconName = "error";
   public static readonly commandStoppedIcon: IconName = "do_not_disturb_on";
-  /** How much of the last command the status bar shows before an ellipsis. */
   public static readonly commandItemLength: number = 60;
 
   public static formatCommandLogWatchFailed(folder: string, reason: string): string {
@@ -686,7 +656,6 @@ export class Resources {
     return `${Resources.commandLogLabel}: ${Resources.formatHistoryTitle(folder)}`;
   }
 
-  /** How a command ended: done, its exit code, or that it didn't run to its end. */
   public static formatCommandExit(exitCode: number | null): string {
     return Object.isNull(exitCode) ? "Didn't finish" : exitCode === 0 ? "Done" : `Exit code ${exitCode}`;
   }
@@ -695,7 +664,6 @@ export class Resources {
     return milliseconds < 1000 ? `${milliseconds} ms` : `${(milliseconds / 1000).toFixed(1)} s`;
   }
 
-  /** The last command's item text: its line, cut with an ellipsis past the item's length. */
   public static formatCommandItem(line: string): string {
     return line.length > Resources.commandItemLength ? `${line.slice(0, Resources.commandItemLength - 1)}…` : line;
   }
@@ -704,7 +672,6 @@ export class Resources {
     return `${line}\n${Resources.formatCommandExit(exitCode)} in ${Resources.formatCommandDuration(milliseconds)}. Open the command log`;
   }
 
-  /** The fetch item's text, as the minutes since the last fetch read: just now, then minutes, hours and days. */
   public static formatFetched(minutes: number): string {
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
@@ -725,7 +692,6 @@ export class Resources {
     return `Detached at ${shortId}`;
   }
 
-  /** The status-bar item's tooltip: the branch, and how far it is from its upstream when it has one. Opens the history on a click. */
   public static formatStatusBarTooltip(name: string, upstream: string | null, ahead: number, behind: number): string {
     const tracking = Object.isNull(upstream) ? "no upstream" : `${ahead} ahead of and ${behind} behind ${upstream}`;
     return `${name}, ${tracking}. Open the history`;
@@ -784,7 +750,6 @@ export class Resources {
   public static readonly createTagHereLabel: string = "Create tag here";
   public static readonly branchMenuIcon: IconName = "call_split";
   public static readonly parentLabel: string = "Parent";
-  /** Leads the labels on the commit, after its parents. */
   public static readonly inLabel: string = "· In";
 
   public static formatShowParent(id: string): string {
@@ -811,17 +776,12 @@ export class Resources {
     [GitFileLayout.List]: "list"
   };
   public static readonly fileLayouts: readonly GitFileLayout[] = [GitFileLayout.Tree, GitFileLayout.Folders, GitFileLayout.List];
-  /** A file list row's own start padding in rem, where a folder's open icon starts. */
   public static readonly rowStartRem: number = 0.25;
-  /** How far each level of a commit's files steps in, in rem: a folder's open icon and the gap after it. */
   public static readonly commitFileStepRem: number = 1.5;
-  /** How far each level of a file group steps in, in rem: a folder's open icon and the gap after it. */
   public static readonly groupFileStepRem: number = 1.375;
   public static readonly commitFilesLoading: string = "Reading the commit's files…";
   public static readonly commitFilesCut: string = "Git listed only part of this commit's files.";
-  /** The sign before a count of removed lines: a true minus sign, where a diff line keeps Git's hyphen. */
   public static readonly removedSign: string = "−";
-  /** Git's empty tree, which a first commit's changes are read against, for SHA-1 and SHA-256 repositories. */
   public static readonly emptyTreeSha1: string = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
   public static readonly emptyTreeSha256: string = "6ef19b41225c5369f1c104d45d8d85efa9b057b53b14b4b9b939dd74decc5321";
   public static readonly changeLetters: Readonly<Record<FileChange, string>> = {
@@ -852,7 +812,6 @@ export class Resources {
     return count === 1 ? "1 file changed" : `${count} files changed`;
   }
 
-  /** A renamed or copied file's change letter with how alike Git found it to the file it came from, such as "R 92%". */
   public static formatSimilarity(letter: string, similarity: number): string {
     return `${letter} ${similarity}%`;
   }
@@ -864,7 +823,6 @@ export class Resources {
   public static readonly peopleSeparator: string = " · ";
   public static readonly signatureIcons: Readonly<Record<SignatureState, IconName>> = { Verified: "verified", Unverified: "gpp_maybe", None: "remove_moderator" };
 
-  /** A signed commit's signature line; an unsigned commit has none. */
   public static formatSignature(state: SignatureState, signer: string | null): string {
     const by: string = Object.isNull(signer) ? "" : ` by ${signer}`;
     return state === SignatureState.Verified ? `Signed${by}, verified against the keys you trust` : `Signed${by}, but the signature isn't verified`;
@@ -873,12 +831,10 @@ export class Resources {
   public static readonly commitPullRequestIcon: IconName = "alt_route";
   public static readonly commitCommentsIcon: IconName = "forum";
 
-  /** The row that opens a commit's review comments on its host, with a "+" when the host's answer was cut. */
   public static formatCommitComments(count: number, isCapped: boolean): string {
     const shown: string = `${count}${isCapped ? "+" : ""}`;
     return count === 1 && !isCapped ? "1 review comment on this commit" : `${shown} review comments on this commit`;
   }
-  /** Where the pull request that brought a commit in stands, after its title on the commit's card. */
   public static readonly commitPullRequestStates: Readonly<Record<GitPullRequestState, string>> = {
     [GitPullRequestState.Open]: "Open",
     [GitPullRequestState.Draft]: "Draft",
@@ -886,7 +842,6 @@ export class Resources {
     [GitPullRequestState.Closed]: "Closed"
   };
 
-  /** The commit's pull request card's note, such as "2 approvals · 6 of 6 checks passed": its approvals, then its failing, running or passed checks. */
   public static formatCommitPullRequestNote(approvals: number, passed: number, failing: number, pending: number): string {
     const total: number = passed + failing + pending;
     const parts: string[] = approvals === 0 ? [] : [approvals === 1 ? "1 approval" : `${approvals} approvals`];
@@ -920,51 +875,36 @@ export class Resources {
   public static readonly mergedCleanlyTitle: string = "Merged cleanly";
   public static readonly cleanFileIcon: IconName = "description";
   public static readonly commitDetailLabel: string = "Commit";
-  /** The Commit view, beside the documents, which shows the commit the history document in front chose. */
   public static readonly commitDetailViewName: string = "git.commitView";
-  /** The Commit view's one instance, which every history document shows its commit in. */
   public static readonly commitDetailViewInstance: string = "selected";
   public static readonly commitDetailIcon: IconName = "commit";
-  /** In the right dock's first group, after the Git panel and the hosts' detail views, before the Conflict view. */
   public static readonly commitDetailDefaultGroup: number = 0;
   public static readonly commitDetailDefaultOrder: number = 45;
   public static readonly commitDetailEmpty: string = "Choose a commit in History to see it here";
   public static readonly conflictDetailLabel: string = "Conflict";
-  /** The Conflict view, beside the documents, which shows the current conflict of the conflicts document in front. */
   public static readonly conflictDetailViewName: string = "git.conflictDetail";
-  /** The Conflict view's one instance, which every conflicts document shows its conflict in. */
   public static readonly conflictDetailViewInstance: string = "selected";
-  /** In the right dock's first group, after the Git panel and the hosts' detail views. */
   public static readonly conflictDetailDefaultGroup: number = 0;
   public static readonly conflictDetailDefaultOrder: number = 50;
   public static readonly conflictDetailEmpty: string = "Open the conflicts of a merge or rebase to see the conflict here.";
   public static readonly rebasePreviewLabel: string = "Rebase preview";
-  /** The Rebase preview view, beside the documents, which shows the interactive rebase document in front as its branch will be after. */
   public static readonly rebasePreviewViewName: string = "git.rebasePreview";
-  /** The Rebase preview view's one instance, which every rebase document shows its preview in. */
   public static readonly rebasePreviewViewInstance: string = "selected";
   public static readonly rebasePreviewIcon: IconName = "low_priority";
-  /** In the right dock's first group, after the Conflict view. */
   public static readonly rebasePreviewDefaultGroup: number = 0;
   public static readonly rebasePreviewDefaultOrder: number = 60;
   public static readonly rebasePreviewEmpty: string = "Open an interactive rebase to preview it.";
-  /** The Across repositories view, beside the documents, which shows what spans the repositories of the workspace page in front. */
   public static readonly workspaceAcrossViewName: string = "git.workspaceAcross";
-  /** The Across repositories view's one instance, which every workspace page shows its repositories in. */
   public static readonly workspaceAcrossViewInstance: string = "selected";
   public static readonly workspaceAcrossIcon: IconName = "hub";
-  /** In the right dock's first group, after the Rebase preview view. */
   public static readonly workspaceAcrossDefaultGroup: number = 0;
   public static readonly workspaceAcrossDefaultOrder: number = 70;
   public static readonly workspaceAcrossEmpty: string = "Open a workspace to see its repositories together here.";
   public static readonly beforeCommitTitle: string = "Before you commit";
   public static readonly baseTitle: string = "Base";
-  /** The base is missing when both sides added the text, so there is nothing they changed from. */
   public static readonly noBaseNote: string = "No base: both sides added this text.";
   public static readonly noMarkersLeft: string = "No conflict markers left in resolved files";
-  /** Git's recorded resolutions are on for every merge, cherry-pick, revert and rebase the module runs. */
   public static readonly rerereNote: string = "Resolutions are remembered (rerere), so the same conflict resolves itself the next time it comes up.";
-  /** How many files merged cleanly the Conflicts screen lists before a row that shows the rest. */
   public static readonly shownCleanFiles: number = 2;
   public static readonly oursLabel: string = "Ours";
   public static readonly theirsLabel: string = "Theirs";
@@ -975,7 +915,6 @@ export class Resources {
   public static readonly resultIcon: IconName = "edit";
   public static readonly showBaseLabel: string = "Show base";
   public static readonly baseIcon: IconName = "history";
-  /** The base pane's note: the version both sides started from. */
   public static readonly baseNote: string = "where both sides started";
   public static readonly previousConflictLabel: string = "Previous";
   public static readonly previousConflictIcon: IconName = "arrow_upward";
@@ -1006,20 +945,16 @@ export class Resources {
     Merge: "Commit the merge", Rebase: "Continue the rebase", CherryPick: "Commit the cherry-pick", Revert: "Commit the revert"
   };
 
-  /** How the file list names each resolution beside a resolved file. */
   public static readonly resolutionNotes: Readonly<Record<GitResolvedBy, string>> = { Ours: "ours", Theirs: "theirs", Both: "both", Edited: "edited", Deleted: "deleted" };
 
-  /** The detail panel's title for the merge editor's active conflict, such as "Conflict 2 of 2". */
   public static formatConflictTitle(conflict: number, conflicts: number): string {
     return `Conflict ${conflict} of ${conflicts}`;
   }
 
-  /** Where the active conflict sits in the result, counted from 1, such as "lines 38 to 40" or "line 12". */
   public static formatConflictLines(first: number, last: number): string {
     return first === last ? `line ${first}` : `lines ${first} to ${last}`;
   }
 
-  /** The files out of conflict that still have a conflict marker line, such as "Conflict markers left in a.ts and b.ts". */
   public static formatMarkersLeft(paths: readonly string[]): string {
     const names: string = paths.length === 1 ? paths.join("") : `${paths.slice(0, -1).join(", ")} and ${paths.slice(-1).join("")}`;
     return `Conflict markers left in ${names}`;
@@ -1029,26 +964,19 @@ export class Resources {
     return `The check for conflict markers failed: ${message}`;
   }
 
-  /** An open file's resolved conflicts out of all of them, such as "1 of 2". */
   public static formatConflictProgress(resolved: number, conflicts: number): string {
     return `${resolved} of ${conflicts}`;
   }
 
-  /**
-   * What follows a side's name in its pane head, its commit's short id, such as " · 3b9f001" after "main"; null when the side has no commit or its name
-   * already ends with that id, such as "your commit 3b9f001".
-   */
   public static formatSideCommit(label: string, commit: string | null): string | null {
     const shortId = commit?.slice(0, Resources.shortIdLength) ?? label;
     return label.endsWith(shortId) ? null : ` · ${shortId}`;
   }
 
-  /** The result pane's note, with whether each conflict is resolved, such as "editable · conflict 1 resolved, conflict 2 open". */
   public static formatResultNote(resolved: readonly boolean[]): string {
     return ["editable", ...(resolved.length === 0 ? [] : [resolved.map((t, i) => `conflict ${i + 1} ${t ? "resolved" : "open"}`).join(", ")])].join(" · ");
   }
 
-  /** The row under the first files merged cleanly that shows the rest, such as "7 more". */
   public static formatMoreCleanFiles(count: number): string {
     return `${count} more`;
   }
@@ -1057,12 +985,10 @@ export class Resources {
     return `${resolved} of ${files} ${files === 1 ? "file" : "files"} resolved`;
   }
 
-  /** What follows a predicted conflict's file badges when it names more files than they show, such as "+2 more". */
   public static formatMorePaths(count: number): string {
     return `+${count} more`;
   }
 
-  /** One line on what an action would do on the current branch, without the files a conflict names, which follow it as badges; `null` when Git can't tell. */
   public static formatPrediction(action: string, prediction: GitPrediction | null): string | null {
     switch (prediction?.outcome) {
       case PredictionOutcome.UpToDate:
@@ -1088,7 +1014,6 @@ export class Resources {
   public static readonly forcePushLabel: string = "Force push";
   public static readonly switchMergeTitle: string = "Switch and merge?";
   public static readonly switchMergeLabel: string = "Switch and merge";
-  /** What each write of the journal did, by its method; a method not listed shows by its name. */
   public static readonly recentActionNames: Readonly<Record<string, string>> = {
     "git.stage": "Stage", "git.unstage": "Unstage", "git.discard": "Discard", "git.createBranch": "Create a branch", "git.switchBranch": "Switch branch",
     "git.commit": "Commit", "git.amend": "Amend the last commit", "git.push": "Push", "git.pull": "Pull", "git.cherryPick": "Cherry-pick", "git.revert": "Revert",
@@ -1115,7 +1040,6 @@ export class Resources {
   public static readonly headLabel: string = "HEAD";
   public static readonly rebaseNoTarget: string = "Open a commit's detail and choose Rebase onto here to start a rebase.";
   public static readonly dragType: string = "text/plain";
-  /** A transparent image the rebase screen drags in place of the browser's picture of the row, since it draws the row's card itself. */
   public static readonly blankDragImage: string = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
   public static readonly checkingIcon: IconName = "progress_activity";
   public static readonly okTone: string = "ok";
@@ -1203,7 +1127,6 @@ export class Resources {
   public static readonly rebaseActionTitles: Readonly<Record<RebaseAction, string>> = {
     Pick: "Pick", Reword: "Reword", Edit: "Edit", Squash: "Squash", Fixup: "Fixup", Drop: "Drop"
   };
-  /** The key that sets each action on the selected row. */
   public static readonly rebaseActionKeys: Readonly<Record<string, RebaseAction>> = {
     p: "Pick", r: "Reword", e: "Edit", s: "Squash", f: "Fixup", d: "Drop"
   };
@@ -1212,10 +1135,8 @@ export class Resources {
   public static readonly appliesCleanly: string = "Applies cleanly";
   public static readonly leftOut: string = "Left out";
   public static readonly notChecked: string = "Not checked on this git";
-  /** What a dragged row's card says where it would apply cleanly, and where its place would leave a fold first. */
   public static readonly droppedClean: string = "clean";
   public static readonly droppedRefused: string = "nothing before it to fold into";
-  /** The most places the advice after the summary tries for the conflicting row, nearest first, one check each. */
   public static readonly advicePlaces: number = 20;
   public static readonly checkIcons: Readonly<Record<RebaseCheckOutcome, IconName>> = {
     Clean: "check_circle", Conflicts: "warning", Folded: "merge_type", Dropped: "do_not_disturb_on", Unavailable: "help"
@@ -1258,17 +1179,14 @@ export class Resources {
     return `${names.join(", ")} ${names.length === 1 ? "follows" : "follow"}`;
   }
 
-  /** A dragged row's check where it would drop, such as "Dropped here: conflicts in a.ts". */
   public static formatDroppedHere(check: string): string {
     return `Dropped here: ${check.charAt(0).toLowerCase()}${check.slice(1)}`;
   }
 
-  /** Where to drop the conflicting row to clear its conflict: below the row named, or to the top when `above` is `null`. */
   public static formatDropAdvice(id: string, above: string | null, paths: readonly string[]): string {
     return `dropping ${id} ${Object.isNull(above) ? "to the top" : `below ${above}`} clears the conflict in ${paths.join(", ")}`;
   }
 
-  /** How the advice names a fold the conflicting row would drop below, by its action's title, such as "the fixup". */
   public static formatTheFold(action: string): string {
     return `the ${action.toLowerCase()}`;
   }
@@ -1293,7 +1211,6 @@ export class Resources {
     return `Step ${step} will stop on a conflict`;
   }
 
-  /** The stop card's note, as the board writes it: the files that conflict, the branch they changed on, and the step's own commit that changes the same lines. */
   public static formatStepStopsNote(paths: readonly string[], onto: string, commit: string): string {
     return `${paths.join(", ")} changed on ${onto}. The same lines change in ${commit}. You can resolve it when the rebase stops, or move or drop this commit.`;
   }
@@ -1304,9 +1221,7 @@ export class Resources {
 
   public static readonly workspaceDocumentName: string = "git.workspace";
   public static readonly openWorkspaceCommand: string = "git.openWorkspace";
-  /** The workspace page's instance that lists the repositories opened lately rather than a workspace's. */
   public static readonly openRepositoriesInstance: string = "open";
-  /** The page of the repositories opened lately: its tab, heading and entry beside the workspaces. */
   public static readonly dashboardTitle: string = "Dashboard";
   public static readonly openDashboardTitle: string = "Open dashboard";
   public static readonly dashboardIcon: IconName = "dashboard";
@@ -1336,7 +1251,6 @@ export class Resources {
   public static readonly pullRequestColumn: string = "Pull request";
   public static readonly checksColumn: string = "Checks";
   public static readonly openColumn: string = "Open";
-  /** The branch has no pull request, or no host reads the repository's pull requests. */
   public static readonly noPullRequest: string = "None";
   public static readonly pullRequestSignedOut: string = "Sign in";
   public static readonly pullRequestUnavailable: string = "Unavailable";
@@ -1344,7 +1258,6 @@ export class Resources {
   public static readonly checksRunning: string = "Running";
   public static readonly checksPassing: string = "Passing";
   public static readonly noChecks: string = "None";
-  /** A branch's pull request's state, after its number on the workspace page. */
   public static readonly workspacePullRequestStates: Readonly<Record<GitPullRequestState, string>> = {
     [GitPullRequestState.Open]: "open",
     [GitPullRequestState.Draft]: "draft",
@@ -1363,7 +1276,6 @@ export class Resources {
   public static readonly noCommitsYet: string = "No commits yet";
   public static readonly workspaceViewsHeading: string = "Views";
   public static readonly workspaceHostsHeading: string = "Hosts";
-  /** Each view's icon and name in the workspace page's side panel. */
   public static readonly workspaceViews: Readonly<Record<GitWorkspaceView, GitWorkspaceViewLabel>> = {
     [GitWorkspaceView.Behind]: new GitWorkspaceViewLabel("sync_problem", "Behind their upstream"),
     [GitWorkspaceView.Changed]: new GitWorkspaceViewLabel("edit_note", "With uncommitted changes"),
@@ -1372,7 +1284,6 @@ export class Resources {
   };
   public static readonly hostSignedIn: string = "signed in";
   public static readonly hostSignIn: string = "Sign in";
-  /** The remotes no host claims, by how Git reaches them. */
   public static readonly plainGitHosts: Readonly<Record<RemoteTransport, string>> = {
     [RemoteTransport.Ssh]: "Plain Git over SSH",
     [RemoteTransport.Https]: "Plain Git over HTTPS",
@@ -1393,10 +1304,6 @@ export class Resources {
     return selected === 0 ? repositories : `${repositories} · ${selected} selected`;
   }
 
-  /**
-   * A branch's pull request as the workspace shows it, such as "#214 open", "#1046 draft", "#22 merged", or "Review #533" when it waits for its reviews;
-   * with the host's own word for its state when it gives one, such as "!22 completed".
-   */
   public static formatWorkspacePullRequest(label: string, state: GitPullRequestState, isWaitingForReview: boolean, stateLabel: string | null = null): string {
     if (state === GitPullRequestState.Open && isWaitingForReview)
       return `Review ${label}`;
@@ -1435,7 +1342,6 @@ export class Resources {
   public static readonly ownWorktree: string = "own worktree";
   public static readonly pushedVerb: string = "Pushed";
   public static readonly pulledVerb: string = "Pulled";
-  /** Why a bulk push skipped a repository: its branch has no upstream, and the push never sets one. */
   public static readonly bulkNoUpstream: string = "it has no upstream on its remote";
   public static readonly bulkBranchChanged: string = "its branch, upstream or remote changed since you confirmed";
   public static readonly bulkNotBehind: string = "it is no longer only behind its upstream";
@@ -1447,18 +1353,15 @@ export class Resources {
 
   private static readonly countWords: readonly string[] = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
 
-  /** A count in a sentence or a button: a word from one to nine and digits otherwise, such as "three" or "12". */
   public static formatCount(count: number): string {
     return Resources.countWords[count - 1] ?? String(count);
   }
 
-  /** A count that starts a sentence, such as "Three" or "12". */
   public static formatCountStart(count: number): string {
     const text: string = Resources.formatCount(count);
     return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
   }
 
-  /** Names in a sentence, such as "git", "git and terminal" or "ui-components, git and terminal". */
   public static formatNames(names: readonly string[]): string {
     return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.slice(-1).join("")}`;
   }
@@ -1477,7 +1380,6 @@ export class Resources {
 
   public static readonly moreReviews: string = "More pull requests ask for your review than the host listed.";
 
-  /** A pull request that asks the person for a review, such as "Review #533 · desktop", the reference followed by its title. */
   public static formatReviewRequest(label: string, repository: string): string {
     return `Review ${label} · ${repository}`;
   }
@@ -1516,7 +1418,6 @@ export class Resources {
 
   public static readonly pushAllText: string = "Each push sends the branch to its upstream as the toolbar's Push does, never forced, with the repository's hooks; a failure stops only its own repository.";
 
-  /** A repository a bulk push will push, such as "git: feature/kit to origin/feature/kit on github.com/example-owner/git". */
   public static formatPushTarget(repository: string, branch: string, upstream: string, remote: string | null): string {
     return `${repository}: ${branch} to ${upstream}${Object.isNull(remote) ? "" : ` on ${remote}`}`;
   }
@@ -1525,7 +1426,6 @@ export class Resources {
     return `${repository}: skipped, since ${branch} has no upstream on its remote`;
   }
 
-  /** How a remote-tracking branch's name starts on the remote, such as "origin/". */
   public static formatRemotePrefix(remote: string): string {
     return `${remote}/`;
   }
@@ -1534,7 +1434,6 @@ export class Resources {
     return `it already has a branch ${name}`;
   }
 
-  /** The verb a bulk branch's result line starts with, such as "Created feature/kit in" before the repositories' names. */
   public static formatBranchedVerb(name: string): string {
     return `Created ${name} in`;
   }
@@ -1551,17 +1450,14 @@ export class Resources {
     return `New branch in ${Resources.formatCount(count)} ${count === 1 ? "repository" : "repositories"}`;
   }
 
-  /** A pull request cell's tooltip, its whole text, which may end in an ellipsis, before the pull request's title. */
   public static formatPullRequestLinkTitle(text: string, title: string): string {
     return `${text}: ${title}`;
   }
 
-  /** A stacked pull request's cell, such as "#215 open · on #214". */
   public static formatStackedOn(text: string, under: string): string {
     return `${text} · on ${under}`;
   }
 
-  /** A stack's row, such as "git: #214, then #215: merge in order, #214 first". */
   public static formatStack(repository: string, labels: readonly string[]): string {
     return `${repository}: ${labels.join(", then ")}: merge in order, ${labels.slice(0, 1).join("")} first`;
   }
@@ -1588,7 +1484,6 @@ export class Resources {
   public static readonly pullRequestFilesOpenHint: string = "Open this repository in Git to see each file's changes.";
   public static readonly pullRequestFilesFetchHint: string = "Fetch to see each file's changes.";
   public static readonly pullRequestFilesFetchFailed: string = "The fetch didn't finish. Try again to see each file's changes.";
-  /** The letter beside a file for what the pull request did to it, as the Git panel marks a change. */
   public static readonly pullRequestFileLetters: Readonly<Record<FileChangeKind, string>> = {
     [FileChangeKind.Added]: "A", [FileChangeKind.Modified]: "M", [FileChangeKind.Deleted]: "D", [FileChangeKind.Renamed]: "R"
   };
@@ -1660,7 +1555,6 @@ export class Resources {
     return count === 1 ? "1 comment" : `${count} comments`;
   }
 
-  /** The thread head's words after its state, or the whole head for a thread without one: the file's name and line it comments on, when it has them. */
   public static formatThreadPlace(afterState: boolean, path: string | null, line: number | null): string {
     const comment: string = afterState ? " comment" : "Comment";
     if (Object.isNull(path))
@@ -1677,7 +1571,6 @@ export class Resources {
     return `Open the conflicts in Git, at ${path}`;
   }
 
-  /** A commit's age as the Commits tab shows it, such as `5 min`, `3 h` or `12 d`; `null` past 30 days, which shows the date instead. */
   public static formatPullRequestCommitAge(milliseconds: number): string | null {
     const minutes: number = Math.max(1, Math.floor(milliseconds / 60_000));
     if (minutes < 60)

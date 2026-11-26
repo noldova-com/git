@@ -20,10 +20,6 @@ import { ThreadLine } from "../../models/thread-line.ts";
 import { Resources } from "../../../resources.ts";
 import { GitPersonAvatarComponent } from "../git-person-avatar/git-person-avatar.component.ts";
 
-/**
- * A pull request page's comment threads: each thread's file and line with Go to line, its state, and its comments in Markdown, a finished thread folded to its
- * first comment; Reply and Resolve or Reactivate when the host writes them, with the newest comments only when the host keeps no more.
- */
 @Component({
   selector: "nol-git-pull-request-threads",
   templateUrl: "./git-pull-request-threads.component.html",
@@ -56,22 +52,16 @@ export class GitPullRequestThreadsComponent {
   protected readonly confirming: WritableSignal<number | null> = signal<number | null>(null);
   protected readonly openCount: Signal<number> = computed(() => this.threads().filter(t => Resources.openThreadStates.includes(t.state)).length);
 
-  /** The host that reads the threads, writes replies and changes, if it does, and finds each comment author's picture. */
   public readonly host: InputSignal<IGitPullRequestHost> = input.required<IGitPullRequestHost>();
 
-  /** The pull request whose comment threads it shows. */
   public readonly reference: InputSignal<HostReference> = input.required<HostReference>();
 
-  /** Whether the pull request completes by itself once its policies pass, so resolving its last open thread may merge it. */
   public readonly isAutoComplete: InputSignal<boolean> = input<boolean>(false);
 
-  /** Finds the references the comments write, such as AB#12 and !8, and shows them as chips; null shows the comments as they're written. */
   public readonly references: InputSignal<ILinkReferenceSource | null> = input<ILinkReferenceSource | null>(null);
 
-  /** A link a comment's Markdown asks to open, with the gesture that opened it. */
   public readonly linkOpen: OutputEmitterRef<LinkOpenEvent> = output<LinkOpenEvent>();
 
-  /** A thread on a file's line whose Go to line the person clicked, for the page to show that line. */
   public readonly goToLine: OutputEmitterRef<ThreadLine> = output<ThreadLine>();
 
   public constructor() {
@@ -134,7 +124,6 @@ export class GitPullRequestThreadsComponent {
     this.drafts.set(drafts);
   }
 
-  /** Whether the thread shows its reply field: the person opened it, or it holds a draft. */
   protected isReplying(thread: HostThread): boolean {
     return this.replying().has(thread.id) || this.draftOf(thread).length > 0;
   }

@@ -8,7 +8,6 @@
 
 import type { PullAfter } from "./pull-after.ts";
 
-/** The pull the person asked for once a pull request merges, under the key of the pull request's reference. */
 export class KeptPull {
   public readonly key: string;
   public readonly pull: PullAfter;

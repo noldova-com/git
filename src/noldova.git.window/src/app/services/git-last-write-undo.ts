@@ -17,11 +17,6 @@ import { Resources } from "../../resources.ts";
 import { GitFolder } from "./git-folder.ts";
 import { GitRuntimeClient } from "./git-runtime-client.ts";
 
-/**
- * Gives the window Git's undo of the last write: while nothing editable has the focus, Edit → Undo and Mod+Z undo the newest write of the open
- * repository's journal, as the undo menu does, and Undo is greyed while that write can't be undone or there is none. It reads the journal again
- * after each change of the repository, so each Undo reaches the write before the one it undid.
- */
 export class GitLastWriteUndo {
   private readonly context: IWindowPartContext;
   private readonly client: GitRuntimeClient;
@@ -34,10 +29,6 @@ export class GitLastWriteUndo {
     this.client = new GitRuntimeClient(context);
   }
 
-  /**
-   * Provides the undo for the folder Git shows; the returned function withdraws it, after which Undo is native again. When another part of the
-   * window already provides one, it logs that and provides nothing.
-   */
   public static provide(context: IWindowPartContext): () => void {
     const undo = new GitLastWriteUndo(context);
     let withdraw: () => void;
@@ -77,7 +68,6 @@ export class GitLastWriteUndo {
       void this.readAsync(folder);
   }
 
-  /** Undoes the last write, offering nothing until the journal is read again, so a second Undo never asks for the same write. */
   private async undoAsync(): Promise<void> {
     const last: GitLastWrite | null = this.last();
     if (Object.isNull(last))
@@ -93,7 +83,6 @@ export class GitLastWriteUndo {
     }
   }
 
-  /** Reads the folder's status and journal; a later read wins over an earlier one still running, and one Git can't answer offers nothing. */
   private async readAsync(folder: string): Promise<void> {
     const read: number = ++this.reads;
     try {

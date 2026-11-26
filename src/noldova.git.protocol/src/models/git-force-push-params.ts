@@ -10,10 +10,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/**
- * The parameters of `git.forcePush`: the folder, the full id of the commit the person saw on the remote's branch, which the push replaces only
- * while the remote still holds it, and the status fingerprint the person saw.
- */
 export class GitForcePushParams {
   private static readonly FIELDS: readonly string[] = [Resources.folderField, Resources.expectedField, Resources.basedOnField];
 

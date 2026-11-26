@@ -69,7 +69,6 @@ function cardsOf(): readonly GitHostCard[] | null {
   return accountOf()?.account.cards() ?? null;
 }
 
-/** A commit's message as the Git view shows it: its links found through the hosts', opened by the host that claims one and by the browser otherwise. */
 @Component({
   selector: "nol-git-azure-devops-message",
   imports: [MarkdownViewComponent],

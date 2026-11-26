@@ -12,7 +12,6 @@ import type { IGitPullRequests } from "../interfaces/i-git-pull-requests.ts";
 import type { GitPullRequestList } from "./git-pull-request-list.ts";
 import type { GitWorkspaceRow } from "./git-workspace-row.ts";
 
-/** A workspace repository whose remote's host reads its review requests, with the host and its answer. */
 export class GitReviewsRead {
   public readonly row: GitWorkspaceRow;
   public readonly host: IGitPullRequests;

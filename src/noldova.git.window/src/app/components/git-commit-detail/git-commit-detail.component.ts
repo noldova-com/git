@@ -45,7 +45,6 @@ import { Resources } from "../../../resources.ts";
 import { GitDiffFilesComponent } from "../git-diff-files/git-diff-files.component.ts";
 import { GitReferenceTextComponent } from "../git-reference-text/git-reference-text.component.ts";
 
-/** A commit the history selected: its id, subject and message, author and committer, parents, actions and the files it changes, against its first parent. */
 @Component({
   selector: "nol-git-commit-detail",
   imports: [ButtonComponent, FileBadgeComponent, FormsModule, GitDiffFilesComponent, GitReferenceTextComponent, IconButtonComponent, MarkdownViewComponent,
@@ -61,25 +60,15 @@ export class GitCommitDetailComponent {
   protected readonly state: GitViewStateService = inject(GitViewStateService);
 
   protected readonly resources: typeof Resources = Resources;
-  /** Whether the app turned the module's AI features on, which shows its button. */
   protected readonly showsAiFeatures: Signal<boolean> = GitViewOptions.showsAiFeatures;
   protected readonly secondary: ButtonVariant = ButtonVariant.Secondary;
-  /** The new branch's name while "Branch here" asks for one, or null. */
   protected readonly branchName: WritableSignal<string | null> = signal<string | null>(null);
-  /** Whether the name field makes a tag rather than a branch. */
   protected readonly tagging: WritableSignal<boolean> = signal(false);
-  /** The message after the subject and the committer, read apart from the files; null until read, or when Git couldn't read them. */
   protected readonly more: WritableSignal<GitCommitDetail | null> = signal<GitCommitDetail | null>(null);
-  /** Whether the commit's signature checks out and who signed it; null until read, for an unsigned commit, or when Git couldn't check it. */
   protected readonly signature: WritableSignal<GitCommitSignature | null> = signal<GitCommitSignature | null>(null);
-  /**
-   * The current branch's remote, kept while each status read gives an equal one, so the host is asked again only for another remote or commit.
-   * The view shows a commit only from the folder it shows, whose status this is.
-   */
   private readonly remote: Signal<GitRemote | null> = computed(() => this.state.status()?.remote ?? null, {
     equal: (a, b) => GitCommitDetailComponent.remoteKeyOf(a) === GitCommitDetailComponent.remoteKeyOf(b)
   });
-  /** The host that claims the remote, with its answer for the commit; null when no host claims it or the host reads no commit's pull request. */
   private readonly pullRequestRead: Signal<GitPullRequestRead | null> = computed(() => {
     const remote: GitRemote | null = this.remote();
     const host: IGitPullRequests | null = Object.isNull(remote) ? null : GitPullRequests.of(remote);
@@ -91,12 +80,10 @@ export class GitCommitDetailComponent {
     const answer: Signal<GitBranchPullRequest | null> | null = this.attempt(() => commitFor.call(host, folder, remote, id), null);
     return Object.isNull(answer) ? null : new GitPullRequestRead(host, answer);
   });
-  /** The card of the pull request that brought the commit in, or null while there is none to show. */
   protected readonly pullRequest: Signal<GitCommitPullRequest | null> = computed(() => {
     const read: GitPullRequestRead | null = this.pullRequestRead();
     return Object.isNull(read) ? null : GitCommitPullRequest.of(read.host, read.answer());
   });
-  /** The host's answer for the commit's review comments, asked once for each remote and commit; null when no host claims the remote or it reads none. */
   private readonly commentsRead: Signal<Signal<GitCommitComments | null> | null> = computed(() => {
     const remote: GitRemote | null = this.remote();
     const host: IGitPullRequests | null = Object.isNull(remote) ? null : GitPullRequests.of(remote);
@@ -107,59 +94,44 @@ export class GitCommitDetailComponent {
     const id: string = this.commit().commit.id;
     return this.attempt(() => commentsFor.call(host, folder, remote, id), null);
   });
-  /** The row that opens the commit's review comments: its text and the page it opens; null with none to show. */
   protected readonly comments: Signal<GitCommentsLink | null> = computed(() => {
     const answer: GitCommitComments | null = this.commentsRead()?.() ?? null;
     if (Object.isNull(answer) || answer.count === 0 || Object.isNull(answer.url))
       return null;
     return new GitCommentsLink(Resources.formatCommitComments(answer.count, answer.isCapped), answer.url);
   });
-  /** Counts the prediction reads, so only the latest one's answers show. */
   private predicting = 0;
-  /**
-   * Whether the actions that write can run: none while another write runs, or while the Git panel follows another folder,
-   * since they write to the folder the panel follows.
-   */
   protected readonly writable: Signal<boolean> = computed(() => !this.state.busy() && this.state.folder() === this.folder());
-  /** Whether the commit is a branch's tip, local or remote, which the current branch can merge. */
   protected readonly mergeable: Signal<boolean> = computed(() => this.commit().refs.some(t => t.kind === RefKind.Branch || t.kind === RefKind.RemoteBranch));
-  /** What a merge of a branch's tip, a cherry-pick and a revert of the commit would do on the current branch, by action's label; none until read, and one Git can't tell leaves its line out. */
   protected readonly predictions: WritableSignal<readonly GitLabeledPrediction[]> = signal<readonly GitLabeledPrediction[]>([]);
-  /** Each line on what an action would do, with the first files a predicted conflict names and how many more it names. */
   protected readonly predicted: Signal<readonly GitPredictedLine[]> = computed(() =>
     this.predictions().flatMap(({ label, prediction }) => {
       const text: string | null = Resources.formatPrediction(label, prediction);
       return Object.isNull(text) ? [] : [new GitPredictedLine(text, prediction.paths.slice(0, Resources.predictedPathsShown),
         Math.max(prediction.paths.length - Resources.predictedPathsShown, 0))];
     }));
-  /** The commit's files, whose diff a predicted conflict's file badge opens. */
   protected readonly files: Signal<GitDiffFilesComponent> = viewChild.required(GitDiffFilesComponent);
-  /** The host modules' link source for the repository, which draws links to their items in the message as chips, or null. */
   protected readonly references: Signal<ILinkReferenceSource | null> = computed(() => GitLinkReferences.of(this.folder()));
   protected readonly chips: Signal<readonly GitRefChip[]> = computed(() => GitRefChip.chipsOf(this.commit().refs));
   protected readonly id: Signal<string> = computed(() => this.commit().commit.id.slice(0, Resources.commitIdLength));
   protected readonly label: Signal<string> = computed(() => Resources.formatCommitLabel(this.commit().commit.id.slice(0, Resources.shortIdLength)));
   protected readonly initials: Signal<string> = computed(() => CommitLabels.initialsOf(this.commit().commit.author));
   protected readonly avatar: Signal<string> = computed(() => CommitLabels.avatarOf(this.commit().email));
-  /** The author's picture as a data address, or null to show their initials. */
   protected readonly image: Signal<string | null> = computed(() => GitAvatars.imageOf(this.folder(), this.commit().email, this.commit().commit.id));
   protected readonly authored: Signal<string> = computed(() =>
     Resources.formatAuthored(new Date(this.commit().commit.authoredAt).toLocaleString(Resources.dateLocale, Resources.authoredFormat)));
-  /** Who committed it and when, when that isn't its author. */
   protected readonly committed: Signal<string | null> = computed(() => {
     const more: GitCommitDetail | null = this.more();
     if (Object.isNull(more) || more.committer === this.commit().commit.author)
       return null;
     return Resources.formatCommitted(more.committer, new Date(more.committedAt).toLocaleString(Resources.dateLocale, Resources.authoredFormat));
   });
-  /** The commit's changes against its first parent, or against the empty tree for a root commit. */
   protected readonly scope: Signal<DiffScope> = computed(() => {
     const id: string = this.commit().commit.id;
     const parent: string = this.commit().commit.parents[0] ?? (id.length > Resources.emptyTreeSha1.length ? Resources.emptyTreeSha256 : Resources.emptyTreeSha1);
     return new DiffScope(DiffScopeKind.Range, parent, id);
   });
 
-  /** The repository's folder. */
   public readonly folder: InputSignal<string> = input.required<string>();
   public readonly commit: InputSignal<GitGraphCommit> = input.required<GitGraphCommit>();
 
@@ -180,12 +152,10 @@ export class GitCommitDetailComponent {
     }));
   }
 
-  /** The signature row's words, such as "Signed by Ada, verified against the keys you trust". */
   protected signatureLineOf(signature: GitCommitSignature): string {
     return Resources.formatSignature(signature.state, signature.signer);
   }
 
-  /** Selects a parent in the history, scrolling to it and reading further pages until it shows. */
   protected showParent(id: string): void {
     GitViewing.branch.set(new GitBranchView(this.folder(), "", false, id));
   }
@@ -195,18 +165,15 @@ export class GitCommitDetailComponent {
       void this.context.openLinkAsync(opened.url, { gesture: opened.gesture }).catch((error: unknown) => this.errors.handleError(error));
   }
 
-  /** Merges the commit into the current branch; a conflict shows in the Git panel's changes, and a failure here. */
   protected async mergeAsync(): Promise<void> {
     await this.state.mergeAsync(this.commit().commit.id);
   }
 
-  /** Cherry-picks the commit onto the current branch, or reverts it there; a conflict shows in the Git panel's changes, and a failure here. */
   protected async pickAsync(revert: boolean): Promise<void> {
     const id: string = this.commit().commit.id;
     await (revert ? this.state.revertAsync(id) : this.state.cherryPickAsync(id));
   }
 
-  /** Opens the rebase screen for the current branch onto this commit, named by its first local or remote branch, else its short id. */
   protected startRebase(): void {
     const commit = this.commit();
     const branch = commit.refs.find(t => t.kind === RefKind.Branch) ?? commit.refs.find(t => t.kind === RefKind.RemoteBranch);
@@ -225,21 +192,18 @@ export class GitCommitDetailComponent {
     this.state.failure.set(null);
   }
 
-  /** Makes the branch or tag at this commit; the field stays, with Git's refusal under it, when it can't. */
   protected async createBranchAsync(name: string): Promise<void> {
     const id: string = this.commit().commit.id;
     if (await (this.tagging() ? this.state.createTagAsync(name.trim(), id) : this.state.createBranchAtAsync(name.trim(), id)))
       this.branchName.set(null);
   }
 
-  /** Opens the pull request in its host's own page when the host has one, else its page in the browser. */
   protected openPullRequest(card: GitCommitPullRequest): void {
     if (this.attempt(() => card.host.open?.(this.folder(), card.row) === true, false))
       return;
     void this.context.openLinkAsync(card.row.url, { place: LinkPlace.System }).catch((error: unknown) => this.errors.handleError(error));
   }
 
-  /** Opens the host's page of the commit's review comments in the browser, as a pull request's page opens. */
   protected openComments(url: string): void {
     void this.context.openLinkAsync(url, { place: LinkPlace.System }).catch((error: unknown) => this.errors.handleError(error));
   }
@@ -248,10 +212,6 @@ export class GitCommitDetailComponent {
     navigator.clipboard.writeText(this.commit().commit.id).catch((error: unknown) => this.errors.handleError(error));
   }
 
-  /**
-   * Reads what a merge of a branch's tip, a cherry-pick and a revert would do, keeping only the latest read's answers, so an older read for the same
-   * commit, from before the repository changed, never lands last; a Git failure leaves the predictions out.
-   */
   private async predictAsync(folder: string, id: string): Promise<void> {
     const read: number = ++this.predicting;
     this.predictions.set([]);
@@ -298,12 +258,10 @@ export class GitCommitDetailComponent {
     }
   }
 
-  /** What tells one remote from another: its name, host, path and transport, or nothing without one. */
   private static remoteKeyOf(remote: GitRemote | null): string {
     return Object.isNull(remote) ? "" : JSON.stringify([remote.name, remote.host, remote.path, remote.transport]);
   }
 
-  /** Runs a host's member, reporting what it throws and answering the fallback instead. */
   private attempt<T>(run: () => T, fallback: T): T {
     try {
       return run();

@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** One of Azure DevOps's merge strategies, and the "Limit merge types" policy's setting that allows it. */
 export class MergeTypeSetting {
   public readonly type: string;
   public readonly setting: string;

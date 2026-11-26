@@ -38,7 +38,6 @@ const changed: HostPullRequestFiles = new HostPullRequestFiles(SOURCE, COMMON, [
   new HostPullRequestFile("src/app.ts", FileChangeKind.Modified, null), new HostPullRequestFile("old.md", FileChangeKind.Deleted, null),
   new HostPullRequestFile("docs/guide.md", FileChangeKind.Renamed, "guide.md")], false);
 const scope: DiffScope = new DiffScope(DiffScopeKind.Range, COMMON, SOURCE);
-/** The push's diff of `src/app.ts` from local Git: one hunk at new lines 40 to 42, with line 41 added. */
 const appDiff: GitDiff = new GitDiff([new DiffFile("src/app.ts", undefined, "src/app.ts", undefined, FileChange.Modified, null, null, false, null,
   [new DiffHunk(40, 2, 40, 3, "", [new DiffLine(LineKind.Context, 40, 40, "const a = 1;"), new DiffLine(LineKind.Added, null, 41, "const b = 2;"),
     new DiffLine(LineKind.Context, 41, 42, "export { a, b };")])], false)], 0, 0, false);
@@ -70,7 +69,6 @@ class Tab {
     return this.context.callsOf("log").map(t => t[0]);
   }
 
-  /** Opens the tab, given the files the page already read, or `null` for the tab to read them. */
   public create(answer: HostPullRequestFiles | null = null): void {
     TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: this.context }] });
     this.fixture = TestBed.createComponent(GitPullRequestFilesComponent);
@@ -99,7 +97,6 @@ class Tab {
     this.fixture?.componentRef.setInput("reveal", line);
   }
 
-  /** Opens the tab on a repository that is the pull request's and has the push's commits, so it shows the changes from local Git, read as `diff` says. */
   public async openLocalAsync(diff: GitDiff | WindowFailure, line: GitFileLine): Promise<this> {
     this.host.folder = FOLDER;
     this.requests.answer(TestPullRequestHost.changesMethod, changed.toJson());
@@ -116,7 +113,6 @@ class Tab {
     return this;
   }
 
-  /** The marked diff line's text as it reads, which its colored runs split into spans. */
   public marked(): (string | null)[] {
     return [...this.element.querySelectorAll(".diff .marked-line")].map(t => t.textContent);
   }
@@ -125,7 +121,6 @@ class Tab {
     return [...this.element.querySelectorAll(selector)].map(wordsOf);
   }
 
-  /** Tells the tab that Git saw a change in `folder`, as after a fetch or a switch there, and waits for what it reads then. */
   public async changeAsync(folder: string): Promise<void> {
     this.context.raiseEvent(GitNames.changedEvent, new GitChanged(folder).toJson());
     await this.settleAsync();

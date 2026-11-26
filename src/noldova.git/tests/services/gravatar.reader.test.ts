@@ -33,7 +33,6 @@ function waitForAbort(init: RequestInit, failure: (signal: AbortSignal) => unkno
   return new Promise((_resolve, reject) => init.signal?.addEventListener("abort", () => reject(failure(init.signal ?? AbortSignal.abort()))));
 }
 
-/** A fetch the reader asked for. */
 interface IAskedFetch {
   readonly url: string;
   readonly init: RequestInit;

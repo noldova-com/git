@@ -12,7 +12,6 @@ import { describe, it } from "vitest";
 
 import { AnswerText } from "../../src/services/answer-text.ts";
 
-/** A response whose body streams the chunks, and whether its reader cancelled the stream. */
 interface IStreamedAnswer {
   readonly response: Response;
   readonly isCancelled: () => boolean;

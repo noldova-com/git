@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** The lines a set of files adds and removes. */
 export class LineCounts {
   public readonly added: number;
   public readonly removed: number;

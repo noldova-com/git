@@ -29,7 +29,6 @@ const COMMON: string = "0123456789abcdef0123456789abcdef01234567";
 const OLD: number = Date.UTC(2026, 0, 5, 12);
 const NOW: number = Date.UTC(2026, 10, 23, 12);
 
-/** Fixes the clock the ages read, so an age doesn't depend on how long the test takes; only Date is faked, so the page's timers still run. */
 function pinNow(): void {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(NOW);
@@ -72,7 +71,6 @@ class Tab {
     return this.context.callsOf("log").map(t => t[0]);
   }
 
-  /** Opens the tab, given the pushes the page already read, or `null` for the tab to read them. */
   public create(answer: HostPullRequestUpdates | null = null): void {
     TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: this.context }] });
     this.fixture = TestBed.createComponent(AzureDevOpsPullRequestUpdatesComponent);

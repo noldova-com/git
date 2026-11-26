@@ -13,12 +13,6 @@ import path from "node:path";
 import { Resources } from "../resources.ts";
 import type { IgnoredPaths } from "./ignored-paths.ts";
 
-/**
- * Watches each folder of a worktree that git doesn't ignore, on a system whose file watch covers one folder, not a tree: it walks the tree a level at a
- * time, asking git once a level which of its folders it ignores, so a build's output or a package folder takes no watch, and it adds a folder made later
- * and drops one removed. A changed ignore file walks the tree again, as it can change which folders git ignores, and a changed index asks again about
- * the folders it skipped, as a file added there makes git stop ignoring its folder.
- */
 export class FolderTreeWatch {
   private readonly worktree: string;
   private readonly top: string;
@@ -26,15 +20,10 @@ export class FolderTreeWatch {
   private readonly onChange: (name: string | null) => void;
   private readonly onFailed: (error: unknown) => void;
   private readonly watchers: Map<string, FSWatcher> = new Map();
-  /** The folders a walk found git ignores, so gave no watch, relative to the worktree with `/`. */
   private readonly skipped: Set<string> = new Set();
   private readonly stop: AbortController = new AbortController();
   private walks: Promise<void> = Promise.resolve();
 
-  /**
-   * @param onChange Takes each changed path, relative to the worktree with `/`, or null when the system names none.
-   * @param onFailed Takes the error that ends the watch once it started, after it closed every folder's watch.
-   */
   public constructor(worktree: string, top: string, ignored: IgnoredPaths, onChange: (name: string | null) => void, onFailed: (error: unknown) => void) {
     this.worktree = worktree;
     this.top = top;
@@ -43,7 +32,6 @@ export class FolderTreeWatch {
     this.onFailed = onFailed;
   }
 
-  /** Watches every folder git doesn't ignore; it fails, with nothing watched, when there are more than the module watches in one worktree. */
   public async startAsync(): Promise<void> {
     try {
       await this.serially(() => this.addTreeAsync(""));
@@ -53,7 +41,6 @@ export class FolderTreeWatch {
     }
   }
 
-  /** Asks git again about the folders it skipped as ignored, once the index changed, and watches each one git no longer ignores, with its tree. */
   public recheck(): void {
     if (!this.stop.signal.aborted)
       this.follow(this.serially(() => this.recheckAsync()));
@@ -67,7 +54,6 @@ export class FolderTreeWatch {
     this.skipped.clear();
   }
 
-  /** Watches a folder and the folders under it that git doesn't ignore, a level at a time, failing once that would pass the limit. */
   private async addTreeAsync(start: string): Promise<void> {
     let level = [start];
     while (level.length > 0) {
@@ -83,7 +69,6 @@ export class FolderTreeWatch {
     }
   }
 
-  /** A folder's own folders, relative to the worktree, leaving out the git folder; none once the folder is gone. */
   private async childrenAsync(folder: string): Promise<string[]> {
     try {
       const entries = await readdir(path.join(this.worktree, folder), { withFileTypes: true });
@@ -95,10 +80,6 @@ export class FolderTreeWatch {
     }
   }
 
-  /**
-   * Watches one folder, unless it is gone by now, as a folder made and removed at once can be; once the watch is closed, a walk still running stops here
-   * rather than leave a watch behind.
-   */
   private add(folder: string): void {
     this.stop.signal.throwIfAborted();
     this.skipped.delete(folder);
@@ -129,7 +110,6 @@ export class FolderTreeWatch {
       this.follow(this.serially(() => this.settleAsync(changed)));
   }
 
-  /** Watches a folder made or moved in, unless git ignores it, and drops the watches of one removed or moved away. */
   private async settleAsync(changed: string): Promise<void> {
     const isFolder = await stat(path.join(this.worktree, changed)).then(t => t.isDirectory(), (error: unknown) => {
       if (FolderTreeWatch.isGone(error))
@@ -163,7 +143,6 @@ export class FolderTreeWatch {
       await this.addTreeAsync(folder);
   }
 
-  /** Walks the tree again from its top, as a changed ignore file can ignore a watched folder or stop ignoring one. */
   private async rewalkAsync(): Promise<void> {
     this.ignored.forget();
     for (const watcher of this.watchers.values())
@@ -173,7 +152,6 @@ export class FolderTreeWatch {
     await this.addTreeAsync("");
   }
 
-  /** Drops the watch of a folder that went away; any other error ends the whole watch. */
   private async loseAsync(folder: string, watcher: FSWatcher, error: Error): Promise<void> {
     watcher.close();
     if (this.watchers.get(folder) === watcher)
@@ -183,17 +161,12 @@ export class FolderTreeWatch {
       throw error;
   }
 
-  /**
-   * Runs a walk once the walks before it end, so two never add the same folder: an ignore file written can be heard twice, and a second walk starting while
-   * the first still runs would watch a folder twice and leave one watch open past the close.
-   */
   private serially(walk: () => Promise<void>): Promise<void> {
     const run = this.walks.then(walk);
     this.walks = run.catch(() => undefined);
     return run;
   }
 
-  /** Ends the whole watch when a change it follows fails, unless the watch closed first. */
   private follow(work: Promise<void>): void {
     work.catch((error: unknown) => {
       if (this.stop.signal.aborted)
@@ -203,7 +176,6 @@ export class FolderTreeWatch {
     });
   }
 
-  /** Whether a folder is the given one or inside it. */
   private static isIn(folder: string, outer: string): boolean {
     return folder === outer || folder.startsWith(`${outer}/`);
   }

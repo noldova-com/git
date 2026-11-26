@@ -8,7 +8,6 @@
 
 import type { HostWorkItemType, WorkItemCategory } from "@noldova/git.hosting.protocol";
 
-/** A work item type of a project, and the category of each of its states by the state's name. */
 export class WorkItemTypeStates {
   public readonly type: HostWorkItemType;
   public readonly categories: ReadonlyMap<string, WorkItemCategory>;

@@ -86,11 +86,6 @@ export class AzureWrites {
     return AzureApi.read(() => AzureReads.reviewerOf(answer));
   }
 
-  /**
-   * Completes the pull request as the person chose, once a fresh read shows it active, not a draft, merged cleanly, at the commit and target the
-   * page showed, and with a merge type its policies allow; it never bypasses a policy, and the PATCH sends the commit again, so Azure DevOps refuses
-   * it when new commits came in between.
-   */
   public async completePullRequestAsync(completion: PullRequestCompletion, signal: AbortSignal): Promise<void> {
     const token: AzureCredential = this.codeTokenFor(completion.reference.owner);
     const url: string = await this.checkCompletionAsync(completion, true, token, signal);
@@ -101,10 +96,6 @@ export class AzureWrites {
     }, signal), Resources.cannotCompleteMessage, Resources.pullRequestNotFoundMessage);
   }
 
-  /**
-   * Sets the pull request to complete by itself as the signed-in person, with the person's choices, once a fresh read shows it active, not a draft, at
-   * the commit and target the page showed, and with a merge type its policies allow; Azure DevOps then completes it when its required policies pass.
-   */
   public async setAutoCompleteAsync(completion: PullRequestCompletion, signal: AbortSignal): Promise<void> {
     const token: AzureCredential = this.codeTokenFor(completion.reference.owner);
     const url: string = await this.checkCompletionAsync(completion, false, token, signal);
@@ -116,7 +107,6 @@ export class AzureWrites {
     }, signal), Resources.cannotCompleteMessage, Resources.pullRequestNotFoundMessage);
   }
 
-  /** Stops an active pull request from completing by itself. */
   public async cancelAutoCompleteAsync(reference: HostReference, signal: AbortSignal): Promise<void> {
     const token: AzureCredential = this.codeTokenFor(reference.owner);
     const url: string = Resources.formatPullRequestUrl(reference.owner, reference.repository, reference.number);
@@ -127,7 +117,6 @@ export class AzureWrites {
       Resources.cannotChangePullRequestMessage, Resources.pullRequestNotFoundMessage);
   }
 
-  /** Abandons the pull request once a fresh read shows it active at the commit the page showed. */
   public async abandonPullRequestAsync(abandonment: PullRequestAbandonment, signal: AbortSignal): Promise<void> {
     const { owner, repository, number } = abandonment.reference;
     const token: AzureCredential = this.codeTokenFor(owner);

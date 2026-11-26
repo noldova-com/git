@@ -27,13 +27,6 @@ import type { HooksReader } from "./hooks.reader.ts";
 import { LogReader } from "./log.reader.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/**
- * Rebases the current branch onto a commit with `git rebase --interactive`, handing git the steps as its todo through `sequence.editor`, so no editor opens.
- * A reword, and a squash group's message, become a `fixup -C` of a commit made with `git commit-tree` that changes nothing and carries the message, as an
- * `amend!` commit does; squashes and fixups become `fixup`, so git never asks for a message. With `updateRefs`, the other local branches on the replayed
- * commits move with them, each after the last step of its commit's group. A conflict leaves the rebase stopped for the person to resolve, an `edit` step
- * leaves it stopped at that commit, and any other failure aborts it.
- */
 export class RebaseWriter implements IGitWrite {
   public readonly method: string = GitNames.rebaseMethod;
   public readonly undo: UndoMode = UndoMode.Keep;
@@ -101,10 +94,6 @@ export class RebaseWriter implements IGitWrite {
     throw new GitFailedException(Resources.rebaseCommand, output);
   }
 
-  /**
-   * Refuses steps that aren't exactly the commits from the merge base with the target up to HEAD, as when the branch moved, or another was
-   * checked out, after the plan was read: git's todo is replaced with the steps, so a commit missing from them would be dropped.
-   */
   private async requireRangeAsync(top: string, signal?: AbortSignal): Promise<void> {
     const gitArguments = new GitArguments(Resources.rebaseRangeArguments, [Resources.formatSymmetricRange(this.onto, Resources.headRevision)]);
     const result = await this.runner.runAsync(ProgramRun.readGit(gitArguments, top, RebaseWriter.READ_LIMITS, signal));
@@ -115,7 +104,6 @@ export class RebaseWriter implements IGitWrite {
       throw new RebasePlanMovedException();
   }
 
-  /** The todo git runs: each group, a kept step and the folds after it, then its message's `fixup -C` and the `update-ref` of the branches on its commits. */
   private async todoAsync(folders: RepositoryFolders, branch: string | null, signal?: AbortSignal): Promise<string> {
     const stacked = this.updateRefs ? await this.readStackedAsync(folders.top, branch, signal) : new Map<string, string[]>();
     const lines: string[] = [];
@@ -146,7 +134,6 @@ export class RebaseWriter implements IGitWrite {
     return `${lines.join(Resources.lineEnd)}${Resources.lineEnd}`;
   }
 
-  /** A commit with the commit's tree and the commit as its parent, so applying it changes nothing, and the message, for a `fixup -C` to take. */
   private async commitMessageAsync(folders: RepositoryFolders, id: string, message: string, signal?: AbortSignal): Promise<string> {
     const gitArguments = new GitArguments([...Resources.commitTreeArguments, id, Resources.formatTreeRevision(id)]);
     const run = ProgramRun.writeGit(gitArguments, folders.top, folders.gitFolder, folders.commonGitFolder, RebaseWriter.LIMITS, signal);
@@ -155,7 +142,6 @@ export class RebaseWriter implements IGitWrite {
     return result.output.toString(Resources.utf8Encoding).trim();
   }
 
-  /** The other local branches by the commit they point at, as full ref names. */
   private async readStackedAsync(top: string, branch: string | null, signal?: AbortSignal): Promise<Map<string, string[]>> {
     const result = await this.runner.runAsync(ProgramRun.readGit(new GitArguments(Resources.branchRefTipsArguments), top, RebaseWriter.READ_LIMITS, signal));
     RebaseWriter.requireSuccess(Resources.forEachRefCommand, result);

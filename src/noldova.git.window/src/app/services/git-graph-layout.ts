@@ -15,12 +15,6 @@ import { GitLane } from "../models/git-lane.ts";
 import { GitLaneTarget } from "../models/git-lane-target.ts";
 import { Resources } from "../../resources.ts";
 
-/**
- * Lays commits, newest first, into lanes. Each lane waits for one commit id; a commit takes the lane that waits for it, or the first free one,
- * hands that lane to its first parent, and opens a lane for each further parent. A first parent that a merge's side lane further right
- * already waits for is pulled into this lane, so the merged branch ends where it forks off; one that another branch's lane waits for stays
- * there, and this lane curves into it in its own color. Lanes keep their place, so a branch's color stays with it.
- */
 export class GitGraphLayout {
   public static layout(commits: readonly GitGraphCommit[]): GitGraphRow[] {
     let lanes: readonly GitLane[] = [];

@@ -10,7 +10,6 @@ import "@noldova/context.core";
 import type { JsonObject, JsonReader } from "@noldova/context.json";
 import { GitMovingFolder } from "./git-moving-folder.ts";
 
-/** A named, ordered list of repository folders that the workspace page shows together. */
 export class GitWorkspace {
   public readonly id: string;
   public readonly name: string;
@@ -22,7 +21,6 @@ export class GitWorkspace {
     this.folders = folders;
   }
 
-  /** Reads a stored workspace; throws when a field is missing or of the wrong kind. */
   public static fromJson(reader: JsonReader): GitWorkspace {
     return new GitWorkspace(reader.readNonBlankString("id"), reader.readNonBlankString("name"), [...new Set(reader.readStringArray("folders"))]);
   }
@@ -31,7 +29,6 @@ export class GitWorkspace {
     return new GitWorkspace(this.id, name, this.folders);
   }
 
-  /** Adds a folder at the end; a folder it already holds leaves it as it is. */
   public withFolder(folder: string): GitWorkspace {
     return this.folders.includes(folder) ? this : new GitWorkspace(this.id, this.name, [...this.folders, folder]);
   }
@@ -40,10 +37,6 @@ export class GitWorkspace {
     return new GitWorkspace(this.id, this.name, this.folders.filter(t => !folders.has(t)));
   }
 
-  /**
-   * Moves folders one place up or down in the order, keeping their order among themselves; a folder already at that end, or next to
-   * another moved folder that is, stays.
-   */
   public withFoldersMoved(folders: ReadonlySet<string>, by: -1 | 1): GitWorkspace {
     const order: string[] = [...this.folders];
     const moving: GitMovingFolder[] = this.folders.flatMap((folder, index) => folders.has(folder) ? [new GitMovingFolder(folder, index)] : []);

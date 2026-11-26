@@ -20,11 +20,6 @@ import { GitRepositorySummaries } from "./git-repository-summaries.ts";
 import { GitRuntimeClient } from "./git-runtime-client.ts";
 import { GitViewStateService } from "./git-view-state.service.ts";
 
-/**
- * The workspace page's writes to several repositories at once: a push of one branch, a fast-forward pull and a new branch. Each reads the repository's status
- * again just before it writes, and writes through the same request the history's toolbar sends, at most {@link GitRepositorySummaries.AT_ONCE}
- * at a time; one failing never stops the others, and nothing is retried.
- */
 export class GitWorkspaceBulk {
   private readonly client: GitRuntimeClient;
   private readonly errors: ErrorHandler;
@@ -34,11 +29,6 @@ export class GitWorkspaceBulk {
     this.errors = errors;
   }
 
-  /**
-   * Pushes each target's branch to its upstream, never forced. A target without an upstream on its remote is skipped without a read, and so is
-   * one whose repository has since switched to another branch, or whose upstream or remote is no longer the one the confirm named; nothing sets
-   * an upstream.
-   */
   public pushAsync(targets: readonly GitBulkTarget[]): Promise<GitBulkResult> {
     return this.runAsync(targets, async target => {
       if (Object.isNull(target.upstream))
@@ -52,7 +42,6 @@ export class GitWorkspaceBulk {
     });
   }
 
-  /** Pulls each target, which only fast-forwards; one that is no longer behind its upstream alone, such as after a commit, is skipped. */
   public pullAsync(targets: readonly GitBulkTarget[]): Promise<GitBulkResult> {
     return this.runAsync(targets, async target => {
       const status: GitStatus = await this.client.statusAsync(target.folder);
@@ -63,10 +52,6 @@ export class GitWorkspaceBulk {
     });
   }
 
-  /**
-   * Creates the branch in each target at its current commit and switches to it, as the history's Create branch does. A name the protocol
-   * refuses skips every target unread; a repository that already has the branch is skipped and named, and nothing else is changed in it.
-   */
   public createBranchAsync(targets: readonly GitBulkTarget[], name: string): Promise<GitBulkResult> {
     const isName: boolean = GitBranchParams.isBranchName(name);
     return this.runAsync(targets, async target => {
@@ -81,7 +66,6 @@ export class GitWorkspaceBulk {
     });
   }
 
-  /** Runs the work on each target, which answers why it skipped one or null once it wrote; a failure is kept with its reason, and the rest go on. */
   private async runAsync(targets: readonly GitBulkTarget[], work: (target: GitBulkTarget) => Promise<string | null>): Promise<GitBulkResult> {
     const skipped: Map<GitBulkTarget, string> = new Map();
     const failed: Map<GitBulkTarget, string> = new Map();

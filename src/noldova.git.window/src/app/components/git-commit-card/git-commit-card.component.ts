@@ -24,12 +24,10 @@ import { GitViewStateService } from "../../services/git-view-state.service.ts";
 })
 export class GitCommitCardComponent {
   protected readonly resources: typeof Resources = Resources;
-  /** Whether the app turned the module's AI features on, which shows its button. */
   protected readonly showsAiFeatures: Signal<boolean> = GitViewOptions.showsAiFeatures;
   protected readonly secondary: ButtonVariant = ButtonVariant.Secondary;
   protected readonly state: GitViewStateService = inject(GitViewStateService);
   protected readonly placeholder: Signal<string> = computed(() => this.status().operation?.message ?? Resources.messagePlaceholder);
-  /** Whether the last commit can be amended: there is one, nothing is in progress, and it isn't on the upstream yet. */
   protected readonly canAmend: Signal<boolean> = computed(() => {
     const status: GitStatus = this.status();
     return !Object.isNull(status.head) && Object.isNull(status.operation) && !(!Object.isNull(status.upstream) && !status.upstream.gone && status.upstream.ahead === 0);
@@ -57,7 +55,6 @@ export class GitCommitCardComponent {
 
   protected readonly canPush: Signal<boolean> = computed(() => !this.state.amending() && Object.isNull(this.status().operation) && !Object.isNull(this.status().upstream));
 
-  /** The note that a new commit will be signed, in its format's words; null when git doesn't sign, signs in a format it doesn't know, or it is unread. */
   protected readonly signingNote: Signal<string | null> = computed(() => {
     const signing: GitCommitSigning | null = this.state.commitSigning();
     return signing?.signs === true && !Object.isNull(signing.format) ? Resources.signingNotes[signing.format] : null;

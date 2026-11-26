@@ -7,7 +7,6 @@
  */
 import type { StatusUpstream } from "@noldova/git.protocol";
 
-/** The branch a pull brings commits into, and the upstream it pulls them from. */
 export class PulledBranch {
   public readonly branch: string;
   public readonly upstream: StatusUpstream;

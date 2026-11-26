@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** A wait for something to happen a number of times: the count it waits for and what settles it. */
 export class CountWaiter {
   public readonly count: number;
   public readonly resolve: () => void;

@@ -25,7 +25,6 @@ class HostComponent {
   public readonly seen: boolean[] = [];
   private waiters: readonly CountWaiter[] = [];
 
-  /** Resolves once the directive has reported as many times as asked. */
   public reportsAsync(count: number): Promise<void> {
     if (this.seen.length >= count)
       return Promise.resolve();
@@ -49,7 +48,6 @@ describe("GitVisibleDirective", () => {
     return fixture;
   };
 
-  /** Scrolls the box so its row is in the middle of it. */
   const scrollToRow = (box: HTMLElement): void => {
     box.scrollTop = (box.scrollHeight - box.clientHeight) / 2;
   };
@@ -78,7 +76,6 @@ describe("GitVisibleDirective", () => {
     fixture.destroy();
     document.body.append(box);
     const shown: Promise<void> = new Promise(resolve => {
-      // The browser tells every observer of the row in the same step, so once this one sees the row, a directive still observing would have reported too.
       const witness: IntersectionObserver = new IntersectionObserver(entries => {
         if (!entries.some(t => t.isIntersecting))
           return;

@@ -38,10 +38,6 @@ export class ChangeMonitor {
   private sequence: number = 0;
   private isDisposed: boolean = false;
 
-  /**
-   * @param treeWatch How to watch a worktree's files for their changes, so a shown worktree whose files are watched is checked only now and then; one
-   * whose files aren't is checked every few seconds. A whole tree's watch runs from the start; a watch of each folder runs only while the worktree shows.
-   */
   public constructor(runner: ProgramRunner, log: IModuleLog, onChanged: (key: string, sequence: number) => void, treeWatch: TreeWatch) {
     this.statuses = new StatusReader(runner);
     this.ignored = new IgnoredPaths(runner);
@@ -50,10 +46,6 @@ export class ChangeMonitor {
     this.onChanged = onChanged;
   }
 
-  /**
-   * Watches the worktree's git folder and the folder its refs change in: the branches under `refs/heads`, or for a repository that keeps its refs in a
-   * reftable, `reftable/tables.list`, which git rewrites as each ref change ends; the cookie that proves the start goes only where git keeps loose files.
-   */
   public watch(key: string, worktree: string, folders: RepositoryFolders, isReftable: boolean = false): void {
     if (this.isDisposed)
       return;
@@ -111,7 +103,6 @@ export class ChangeMonitor {
       () => watched.isTreeWatched ? Resources.backstopPollMilliseconds : Resources.changePollMilliseconds));
   }
 
-  /** Holds back refreshes while the module's own write runs, since its files change midway; the write's end announces it. */
   public notifyWriting(key: string): void {
     const watched = this.worktrees.get(key);
     if (watched === undefined)
@@ -120,7 +111,6 @@ export class ChangeMonitor {
     watched.generation += 1;
   }
 
-  /** Announces the module's own write at once, without reading the status first; the next status read gives the fingerprint later refreshes compare against. */
   public notifyWritten(key: string): void {
     const watched = this.worktrees.get(key);
     if (watched === undefined)
@@ -131,22 +121,16 @@ export class ChangeMonitor {
     this.onChanged(watched.key, ++this.sequence);
   }
 
-  /** The count a status read takes before it starts, so `observe` can tell whether a write began or ended while it ran. */
   public generationOf(key: string): number {
     return this.worktrees.get(key)?.generation ?? 0;
   }
 
-  /**
-   * Takes the fingerprint of the first status read after a write that ran with no write starting or ending, so a refresh that finds the same one stays quiet.
-   * Only the first: windows that read it keep it, so a later read that finds the repository moved on, as it can while a checkout settles, mustn't hide that from them.
-   */
   public observe(key: string, generation: number, fingerprint: string): void {
     const watched = this.worktrees.get(key);
     if (watched !== undefined && watched.writing === 0 && watched.generation === generation && watched.fingerprint === null)
       watched.fingerprint = fingerprint;
   }
 
-  /** Stops every watch and refuses later ones, since a watch begun before the part deactivated can ask after it. */
   public async disposeAsync(): Promise<void> {
     this.isDisposed = true;
     for (const key of [...this.worktrees.keys()])
@@ -177,10 +161,6 @@ export class ChangeMonitor {
     }
   }
 
-  /**
-   * Whether a change in the worktree's own git folder refreshes it; a changed index also makes the ignore check forget the worktree's answers, and the
-   * watch of each folder ask again about the folders it skipped, as a file added there is shown.
-   */
   private acceptsGitFile(watched: WatchedWorktree, name: string): boolean {
     if (name === Resources.indexFile) {
       this.ignored.forgetIndex(watched.folders.top);
@@ -189,7 +169,6 @@ export class ChangeMonitor {
     return Resources.watchedGitFiles.includes(name);
   }
 
-  /** Watches the worktree's whole folder tree; a watch that fails leaves a shown worktree checked every few seconds, as without one. */
   private addTreeWatcher(watched: WatchedWorktree): void {
     try {
       const watcher = watch(watched.worktree, { persistent: false, recursive: true }, (_event, name) => this.noteTreeChange(watched, name));
@@ -205,10 +184,6 @@ export class ChangeMonitor {
     }
   }
 
-  /**
-   * Watches each folder of a shown worktree that git doesn't ignore; one with too many folders, or whose watch fails, is checked every few seconds, as
-   * without one, and the log says why.
-   */
   private startFolderTree(watched: WatchedWorktree): void {
     const tree: FolderTreeWatch = new FolderTreeWatch(watched.worktree, watched.folders.top, this.ignored, name => this.noteTreeChange(watched, name),
       error => this.loseFolderTree(watched, tree, Resources.formatWatchFailed(watched.worktree, String(error))));
@@ -218,7 +193,6 @@ export class ChangeMonitor {
     }, (error: unknown) => this.loseFolderTree(watched, tree, Resources.formatWatchFailed(watched.worktree, String(error)))));
   }
 
-  /** Falls back to checking every few seconds once the worktree's current folder watch fails, logging why; a watch already stopped is left alone. */
   private loseFolderTree(watched: WatchedWorktree, tree: FolderTreeWatch, line: string): void {
     if (watched.folderTree !== tree)
       return;
@@ -232,10 +206,6 @@ export class ChangeMonitor {
     watched.isTreeWatched = false;
   }
 
-  /**
-   * Collects a shown worktree's changed file until its files go quiet, or a stream of changes has waited its longest; a hidden worktree's changes wait
-   * for it to be shown, which reads its status anyway, and a change the file system names no file for refreshes it.
-   */
   private noteTreeChange(watched: WatchedWorktree, name: string | null): void {
     if (watched.poll === null)
       return;
@@ -251,7 +221,6 @@ export class ChangeMonitor {
     watched.treeLongest ??= timers.setTimeout(check, Resources.treeLongestWaitMilliseconds);
   }
 
-  /** Refreshes the worktree when a collected change is one git doesn't ignore, or when it can't tell. */
   private checkTree(watched: WatchedWorktree): void {
     ChangeMonitor.endTreeWaits(watched);
     const names = [...watched.changed];

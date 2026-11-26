@@ -11,10 +11,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/**
- * The parameters of `git.stageLines` and `git.unstageLines`: the folder, one file, the lines chosen by their place in that file's diff,
- * counting every hunk's lines in order from 0, and the status fingerprint the person saw.
- */
 export class GitLinesParams {
   private static readonly FIELDS: readonly string[] = [Resources.folderField, Resources.pathField, Resources.linesField, Resources.basedOnField];
 

@@ -10,7 +10,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** A ref a write moved: HEAD when detached, or a full branch or tag name, with its commit before and after, null where it didn't exist. */
 export class GitRefMove {
   private static readonly FIELDS: readonly string[] = [Resources.nameField, Resources.beforeField, Resources.afterField];
 

@@ -72,11 +72,6 @@ export class BranchSwitchWriter implements IGitWrite {
       BranchSwitchWriter.OPTIONS);
   }
 
-  /**
-   * `null` when the branch exists here; otherwise the remote branch, such as `origin/feature`, that git switch makes it from and tracks: the one remote
-   * branch of that name, or `checkout.defaultRemote`'s when several remotes have one. A name no remote has, or several have with no tie-break, is refused
-   * here, as git would refuse it after the person approved.
-   */
   private async trackedAsync(top: string, signal?: AbortSignal): Promise<string | null> {
     if (await this.hasBranchAsync(top, signal))
       return null;
@@ -115,7 +110,6 @@ export class BranchSwitchWriter implements IGitWrite {
     return output.split(Resources.lineEnd).filter(t => t.length > 0);
   }
 
-  /** Whether the branch exists here. */
   private async hasBranchAsync(top: string, signal?: AbortSignal): Promise<boolean> {
     const gitArguments = new GitArguments([...BranchSwitchWriter.SHOW_BRANCH.values, Resources.formatBranchRef(this.name)]);
     const result = await this.runner.runAsync(ProgramRun.readGit(gitArguments, top, BranchSwitchWriter.READ_LIMITS, signal));

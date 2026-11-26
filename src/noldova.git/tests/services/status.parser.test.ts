@@ -15,7 +15,6 @@ import { ConflictKind, FailureCode, FileState, GitCode, type JsonObject } from "
 import type { ParsedStatus } from "../../src/models/parsed-status.ts";
 import { StatusParser } from "../../src/services/status.parser.ts";
 
-/** The failure a test expects when git prints what the module can't read. */
 interface IUnreadableFailure {
   readonly name: string;
   readonly code: FailureCode;

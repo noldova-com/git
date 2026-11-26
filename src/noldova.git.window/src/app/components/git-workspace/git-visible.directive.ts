@@ -8,7 +8,6 @@
 
 import { DestroyRef, Directive, ElementRef, inject, output, type OutputEmitterRef } from "@angular/core";
 
-/** Reports each time its element comes into view or leaves it. */
 @Directive({ selector: "[nolGitVisible]" })
 export class GitVisibleDirective {
   public readonly visibleChange: OutputEmitterRef<boolean> = output<boolean>();

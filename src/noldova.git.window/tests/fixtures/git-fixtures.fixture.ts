@@ -33,7 +33,6 @@ export class FailedRequest extends WindowException {
   }
 }
 
-/** A diff line a fixture diff holds: its kind and its text. */
 export class FixtureLine {
   public readonly kind: LineKind;
   public readonly text: string;
@@ -44,7 +43,6 @@ export class FixtureLine {
   }
 }
 
-/** What a fixture status holds apart from its entries and upstream; each part left out takes the fixture's usual value. */
 export interface IFixtureStatusOptions {
   readonly branch?: string | null;
   readonly head?: string | null;

@@ -21,7 +21,6 @@ import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
 
-/** A rebase step the test plans, by the revision it names and the action it takes. */
 interface IPlannedStep {
   readonly revision: string;
   readonly action: RebaseAction;
@@ -70,7 +69,6 @@ describe("RebaseCheckReader", () => {
     await cleanUps.runAsync();
   });
 
-  /** A check's steps on the git these tests run: each unavailable on a git older than 2.45, whose merge-tree merges no trees, as Apple's git on a Mac. */
   const onThisGitAsync = async (steps: readonly GitRebaseStepCheck[]): Promise<readonly GitRebaseStepCheck[]> =>
     await repository.hasGitAsync(Resources.mergeTreesVersion) ? steps : steps.map(() => new GitRebaseStepCheck(RebaseCheckOutcome.Unavailable, []));
   const idOf = async (revision: string): Promise<string> => (await repository.runGitAsync(["rev-parse", revision])).trim();

@@ -19,10 +19,6 @@ import { AzureDevOpsAddReviewerComponent } from "../azure-devops-add-reviewer/az
 import { AzureDevOpsCompleteComponent } from "../azure-devops-complete/azure-devops-complete.component.ts";
 import { AzureDevOpsPersonAvatarComponent } from "../azure-devops-person-avatar/azure-devops-person-avatar.component.ts";
 
-/**
- * The Pull request view: the reviewers, policies, builds and linked work items of the pull request whose document is in front, or of the last one while
- * a document of another kind is, and its Complete panel while it is open; it says to open one once no pull request is open.
- */
 @Component({
   selector: "nol-git-azure-devops-pull-request-detail",
   templateUrl: "./azure-devops-pull-request-detail.component.html",
@@ -39,12 +35,9 @@ export class AzureDevOpsPullRequestDetailComponent {
   protected readonly small: AvatarSize = AvatarSize.Small;
   protected readonly open: ReferenceState = ReferenceState.Open;
   protected readonly choice: Signal<PullRequestChoice | null> = PullRequestSelection.of(this.context).shown;
-  /** The pull request as its page last read it, which changes with another pull request or a new read, and not with a vote. */
   private readonly pullRequest: Signal<HostPullRequest | null> = computed(() => this.choice()?.pullRequest ?? null);
-  /** Whether the search under Reviewers is open; another pull request closes it. */
   protected readonly isAdding: WritableSignal<boolean> = signal<boolean>(false);
 
-  /** The view's one instance, which its tab opened with. */
   public readonly instance: InputSignal<string> = input.required<string>();
 
   public constructor() {

@@ -14,7 +14,6 @@ import { describe, expect, it } from "vitest";
 import { GitBranchDropComponent } from "../../../../src/app/components/git-branch-drop/git-branch-drop.component.ts";
 import { GitBranchDrop } from "../../../../src/app/models/git-branch-drop.ts";
 
-/** A rendered drop panel, with the events it sent, in order. */
 class RenderedDrop {
   public readonly fixture: ComponentFixture<GitBranchDropComponent>;
   public readonly element: HTMLElement;
@@ -51,7 +50,6 @@ describe("GitBranchDropComponent", () => {
     fixture.autoDetectChanges();
     return new RenderedDrop(fixture, fixture.nativeElement, events);
   };
-  /** The element's text, its children's texts apart by a space. */
   const text = (element: HTMLElement, selector: string): string => {
     const found: Element | null = element.querySelector(selector);
     const parts: string[] = Object.isNull(found) ? [] : found.children.length === 0 ? [found.textContent ?? ""] : [...found.children].map(t => t.textContent ?? "");

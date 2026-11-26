@@ -22,7 +22,6 @@ import { DiffParser } from "./diff.parser.ts";
 import type { FilterOptionsReader } from "./filter-options.reader.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/** One hunk of the patch being made: its starts from git's header, the lines it keeps and whether a chosen change is among them. */
 interface IPatchHunk {
   readonly oldStart: string;
   readonly newStart: string;
@@ -33,12 +32,6 @@ interface IPatchHunk {
   kept: boolean;
 }
 
-/**
- * Stages chosen lines of one file's worktree changes, or unstages chosen lines of its staged ones, for the person's own click.
- * It reads the file's diff again as git's own bytes, keeps the chosen added and removed lines, turns the others into context or drops
- * them, and gives the patch to `git apply --cached`, reversed for unstaging, so the worktree stays as it is.
- * A line is named by its place in the diff, counting every hunk's lines in order from 0, as the Git view shows them.
- */
 export class LinesWriter implements IGitWrite {
   private static readonly READ_LIMITS: ProgramLimits = new ProgramLimits(Resources.diffOutputBytes, Resources.gitReadMilliseconds);
   private static readonly WRITE_LIMITS: ProgramLimits = new ProgramLimits(Resources.writeOutputBytes, Resources.indexWriteMilliseconds);
@@ -61,7 +54,6 @@ export class LinesWriter implements IGitWrite {
 
   public refuse(): void {}
 
-  /** Never asks: only the person's own click makes one, and no agent tool offers it. */
   public async requestAsync(): Promise<IPermissionRequest | null> {
     return null;
   }
@@ -90,7 +82,6 @@ export class LinesWriter implements IGitWrite {
     return result.output;
   }
 
-  /** The patch of the chosen lines, from the diff's own bytes; refused when it would change nothing. */
   private patchOf(output: Buffer): Buffer {
     const body = output.subarray(output.indexOf(Resources.firstHunkMark, output.indexOf(Resources.patchStartMark)) + 1);
     const hunks: IPatchHunk[] = [];
@@ -118,10 +109,6 @@ export class LinesWriter implements IGitWrite {
     ]);
   }
 
-  /**
-   * Adds one diff line to the hunk: a chosen change stays, an added line not chosen is dropped when staging and becomes context when
-   * unstaging, a removed one the other way round, and a "No newline at end of file" line follows the line before it.
-   */
   private add(hunk: IPatchHunk, line: Buffer, isChosen: boolean): void {
     const mark = line[0];
     if (mark === Resources.backslashByte) {

@@ -11,7 +11,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** A submodule the index holds: its path from the repository's top, untrusted, and the full id of the commit the index records for it. */
 export class GitSubmodule {
   private static readonly FIELDS: readonly string[] = [Resources.pathField, Resources.idField];
 

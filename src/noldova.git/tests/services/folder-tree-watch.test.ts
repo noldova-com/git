@@ -24,7 +24,6 @@ import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 vi.mock(import("node:fs"), { spy: true });
 vi.mock(import("node:fs/promises"), { spy: true });
 
-/** The questions about which folders git ignores, and the answers they got. */
 interface IAskedFolders {
   readonly folders: string[][];
   readonly answers: Promise<unknown>[];
@@ -43,9 +42,7 @@ describe("FolderTreeWatch", () => {
   let failures: unknown[];
   let opened: IOpened[];
   let listeners: (() => boolean)[];
-  /** The error code a folder's watch fails with as it starts, by the folder relative to the worktree, or null to start it. */
   let refusing: (folder: string) => string | null;
-  /** The ignore check of the watch `create` made last. */
   let paths: IgnoredPaths;
 
   beforeAll(async () => {
@@ -108,10 +105,6 @@ describe("FolderTreeWatch", () => {
     await cleanUps.runAsync();
   });
 
-  /**
-   * Writes a file until a watch of the worktree of its own names it: on macOS events come late, and one for the setup's writes would reach the tree's watch
-   * as a change to the ignore file, walking the tree again; they come in order, so once the file is heard the setup's writes have been told.
-   */
   const settledAsync = async (): Promise<void> => {
     let isHeard = false;
     let heard: () => void = () => undefined;
@@ -149,10 +142,6 @@ describe("FolderTreeWatch", () => {
     return found;
   };
   const failure = (code: string): Error => Object.assign(new Error(code), { code });
-  /**
-   * Writes a file until the watch names it, then waits until the checks of what each name is that came before it end: on macOS a folder's watch starts a
-   * moment after it is made, so it can miss the first writes, and events from just before the watch started can still come.
-   */
   const heardAsync = async (file: string): Promise<void> => {
     const heard = untilAsync(() => names.includes(file));
     for (let round = 0; !names.includes(file); round++) {
@@ -161,7 +150,6 @@ describe("FolderTreeWatch", () => {
     }
     await checkedAsync();
   };
-  /** Waits until the checks of what each heard name is end, as each can start another. */
   const checkedAsync = async (): Promise<void> => {
     for (let count = -1; count !== vi.mocked(stat).mock.results.length;) {
       count = vi.mocked(stat).mock.results.length;
@@ -169,10 +157,6 @@ describe("FolderTreeWatch", () => {
       await new Promise<void>(resolve => setImmediate(resolve));
     }
   };
-  /**
-   * Removes a folder and waits until no watch is left in it or under it. On macOS only, where the module watches the whole tree at once, it removes the
-   * folder again while a watch is left, as the shared event stream can lose the removal under load; elsewhere one removal must drop every watch.
-   */
   const removedAsync = async (folder: string): Promise<void> => {
     const isWatched = (): boolean => live().some(t => t === folder || t.startsWith(`${folder}/`));
     const isLossy = process.platform === "darwin";
@@ -186,7 +170,6 @@ describe("FolderTreeWatch", () => {
       await checkedAsync();
     }
   };
-  /** Records each question about which folders git ignores, waking a wait once its answer comes. */
   const askedOf = (): IAskedFolders => {
     const folders: string[][] = [];
     const answers: Promise<unknown>[] = [];
@@ -223,8 +206,6 @@ describe("FolderTreeWatch", () => {
     await rm(path.join(repository.folder, "bin"), { recursive: true });
     const asked = askedOf();
     await tree.startAsync();
-    // Only the top's watch hears these, so the folders are made once it has named a file: on macOS a watch starts a moment after it is made and misses
-    // what comes first.
     await heardAsync("ready.txt");
     await mkdir(path.join(repository.folder, "made", "inner"), { recursive: true });
     await mkdir(path.join(repository.folder, "bin"));
@@ -237,13 +218,11 @@ describe("FolderTreeWatch", () => {
 
   test("walks the tree again when an ignore file changes, forgetting what git ignored, so a folder a new rule ignores loses its watch", async () => {
     await tree.startAsync();
-    // Once the top's watch has named a file, as on macOS a watch starts a moment after it is made and misses what comes first.
     await heardAsync("ready.txt");
     const before = live();
     const asked = askedOf();
     await repository.writeAsync(".gitignore", "bin/\nsrc/\n");
     await untilAsync(() => asked.folders.some(t => t.includes("src")));
-    // Writing the file can be heard twice, once emptied and once written, so this waits until the walks it started stop asking git.
     for (let count = -1; count !== asked.answers.length;) {
       count = asked.answers.length;
       await Promise.allSettled(asked.answers);
@@ -259,8 +238,6 @@ describe("FolderTreeWatch", () => {
     const answers: Promise<unknown>[] = [];
     const original = IgnoredPaths.prototype.ignoredFoldersAsync;
     let earlier: Promise<unknown> = Promise.resolve();
-    // A check of what a heard name is that started before a walk asks git ends before git answers, and git answers in the order it was asked, as it can on
-    // any disk; a walk run alongside would then find the folder unwatched, ask git, and watch it after the other walk did.
     vi.spyOn(IgnoredPaths.prototype, "ignoredFoldersAsync").mockImplementation(async function (this: IgnoredPaths, top: string, asked: readonly string[],
       signal?: AbortSignal) {
       const checks = vi.mocked(stat).mock.results.slice(checked).map(t => t.value);
@@ -329,7 +306,6 @@ describe("FolderTreeWatch", () => {
     await removedAsync("bin");
     const removed = asked.folders.length;
     tree.recheck();
-    // Walks run one at a time, so the walk a changed ignore file starts asks only once the recheck before it has: its first question comes first.
     await heardAsync(".gitignore");
     await untilAsync(() => asked.folders.length > removed);
     const afterRemoved = asked.folders[removed];

@@ -11,11 +11,8 @@ import type { GitWorkspaceReviews } from "./git-workspace-reviews.ts";
 import type { GitWorkspaceRow } from "./git-workspace-row.ts";
 import type { GitWorkspaceRun } from "./git-workspace-run.ts";
 
-/** What the Across repositories view shows of a workspace page: its repositories, the agents' runs in them, the reviews asked of the person, and the page. */
 export class GitWorkspaceAcross {
-  /** The page's instance, which tells one workspace page from another. */
   public readonly instance: string;
-  /** Every repository of the workspace, whether or not its row is on screen. */
   public readonly rows: readonly GitWorkspaceRow[];
   public readonly runs: readonly GitWorkspaceRun[];
   public readonly reviews: GitWorkspaceReviews;

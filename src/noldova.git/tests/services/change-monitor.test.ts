@@ -33,13 +33,11 @@ import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 vi.mock(import("node:fs"), { spy: true });
 vi.mock(import("node:fs/promises"), { spy: true });
 
-/** A change the monitor announced, by the worktree's key and the change's sequence. */
 interface IChange {
   readonly key: string;
   readonly sequence: number;
 }
 
-/** A timer the test holds in place of a real one, fired when the test says. */
 interface IHeldWait {
   readonly milliseconds: number;
   readonly fire: () => void;
@@ -48,13 +46,11 @@ interface IHeldWait {
   isTaken: boolean;
 }
 
-/** A wait for the next held timer of a length. */
 interface IWaitListener {
   readonly milliseconds: number;
   readonly resolve: (wait: IHeldWait) => void;
 }
 
-/** A wait until what the count counts has happened. */
 interface IHearing {
   readonly count: () => number;
   readonly resolve: () => void;
@@ -163,7 +159,6 @@ describe("ChangeMonitor", () => {
   const touchingAsync = async <T>(work: Promise<T>): Promise<T> => {
     const settled = work.then(() => null, () => null);
     for (;;) {
-      // A touch comes after time passes, so the file system's work runs before each one.
       await new Promise<void>(resolve => timers.setImmediate(resolve));
       const waiting = waits.find(t => t.milliseconds === TOUCH && !t.isTaken && !t.isCleared);
       if (waiting !== undefined) {
@@ -588,7 +583,6 @@ describe("ChangeMonitor", () => {
     };
     const failTouchAsync = async (touch: IHeldWait, error: Error): Promise<void> => {
       const { promise, resolve } = Promise.withResolvers<void>();
-      // The module's functions are spies over Node's own, so only the touch's write is replaced, once.
       vi.mocked(writeFile).mockImplementationOnce(async file => {
         touched.push(file);
         resolve();
@@ -667,7 +661,6 @@ describe("ChangeMonitor", () => {
     interface ICheck { readonly names: readonly string[]; readonly isShown: boolean }
     interface IChecks { readonly untilAsync: (matches: (check: ICheck) => boolean) => Promise<ICheck> }
 
-    /** Records each check of what git ignores, answering from the real one unless told to fail, and waits for one that matches. */
     const checksOf = (refusing: (names: readonly string[]) => boolean = () => false): IChecks => {
       const seen: ICheck[] = [];
       let listeners: (() => boolean)[] = [];
@@ -695,7 +688,6 @@ describe("ChangeMonitor", () => {
     };
     const names = (check: ICheck, file: string): boolean => check.names.some(t => t.replaceAll("\\", "/") === file);
     const quietWaits = (): number => vi.mocked(timers.setTimeout).mock.calls.filter(t => t[1] === QUIET).length;
-    /** The watch of a worktree's whole tree, found by its folder, since on Linux Node makes it from a watch of each folder inside. */
     const treeOf = (folder: string): FSWatcher | undefined => {
       const index = vi.mocked(watch).mock.calls.findLastIndex(t => {
         const options: unknown = t[1];

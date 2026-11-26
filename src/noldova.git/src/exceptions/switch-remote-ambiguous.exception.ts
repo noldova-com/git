@@ -11,7 +11,6 @@ import type { IUntrustedText } from "../interfaces/i-untrusted-text.ts";
 import { Resources } from "../resources.ts";
 import { GitFailureException } from "./git-failure.exception.ts";
 
-/** A switch to a name several remotes' branches have, with no `checkout.defaultRemote` naming one of them, which git would refuse. */
 export class SwitchRemoteAmbiguousException extends GitFailureException {
   public override readonly code: FailureCode = FailureCode.Refused;
   public override readonly gitCode: GitCode | null = null;

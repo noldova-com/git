@@ -8,7 +8,6 @@
 
 import type { Signal, WritableSignal } from "@angular/core";
 
-/** A folder's GitHub repository path as read, undefined until its first read ends, and as shown, null until then. */
 export interface IGitHubHome {
   readonly read: WritableSignal<string | null | undefined>;
   readonly shown: Signal<string | null>;

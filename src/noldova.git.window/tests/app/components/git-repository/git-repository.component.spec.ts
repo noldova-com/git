@@ -30,7 +30,6 @@ import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 
-/** A rendered repository panel, with the requests it holds and the context it reads through. */
 class RenderedRepository {
   public readonly element: HTMLElement;
   public readonly requests: GitHeldRequests;
@@ -45,7 +44,6 @@ class RenderedRepository {
   }
 }
 
-/** A rendered repository panel, with the context it reads through. */
 class RenderedPanel {
   public readonly element: HTMLElement;
   public readonly context: FakeWindowPartContext;

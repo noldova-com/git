@@ -117,7 +117,6 @@ export class DiffParser {
     };
   }
 
-  /** A rename's or copy's similarity score, such as 92 from `R092`; `null` for any other change, whose score Git doesn't print here. */
   private static readSimilarity(change: FileChange, score: string): number | null {
     return DiffParser.MOVED.includes(change) && score.length > 0 ? Number.parseInt(score, 10) : null;
   }
@@ -170,7 +169,6 @@ export class DiffParser {
     ]);
   }
 
-  /** The prefixed path as git names it in a patch header, quoted with C escapes when it holds a byte that needs one. */
   public static quote(prefix: string, path: Buffer): Buffer {
     const name = Buffer.concat([Buffer.from(prefix), path]);
     if (!name.some(t => DiffParser.isUnprintable(t) || Resources.cEscapes.has(t)))

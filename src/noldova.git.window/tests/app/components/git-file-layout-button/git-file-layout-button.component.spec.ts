@@ -43,7 +43,6 @@ describe("GitFileLayoutButtonComponent", () => {
       return [...document.querySelectorAll<HTMLElement>("button[nol-menu-item]")];
     }
 
-    /** Each menu row's label, whether it shows the icon, and whether it is checked. */
     public read(icons: readonly string[]): readonly (readonly (string | boolean)[])[] {
       return this.rows.map((t, i) => [(t.querySelector(".nol-menu-item-label")?.textContent ?? "").trim(), (t.textContent ?? "").includes(icons[i] ?? "-"),
         t.getAttribute("aria-checked") === "true"]);

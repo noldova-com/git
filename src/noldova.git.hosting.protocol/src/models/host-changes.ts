@@ -21,7 +21,6 @@ export class HostChanges {
   public readonly headBranch: string;
   public readonly baseBranch: string;
   public readonly headCommit: string;
-  /** Whether the host counts the lines and files; when it doesn't, the three counts are zero and show nothing. */
   public readonly isCounted: boolean;
 
   public constructor(additions: number, deletions: number, changedFiles: number, headBranch: string, baseBranch: string, headCommit: string,
@@ -44,7 +43,6 @@ export class HostChanges {
     this.isCounted = isCounted;
   }
 
-  /** Changes whose host doesn't count the lines and files. */
   public static uncounted(headBranch: string, baseBranch: string, headCommit: string): HostChanges {
     return new HostChanges(0, 0, 0, headBranch, baseBranch, headCommit, undefined, false);
   }
@@ -63,7 +61,6 @@ export class HostChanges {
       reader.hasField(Resources.isCountedField) ? reader.readBoolean(Resources.isCountedField) : true);
   }
 
-  /** The JSON, with `isCounted` only for changes the host doesn't count, so counted changes write the fields they always have. */
   public toJson(): JsonObject {
     return {
       [Resources.additionsField]: this.additions,

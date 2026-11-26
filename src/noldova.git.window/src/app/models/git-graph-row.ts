@@ -10,9 +10,7 @@ import type { GitCommit, GitGraphCommit } from "@noldova/git.protocol";
 
 import type { GitGraphLine } from "./git-graph-line.ts";
 
-/** A commit's row in the graph: the lane its dot sits in, the strokes through the row, and how many lanes the row spans. */
 export class GitGraphRow {
-  /** The commit with its author's email and the labels on it. */
   public readonly shown: GitGraphCommit;
   public readonly commit: GitCommit;
   public readonly lane: number;

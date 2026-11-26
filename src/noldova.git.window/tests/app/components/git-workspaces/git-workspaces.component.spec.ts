@@ -50,7 +50,6 @@ describe("GitWorkspacesComponent", () => {
     return element;
   };
 
-  /** Each match's pieces of text, such as an icon's name and a label, apart. */
   const texts = (fixture: ComponentFixture<GitWorkspacesComponent>, selector: string): readonly string[] =>
     [...elementOf(fixture).querySelectorAll(selector)].map(element => {
       const walker: TreeWalker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);

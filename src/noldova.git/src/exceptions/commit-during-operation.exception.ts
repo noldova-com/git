@@ -11,7 +11,6 @@ import type { IUntrustedText } from "../interfaces/i-untrusted-text.ts";
 import { Resources } from "../resources.ts";
 import { GitFailureException } from "./git-failure.exception.ts";
 
-/** An agent's commit while an operation is in progress, which git would write with the operation's author and parents rather than what the card shows. */
 export class CommitDuringOperationException extends GitFailureException {
   public override readonly code: FailureCode = FailureCode.Git;
   public override readonly gitCode: GitCode | null = GitCode.Conflict;

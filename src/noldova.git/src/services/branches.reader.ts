@@ -55,7 +55,6 @@ export class BranchesReader {
       heads.map(t => new GitBranchTip(t.name, t.id, LogReader.dateOf(t.committedAt, t.seconds))));
   }
 
-  /** Reads the local branches merged into the first remote, in `git remote`'s order, whose HEAD names a branch, and the branch it names. */
   public async readMergedAsync(top: string, signal?: AbortSignal): Promise<GitMergedBranches> {
     const [remotes, remoteHeads] = await Promise.all([
       this.runAsync(BranchesReader.REMOTES, top, Resources.remoteCommand, signal),
@@ -77,10 +76,6 @@ export class BranchesReader {
     return new GitMergedBranches(name, BranchesReader.refsOf(merged, Resources.branchRefsPrefix));
   }
 
-  /**
-   * Reads how far each remote branch, but each remote's HEAD, is ahead of and behind HEAD, keeping those that aren't level with it, with one `for-each-ref`;
-   * none on a git older than 2.41, which can't count them, or before HEAD's first commit; a ref that names no commit has no counts and is skipped.
-   */
   public async readRemoteTracksAsync(top: string, signal?: AbortSignal): Promise<GitRemoteTracks> {
     if (!await this.versions.atLeastAsync(top, Resources.aheadBehindVersion))
       return BranchesReader.NO_TRACKS;
@@ -116,7 +111,6 @@ export class BranchesReader {
     return output.split(Resources.linePattern).filter(t => t.length > 0);
   }
 
-  /** Whether a remote-tracking name is a branch the list can show: not a remote's own HEAD, which names its default branch, and a name the protocol takes. */
   private static isRemoteBranch(name: string, remotes: readonly string[]): boolean {
     return GitBranchParams.isBranchName(name) && !remotes.some(t => name === `${t}${Resources.remoteHeadSuffix}`);
   }
@@ -126,7 +120,6 @@ export class BranchesReader {
       .filter(t => t.length > 0);
   }
 
-  /** A remote branch's counts, or none for a ref that names no commit, which git prints with empty counts. */
   private static remoteTrackOf(record: string): readonly GitBranchTrack[] {
     const [, branch, ahead, behind] = Resources.remoteTrackPattern.exec(record) ?? [];
     if (branch === undefined)

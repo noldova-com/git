@@ -75,7 +75,6 @@ export class HostSignIn {
       reader.hasField(Resources.addressField) ? reader.readNullableString(Resources.addressField) : null);
   }
 
-  /** The JSON, with `address` only while a sign-in waits in the browser, so every other sign-in writes the fields it always has. */
   public toJson(): JsonObject {
     return {
       [Resources.stateField]: this.state,

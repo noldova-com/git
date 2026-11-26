@@ -15,16 +15,13 @@ import { GitPathLayout } from "./git-path-layout.ts";
 import { Resources } from "../../resources.ts";
 import { GitLineCounts } from "../models/git-line-counts.ts";
 
-/** Lays a commit's changed files out as rows, in one of the three layouts. */
 export class GitCommitFiles {
-  /** The rows to show; a closed folder's rows are left out. */
   public static rowsOf(files: readonly DiffFile[], layout: GitFileLayout, closed: ReadonlySet<string>): GitCommitFileRow[] {
     return GitPathLayout.layout(files, t => t.path, layout, closed).map(t => Object.isNull(t.item)
       ? new GitCommitFileRow(t.folder, t.name, "", true, t.depth, "", null, null)
       : GitCommitFiles.fileOf(t.item, t.name, t.depth));
   }
 
-  /** The lines all the files add and remove. */
   public static totalsOf(files: readonly DiffFile[]): GitLineCounts {
     return files.map(t => GitCommitFiles.countsOf(t)).reduce((total, counts) => total.plus(counts), GitLineCounts.NONE);
   }

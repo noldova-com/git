@@ -16,7 +16,6 @@ import { GitRebasePreviews } from "../../services/git-rebase-previews.ts";
 import { GitResolving } from "../../services/git-resolving.ts";
 import { GitReferenceTextComponent } from "../git-reference-text/git-reference-text.component.ts";
 
-/** The Rebase preview view: the interactive rebase document in front, its branch now and as its rows leave it, and the step that stops on a conflict. */
 @Component({
   selector: "nol-git-rebase-preview",
   imports: [ButtonComponent, GitReferenceTextComponent],
@@ -28,13 +27,10 @@ export class GitRebasePreviewComponent {
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly secondary: ButtonVariant = ButtonVariant.Secondary;
-  /** What the rebase document in front shows, kept while a document of another kind is; `null` once none is open or the one in front has no plan read. */
   protected readonly preview: Signal<GitRebasePreview | null> = GitRebasePreviews.of(this.context).shown;
 
-  /** The view's one instance, which its tab opened with. */
   public readonly instance: InputSignal<string> = input.required<string>();
 
-  /** Opens the folder's conflict screen at the file the rebase stopped on. */
   protected showConflict(folder: string, path: string): void {
     GitResolving.open(folder, path);
     this.context.openDocument(Resources.conflictsDocumentName, folder, Resources.formatConflictsTitle(folder));

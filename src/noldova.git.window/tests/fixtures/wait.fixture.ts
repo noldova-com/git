@@ -9,7 +9,6 @@
 export class Wait {
   private static readonly POLL_INTERVAL: number = 1;
 
-  /** Checks again until the check holds; a check that never does fails at the run's one limit, as no wait sets a limit of its own. */
   public static async until(check: () => boolean): Promise<void> {
     while (!check())
       await new Promise<void>(resolve => setTimeout(resolve, Wait.POLL_INTERVAL));

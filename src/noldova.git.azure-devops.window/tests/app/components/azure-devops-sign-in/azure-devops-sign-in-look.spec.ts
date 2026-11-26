@@ -23,7 +23,6 @@ import { AzureDevOpsSignInComponent } from "../../../../src/app/components/azure
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
-/** A sign-in the settings show, by the name its screenshot takes; null when the read fails. */
 interface ISignInState {
   readonly name: string;
   readonly signIn: HostSignIn | null;

@@ -39,7 +39,6 @@ describe("GitCommitDetailViewComponent in the kit's look", () => {
     return resolved;
   };
 
-  /** Sets the view at a dock's width beside the Git panel. */
   const dock = async (view: GitViewFixture): Promise<DOMRect> => {
     view.element.style.width = "21rem";
     view.element.style.height = "30rem";

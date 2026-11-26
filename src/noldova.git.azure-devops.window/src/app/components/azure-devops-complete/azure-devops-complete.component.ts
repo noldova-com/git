@@ -25,10 +25,6 @@ import { PendingMerge } from "../../models/pending-merge.ts";
 import { PullAfter } from "../../models/pull-after.ts";
 import { PullRequestClone } from "../../models/pull-request-clone.ts";
 
-/**
- * The pull request page's Complete panel: the merge types its policies allow, the merge commit's message and what to do after, with one confirm for
- * each write; the page's footer asks it to set or cancel auto-complete with the same choices.
- */
 @Component({
   selector: "nol-git-azure-devops-complete",
   templateUrl: "./azure-devops-complete.component.html",
@@ -65,18 +61,10 @@ export class AzureDevOpsCompleteComponent {
   protected readonly blocking: Signal<readonly HostPolicy[]> = computed(() => this.pullRequest().policies.filter(t => t.isBlocking && t.state !== PolicyState.Approved));
   protected readonly canComplete: Signal<boolean> = computed(() => this.canAutoComplete() && this.blocking().length === 0);
 
-  /** The open pull request, with its changes, that the panel completes. */
   public readonly pullRequest: InputSignal<HostPullRequest> = input.required<HostPullRequest>();
-  /** Its branches and the commit the page showed. */
   public readonly changes: InputSignal<HostChanges> = input.required<HostChanges>();
-  /**
-   * Emits once Azure DevOps took a write, so the page reads the pull request again: after Complete merge, the folder and branch to pull once it has
-   * merged, when the person asked for that; otherwise `null`.
-   */
   public readonly changed: OutputEmitterRef<PullAfter | null> = output<PullAfter | null>();
-  /** Whether a write runs, so nothing else can be sent. */
   protected readonly isWriting: Signal<boolean> = this.writing.asReadonly();
-  /** Whether the choices make a merge Azure DevOps takes, so auto-complete can be set; completing also needs no blocking policy. */
   protected readonly canAutoComplete: Signal<boolean> = computed(() => !Object.isNull(this.mergeType()) && !this.writing()
     && (!this.takesMessage() || (this.message().trim().length > 0 && this.message().length <= Resources.maximumMergeMessageLength)));
 
@@ -113,12 +101,10 @@ export class AzureDevOpsCompleteComponent {
     });
   }
 
-  /** Asks once, in the panel, before setting the pull request to complete by itself with the panel's choices. */
   protected askAutoComplete(mergeType: MergeTypeChoice): void {
     this.ask(new PendingMerge(CompleteAction.SetAutoComplete, mergeType));
   }
 
-  /** Asks once, in the panel, before stopping the pull request from completing by itself. */
   protected askCancelAutoComplete(): void {
     this.ask(new PendingCancel(CompleteAction.CancelAutoComplete));
   }

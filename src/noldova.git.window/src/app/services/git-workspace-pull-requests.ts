@@ -23,15 +23,7 @@ import type { GitWorkspaceRow } from "../models/git-workspace-row.ts";
 import { GitPullRequests } from "./git-pull-requests.ts";
 import { GitReviewsRead } from "../models/git-reviews-read.ts";
 
-/**
- * The workspace page's pull requests: each repository's current branch's, from the host that claims its branch's remote, read once when its row
- * first shows and again when the window takes the focus. A host that reads a branch's pull request answers it in any state with its checks, or the
- * head commit's checks without one; any other host's open list is searched for the branch. It also gathers the pull requests that ask the person
- * for a review across every listed repository, from each host that reads them, read again when the window takes the focus. A host's member that
- * throws is reported and taken as no answer.
- */
 export class GitWorkspacePullRequests {
-  /** What a remote's review read is kept under in {@link refreshed}, apart from its branch's and list's reads. */
   private static readonly reviewsKey: string = "reviews";
 
   private readonly errors: ErrorHandler;
@@ -41,10 +33,6 @@ export class GitWorkspacePullRequests {
     this.errors = errors;
   }
 
-  /**
-   * The current branch's pull request: undefined while no remote is known, no host claims it or no branch is out, null before the host has an
-   * answer.
-   */
   public branchOf(folder: string, summary: Signal<GitRepositorySummary | null>,
     list: Signal<GitPullRequestList | null | undefined> = this.listOf(folder, summary)): Signal<GitBranchPullRequest | null | undefined> {
     const remote: Signal<GitRemote | null> = computed(() => summary()?.remote ?? null, { equal: GitWorkspacePullRequests.isSameRemote });
@@ -54,7 +42,6 @@ export class GitWorkspacePullRequests {
       const shown: GitRemote | null = remote();
       return Object.isNull(shown) ? null : GitPullRequests.of(shown);
     });
-    /** The host's read of the branch, asked for only when the host, the remote, the branch or its head commit changes. */
     const read: Signal<Signal<GitBranchPullRequest | null> | null | undefined> = computed(() => {
       const provider: IGitPullRequests | null = host();
       const shown: GitRemote | null = remote();
@@ -72,10 +59,6 @@ export class GitWorkspacePullRequests {
     });
   }
 
-  /**
-   * The open list of the host that claims the repository's remote, for a host that reads no branch on its own: undefined for any other host, while
-   * no remote is known or no host claims it, null before the host has an answer. It is asked for only when the host or the remote changes.
-   */
   public listOf(folder: string, summary: Signal<GitRepositorySummary | null>): Signal<GitPullRequestList | null | undefined> {
     const remote: Signal<GitRemote | null> = computed(() => summary()?.remote ?? null, { equal: GitWorkspacePullRequests.isSameRemote });
     const list: Signal<Signal<GitPullRequestList | null> | null | undefined> = computed(() => {
@@ -89,10 +72,6 @@ export class GitWorkspacePullRequests {
     });
   }
 
-  /**
-   * The host's whole open list, which the Dashboard's Open cell counts, whether or not the host reads branches on its own: undefined while no remote
-   * is known or no host claims it, null before the host has an answer. It is asked for only when the host or the remote changes.
-   */
   public openListOf(folder: string, summary: Signal<GitRepositorySummary | null>): Signal<GitPullRequestList | null | undefined> {
     const remote: Signal<GitRemote | null> = computed(() => summary()?.remote ?? null, { equal: GitWorkspacePullRequests.isSameRemote });
     const list: Signal<Signal<GitPullRequestList | null> | null | undefined> = computed(() => {
@@ -106,11 +85,6 @@ export class GitWorkspacePullRequests {
     });
   }
 
-  /**
-   * The open list the workspace page finds stacks in: the host's stack list when it has one, which nothing else reads, else the open list as
-   * {@link listOf} reads it; undefined for a host with neither, while no remote is known or no host claims it, null before the host has an answer.
-   * The stack list is asked for only when the host or the remote changes.
-   */
   public stackListOf(folder: string, summary: Signal<GitRepositorySummary | null>,
     list: Signal<GitPullRequestList | null | undefined> = this.listOf(folder, summary)): Signal<GitPullRequestList | null | undefined> {
     const remote: Signal<GitRemote | null> = computed(() => summary()?.remote ?? null, { equal: GitWorkspacePullRequests.isSameRemote });
@@ -126,7 +100,6 @@ export class GitWorkspacePullRequests {
     });
   }
 
-  /** Asks the repository's host to read its branch's pull request, or its list, once for each remote, branch and head commit until {@link forget}. */
   public refreshOnce(folder: string, summary: GitRepositorySummary | null): void {
     const remote: GitRemote | null = summary?.remote ?? null;
     const host: IGitPullRequests | null = Object.isNull(remote) ? null : GitPullRequests.of(remote);
@@ -152,13 +125,7 @@ export class GitWorkspacePullRequests {
     }
   }
 
-  /**
-   * The pull requests that ask the signed-in person for a review across the repositories, from each host that reads them: the repositories in their
-   * order, each remote's once even when several folders share it, and the host's rows in its order. A signed-out host or one that never read adds
-   * none, and a failed read keeps the rows the last one gave.
-   */
   public reviewsOf(repositories: Signal<readonly GitWorkspaceRow[]>): Signal<GitWorkspaceReviews> {
-    /** Each remote's host and review list, asked for only when the repositories or their remotes change. */
     const reads: Signal<readonly GitReviewsRead[]> = computed(() => {
       const found: GitReviewsRead[] = [];
       const seen: Set<string> = new Set();
@@ -188,7 +155,6 @@ export class GitWorkspacePullRequests {
     });
   }
 
-  /** Asks each repository's host to read its review requests, once for each remote until {@link forget}. */
   public refreshReviewsOnce(summaries: readonly (GitRepositorySummary | null)[]): void {
     for (const summary of summaries) {
       const remote: GitRemote | null = summary?.remote ?? null;
@@ -202,24 +168,20 @@ export class GitWorkspacePullRequests {
     }
   }
 
-  /** Opens a review request in its host's own page when it has one; answers false when the host leaves it to the browser. */
   public openReview(review: GitWorkspaceReview): boolean {
     return this.attempt(() => review.host.open?.(review.folder, review.row) === true, false);
   }
 
-  /** Lets every list be read again, such as when the window takes the focus. */
   public forget(): void {
     this.refreshed.clear();
   }
 
-  /** Opens a pull request in its host's own page when it has one; answers false when the host leaves it to the browser. */
   public open(folder: string, summary: GitRepositorySummary | null, row: GitPullRequestRow): boolean {
     const remote: GitRemote | null = summary?.remote ?? null;
     const host: IGitPullRequests | null = Object.isNull(remote) ? null : GitPullRequests.of(remote);
     return !Object.isNull(host) && this.attempt(() => host.open?.(folder, row) === true, false);
   }
 
-  /** The branch's open pull request in a host's list, or that the list has none for it, needs a sign-in, failed or still reads. */
   private static branchIn(list: GitPullRequestList | null, branch: string | null): GitBranchPullRequest | null {
     if (Object.isNull(list))
       return null;

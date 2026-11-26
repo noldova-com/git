@@ -11,10 +11,6 @@ import { GitCommand, GitCommandLog } from "@noldova/git.protocol";
 import { Resources } from "../resources.ts";
 import { MethodFailures } from "./method-failures.ts";
 
-/**
- * The git commands each repository's writes ran while the module runs, newest last, for the command log the window shows.
- * A line holds what the person could type: the settings the module adds and the end-of-options marker are left out, and a URL's name and password never show.
- */
 export class CommandLog {
   private readonly commands: Map<string, GitCommand[]> = new Map();
   private readonly now: () => Date;
@@ -24,7 +20,6 @@ export class CommandLog {
     this.now = now;
   }
 
-  /** Notes a write's git command as it starts; the returned function records it with its exit code, or `null` when it ended without one. */
   public start(commonGitFolder: string, gitArguments: readonly string[]): (exitCode: number | null) => void {
     const started = this.now();
     return exitCode => {
@@ -41,7 +36,6 @@ export class CommandLog {
     return new GitCommandLog([...this.commands.get(commonGitFolder) ?? []]);
   }
 
-  /** The command line: `git` and the arguments past the module's own `-c` settings, each quoted where it has a space, a quote or nothing, in one line. */
   public static lineOf(gitArguments: readonly string[]): string {
     let start = 0;
     while (gitArguments[start] === Resources.configOption)

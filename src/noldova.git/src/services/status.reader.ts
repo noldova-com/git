@@ -66,7 +66,6 @@ export class StatusReader {
     return parsed.toStatus(entries, fingerprint, operation, remote, checked.unchecked, upstreamId, fetchedAt);
   }
 
-  /** The status's fingerprint, with the commit each listed submodule's HEAD is on, which its status line and folder don't show. */
   private async readFingerprintAsync(folders: RepositoryFolders, output: Buffer, parsed: ParsedStatus, signal?: AbortSignal): Promise<string> {
     const heads = await Promise.all(parsed.entries.filter(t => t.submodule !== null).map(async t => {
       const result = await this.runner.runAsync(ProgramRun.readGit(StatusReader.SUBMODULE_HEAD, path.join(folders.top, t.path), StatusReader.UPSTREAM_LIMITS, signal));
@@ -75,7 +74,6 @@ export class StatusReader {
     return await StatusFingerprint.readAsync(folders.top, folders.gitFolder, output, parsed, Buffer.concat(heads));
   }
 
-  /** When the worktree last fetched: its `FETCH_HEAD`'s modified time, to the second, or `null` when it never has. */
   private static async readFetchedAtAsync(gitFolder: string): Promise<string | null> {
     try {
       const stats = await lstat(path.join(gitFolder, Resources.fetchHeadFile));
@@ -87,7 +85,6 @@ export class StatusReader {
     }
   }
 
-  /** The commit the upstream's tracking ref points at, or null with no upstream, a gone one, or a ref git can't resolve to a commit. */
   private async readUpstreamIdAsync(top: string, upstream: StatusUpstream | null, signal?: AbortSignal): Promise<string | null> {
     if (upstream === null || upstream.gone)
       return null;

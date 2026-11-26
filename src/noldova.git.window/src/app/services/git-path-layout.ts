@@ -9,16 +9,11 @@ import { GitFileLayout } from "../enums/git-file-layout.ts";
 import { GitPathEntry } from "../models/git-path-entry.ts";
 import { Resources } from "../../resources.ts";
 
-/** A folder of the tree: its folders by name, and its items in their order. */
 class GitPathFolder<T> {
   public readonly folders: Map<string, GitPathFolder<T>> = new Map<string, GitPathFolder<T>>();
   public readonly items: T[] = [];
 }
 
-/**
- * Lays items with paths out as rows, in one of the three layouts. Folders come in name order without case, before the items beside them;
- * items keep their order; a closed folder's rows are left out.
- */
 export class GitPathLayout {
   public static layout<T>(items: readonly T[], pathOf: (item: T) => string, layout: GitFileLayout, closed: ReadonlySet<string>): GitPathEntry<T>[] {
     switch (layout) {

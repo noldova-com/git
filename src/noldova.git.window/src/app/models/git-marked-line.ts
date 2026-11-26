@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** The line a reveal marked: its file's path and its row in the file's diff lines. */
 export class GitMarkedLine {
   public readonly path: string;
   public readonly row: number;

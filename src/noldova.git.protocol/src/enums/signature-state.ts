@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** Whether a commit's signature checks out against the keys the person trusts: `None` when the commit carries no signature. */
 export const SignatureState = {
   Verified: "Verified",
   Unverified: "Unverified",

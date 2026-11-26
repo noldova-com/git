@@ -17,10 +17,6 @@ import type { IGitAvatars } from "@noldova/git.window";
 import { Resources } from "../../resources.ts";
 import type { GitHubReferenceSource } from "./github-reference-source.ts";
 
-/**
- * Commit authors' GitHub pictures in the Git view, read once per repository and email through the runtime part, and read again after the
- * sign-in changes.
- */
 export class GitHubAuthorAvatars implements IGitAvatars {
   private readonly context: IWindowPartContext;
   private readonly references: () => GitHubReferenceSource;

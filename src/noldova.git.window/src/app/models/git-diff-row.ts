@@ -12,11 +12,6 @@ import { type DiffFile, type DiffLine, FileChange, LineKind } from "@noldova/git
 import { GitDiffRowKind } from "../enums/git-diff-row-kind.ts";
 import { Resources } from "../../resources.ts";
 
-/**
- * One line of a file's diff as the file group draws it. A file whose lines can be staged one by one, a changed text file that keeps its
- * name and mode, numbers each line from 0 across its hunks, as the runtime counts them: an added or removed row carries its number, and
- * a hunk's header carries the numbers of its added and removed lines.
- */
 export class GitDiffRow {
   public readonly kind: GitDiffRowKind;
   public readonly text: string;

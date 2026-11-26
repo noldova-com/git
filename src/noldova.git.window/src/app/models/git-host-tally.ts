@@ -8,7 +8,6 @@
 
 import type { GitPullRequestsState } from "../enums/git-pull-requests-state.ts";
 
-/** What the workspace rows that a host claims show of it so far: their remotes and their reads' states. */
 export class GitHostTally {
   public readonly remotes: Set<string> = new Set();
   public readonly states: Set<GitPullRequestsState | null> = new Set();

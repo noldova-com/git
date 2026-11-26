@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** The commit a cherry-pick or revert takes: whether it is a merge, which needs a mainline, and its subject for the permission prompt. */
 export class PickedCommit {
   public readonly isMerge: boolean;
   public readonly subject: string;

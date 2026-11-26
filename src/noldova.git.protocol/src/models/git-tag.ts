@@ -11,7 +11,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** A tag: its short name, such as v1.2.0, untrusted, and the full id of the commit it points at. */
 export class GitTag {
   private static readonly FIELDS: readonly string[] = [Resources.nameField, Resources.idField];
 

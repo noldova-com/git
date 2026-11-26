@@ -11,7 +11,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** A stash: its place in the stash list, 0 for the newest, its message, untrusted, and the full id of its commit. */
 export class GitStash {
   private static readonly FIELDS: readonly string[] = [Resources.indexField, Resources.messageField, Resources.idField];
 

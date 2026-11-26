@@ -13,10 +13,6 @@ import { ButtonComponent, ButtonVariant, DialogComponent, TextFieldComponent } f
 
 import { Resources } from "../../../resources.ts";
 
-/**
- * Asks for the name of a branch the workspace creates in several repositories, naming each one. Create stays unavailable until the name is one
- * Git takes, and says why under the field once something is typed. It answers the name for Create or Enter, and null for Cancel, Close or Escape.
- */
 @Component({
   selector: "nol-git-bulk-branch-dialog",
   imports: [ButtonComponent, DialogComponent, FormsModule, TextFieldComponent],

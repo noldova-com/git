@@ -6,7 +6,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-/** A file out of conflict that an operation conflicted on, with how the conflicts screen resolved it, or no note when it was resolved elsewhere. */
 export class GitResolvedFile {
   public readonly path: string;
   public readonly note: string;

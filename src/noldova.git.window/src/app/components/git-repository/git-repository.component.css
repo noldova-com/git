@@ -40,7 +40,6 @@
   font-feature-settings: "liga";
 }
 
-/* The branch icon fills its whole box, where the font's icons keep a margin, so it draws inset to look their size. */
 .octicon {
   flex: none;
   box-sizing: border-box;
@@ -112,7 +111,6 @@ button.row {
   background: var(--nol-selected);
 }
 
-/* The folder icon, the name and the fetch button share the first line; the path runs under the name. */
 .row.head {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -131,12 +129,10 @@ button.row {
   background: transparent;
 }
 
-/* Only Branches, the first section, stands apart from History; the sections after it are spaced by the panel's gap. */
 .row.section {
   margin-top: 0.5rem;
 }
 
-/* A section's title isn't a row to choose: like the window's other section headers, it takes no hover, and its action shows its own. */
 .row.heading:hover {
   background: transparent;
 }
@@ -207,7 +203,6 @@ button.row {
   color: var(--nol-error);
 }
 
-/* A branch's counts take color, arrow and number alike: green for commits to push and blue for commits to pull. */
 .count.ahead {
   color: var(--nol-status-ok);
 }

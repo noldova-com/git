@@ -10,7 +10,6 @@ import type { GitRebasePlan } from "@noldova/git.protocol";
 
 import type { GitRebaseTarget } from "../services/git-rebasing.ts";
 
-/** What Start rebases onto, and the plan it runs. */
 export class GitRebaseStart {
   public readonly target: GitRebaseTarget;
   public readonly plan: GitRebasePlan;

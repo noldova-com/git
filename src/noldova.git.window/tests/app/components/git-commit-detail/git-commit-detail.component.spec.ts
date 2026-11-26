@@ -381,7 +381,6 @@ describe("GitCommitDetailComponent", () => {
     const held = (): readonly boolean[] => [...writes, ".rebase-here"].map(t => view.find<HTMLButtonElement>(t).disabled);
     const before: readonly boolean[] = held();
 
-    // Another repository's Conflicts document comes to the front: the Commit view keeps the commit, and the panel follows that repository.
     history.set(false);
     view.folder.set("/work/other");
     await view.untilAsync(() => view.find<HTMLButtonElement>(".merge").disabled);

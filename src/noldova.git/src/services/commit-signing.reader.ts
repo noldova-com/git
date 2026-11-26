@@ -15,7 +15,6 @@ import { ProgramRun } from "../models/program-run.ts";
 import { Resources } from "../resources.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/** Reads whether git signs a new commit, and in which format, from `commit.gpgsign` and `gpg.format`; it reads settings only and runs no signing program. */
 export class CommitSigningReader {
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.configOutputBytes, Resources.gitReadMilliseconds);
   private static readonly SIGNS: GitArguments = new GitArguments(Resources.commitSignsArguments);
@@ -31,7 +30,6 @@ export class CommitSigningReader {
     return new GitCommitSigning(signs === Resources.configTrue, format === null ? SigningFormat.OpenPgp : Resources.signingFormats.get(format) ?? null);
   }
 
-  /** The setting's value without git's line end, or null when it isn't set. */
   private async valueAsync(gitArguments: GitArguments, top: string, signal?: AbortSignal): Promise<string | null> {
     const result = await this.runner.runAsync(ProgramRun.readGit(gitArguments, top, CommitSigningReader.LIMITS, signal));
     if (result.exit.code === Resources.configNotFoundExitCode)

@@ -13,7 +13,6 @@ import type { GitCommitView } from "../models/git-commit-view.ts";
 import { Resources } from "../../resources.ts";
 import { GitDetailView } from "./git-detail-view.ts";
 
-/** The Commit view of each window, which shows the commit the history document in front chose. */
 export class GitCommitDetails {
   private static readonly windows: WeakMap<IWindowPartContext, GitDetailView<GitCommitView>> = new WeakMap();
 

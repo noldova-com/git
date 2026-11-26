@@ -10,7 +10,6 @@ import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
-/** How far a local branch is from its upstream: the commits it has that the upstream lacks, and the other way round. */
 export class GitBranchTrack {
   private static readonly FIELDS: readonly string[] = [Resources.branchField, Resources.aheadField, Resources.behindField];
 

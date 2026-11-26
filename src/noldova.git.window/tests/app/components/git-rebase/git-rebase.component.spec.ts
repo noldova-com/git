@@ -38,7 +38,6 @@ describe("GitRebaseComponent", () => {
   const fix: GitRebaseCommit = new GitRebaseCommit("f".repeat(40), "fixup! Read the log as a stream", a.id);
   const wip: GitRebaseCommit = new GitRebaseCommit("e".repeat(40), "WIP debug logging", null);
   const plan: GitRebasePlan = new GitRebasePlan("feature/graph", onto, base, 4, [a, c, fix, wip], ["feature/minimap"], true);
-  /** The status's branch and commit the plan was read for. */
   const onPlan = { branch: "feature/graph", head: wip.id } as const;
   const target: GitRebaseTarget = new GitRebaseTarget(onto, "main");
   const clean: GitRebaseStepCheck = new GitRebaseStepCheck(RebaseCheckOutcome.Clean, []);
@@ -48,10 +47,8 @@ describe("GitRebaseComponent", () => {
   class Screen {
     public readonly context: FakeWindowPartContext;
     public readonly fixture: ComponentFixture<GitRebaseComponent>;
-    /** The Rebase preview view beside the document, which shows its preview while it is in front. */
     public readonly view: ComponentFixture<GitRebasePreviewComponent>;
     public readonly held: GitHeldRequests;
-    /** Whether the screen's document is the window's active one, which points the Git panel at its folder. */
     public readonly active: WritableSignal<boolean>;
 
     public constructor(context: FakeWindowPartContext, fixture: ComponentFixture<GitRebaseComponent>, view: ComponentFixture<GitRebasePreviewComponent>,
@@ -87,12 +84,10 @@ describe("GitRebaseComponent", () => {
       const view: ComponentFixture<GitRebasePreviewComponent> = TestBed.createComponent(GitRebasePreviewComponent);
       view.componentRef.setInput("instance", "selected");
       view.autoDetectChanges();
-      // TestBed takes the earlier fixtures' root elements out of the page as it creates a component, so the document goes back beside the view.
       document.body.append(fixture.nativeElement);
       return new Screen(context, fixture, view, requests, active);
     }
 
-    /** The matches in the document, then in the Rebase preview view, as the window shows them side by side. */
     public all<T extends Element = Element>(selector: string): readonly T[] {
       return [...this.element.querySelectorAll<T>(selector), ...this.viewElement.querySelectorAll<T>(selector)];
     }
@@ -101,7 +96,6 @@ describe("GitRebaseComponent", () => {
       return this.all(selector).map(t => (t.textContent ?? "").replace(/\s+/gu, " ").trim());
     }
 
-    /** Each match's text, its child elements' texts joined by spaces as a reader hears them. */
     public words(selector: string): readonly string[] {
       return this.all(selector).map(t => t.children.length === 0 ? (t.textContent ?? "").trim()
         : [...t.children].map(child => (child.textContent ?? "").trim()).filter(text => text.length > 0).join(" "));
@@ -444,12 +438,10 @@ describe("GitRebaseComponent", () => {
 
   describe("advice after the summary", () => {
     const conflict: GitRebaseStepCheck = new GitRebaseStepCheck(RebaseCheckOutcome.Conflicts, ["lanes.ts"]);
-    /** The commits' ids in the order a check asked for them. */
     const order = (asked: unknown, commits: readonly GitRebaseCommit[] = [a, c, fix, wip]): readonly string[] => {
       const text: string = JSON.stringify(asked);
       return commits.map(t => t.id).filter(t => text.includes(t)).sort((x, y) => text.indexOf(x) - text.indexOf(y));
     };
-    /** Answers each check with the conflicted commit's conflict, unless its place clears it. */
     const answerFor = (screen: () => Screen, conflicted: string, clears: (ids: readonly string[]) => boolean) => (): JsonValue => {
       const ids: readonly string[] = order(screen().requested("git.rebaseCheck").at(-1));
       return checks(...ids.map(t => t === conflicted && !clears(ids) ? conflict : clean));

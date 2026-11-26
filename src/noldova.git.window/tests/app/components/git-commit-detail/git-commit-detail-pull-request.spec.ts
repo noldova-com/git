@@ -170,7 +170,6 @@ describe("GitCommitDetailComponent's pull request", () => {
     view.folder.set(other);
     await view.untilAsync(() => view.all(".pull-request").length === 0);
     const before: readonly string[] = [...asked];
-    // The Git panel and the Commit view each read the folder's status.
     await held.answerAsync("git.status", GitFixtures.status([], null, { remote }).toJson());
     await held.answerAsync("git.status", GitFixtures.status([], null, { remote }).toJson());
     await view.waitForAsync(".pull-request");

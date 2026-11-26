@@ -22,13 +22,6 @@ import { Resources } from "../resources.ts";
 import type { CheckpointStore } from "./checkpoint-store.ts";
 import type { ProgramRunner } from "./program-runner.ts";
 
-/**
- * Discards paths' working-folder changes, a person's own click in the Git view: a tracked path goes back to its
- * staged content, with `git restore --worktree`, and an untracked one is removed, with `git clean`. It refuses a
- * path with nothing to put back, a conflicted path and a submodule, before anything runs. When the app includes the checkpoints module and
- * it is on, the writer takes a checkpoint of the working folder first, and doesn't discard if that fails; the journal then undoes the discard
- * by putting its paths back from the checkpoint. Without the module, the discard can't be undone.
- */
 export class DiscardWriter implements IGitWrite {
   public readonly method: string = GitNames.discardMethod;
   private static readonly LIMITS: ProgramLimits = new ProgramLimits(Resources.writeOutputBytes, Resources.indexWriteMilliseconds);
@@ -46,7 +39,6 @@ export class DiscardWriter implements IGitWrite {
     this.checkpoints = checkpoints;
   }
 
-  /** {@link UndoMode.Checkpoint} once a checkpoint was taken before the discard, and {@link UndoMode.None} without one. */
   public get undo(): UndoMode {
     return this.checkpoint === null ? UndoMode.None : UndoMode.Checkpoint;
   }
@@ -54,7 +46,6 @@ export class DiscardWriter implements IGitWrite {
   public refuse(status: GitStatus): void {
     for (const path of this.paths) {
       const entry = status.entries.find(t => t.path === path);
-      // A conflicted path's states are Unmodified, as the protocol reads them, so it is refused with the unchanged ones.
       if (entry === undefined || entry.worktree === FileState.Unmodified || entry.submodule !== null)
         throw new DiscardRefusedException(path);
     }

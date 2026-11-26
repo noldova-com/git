@@ -21,7 +21,6 @@ import { GitFixtures } from "../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../fixtures/git-held-requests.fixture.ts";
 import { Wait } from "../../fixtures/wait.fixture.ts";
 
-/** Two command log reads held open, the earlier one asked first, each answered when the test chooses. */
 class LogReads {
   public readonly earlier: (answer: JsonValue | Error) => void;
   public readonly later: (answer: JsonValue | Error) => void;
@@ -38,7 +37,6 @@ describe("GitStatusFollower", () => {
   const until = (done: () => boolean): Promise<void> => Wait.until(done);
   const answers = { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson() };
 
-  /** The branch and command items, the folder Git shows, and a context that answers as `answers` says; following starts once `follow` runs. */
   interface ISetUp {
     readonly branch: StatusBarItem;
     readonly command: StatusBarItem;

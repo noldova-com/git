@@ -53,13 +53,11 @@ export class RequestAnswers {
     });
   }
 
-  /** Leaves a method's requests, such as the pictures a page reads on the side, out of what was asked and answered, failing each. */
   public ignore(method: string): this {
     this.ignored.add(method);
     return this;
   }
 
-  /** Answers a method's requests with a payload once the answers queued for it run out, such as the reads a page makes on the side for each pull request. */
   public otherwise(method: string, payload: JsonValue): this {
     this.fallbacks.set(method, payload);
     return this;

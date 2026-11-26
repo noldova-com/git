@@ -8,7 +8,6 @@
 
 import type { StatusEntry } from "@noldova/git.protocol";
 
-/** What the LFS check left of a status's entries, and how many LFS files it couldn't check, which stay as Git reported them. */
 export class LfsCheck {
   public readonly entries: readonly StatusEntry[];
   public readonly unchecked: number;
