@@ -275,8 +275,8 @@ export class Resources {
   public static readonly repositoryPlace: string = "the repository";
   public static readonly fixturePlace: string = "the fixture app";
   public static readonly fixtureContextRangeFile: string = "src/noldova.git.window/package.json";
-  public static readonly fixtureContextPackages: readonly string[] = ["@noldova/context.core", "@noldova/context.exceptions", "@noldova/context.json",
-    "@noldova/context.text"];
+  public static readonly fixtureContextPackages: readonly string[] = ["@noldova/context.collections", "@noldova/context.core", "@noldova/context.exceptions",
+    "@noldova/context.json", "@noldova/context.text"];
   public static readonly fixturePeers: readonly string[] = ["@noldova/desktop.runtime", "@noldova/desktop.protocol", "@types/node"];
   public static readonly fixtureWorkPrefix: string = "noldova-git-fixture-";
   public static readonly fixtureRemoveRetries: number = 3;
