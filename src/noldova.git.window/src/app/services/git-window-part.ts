@@ -20,6 +20,7 @@ import { GitCommitDetails } from "./git-commit-details.ts";
 import { GitConflictDetails } from "./git-conflict-details.ts";
 import { GitGravatars } from "./git-gravatars.ts";
 import { GitHostAccounts } from "./git-host-accounts.ts";
+import { GitLastWriteUndo } from "./git-last-write-undo.ts";
 import { GitRebasePreviews } from "./git-rebase-previews.ts";
 import { GitRebasing } from "./git-rebasing.ts";
 import { GitRecentRepositories } from "./git-recent-repositories.ts";
@@ -37,6 +38,7 @@ export class GitWindowPart implements IWindowPart {
   private unfollowStatus: (() => void) | null = null;
   private withdrawDetailViews: (() => void) | null = null;
   private unfollowAccounts: (() => void) | null = null;
+  private withdrawUndo: (() => void) | null = null;
 
   public readonly moduleId: string = GitNames.moduleId;
   public readonly padding: ContentPadding = ContentPadding.None;
@@ -125,6 +127,7 @@ export class GitWindowPart implements IWindowPart {
       context.registerStatusBarItem(new StatusBarItemContribution(Resources.fetchedItemName, StatusBarSide.Left, GitStatusBar.fetchedStateOf(null, null, new Date()))),
       context.registerStatusBarItem(new StatusBarItemContribution(Resources.commandItemName, StatusBarSide.Right, GitStatusBar.commandStateOf(null, null))));
     this.unfollowStatus = GitStatusFollower.follow(context);
+    this.withdrawUndo = GitLastWriteUndo.provide(context);
   }
 
   public async reconnectAsync(): Promise<boolean> {
@@ -142,6 +145,8 @@ export class GitWindowPart implements IWindowPart {
     this.withdrawDetailViews = null;
     this.unfollowAccounts?.();
     this.unfollowAccounts = null;
+    this.withdrawUndo?.();
+    this.withdrawUndo = null;
     this.context = null;
   }
 

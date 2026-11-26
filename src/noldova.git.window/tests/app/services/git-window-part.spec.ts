@@ -50,6 +50,7 @@ describe("GitWindowPart", () => {
   it("reconnects only while it is active", async () => {
     const part: GitWindowPart = new GitWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.allow("provideUndo");
     context.allow("registerSettingsPage");
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
@@ -72,12 +73,13 @@ describe("GitWindowPart", () => {
     expect(context.calls.map(t => t.member)).toEqual(["registerView", "registerView", "registerView", "registerDocument", "registerDocument", "registerDocument", "registerView",
       "registerView", "registerView", "registerView", "registerView", "onViewClosed", "onViewClosed", "onViewClosed", "onViewClosed", "registerCommand", "registerCommand", "registerCommand", "onViewClosed",
       "registerDocument", "registerCommand", "registerSettingsPage", "setSettingsRows", "registerStatusBarItem",
-      "registerStatusBarItem", "registerStatusBarItem", "onEvent"]);
-    expect(context.activeCallsOf("onEvent")).toHaveLength(0);
+      "registerStatusBarItem", "registerStatusBarItem", "onEvent", "provideUndo", "onEvent"]);
+    expect([context.activeCallsOf("onEvent").length, context.activeCallsOf("provideUndo").length]).toEqual([0, 0]);
   });
 
   it("registers only the views, documents and commands its module declares", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.allow("provideUndo");
     const views: string[] = [];
     const documents: string[] = [];
     const commands: string[] = [];
@@ -107,6 +109,7 @@ describe("GitWindowPart", () => {
   it("gives the Git view Gravatar's pictures as the fallback while it is active", async () => {
     const part: GitWindowPart = new GitWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.allow("provideUndo");
     GitFixtures.answerWith(context, { "git.avatar": { image: "data:image/png;base64,QQ==" } });
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -121,6 +124,7 @@ describe("GitWindowPart", () => {
 
   it("registers the Git view in the right dock's first group at order 20, shown by default, with no padding, loading the view's component", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.allow("provideUndo");
     const views: ViewContribution[] = [];
     context.answer("registerView", t => {
       views.push(t);
@@ -147,6 +151,7 @@ describe("GitWindowPart", () => {
 
   it("registers the repository view in the left dock's first group at order 10, shown by default, with no padding, loading its component", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.allow("provideUndo");
     const views: ViewContribution[] = [];
     context.answer("registerView", t => {
       views.push(t);
@@ -172,6 +177,7 @@ describe("GitWindowPart", () => {
 
   it("registers the Workspaces view in the left dock's first group at order 20, after the repository view, shown by default, with no padding, loading its component", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.allow("provideUndo");
     const views: ViewContribution[] = [];
     context.answer("registerView", t => {
       views.push(t);
@@ -197,6 +203,7 @@ describe("GitWindowPart", () => {
 
   it("registers the command log as a view with an instance per repository, in the bottom dock's first group at order 20, hidden by default, with the app's padding for a docked view, as other views have, loading its component", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.allow("provideUndo");
     const views: ViewContribution[] = [];
     context.answer("registerView", t => {
       views.push(t);
@@ -222,6 +229,7 @@ describe("GitWindowPart", () => {
 
   it("registers the Commit view with one instance, in the right dock's first group at order 45, hidden by default, with no padding, loading its component, and follows its closing", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.allow("provideUndo");
     const views: ViewContribution[] = [];
     context.answer("registerView", t => {
       views.push(t);
@@ -248,6 +256,7 @@ describe("GitWindowPart", () => {
 
   it("registers the Conflict view with one instance, in the right dock's first group at order 50, hidden by default, with no padding, loading its component, and follows its closing", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.allow("provideUndo");
     const views: ViewContribution[] = [];
     context.answer("registerView", t => {
       views.push(t);
@@ -274,6 +283,7 @@ describe("GitWindowPart", () => {
 
   it("registers the Rebase preview and Across repositories views with one instance each, in the right dock's first group after the Conflict view, hidden by default, with no padding, loading their components, and follows their closing", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.allow("provideUndo");
     const views: ViewContribution[] = [];
     context.answer("registerView", t => {
       views.push(t);
@@ -302,6 +312,7 @@ describe("GitWindowPart", () => {
 
   it("opens a repository's command log as the log view's instance, reopens the logs left open when it activates again, and forgets one the person closes", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.allow("provideUndo");
     const commands: CommandContribution[] = [];
     context.allow("registerView");
     context.allow("registerDocument");
@@ -334,6 +345,7 @@ describe("GitWindowPart", () => {
 
   it("registers the history, conflict and rebase documents, loading their components with no padding, and commands that open the history and the conflicts for a folder, first among the repositories opened lately", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.allow("provideUndo");
     const documents: DocumentContribution[] = [];
     const commands: CommandContribution[] = [];
     context.allow("registerView");
@@ -394,6 +406,7 @@ describe("GitWindowPart", () => {
       GitRebasing.restore();
     });
     const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.allow("provideUndo");
     const documents: DocumentContribution[] = [];
     const commands: CommandContribution[] = [];
     context.allow("registerView");
@@ -434,6 +447,7 @@ describe("GitWindowPart", () => {
 
   it("registers the branch's and the fetch's status-bar items at the start and the command's at the end, hidden until the Git panel shows a repository, and lets them go when it deactivates", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.allow("provideUndo");
     const items: StatusBarItem[] = [];
     context.allow("registerView");
     context.allow("registerDocument");
@@ -474,6 +488,7 @@ describe("GitWindowPart", () => {
 
   it("refuses to open the history without a folder", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.allow("provideUndo");
     const commands: CommandContribution[] = [];
     context.allow("registerView");
     context.allow("registerDocument");
@@ -497,6 +512,7 @@ describe("GitWindowPart", () => {
 
   it("registers Accounts and hosts, the Settings page its module declares, loading the accounts' component", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.allow("provideUndo");
     const pages: SettingsPageContribution[] = [];
     context.allow("registerView");
     context.allow("registerDocument");
@@ -520,6 +536,7 @@ describe("GitWindowPart", () => {
 
   it("gives Settings search a row for each host's account while it is active, following the hosts, and none once it deactivates", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.allow("provideUndo");
     const host: FakeWindowPartContext = new FakeWindowPartContext();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
     const withdrawGitHub: () => void = GitHostAccounts.provide(host, accountOf("git-github.account", "GitHub"));

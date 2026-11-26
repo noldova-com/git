@@ -234,6 +234,12 @@ export class Resources {
     return `The status bar couldn't read ${folder}: ${reason}`;
   }
 
+  public static readonly undoTaken: string = "Edit → Undo doesn't undo Git's last write in this window, as another part of the window already provides its undo.";
+
+  public static formatUndoReadFailed(folder: string, reason: string): string {
+    return `Undo couldn't read the last write of ${folder}: ${reason}`;
+  }
+
   public static formatUnwatchFailed(folder: string, reason: string): string {
     return `The Git view couldn't stop watching ${folder}: ${reason}`;
   }

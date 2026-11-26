@@ -5,7 +5,7 @@
   "description": "Signs in to Azure DevOps with Microsoft or a personal access token and shows its pull requests with their votes, policies and builds.",
   "parts": ["runtime", "window"],
   "dependencies": { "git": "0.0.7" },
-  "noldovaDesktop": ">=0.0.16 <0.1.0",
+  "noldovaDesktop": ">=0.0.17 <0.1.0",
   "contributes": {
     "methods": ["git-azure-devops.readSignIn", "git-azure-devops.startSignIn", "git-azure-devops.cancelSignIn", "git-azure-devops.signInWithToken", "git-azure-devops.signOut", "git-azure-devops.readReference",
       "git-azure-devops.readBranchPullRequest", "git-azure-devops.readPullRequest", "git-azure-devops.readWorkItem",
