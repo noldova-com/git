@@ -71,6 +71,3 @@ export { RepositoryQuery } from "../models/repository-query.ts";
 export { WorkItemQuery } from "../models/work-item-query.ts";
 export { WorkItemUpdate } from "../models/work-item-update.ts";
 export { WorkItemsQuery } from "../models/work-items-query.ts";
-
-
-

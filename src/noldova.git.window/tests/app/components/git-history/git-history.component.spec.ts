@@ -457,4 +457,3 @@ describe("GitHistoryComponent", () => {
     expect(element.querySelectorAll("[role=option]").length).toBeGreaterThanOrEqual(50);
   });
 });
-
