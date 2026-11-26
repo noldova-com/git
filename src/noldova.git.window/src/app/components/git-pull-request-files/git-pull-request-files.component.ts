@@ -7,7 +7,7 @@
  */
 
 import {
-  afterRenderEffect, Component, computed, effect, inject, input, type InputSignal, output, type OutputEmitterRef, PendingTasks, type Signal, signal, untracked, viewChild, type WritableSignal
+  afterRenderEffect, Component, computed, DestroyRef, effect, inject, input, type InputSignal, output, type OutputEmitterRef, PendingTasks, type Signal, signal, untracked, viewChild, type WritableSignal
 } from "@angular/core";
 import "@noldova/context.core";
 import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
@@ -20,7 +20,9 @@ import { GitFileLayout } from "../../enums/git-file-layout.ts";
 import type { IGitPullRequestHost } from "../../interfaces/i-git-pull-request-host.ts";
 import type { GitFileLine } from "../../models/git-file-line.ts";
 import type { GitPathEntry } from "../../models/git-path-entry.ts";
+import { GitFolder } from "../../services/git-folder.ts";
 import { GitPathLayout } from "../../services/git-path-layout.ts";
+import { GitRuntimeClient } from "../../services/git-runtime-client.ts";
 import { Resources } from "../../../resources.ts";
 import { GitDiffFilesComponent } from "../git-diff-files/git-diff-files.component.ts";
 import { GitFileLayoutButtonComponent } from "../git-file-layout-button/git-file-layout-button.component.ts";
@@ -29,6 +31,8 @@ import { GitFileLayoutButtonComponent } from "../git-file-layout-button/git-file
  * The pull request page's Files tab: the files its latest push changes. When the open repository is the pull request's and has that push's commits, it shows
  * the changes from local Git; otherwise it lists the paths the host names, never their contents, with a Fetch for a repository that lacks the commits. Both
  * follow the layout its button chooses: a tree, folders or a list.
+ * It reads again when another repository is opened, and when the pull request's repository changes, as a fetch or a switch there may bring the push's
+ * commits, it looks for them again without asking the host.
  */
 @Component({
   selector: "nol-git-pull-request-files",
@@ -39,6 +43,7 @@ import { GitFileLayoutButtonComponent } from "../git-file-layout-button/git-file
 export class GitPullRequestFilesComponent {
   private readonly context: IWindowPartContext = inject(WindowPartTokens.context);
   private readonly tasks: PendingTasks = inject(PendingTasks);
+  private readonly client: GitRuntimeClient = new GitRuntimeClient(this.context);
   private readonly attempt: WritableSignal<number> = signal<number>(0);
   private readonly diffFiles: Signal<GitDiffFilesComponent | undefined> = viewChild(GitDiffFilesComponent);
   /** Whether the tab has yet to read, so it shows the handed-over answer instead. */
@@ -90,6 +95,7 @@ export class GitPullRequestFilesComponent {
   public constructor() {
     effect(onCleanup => {
       this.attempt();
+      GitFolder.folder();
       const reference: HostReference = this.reference();
       let isCurrent = true;
       onCleanup(() => {
@@ -107,6 +113,11 @@ export class GitPullRequestFilesComponent {
         void this.readAsync(reference, given, () => isCurrent);
       });
     });
+    inject(DestroyRef).onDestroy(this.client.onChanged(folder => {
+      const list: HostPullRequestFiles | null = this.list();
+      if (!Object.isNull(list) && folder === this.folder() && Object.isNull(this.scope()))
+        void this.placeAsync(folder, list);
+    }));
     afterRenderEffect(() => {
       const line: GitFileLine | null = this.reveal();
       if (Object.isNull(line) || line === this.revealed || this.isReading())
@@ -217,6 +228,27 @@ export class GitPullRequestFilesComponent {
         throw error;
       this.context.log(Resources.formatHostRequestFailed(this.host().name, GitNames.diffTotalsMethod, String(error)));
       return null;
+    }
+  }
+
+  /** Looks for the push's changes in local Git again once the pull request's repository changes, as a fetch or a switch there may bring its commits. */
+  private async placeAsync(folder: string, list: HostPullRequestFiles): Promise<void> {
+    if (Object.isNull(list.sourceCommit) || Object.isNull(list.commonCommit))
+      return;
+    const done = this.tasks.add();
+    try {
+      const scope: DiffScope | null = await this.scopeAsync(folder, list.commonCommit, list.sourceCommit);
+      if (Object.isNull(scope) || this.list() !== list)
+        return;
+      const totals: DiffTotals | null = await this.totalsAsync(folder, scope);
+      if (this.list() !== list)
+        return;
+      this.scope.set(scope);
+      if (!Object.isNull(totals))
+        this.counted.emit(String(totals.files));
+    }
+    finally {
+      done();
     }
   }
 

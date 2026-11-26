@@ -6,17 +6,19 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import { signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { FileChangeKind, HostPullRequestFile, HostPullRequestFiles, HostReference } from "@noldova/git.hosting.protocol";
-import { DiffFile, DiffHunk, DiffLine, DiffScope, DiffScopeKind, DiffTotals, FileChange, GitCommitDetailParams, GitDiff, GitDiffParams, GitFetchParams, GitNames, GitRemote,
-  GitStatus, LineKind, RemoteTransport } from "@noldova/git.protocol";
-import { describe, expect, it } from "vitest";
+import { DiffFile, DiffHunk, DiffLine, DiffScope, DiffScopeKind, DiffTotals, FileChange, GitChanged, GitCommitDetailParams, GitDiff, GitDiffParams, GitFetchParams,
+  GitNames, GitRemote, GitStatus, LineKind, RemoteTransport } from "@noldova/git.protocol";
+import { describe, expect, it, onTestFinished } from "vitest";
 
 import { GitPullRequestFilesComponent } from "../../../../src/app/components/git-pull-request-files/git-pull-request-files.component.ts";
 import { GitFileLine } from "../../../../src/app/models/git-file-line.ts";
+import { GitFolder } from "../../../../src/app/services/git-folder.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { TestPullRequestHost } from "../../../fixtures/test-pull-request-host.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
@@ -121,6 +123,12 @@ class Tab {
 
   public texts(selector: string): string[] {
     return [...this.element.querySelectorAll(selector)].map(wordsOf);
+  }
+
+  /** Tells the tab that Git saw a change in `folder`, as after a fetch or a switch there, and waits for what it reads then. */
+  public async changeAsync(folder: string): Promise<void> {
+    this.context.raiseEvent(GitNames.changedEvent, new GitChanged(folder).toJson());
+    await this.settleAsync();
   }
 
   public async clickAsync(selector: string): Promise<void> {
@@ -255,6 +263,128 @@ describe("GitPullRequestFilesComponent", () => {
 
     expect([tab.texts(".hint"), tab.texts(".row:not(.folder)").length, tab.logs]).toEqual([["The fetch didn't finish. Try again to see each file's changes. Fetch"], 4,
       ["The Example module's git.fetch request failed: WindowFailure: The remote refused."]]);
+  });
+
+  it("reads again when another repository is opened, showing the changes from local Git once the pull request's repository is open", async () => {
+    const tab = new Tab();
+    const open = signal<string | null>(null);
+    onTestFinished(GitFolder.provide(tab.context, open));
+    tab.requests.answer(TestPullRequestHost.changesMethod, changed.toJson(), changed.toJson());
+    tab.requests.answer(GitNames.commitDetailMethod, {}, {});
+    tab.requests.answer(GitNames.diffTotalsMethod, new DiffTotals(5, 9, 2).toJson());
+    tab.requests.fail(GitNames.diffMethod, new WindowFailure("Not now."));
+    await tab.openAsync();
+    const before = [tab.texts(".hint"), tab.requests.methods];
+
+    tab.host.folder = FOLDER;
+    open.set(FOLDER);
+    await tab.requests.askedAsync(6);
+    await tab.settleAsync();
+
+    expect(before).toEqual([["Open this repository in Git to see each file's changes."], [TestPullRequestHost.changesMethod]]);
+    expect([!Object.isNull(tab.element.querySelector("nol-git-diff-files")), tab.counts]).toEqual([true, ["4", "5"]]);
+  });
+
+  it("looks for the push's commits again, without asking the host, when the pull request's repository changes, and shows the changes from local Git once it has them",
+    async () => {
+      const tab = new Tab();
+      tab.host.folder = FOLDER;
+      tab.requests.answer(TestPullRequestHost.changesMethod, changed.toJson());
+      for (let i = 0; i < 4; i++)
+        tab.requests.fail(GitNames.commitDetailMethod, new WindowFailure("Unknown revision."));
+      tab.requests.answer(GitNames.commitDetailMethod, {}, {});
+      tab.requests.answer(GitNames.diffTotalsMethod, new DiffTotals(5, 9, 2).toJson());
+      tab.requests.fail(GitNames.diffMethod, new WindowFailure("Not now."));
+      await tab.openAsync();
+
+      await tab.changeAsync("/work/other");
+      const elsewhere = tab.requests.methods.length;
+      await tab.changeAsync(FOLDER);
+      const lacking = [tab.texts(".hint"), tab.element.querySelector("nol-git-diff-files")];
+      await tab.changeAsync(FOLDER);
+      await tab.requests.askedAsync(9);
+      await tab.settleAsync();
+      const shown = tab.requests.methods.length;
+      await tab.changeAsync(FOLDER);
+
+      expect([elsewhere, lacking]).toEqual([3, [["Fetch to see each file's changes. Fetch"], null]]);
+      expect([!Object.isNull(tab.element.querySelector("nol-git-diff-files")), tab.counts, tab.requests.methods.filter(t => t === TestPullRequestHost.changesMethod)])
+        .toEqual([true, ["4", "5"], [TestPullRequestHost.changesMethod]]);
+      expect(tab.requests.methods.length).toBe(shown);
+    });
+
+  it("keeps the host's count when local Git can't count the changes it finds after a change, drops what it finds for a pull request it left, and looks for no commits "
+    + "without both or after a failed read", async () => {
+    const tab = new Tab();
+    tab.host.folder = FOLDER;
+    tab.requests.answer(TestPullRequestHost.changesMethod, changed.toJson());
+    tab.requests.fail(GitNames.commitDetailMethod, new WindowFailure("Unknown revision."));
+    tab.requests.fail(GitNames.commitDetailMethod, new WindowFailure("Unknown revision."));
+    tab.requests.answer(GitNames.commitDetailMethod, {}, {});
+    tab.requests.fail(GitNames.diffTotalsMethod, new WindowFailure("Not now."));
+    tab.requests.fail(GitNames.diffMethod, new WindowFailure("Not now."));
+    await tab.openAsync();
+    await tab.changeAsync(FOLDER);
+    const counted = [!Object.isNull(tab.element.querySelector("nol-git-diff-files")), tab.counts];
+    TestBed.resetTestingModule();
+    const left = new Tab();
+    left.host.folder = FOLDER;
+    left.requests.answer(TestPullRequestHost.changesMethod, changed.toJson(), changed.toJson());
+    left.requests.fail(GitNames.commitDetailMethod, new WindowFailure("Unknown revision."));
+    left.requests.fail(GitNames.commitDetailMethod, new WindowFailure("Unknown revision."));
+    const release = left.requests.hold(GitNames.commitDetailMethod);
+    left.requests.answer(GitNames.commitDetailMethod, {});
+    left.requests.fail(GitNames.commitDetailMethod, new WindowFailure("Unknown revision."));
+    left.requests.fail(GitNames.commitDetailMethod, new WindowFailure("Unknown revision."));
+    await left.openAsync();
+    left.context.raiseEvent(GitNames.changedEvent, new GitChanged(FOLDER).toJson());
+    left.fixture?.componentRef.setInput("reference", other);
+    await left.requests.askedAsync(6);
+    release({});
+    await left.settleAsync();
+    const dropped = [left.element.querySelector("nol-git-diff-files"), left.texts(".hint"), left.counts];
+    TestBed.resetTestingModule();
+    const counting = new Tab();
+    counting.host.folder = FOLDER;
+    counting.requests.answer(TestPullRequestHost.changesMethod, changed.toJson(), changed.toJson());
+    counting.requests.fail(GitNames.commitDetailMethod, new WindowFailure("Unknown revision."));
+    counting.requests.fail(GitNames.commitDetailMethod, new WindowFailure("Unknown revision."));
+    counting.requests.answer(GitNames.commitDetailMethod, {}, {});
+    counting.requests.fail(GitNames.commitDetailMethod, new WindowFailure("Unknown revision."));
+    counting.requests.fail(GitNames.commitDetailMethod, new WindowFailure("Unknown revision."));
+    const count = counting.requests.hold(GitNames.diffTotalsMethod);
+    await counting.openAsync();
+    counting.context.raiseEvent(GitNames.changedEvent, new GitChanged(FOLDER).toJson());
+    await counting.requests.askedAsync(6);
+    counting.fixture?.componentRef.setInput("reference", other);
+    await counting.requests.askedAsync(9);
+    count(new DiffTotals(5, 9, 2).toJson());
+    await counting.settleAsync();
+    const recounted = [counting.element.querySelector("nol-git-diff-files"), counting.counts];
+    TestBed.resetTestingModule();
+    const sourceless = new Tab();
+    sourceless.host.folder = FOLDER;
+    sourceless.requests.answer(TestPullRequestHost.changesMethod, new HostPullRequestFiles(SOURCE, null, changed.files, false).toJson());
+    await sourceless.openAsync();
+    await sourceless.changeAsync(FOLDER);
+    TestBed.resetTestingModule();
+    const headless = new Tab();
+    headless.host.folder = FOLDER;
+    headless.requests.answer(TestPullRequestHost.changesMethod, new HostPullRequestFiles(null, null, [], false).toJson());
+    await headless.openAsync();
+    await headless.changeAsync(FOLDER);
+    TestBed.resetTestingModule();
+    const failed = new Tab();
+    failed.host.folder = FOLDER;
+    failed.requests.fail(TestPullRequestHost.changesMethod, new WindowFailure("The runtime stopped."));
+    await failed.openAsync();
+    await failed.changeAsync(FOLDER);
+
+    expect([sourceless.requests.methods, headless.requests.methods, failed.requests.methods])
+      .toEqual([[TestPullRequestHost.changesMethod], [TestPullRequestHost.changesMethod], [TestPullRequestHost.changesMethod]]);
+    expect(counted).toEqual([true, ["4"]]);
+    expect(dropped).toEqual([null, ["Fetch to see each file's changes. Fetch"], ["4", "4"]]);
+    expect(recounted).toEqual([null, ["4", "4"]]);
   });
 
   it("lists the paths with no fetch offered when the host doesn't say where the changes count from, and checks no commits for a pull request with no head commit",

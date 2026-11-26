@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import { signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
@@ -14,6 +15,7 @@ import { HostPullRequestCommit, HostPullRequestCommits, HostReference } from "@n
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { GitPullRequestCommitsComponent } from "../../../../src/app/components/git-pull-request-commits/git-pull-request-commits.component.ts";
+import { GitFolder } from "../../../../src/app/services/git-folder.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { TestPullRequestHost } from "../../../fixtures/test-pull-request-host.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
@@ -160,6 +162,24 @@ describe("GitPullRequestCommitsComponent", () => {
     expect([tab.context.callsOf("runCommandAsync"), tab.logs, tab.context.callsOf("openLinkAsync")]).toEqual([
       [["git.openHistory", { folder: "/work/site" }], ["git.openHistory", { folder: "/work/site" }]],
       ["The Example module's git.openHistory request failed: WindowFailure: No Git module."], []]);
+  });
+
+  it("reads again when another repository is opened, so a commit opens in the history of the pull request's repository once it is open", async () => {
+    const tab = new Tab();
+    const open = signal<string | null>(null);
+    onTestFinished(GitFolder.provide(tab.context, open));
+    tab.requests.answer(TestPullRequestHost.commitsMethod, commitsOf(1).toJson(), commitsOf(1).toJson());
+    tab.context.answer("runCommandAsync", async () => null);
+    await tab.openAsync();
+
+    tab.host.folder = "/work/site";
+    open.set("/work/site");
+    await tab.requests.askedAsync(2);
+    await tab.settleAsync();
+    await tab.clickAsync(".row");
+
+    expect([tab.context.callsOf("runCommandAsync"), tab.context.callsOf("openLinkAsync"), tab.counts]).toEqual([[["git.openHistory", { folder: "/work/site" }]], [],
+      ["1", "1"]]);
   });
 
   it("logs a commit's page the window can't open", async () => {

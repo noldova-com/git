@@ -13,6 +13,7 @@ import { type HostPullRequestCommit, HostPullRequestCommits, type HostReference 
 import { ButtonComponent, ButtonVariant, SpinnerComponent } from "@noldova/ui.components.angular";
 
 import type { IGitPullRequestHost } from "../../interfaces/i-git-pull-request-host.ts";
+import { GitFolder } from "../../services/git-folder.ts";
 import { GitHistorySelection } from "../../services/git-history-selection.ts";
 import { Resources } from "../../../resources.ts";
 
@@ -50,6 +51,7 @@ export class GitPullRequestCommitsComponent {
   public constructor() {
     effect(onCleanup => {
       this.attempt();
+      GitFolder.folder();
       const reference: HostReference = this.reference();
       let isCurrent = true;
       onCleanup(() => {

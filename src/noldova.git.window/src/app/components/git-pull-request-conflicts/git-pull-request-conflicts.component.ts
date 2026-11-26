@@ -14,6 +14,7 @@ import { GitFolderParams, GitNames, GitStatus, OperationKind } from "@noldova/gi
 import { ButtonComponent, ButtonVariant, SpinnerComponent } from "@noldova/ui.components.angular";
 
 import type { IGitPullRequestHost } from "../../interfaces/i-git-pull-request-host.ts";
+import { GitFolder } from "../../services/git-folder.ts";
 import { Resources } from "../../../resources.ts";
 
 /**
@@ -57,6 +58,7 @@ export class GitPullRequestConflictsComponent {
   public constructor() {
     effect(onCleanup => {
       this.attempt();
+      GitFolder.folder();
       const reference: HostReference = this.reference();
       let isCurrent = true;
       onCleanup(() => {

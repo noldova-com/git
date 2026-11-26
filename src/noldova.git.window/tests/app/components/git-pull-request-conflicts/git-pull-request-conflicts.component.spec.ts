@@ -6,15 +6,17 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import { signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { HostChanges, HostPullRequestConflicts, HostReference } from "@noldova/git.hosting.protocol";
 import { GitNames, GitOperation, GitRemote, GitStatus, OperationKind, RemoteTransport } from "@noldova/git.protocol";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 
 import { GitPullRequestConflictsComponent } from "../../../../src/app/components/git-pull-request-conflicts/git-pull-request-conflicts.component.ts";
+import { GitFolder } from "../../../../src/app/services/git-folder.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { TestPullRequestHost } from "../../../fixtures/test-pull-request-host.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
@@ -127,6 +129,23 @@ describe("GitPullRequestConflictsComponent", () => {
 
     expect([full.texts(".cap"), full.counts, none.texts(".empty"), none.counts, none.requests.methods]).toEqual([["Showing the first 100."], ["100+"],
       ["No conflicts."], ["0"], [TestPullRequestHost.conflictsMethod]]);
+  });
+
+  it("reads again when another repository is opened, so its rows open the Conflicts screen once the pull request's repository is open and merging", async () => {
+    const tab = new Tab();
+    const open = signal<string | null>(null);
+    onTestFinished(GitFolder.provide(tab.context, open));
+    tab.requests.answer(TestPullRequestHost.conflictsMethod, conflicts.toJson(), conflicts.toJson());
+    tab.requests.answer(GitNames.statusMethod, statusOf("main", merge).toJson());
+    await tab.openAsync();
+    const before = tab.element.querySelectorAll("button.row").length;
+
+    tab.host.folder = FOLDER;
+    open.set(FOLDER);
+    await tab.requests.askedAsync(3);
+    await tab.settleAsync();
+
+    expect([before, tab.element.querySelectorAll("button.row").length, tab.counts]).toEqual([0, 2, ["2", "2"]]);
   });
 
   it("opens the repository's Conflicts screen from a row when it is merging on the pull request's target or source branch, and logs a screen it can't open",
