@@ -48,6 +48,7 @@ These steps of "Build and test" aren't part of `npm test`; each runs locally aft
 - `pipelines archive _packages <version> <commit> @noldova`, with `version.json`'s version and `git rev-parse HEAD`: the archives carry that version and commit and only the release's scope, name a sibling package as a dependency at exactly that version and as a peer from it to the next minor.
 
 `npm test -- --skip-test-details --skip-coverage-details` runs the checks as CI does, without the per-test and per-file lists.
+`npm test -- --repeat <count>` runs the checks once and then the chosen tests, or the whole suite without filters, that many times, with a "Run N of M" heading before each run, and stops at the first run that fails; the count is a whole number from 1, given once, and a wrong one fails before any check runs.
 Only GitHub runs the rest: the hosted Windows runners' move of npm's temp files off the system disk, "All targets", the linked-issue check, the release, Relock and the flake proof's loop.
 
 ## Coverage
