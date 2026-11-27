@@ -74,8 +74,8 @@ describe("GitWindowPart", () => {
     expect(context.calls.map(t => t.member)).toEqual(["registerView", "registerView", "registerView", "registerDocument", "registerDocument", "registerDocument", "registerView",
       "registerView", "registerView", "registerView", "registerView", "onViewClosed", "onViewClosed", "onViewClosed", "registerCommand", "registerCommand", "registerCommand", "onViewClosed",
       "registerDocument", "registerCommand", "registerSettingsPage", "setSettingsRows", "registerStatusBarItem",
-      "registerStatusBarItem", "registerStatusBarItem", "onEvent", "provideUndo", "onEvent"]);
-    expect([context.activeCallsOf("onEvent").length, context.activeCallsOf("provideUndo").length]).toEqual([0, 0]);
+      "registerStatusBarItem", "registerStatusBarItem", "onSettingChanged", "onSettingChanged", "onEvent", "provideUndo", "onEvent"]);
+    expect([context.activeCallsOf("onEvent").length, context.activeCallsOf("provideUndo").length, context.activeCallsOf("onSettingChanged").length]).toEqual([0, 0, 0]);
   });
 
   it("registers only the views, documents and commands its module declares", async () => {
