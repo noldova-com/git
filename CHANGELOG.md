@@ -13,6 +13,7 @@ Each version's section is written by the pull request that changes the version, 
 - A GitHub commit's detail shows the pull request that brought it in, with its checks and review decision, through the GitHub runtime's new `git-github.readCommitPullRequest` method and `GitHubNames.readCommitPullRequestMethod` in `@noldova/git.github.protocol` (#80).
 - The Command log lists its commands oldest first, with no heading, help text or lines between rows, and keeps the newest in sight as commands arrive and as the tab resizes, unless the person has scrolled up (#78).
 - Signing out of Azure DevOps clears what the open pull request and My work items documents, and the Pull request and Work item views, read with the account, says the person is signed out with Sign in, and signing in reads them anew (#77).
+- The window's first layout, and the one Reset layout returns to, has Workspaces then Repository in the left dock, the documents in the middle, Git then the Commit view, now a plain view shown by default, in the right dock, and the command log hidden at the bottom; `@noldova/git.window` exports the Dashboard as `GitDashboardComponent` for an app's placeholder, which refuses to show while Git's window part isn't active, and `GitDetailView` takes a plain view and a page's `settled` signal (#81).
 
 ## 0.0.8
 
