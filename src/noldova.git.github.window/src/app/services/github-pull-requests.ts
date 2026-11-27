@@ -81,7 +81,7 @@ export class GitHubPullRequests implements IGitPullRequests {
     if (!Object.isNull(remote.host) && !Object.isNull(remote.path)) {
       const query: CommitQuery = new CommitQuery(remote.host, remote.path, commitId);
       this.commentQueries.set(key, [query, answer]);
-      void this.readCommentsAsync(query, key, answer);
+      void this.readCommentsAsync(query, key, answer, GitHubPullRequests.claim(this.commentReads, key));
     }
     return answer;
   }
@@ -96,7 +96,7 @@ export class GitHubPullRequests implements IGitPullRequests {
     if (!Object.isNull(remote.host) && !Object.isNull(remote.path)) {
       const query: CommitQuery = new CommitQuery(remote.host, remote.path, commitId);
       this.commitQueries.set(key, [query, answer]);
-      void this.readCommitAsync(query, key, answer);
+      void this.readCommitAsync(query, key, answer, GitHubPullRequests.claim(this.commitReads, key));
     }
     return answer;
   }
@@ -117,10 +117,14 @@ export class GitHubPullRequests implements IGitPullRequests {
       void this.readAsync(query);
     for (const query of this.reviewQueries.values())
       void this.readReviewsAsync(query);
-    for (const [key, [query, answer]] of this.commitQueries)
-      this.rereads.add(() => this.readCommitAsync(query, key, answer));
-    for (const [key, [query, answer]] of this.commentQueries)
-      this.rereads.add(() => this.readCommentsAsync(query, key, answer));
+    for (const [key, [query, answer]] of this.commitQueries) {
+      const read: number = GitHubPullRequests.claim(this.commitReads, key);
+      this.rereads.add(() => this.readCommitAsync(query, key, answer, read));
+    }
+    for (const [key, [query, answer]] of this.commentQueries) {
+      const read: number = GitHubPullRequests.claim(this.commentReads, key);
+      this.rereads.add(() => this.readCommentsAsync(query, key, answer, read));
+    }
   }
 
   private listOf(key: string): WritableSignal<GitPullRequestList | null> {
@@ -149,9 +153,7 @@ export class GitHubPullRequests implements IGitPullRequests {
     }
   }
 
-  private async readCommitAsync(query: CommitQuery, key: string, answer: WritableSignal<GitBranchPullRequest | null>): Promise<void> {
-    const read: number = (this.commitReads.get(key) ?? 0) + 1;
-    this.commitReads.set(key, read);
+  private async readCommitAsync(query: CommitQuery, key: string, answer: WritableSignal<GitBranchPullRequest | null>, read: number): Promise<void> {
     try {
       const found = BranchPullRequest.fromJson(await this.context.requestAsync(GitHubNames.readCommitPullRequestMethod, query.toJson()));
       if (this.commitReads.get(key) === read)
@@ -169,9 +171,7 @@ export class GitHubPullRequests implements IGitPullRequests {
     }
   }
 
-  private async readCommentsAsync(query: CommitQuery, key: string, answer: WritableSignal<GitCommitComments | null>): Promise<void> {
-    const read: number = (this.commentReads.get(key) ?? 0) + 1;
-    this.commentReads.set(key, read);
+  private async readCommentsAsync(query: CommitQuery, key: string, answer: WritableSignal<GitCommitComments | null>, read: number): Promise<void> {
     try {
       const found = HostCommitComments.fromJson(await this.context.requestAsync(GitHubNames.readCommitCommentsMethod, query.toJson()));
       if (this.commentReads.get(key) === read)
@@ -186,6 +186,12 @@ export class GitHubPullRequests implements IGitPullRequests {
         this.commentQueries.delete(key);
       }
     }
+  }
+
+  private static claim(reads: Map<string, number>, key: string): number {
+    const read: number = (reads.get(key) ?? 0) + 1;
+    reads.set(key, read);
+    return read;
   }
 
   private static listIn(lists: Map<string, WritableSignal<GitPullRequestList | null>>, key: string): WritableSignal<GitPullRequestList | null> {

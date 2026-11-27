@@ -123,7 +123,7 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
     if (!Object.isNull(remote.host) && !Object.isNull(path)) {
       const query: CommitQuery = new CommitQuery(remote.host, path, commitId);
       this.commitQueries.set(key, [query, answer]);
-      void this.readCommitAsync(query, key, answer);
+      void this.readCommitAsync(query, key, answer, AzureDevOpsPullRequests.claim(this.commitReads, key));
     }
     return answer;
   }
@@ -139,7 +139,7 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
     if (!Object.isNull(remote.host) && !Object.isNull(path)) {
       const query: CommitQuery = new CommitQuery(remote.host, path, commitId);
       this.commentQueries.set(key, [query, answer]);
-      void this.readCommentsAsync(query, key, answer);
+      void this.readCommentsAsync(query, key, answer, AzureDevOpsPullRequests.claim(this.commentReads, key));
     }
     return answer;
   }
@@ -176,10 +176,14 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
       void this.readBranchAsync(query);
     for (const [key, [query, answer]] of this.stackQueries)
       void this.readStacksAsync(query, key, answer);
-    for (const [key, [query, answer]] of this.commitQueries)
-      this.rereads.add(() => this.readCommitAsync(query, key, answer));
-    for (const [key, [query, answer]] of this.commentQueries)
-      this.rereads.add(() => this.readCommentsAsync(query, key, answer));
+    for (const [key, [query, answer]] of this.commitQueries) {
+      const read: number = AzureDevOpsPullRequests.claim(this.commitReads, key);
+      this.rereads.add(() => this.readCommitAsync(query, key, answer, read));
+    }
+    for (const [key, [query, answer]] of this.commentQueries) {
+      const read: number = AzureDevOpsPullRequests.claim(this.commentReads, key);
+      this.rereads.add(() => this.readCommentsAsync(query, key, answer, read));
+    }
   }
 
   private listOf(key: string): WritableSignal<GitPullRequestList | null> {
@@ -269,9 +273,7 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
     }
   }
 
-  private async readCommitAsync(query: CommitQuery, key: string, answer: WritableSignal<GitBranchPullRequest | null>): Promise<void> {
-    const read: number = (this.commitReads.get(key) ?? 0) + 1;
-    this.commitReads.set(key, read);
+  private async readCommitAsync(query: CommitQuery, key: string, answer: WritableSignal<GitBranchPullRequest | null>, read: number): Promise<void> {
     try {
       const found = BranchPullRequest.fromJson(await this.context.requestAsync(AzureDevOpsNames.readCommitPullRequestMethod, query.toJson()));
       if (this.commitReads.get(key) === read)
@@ -308,9 +310,7 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
     }
   }
 
-  private async readCommentsAsync(query: CommitQuery, key: string, answer: WritableSignal<GitCommitComments | null>): Promise<void> {
-    const read: number = (this.commentReads.get(key) ?? 0) + 1;
-    this.commentReads.set(key, read);
+  private async readCommentsAsync(query: CommitQuery, key: string, answer: WritableSignal<GitCommitComments | null>, read: number): Promise<void> {
     try {
       const found = HostCommitComments.fromJson(await this.context.requestAsync(AzureDevOpsNames.readCommitCommentsMethod, query.toJson()));
       if (this.commentReads.get(key) === read)
@@ -338,6 +338,12 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
       count(CheckState.Queued, CheckState.Running), headBranch, item.changes.baseBranch);
     return GitBranchPullRequest.of(row, AzureDevOpsPullRequests.STATES[item.state], item.state === ReferenceState.Open && found.reviewDecision === ReviewDecision.Waiting,
       Resources.stateLabels[item.state]);
+  }
+
+  private static claim(reads: Map<string, number>, key: string): number {
+    const read: number = (reads.get(key) ?? 0) + 1;
+    reads.set(key, read);
+    return read;
   }
 
   private static answerOf(answers: Map<string, WritableSignal<GitBranchPullRequest | null>>, key: string): WritableSignal<GitBranchPullRequest | null> {

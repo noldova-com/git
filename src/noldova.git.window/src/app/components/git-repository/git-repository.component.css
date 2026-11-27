@@ -137,6 +137,10 @@ button.row {
   background: transparent;
 }
 
+.row > [nol-icon-button] {
+  margin-inline-end: calc((var(--nol-icon) - var(--nol-icon-button-target)) / 2);
+}
+
 .row.nested {
   padding-left: 1.75rem;
 }

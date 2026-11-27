@@ -197,6 +197,29 @@ describe("GitHubPullRequests", () => {
     expect([afterLate, uncommented()?.count, host.requests.methods.length]).toEqual([[2, 0], 0, 6]);
   });
 
+  it("keeps a re-read waiting behind the queue's limit when the commit's earlier read fails meanwhile, and reads that commit again at the next sign-in", async () => {
+    const host = new Host();
+    const ids: readonly string[] = ["a", "b", "c", "d", "e"].map(t => t.repeat(40));
+    host.requests.answer(GitHubNames.readCommitCommentsMethod, ...ids.slice(0, 4).map(() => HostCommitComments.none().toJson()));
+    const failFirst = host.requests.holdFailure(GitHubNames.readCommitCommentsMethod);
+    const held = ids.slice(0, 4).map(() => host.requests.hold(GitHubNames.readCommitCommentsMethod));
+    host.requests.answer(GitHubNames.readCommitCommentsMethod, new HostCommitComments(2, false, URL).toJson(), ...ids.map(() => HostCommitComments.none().toJson()));
+    const counts = ids.map(t => host.pullRequests.commentsFor(FOLDER, remote, t));
+    await host.requests.askedAsync(5);
+
+    host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("octocat", null, null, ["repo"])).toJson());
+    await host.requests.askedAsync(9);
+    failFirst(new WindowFailure("The runtime stopped."));
+    await Wait.until(() => expect(host.context.callsOf("log")).toHaveLength(1));
+    for (const release of held)
+      release(HostCommitComments.none().toJson());
+    await Wait.until(() => expect(counts[4]?.()?.count).toBe(2));
+    host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+    await Wait.until(() => expect(counts[4]?.()?.count).toBe(0));
+
+    expect([host.pullRequests.commentsFor(FOLDER, remote, ids[4] ?? "") === counts[4], host.requests.methods.length]).toEqual([true, 15]);
+  });
+
   it("shows the runtime's message for a failed read, says plainly that the window failed, and logs both", async () => {
     const host = new Host();
     host.requests.fail(GitHubNames.readPullRequestsMethod, new RuntimeRequestException(FailureCode.Unavailable, "The repository isn't reachable."));
@@ -437,6 +460,32 @@ describe("GitHubPullRequests", () => {
     expect([afterLate, unpulled(), host.pullRequests.commitFor(FOLDER, remote, UNCOMMENTED) === unpulled, host.requests.methods.length]).toEqual([
       [GitBranchPullRequest.of(cardRowOf(0), GitPullRequestState.Merged, false), GitBranchPullRequest.none(0, 0, 0)], GitBranchPullRequest.none(0, 0, 0), true, 6]);
   });
+
+  it("keeps a commit pull request's re-read waiting behind the queue's limit when the commit's earlier read fails meanwhile, and reads it again at the next sign-in",
+    async () => {
+      const host = new Host();
+      const ids: readonly string[] = ["a", "b", "c", "d", "e"].map(t => t.repeat(40));
+      host.requests.answer(GitHubNames.readCommitPullRequestMethod, ...ids.slice(0, 4).map(() => new BranchPullRequest(null, []).toJson()));
+      const failFirst = host.requests.holdFailure(GitHubNames.readCommitPullRequestMethod);
+      const held = ids.slice(0, 4).map(() => host.requests.hold(GitHubNames.readCommitPullRequestMethod));
+      host.requests.answer(GitHubNames.readCommitPullRequestMethod, pullRequestOf(ReferenceState.Merged).toJson(),
+        ...ids.map(() => new BranchPullRequest(null, []).toJson()));
+      const commits = ids.map(t => host.pullRequests.commitFor(FOLDER, remote, t));
+      await host.requests.askedAsync(5);
+
+      host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("octocat", null, null, ["repo"])).toJson());
+      await host.requests.askedAsync(9);
+      failFirst(new WindowFailure("The runtime stopped."));
+      await Wait.until(() => expect(host.context.callsOf("log")).toHaveLength(1));
+      const whileWaiting = commits[4]?.();
+      for (const release of held)
+        release(new BranchPullRequest(null, []).toJson());
+      await Wait.until(() => expect(commits[4]?.()?.pullRequestState).toBe(GitPullRequestState.Merged));
+      host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+      await Wait.until(() => expect(commits[4]?.()?.pullRequest).toBeNull());
+
+      expect([whileWaiting, host.pullRequests.commitFor(FOLDER, remote, ids[4] ?? "") === commits[4], host.requests.methods.length]).toEqual([null, true, 15]);
+    });
 
   it("passes on a failure that isn't the window's", async () => {
     const host = new Host();

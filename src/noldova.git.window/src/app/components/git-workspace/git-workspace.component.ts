@@ -11,6 +11,7 @@ import { Component, computed, DestroyRef, effect, ElementRef, ErrorHandler, inje
 import { FormsModule } from "@angular/forms";
 import "@noldova/context.core";
 import { type IWindowPartContext, LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
+import { type GitRepositoryScan, ScanEnd } from "@noldova/git.protocol";
 import { ButtonComponent, CheckboxComponent, DialogService, IconButtonComponent, TextFieldComponent, ToolbarButtonComponent } from "@noldova/ui.components.angular";
 
 import { Resources } from "../../../resources.ts";
@@ -46,6 +47,7 @@ import { GitWorkspacePullRequests } from "../../services/git-workspace-pull-requ
 import { GitWorkspaces } from "../../services/git-workspaces.ts";
 import { GitWorkspaceSides } from "../../services/git-workspace-sides.ts";
 import { GitBulkBranchDialogComponent } from "../git-bulk-branch-dialog/git-bulk-branch-dialog.component.ts";
+import { GitRepositoryScanDialogComponent } from "../git-repository-scan-dialog/git-repository-scan-dialog.component.ts";
 import { GitReferenceTextComponent } from "../git-reference-text/git-reference-text.component.ts";
 import { GitVisibleDirective } from "./git-visible.directive.ts";
 import { GitWorkspaceViewCount } from "../../models/git-workspace-view-count.ts";
@@ -65,6 +67,7 @@ export class GitWorkspaceComponent {
   protected readonly selected: WritableSignal<ReadonlySet<string>> = signal<ReadonlySet<string>>(new Set());
   protected readonly isFetching: WritableSignal<boolean> = signal(false);
   protected readonly isWriting: WritableSignal<boolean> = signal(false);
+  protected readonly isScanning: WritableSignal<boolean> = signal(false);
   protected readonly result: WritableSignal<readonly string[]> = signal<readonly string[]>([]);
   protected readonly renaming: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly workspace: Signal<GitWorkspace | null> = computed(() => GitWorkspaces.find(this.instance()));
@@ -99,7 +102,8 @@ export class GitWorkspaceComponent {
   private readonly summaries: GitRepositorySummaries = new GitRepositorySummaries(this.context);
   private readonly pullRequests: GitWorkspacePullRequests = new GitWorkspacePullRequests(this.errors);
   private readonly dialogs: DialogService = inject(DialogService);
-  private readonly bulk: GitWorkspaceBulk = new GitWorkspaceBulk(new GitRuntimeClient(this.context), this.errors);
+  private readonly client: GitRuntimeClient = new GitRuntimeClient(this.context);
+  private readonly bulk: GitWorkspaceBulk = new GitWorkspaceBulk(this.client, this.errors);
   private readonly watched: Set<string> = new Set();
   private made: ReadonlyMap<string, GitWorkspaceRow> = new Map();
   private readonly focused: WritableSignal<number> = signal(0);
@@ -186,13 +190,48 @@ export class GitWorkspaceComponent {
 
   protected async addRepositoryAsync(): Promise<void> {
     const folder: string | null = await this.context.chooseFolderAsync();
-    const workspace: GitWorkspace | null = this.workspace();
     if (Object.isNull(folder))
       return;
-    if (Object.isNull(workspace))
-      GitRecentRepositories.remember(folder);
-    else
-      GitWorkspaces.addFolder(workspace.id, folder);
+    this.isScanning.set(true);
+    this.result.set([Resources.formatScanning(folder)]);
+    let scan: GitRepositoryScan;
+    try {
+      scan = await this.client.scanRepositoriesAsync(folder);
+    }
+    catch (error) {
+      this.result.set([]);
+      this.errors.handleError(error);
+      return;
+    }
+    finally {
+      this.isScanning.set(false);
+    }
+    this.result.set(GitWorkspaceOverview.scanLinesOf(folder, scan));
+    if (scan.end === ScanEnd.Repository)
+      this.addFolders([folder]);
+    else if (scan.repositories.length > 0)
+      this.chooseFound(folder, scan);
+  }
+
+  private chooseFound(folder: string, scan: GitRepositoryScan): void {
+    const dialog = this.dialogs.open(GitRepositoryScanDialogComponent, ".open");
+    dialog.componentRef?.setInput("folder", folder);
+    dialog.componentRef?.setInput("repositories", scan.repositories);
+    dialog.componentRef?.setInput("end", scan.end);
+    dialog.componentInstance?.answered.subscribe(chosen => {
+      dialog.close();
+      if (!Object.isNull(chosen))
+        this.addFolders(chosen);
+    });
+  }
+
+  private addFolders(folders: readonly string[]): void {
+    const workspace: GitWorkspace | null = this.workspace();
+    for (const folder of folders)
+      if (Object.isNull(workspace))
+        GitRecentRepositories.remember(folder);
+      else
+        GitWorkspaces.addFolder(workspace.id, folder);
   }
 
   protected select(folder: string, isSelected: boolean): void {
