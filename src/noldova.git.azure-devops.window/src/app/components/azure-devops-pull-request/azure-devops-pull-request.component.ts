@@ -11,7 +11,7 @@ import "@noldova/context.core";
 import { type IWindowPartContext, RuntimeRequestException, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
 import type { JsonValue } from "@noldova/context.json";
-import { HostPullRequest, HostPullRequestFiles, HostPullRequestUpdates, type HostReference, HostReviewer, HostSignIn, ReferenceState }
+import { HostPullRequest, HostPullRequestFiles, HostPullRequestUpdates, type HostReference, HostReviewer, HostSignIn, ReferenceState, SignInState }
   from "@noldova/git.hosting.protocol";
 import { GitFolderParams, GitNames, GitPullParams, GitStatus } from "@noldova/git.protocol";
 import { GitFileLine, GitFolder, GitPullRequestCommitsComponent, GitPullRequestConflictsComponent, GitPullRequestFilesComponent, GitPullRequestThreadsComponent,
@@ -29,11 +29,13 @@ import { PullRequestClone } from "../../models/pull-request-clone.ts";
 import { PullRequestDocument } from "../../models/pull-request-document.ts";
 import { TabSize } from "../../models/tab-size.ts";
 import { WorkItemsPlace } from "../../models/work-items-place.ts";
+import { AccountSettings } from "../../services/account-settings.ts";
 import { AzureDevOpsPages } from "../../services/azure-devops-pages.ts";
 import { AzureDevOpsPullRequestHost } from "../../services/azure-devops-pull-request-host.ts";
 import { AzureDevOpsReferenceSource } from "../../services/azure-devops-reference-source.ts";
 import { PullRequestPages } from "../../services/pull-request-pages.ts";
 import { PullRequestSelection } from "../../services/pull-request-selection.ts";
+import { SignInEvents } from "../../services/sign-in-events.ts";
 import { AzureDevOpsPullRequestUpdatesComponent } from "../azure-devops-pull-request-updates/azure-devops-pull-request-updates.component.ts";
 import { AzureDevOpsPersonAvatarComponent } from "../azure-devops-person-avatar/azure-devops-person-avatar.component.ts";
 import { Resources } from "../../../resources.ts";
@@ -55,6 +57,7 @@ export class AzureDevOpsPullRequestComponent {
   private readonly dates: Intl.DateTimeFormat = new Intl.DateTimeFormat(undefined, Resources.openDateFormat);
   private readonly votes: WritableSignal<ReadonlyMap<string, HostReviewer>> = signal<ReadonlyMap<string, HostReviewer>>(new Map());
   private readonly login: WritableSignal<string | null> = signal<string | null>(null);
+  private loginChanges: number = 0;
   private generation: number = 0;
   private pullAfter: KeptPull | null = null;
   private references: AzureDevOpsReferenceSource | null = null;
@@ -69,6 +72,7 @@ export class AzureDevOpsPullRequestComponent {
   protected readonly isMissing: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly isReading: WritableSignal<boolean> = signal<boolean>(true);
+  protected readonly isSignedOut: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly isVoting: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly voteFailure: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly pendingVote: WritableSignal<number | null> = signal<number | null>(null);
@@ -100,9 +104,18 @@ export class AzureDevOpsPullRequestComponent {
     const active: Signal<boolean> = inject(WindowPartTokens.activeDocument);
     PullRequestSelection.of(this.context).follow(this.choice, active, inject(Injector));
     inject(DestroyRef).onDestroy(PullRequestPages.follow(this.instance, active));
+    inject(DestroyRef).onDestroy(SignInEvents.follow(this.context, signIn => {
+      if (signIn.state === SignInState.Waiting)
+        return;
+      this.loginChanges++;
+      this.login.set(signIn.account?.login ?? null);
+      this.isSignedOut.set(signIn.state === SignInState.SignedOut);
+      this.retry();
+    }));
     effect(onCleanup => {
       this.attempt();
       const reference: HostReference | null = this.reference();
+      const isSignedOut: boolean = this.isSignedOut();
       let isCurrent = true;
       onCleanup(() => {
         isCurrent = false;
@@ -124,9 +137,9 @@ export class AzureDevOpsPullRequestComponent {
         this.revealing = null;
         this.pullRequest.set(null);
         this.failure.set(null);
-        this.isMissing.set(Object.isNull(reference));
-        this.isReading.set(!Object.isNull(reference));
-        if (!Object.isNull(reference))
+        this.isMissing.set(!isSignedOut && Object.isNull(reference));
+        this.isReading.set(!isSignedOut && !Object.isNull(reference));
+        if (!isSignedOut && !Object.isNull(reference))
           void this.readAsync(reference, () => isCurrent);
       });
     });
@@ -135,6 +148,10 @@ export class AzureDevOpsPullRequestComponent {
 
   protected retry(): void {
     this.attempt.update(t => t + 1);
+  }
+
+  protected signIn(): void {
+    AccountSettings.open(this.context);
   }
 
   private changed(reference: HostReference, pull: PullAfter | null): void {
@@ -276,7 +293,10 @@ export class AzureDevOpsPullRequestComponent {
   private async readLoginAsync(): Promise<void> {
     const done = this.tasks.add();
     try {
-      this.login.set(HostSignIn.fromJson(await this.context.requestAsync(AzureDevOpsNames.readSignInMethod, null)).account?.login ?? null);
+      const changes: number = this.loginChanges;
+      const login: string | null = HostSignIn.fromJson(await this.context.requestAsync(AzureDevOpsNames.readSignInMethod, null)).account?.login ?? null;
+      if (this.loginChanges === changes)
+        this.login.set(login);
     }
     catch (error) {
       if (!(error instanceof WindowException))

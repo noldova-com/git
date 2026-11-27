@@ -11,7 +11,6 @@ import type { IWindowPartContext } from "@noldova/desktop.window";
 
 import { Resources } from "../../resources.ts";
 import type { GitWorkspace } from "../models/git-workspace.ts";
-import { GitRecentRepositories } from "./git-recent-repositories.ts";
 import { GitWorkspaces } from "./git-workspaces.ts";
 
 export class GitWorkspacePages {
@@ -24,7 +23,6 @@ export class GitWorkspacePages {
   }
 
   public static openRepository(context: IWindowPartContext, folder: string): void {
-    GitRecentRepositories.remember(folder);
     context.openDocument(Resources.historyDocumentName, folder, Resources.formatHistoryTitle(folder));
   }
 }

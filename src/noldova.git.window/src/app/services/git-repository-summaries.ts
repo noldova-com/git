@@ -142,7 +142,8 @@ export class GitRepositorySummaries {
       summary.set(new GitRepositorySummary(folder, status, this.fetching.has(folder), null));
     }
     catch (error) {
-      summary.set(new GitRepositorySummary(folder, null, this.fetching.has(folder), GitViewStateService.messageOf(error)));
+      const isRepository: boolean = !GitRuntimeClient.isNotRepository(error);
+      summary.set(new GitRepositorySummary(folder, null, this.fetching.has(folder), isRepository ? GitViewStateService.messageOf(error) : null, isRepository));
     }
   }
 

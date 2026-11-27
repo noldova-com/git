@@ -38,6 +38,7 @@ import { GitAgents } from "../../services/git-agents.ts";
 import type { GitDetailView } from "../../services/git-detail-view.ts";
 import { GitPullRequests } from "../../services/git-pull-requests.ts";
 import { GitRecentRepositories } from "../../services/git-recent-repositories.ts";
+import { GitRepositoryScans } from "../../services/git-repository-scans.ts";
 import { GitRepositorySummaries } from "../../services/git-repository-summaries.ts";
 import { GitRuntimeClient } from "../../services/git-runtime-client.ts";
 import { GitWorkspaceAcrossViews } from "../../services/git-workspace-across-views.ts";
@@ -47,7 +48,6 @@ import { GitWorkspacePullRequests } from "../../services/git-workspace-pull-requ
 import { GitWorkspaces } from "../../services/git-workspaces.ts";
 import { GitWorkspaceSides } from "../../services/git-workspace-sides.ts";
 import { GitBulkBranchDialogComponent } from "../git-bulk-branch-dialog/git-bulk-branch-dialog.component.ts";
-import { GitRepositoryScanDialogComponent } from "../git-repository-scan-dialog/git-repository-scan-dialog.component.ts";
 import { GitReferenceTextComponent } from "../git-reference-text/git-reference-text.component.ts";
 import { GitVisibleDirective } from "./git-visible.directive.ts";
 import { GitWorkspaceViewCount } from "../../models/git-workspace-view-count.ts";
@@ -210,20 +210,9 @@ export class GitWorkspaceComponent {
     if (scan.end === ScanEnd.Repository)
       this.addFolders([folder]);
     else if (scan.repositories.length > 0)
-      this.chooseFound(folder, scan);
+      GitRepositoryScans.offer(this.dialogs, folder, scan, t => this.addFolders(t));
   }
 
-  private chooseFound(folder: string, scan: GitRepositoryScan): void {
-    const dialog = this.dialogs.open(GitRepositoryScanDialogComponent, ".open");
-    dialog.componentRef?.setInput("folder", folder);
-    dialog.componentRef?.setInput("repositories", scan.repositories);
-    dialog.componentRef?.setInput("end", scan.end);
-    dialog.componentInstance?.answered.subscribe(chosen => {
-      dialog.close();
-      if (!Object.isNull(chosen))
-        this.addFolders(chosen);
-    });
-  }
 
   private addFolders(folders: readonly string[]): void {
     const workspace: GitWorkspace | null = this.workspace();
@@ -244,12 +233,20 @@ export class GitWorkspaceComponent {
   }
 
   protected removeChosen(): void {
+    this.remove(this.chosen());
+    this.selected.set(new Set());
+  }
+
+  protected remove(folders: ReadonlySet<string>): void {
     const workspace: GitWorkspace | null = this.workspace();
     if (Object.isNull(workspace))
-      GitRecentRepositories.forget(this.chosen());
+      GitRecentRepositories.forget(folders);
     else
-      GitWorkspaces.removeFolders(workspace.id, this.chosen());
-    this.selected.set(new Set());
+      GitWorkspaces.removeFolders(workspace.id, folders);
+  }
+
+  protected only(folder: string): ReadonlySet<string> {
+    return new Set([folder]);
   }
 
   protected moveChosen(workspace: GitWorkspace, by: -1 | 1): void {

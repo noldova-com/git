@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 import { PermissionDecision, PermissionDetailKind, PermissionOption, ToolFailure, ToolFailureCode, ToolResult, ToolRisk } from "@noldova/desktop.runtime";
 import { afterEach, describe, it, vi } from "vitest";
 
+import { SignedInAccount } from "../../src/models/signed-in-account.ts";
 import { FakeGitHub } from "../fixtures/fake-github.fixture.ts";
 import { statusOf } from "../fixtures/fake-tools.fixture.ts";
 import { draft, failTitle, failureOf, forkRig, PrToolsRig, pull, textOf } from "../fixtures/pr-tools.fixture.ts";
@@ -50,6 +51,7 @@ describe("GitHubPrCreateTool", () => {
       subject: "github.com/octocat/hello-world",
       title: "Open a draft pull request in octocat/hello-world",
       details: [
+        { label: "GitHub account", kind: PermissionDetailKind.Text, value: "octocat" },
         { label: "Branch", kind: PermissionDetailKind.Code, value: "fix-bug → main" },
         { label: "Title", kind: PermissionDetailKind.AgentText, value: "Fix the bug" },
         { label: "Draft", kind: PermissionDetailKind.Text, value: "yes" },
@@ -91,7 +93,7 @@ describe("GitHubPrCreateTool", () => {
     assert.ok(outcome instanceof ToolResult);
     const request = rig.answerer.requests[0];
     assert.deepEqual([request?.title, request?.details.map(t => [t.label, t.value]), rig.github.requests[0]?.body],
-      ["Open a pull request in octocat/hello-world", [["Branch", "fix-bug → main"], ["Title", "Fix the bug"], ["Draft", "no"]],
+      ["Open a pull request in octocat/hello-world", [["GitHub account", "octocat"], ["Branch", "fix-bug → main"], ["Title", "Fix the bug"], ["Draft", "no"]],
         { title: "Fix the bug", body: "", head: "fix-bug", base: "main", draft: false }]);
   });
 
@@ -105,7 +107,7 @@ describe("GitHubPrCreateTool", () => {
 
     await Promise.all(rigs.map((t, i) => t.createAsync({ ...draft, body: bodies[i] ?? "" })));
 
-    assert.deepEqual(rigs.map(t => t.answerer.requests[0]?.details.slice(3).map(u => [u.label, u.value])),
+    assert.deepEqual(rigs.map(t => t.answerer.requests[0]?.details.slice(4).map(u => [u.label, u.value])),
       [[["Body", "\nOne\nTwo\nThree"]], [["Body", "\n\r\nOne\r\nTwo"]], []]);
     assert.deepEqual(rigs.map(t => t.github.requests[0]?.body),
       bodies.map(t => ({ title: "Fix the bug", body: t, head: "fix-bug", base: "main", draft: true })));
@@ -154,6 +156,32 @@ describe("GitHubPrCreateTool", () => {
     cancel.abort();
 
     assert.deepEqual([failureOf(await pending), rig.github.requests.length], [[ToolFailureCode.Withdrawn, null], 0]);
+  });
+
+  it("chooses the repository's account before asking, names it in the request, and opens the pull request with that account's token", async () => {
+    const rig = new PrToolsRig();
+    rig.token.choose("github.com", "octocat/hello-world", new SignedInAccount(2, "hubot", "gho_hubot"));
+    rig.answerer.answerNext(PermissionDecision.AllowedOnce);
+    rig.github.answer(FakeGitHub.json(pull, 201));
+
+    const outcome = await rig.createAsync();
+
+    assert.ok(outcome instanceof ToolResult);
+    assert.deepEqual([rig.answerer.requests[0]?.details[0], rig.token.asked, rig.github.requests.map(t => t.header("Authorization"))],
+      [{ label: "GitHub account", kind: PermissionDetailKind.Text, value: "hubot" }, ["github.com octocat/hello-world"], ["Bearer gho_hubot"]]);
+  });
+
+  it("opens nothing, failing as signed out, when the account the request named signs out while the person is asked", async () => {
+    const rig = new PrToolsRig();
+    rig.token.choose("github.com", "octocat/hello-world", new SignedInAccount(2, "hubot", "gho_hubot"));
+    rig.answerer.answer("answerAsync", () => {
+      rig.token.signOut("gho_hubot");
+      return Promise.resolve(PermissionDecision.AllowedOnce);
+    });
+
+    const outcome = await rig.createAsync();
+
+    assert.deepEqual([failureOf(outcome), rig.github.requests.length], [[ToolFailureCode.Unavailable, "git-github.signedOut"], 0]);
   });
 
   it("refuses a base that is the session's own branch and fails as signed out when signed out, without asking the person", async () => {

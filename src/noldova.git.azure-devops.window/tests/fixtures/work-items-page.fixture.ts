@@ -15,9 +15,11 @@ import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
 import { HostChanges, HostItem, HostPerson, HostPolicy, HostPullRequest, HostReference, HostWorkItem, HostWorkItemDetail, HostWorkItemList, HostWorkItemType,
   type JsonObject, PolicyState, ReferenceKind, ReferenceState, WorkItemCategory, WorkItemScope, WorkItemsQuery } from "@noldova/git.hosting.protocol";
 import { GitCommit, GitGraph, GitGraphCommit, GitMessageReference, GitMessageReferences, GitRemote, GitStatus, RemoteTransport } from "@noldova/git.protocol";
+import { onTestFinished } from "vitest";
 
 import { AzureDevOpsWorkItemComponent } from "../../src/app/components/azure-devops-work-item/azure-devops-work-item.component.ts";
 import { AzureDevOpsWorkItemDetailComponent } from "../../src/app/components/azure-devops-work-item-detail/azure-devops-work-item-detail.component.ts";
+import { WorkItemSelection } from "../../src/app/services/work-item-selection.ts";
 import { RequestAnswers } from "./request-answers.fixture.ts";
 import { Wait } from "./wait.fixture.ts";
 
@@ -199,6 +201,7 @@ export class Page {
   public open(instance: string = INSTANCE): this {
     TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: this.context },
       { provide: WindowPartTokens.activeDocument, useValue: this.active }] });
+    onTestFinished(WorkItemSelection.of(this.context).listen());
     this.fixture = TestBed.createComponent(WorkItemsWindowComponent);
     this.fixture.componentRef.setInput("instance", instance);
     this.fixture.autoDetectChanges();

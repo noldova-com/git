@@ -13,7 +13,7 @@ import {
 } from "@angular/core";
 import "@noldova/context.core";
 import { type IWindowPartContext, LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
-import { type GitGraph, type GitGraphCommit, type GitPrediction, type GitStatus, PredictionAction } from "@noldova/git.protocol";
+import { type GitGraph, type GitGraphCommit, type GitPrediction, type GitRepositoryScan, type GitStatus, PredictionAction } from "@noldova/git.protocol";
 import {
   DialogService, MenuComponent, MenuItemComponent, MenuSeparatorComponent, MenuTriggerDirective, ToolbarButtonComponent, ToolbarDirective, ToolbarItemDirective, TooltipDirective
 } from "@noldova/ui.components.angular";
@@ -24,7 +24,9 @@ import { GitBranchDrop } from "../../models/git-branch-drop.ts";
 import { GitBranchView } from "../../models/git-branch-view.ts";
 import { GitChipDrag } from "../../models/git-chip-drag.ts";
 import { GitCommitView } from "../../models/git-commit-view.ts";
+import type { GitFolderLook } from "../../models/git-folder-look.ts";
 import type { GitHistoryAsk } from "../../models/git-history-ask.ts";
+import { GitHistoryToolbar } from "../../models/git-history-toolbar.ts";
 import { GitCommitDetails } from "../../services/git-commit-details.ts";
 import type { GitDetailView } from "../../services/git-detail-view.ts";
 import { GitFolder } from "../../services/git-folder.ts";
@@ -33,6 +35,8 @@ import { GitHistoryAsks } from "../../services/git-history-asks.ts";
 import { GitNewBranch } from "../../services/git-new-branch.ts";
 import { GitPendingSwitch } from "../../services/git-pending-switch.ts";
 import { GitRecentRepositories } from "../../services/git-recent-repositories.ts";
+import { GitRepositoryScans } from "../../services/git-repository-scans.ts";
+import { GitFolderLooks } from "../../services/git-folder-looks.ts";
 import { GitRebaseTarget, GitRebasing } from "../../services/git-rebasing.ts";
 import { GitRuntimeClient } from "../../services/git-runtime-client.ts";
 import { GitHistoryRows } from "../../services/git-history-rows.ts";
@@ -82,10 +86,12 @@ export class GitHistoryComponent {
   private readonly field: Signal<ElementRef<HTMLElement>> = viewChild.required<ElementRef<HTMLElement>>("field");
   private readonly fitting: WritableSignal<number> = signal(Resources.historyToolbars.length);
   private readonly injector: Injector = inject(Injector);
-  private jumped: GitBranchView | null = null;
+  private readonly jumped: WritableSignal<GitBranchView | null> = signal<GitBranchView | null>(null);
   private dragged: GitChipDrag | null = null;
   private static lists = 0;
   private reading = 0;
+  private remembered = false;
+  private readonly offer = (scan: GitRepositoryScan): void => GitRepositoryScans.offerToDashboard(this.dialogs, this.context, this.instance(), scan);
   protected readonly list: number = ++GitHistoryComponent.lists;
   protected readonly activeOption: Signal<string | null> = computed(() => {
     const at: number = this.rows().findIndex(t => t.id === this.selectedId());
@@ -95,6 +101,7 @@ export class GitHistoryComponent {
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
+  protected readonly notRepository: WritableSignal<GitFolderLook | null> = signal<GitFolderLook | null>(null);
   protected readonly actionFailure: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly notLoaded: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly busy: WritableSignal<boolean> = signal(false);
@@ -103,8 +110,10 @@ export class GitHistoryComponent {
   protected readonly filter: WritableSignal<string> = signal("");
   protected readonly isWide: WritableSignal<boolean> = signal(true);
   protected readonly chipLimit: WritableSignal<number> = signal(Resources.rowChipLimit);
-  protected readonly shownToolbars: Signal<typeof Resources.historyToolbars> = computed(() => Resources.historyToolbars.slice(0, this.fitting()));
-  protected readonly hiddenToolbars: Signal<typeof Resources.historyToolbars> = computed(() => Resources.historyToolbars.slice(this.fitting()));
+  protected readonly toolbars: Signal<typeof Resources.historyToolbars> = computed(() => Object.isNull(this.notRepository()) ? Resources.historyToolbars
+    : Resources.historyToolbars.map(t => new GitHistoryToolbar(t.title, t.actions.filter(action => action === GitHistoryAction.Terminal))).filter(t => t.actions.length > 0));
+  protected readonly shownToolbars: Signal<typeof Resources.historyToolbars> = computed(() => this.toolbars().slice(0, this.fitting()));
+  protected readonly hiddenToolbars: Signal<typeof Resources.historyToolbars> = computed(() => this.toolbars().slice(this.fitting()));
   protected readonly rows: Signal<readonly GitHistoryRow[]> = computed(() =>
     GitHistoryRows.rowsOf(GitHistoryRows.switchedTo(this.commits(), this.held()),
       this.status()?.entries.length ?? 0, this.filter(), new Date()));
@@ -122,7 +131,8 @@ export class GitHistoryComponent {
     effect(onCleanup => {
       const folder: string = this.instance();
       untracked(() => {
-        GitRecentRepositories.remember(folder);
+        this.remembered = false;
+        this.leaveLook();
         void this.readAsync(folder);
         void this.client.watchAsync(folder).catch((error: unknown) => this.report(error));
       });
@@ -156,6 +166,7 @@ export class GitHistoryComponent {
       });
     });
     const destroyed: DestroyRef = inject(DestroyRef);
+    destroyed.onDestroy(() => this.leaveLook());
     destroyed.onDestroy(this.client.onChanged(folder => {
       if (folder === this.instance())
         void this.readAsync(folder);
@@ -168,7 +179,11 @@ export class GitHistoryComponent {
     });
     const details: GitDetailView<GitCommitView> = GitCommitDetails.of(inject(WindowPartTokens.context));
     const chosen: Signal<GitCommitView | null> = computed(() => GitViewing.commitOf(this.instance()));
-    details.follow(chosen, active, inject(Injector));
+    const settled: Signal<boolean> = computed(() => {
+      const view: GitBranchView | null = GitViewing.branchOf(this.instance());
+      return !this.isLoading() && (Object.isNull(view) || view === this.jumped());
+    });
+    details.follow(chosen, active, inject(Injector), settled);
     afterNextRender(() => {
       const row: HTMLElement = this.row().nativeElement;
       const observer: ResizeObserver = new ResizeObserver(() => this.fit(row));
@@ -348,17 +363,17 @@ export class GitHistoryComponent {
   }
 
   private jump(view: GitBranchView | null, commits: readonly GitGraphCommit[] | null): void {
-    if (Object.isNull(view) || view === this.jumped || Object.isNull(commits))
+    if (Object.isNull(view) || view === this.jumped() || Object.isNull(commits))
       return;
     const commit: GitGraphCommit | undefined = commits.find(t => view.isAt(t));
     if (Object.isUndefined(commit)) {
       if (!this.hasMore())
-        this.jumped = view;
+        this.jumped.set(view);
       else if (!this.isPaging)
         void this.pageAsync(view.folder);
       return;
     }
-    this.jumped = view;
+    this.jumped.set(view);
     this.showCentred(commit.commit.id);
   }
 
@@ -409,6 +424,11 @@ export class GitHistoryComponent {
       this.loaded.set(true);
       this.hasMore.set(graph.truncated);
       this.failure.set(null);
+      this.leaveLook();
+      if (!this.remembered) {
+        this.remembered = true;
+        GitRecentRepositories.remember(folder);
+      }
       if (switched)
         this.held.set(null);
       if (Object.isNull(this.selectedId()))
@@ -424,9 +444,23 @@ export class GitHistoryComponent {
       if (switched)
         this.held.set(null);
       this.report(error);
-      if (GitRuntimeClient.isFailure(error))
+      if (GitRuntimeClient.isNotRepository(error))
+        this.lookBelow(folder);
+      else if (GitRuntimeClient.isFailure(error))
         this.failure.set(GitRuntimeClient.failureOf(error)?.message ?? Resources.historyFailed);
     }
+  }
+
+  private lookBelow(folder: string): void {
+    if (Object.isNull(this.notRepository()))
+      this.notRepository.set(GitFolderLooks.join(folder, this.client, this.offer, error => this.report(error)));
+  }
+
+  private leaveLook(): void {
+    const look: GitFolderLook | null = this.notRepository();
+    if (!Object.isNull(look))
+      GitFolderLooks.leave(look, this.offer);
+    this.notRepository.set(null);
   }
 
   private async pageAsync(folder: string): Promise<void> {
@@ -441,6 +475,7 @@ export class GitHistoryComponent {
       this.hasMore.set(graph.truncated);
     }
     catch (error) {
+      this.jumped.set(GitViewing.branchOf(folder));
       this.report(error);
     }
     finally {
@@ -478,7 +513,7 @@ export class GitHistoryComponent {
     const rem: number = parseFloat(getComputedStyle(row).fontSize);
     this.isWide.set(row.getBoundingClientRect().width >= Resources.historyLabelsRem * rem);
     this.chipLimit.set(row.getBoundingClientRect().width < Resources.historyOneChipRem * rem ? 1 : Resources.rowChipLimit);
-    this.fitting.set(Resources.historyToolbars.length);
+    this.fitting.set(this.toolbars().length);
     afterNextRender(() => {
       const style: CSSStyleDeclaration = getComputedStyle(row);
       const end: number = row.getBoundingClientRect().right - parseFloat(style.paddingRight) - parseFloat(getComputedStyle(this.field().nativeElement).minWidth)

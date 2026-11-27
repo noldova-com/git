@@ -10,27 +10,48 @@ import { type Signal, signal, type WritableSignal } from "@angular/core";
 import "@noldova/context.core";
 import { type IWindowPartContext, RuntimeRequestException, WindowException } from "@noldova/desktop.window";
 import { GitHubNames } from "@noldova/git.github.protocol";
-import { CommitQuery, HostCommitComments, HostPullRequestList, type HostPullRequestRow, type HostReviewRequest, HostReviewRequestList,
-  RepositoryQuery } from "@noldova/git.hosting.protocol";
+import { BranchPullRequest, CheckState, CommitQuery, HostCommitComments, type HostItem, HostPullRequestList, type HostPullRequestRow, type HostReviewRequest,
+  HostReviewRequestList, ReferenceState, RepositoryQuery, ReviewDecision, SignInState } from "@noldova/git.hosting.protocol";
 import type { GitRemote } from "@noldova/git.protocol";
-import { GitCommitComments, GitPullRequestList, GitPullRequestRow, type IGitPullRequests } from "@noldova/git.window";
+import { GitBranchPullRequest, GitCommitComments, GitPullRequestList, GitPullRequestRow, GitPullRequestState, type IGitPullRequests } from "@noldova/git.window";
 
 import type { IRemotePlace } from "../interfaces/i-remote-place.ts";
+import { ReadQueue } from "../models/read-queue.ts";
+import { SignInEvents } from "./sign-in-events.ts";
 import { Resources } from "../../resources.ts";
 
 export class GitHubPullRequests implements IGitPullRequests {
+  private static readonly STATES: Readonly<Record<ReferenceState, GitPullRequestState>> = {
+    [ReferenceState.Open]: GitPullRequestState.Open, [ReferenceState.Draft]: GitPullRequestState.Draft, [ReferenceState.Merged]: GitPullRequestState.Merged,
+    [ReferenceState.Closed]: GitPullRequestState.Closed, [ReferenceState.ClosedDone]: GitPullRequestState.Closed,
+    [ReferenceState.ClosedNotPlanned]: GitPullRequestState.Closed
+  };
   private readonly lists: Map<string, WritableSignal<GitPullRequestList | null>> = new Map();
+  private readonly queries: Map<string, RepositoryQuery> = new Map();
   private readonly reads: Map<string, number> = new Map();
   private readonly reviews: Map<string, WritableSignal<GitPullRequestList | null>> = new Map();
   private readonly reviewReads: Map<string, number> = new Map();
+  private readonly reviewQueries: Map<string, RepositoryQuery> = new Map();
   private readonly comments: Map<string, WritableSignal<GitCommitComments | null>> = new Map();
+  private readonly commentQueries: Map<string, [CommitQuery, WritableSignal<GitCommitComments | null>]> = new Map();
+  private readonly commentReads: Map<string, number> = new Map();
+  private readonly commits: Map<string, WritableSignal<GitBranchPullRequest | null>> = new Map();
+  private readonly commitQueries: Map<string, [CommitQuery, WritableSignal<GitBranchPullRequest | null>]> = new Map();
+  private readonly commitReads: Map<string, number> = new Map();
+  private readonly rereads: ReadQueue = new ReadQueue(Resources.gitHubReferenceReadLimit);
   private readonly context: IWindowPartContext;
+  private readonly unfollow: () => void;
 
   public readonly hostName: string = Resources.hostName;
   public readonly signInPage: string = Resources.accountsPage;
 
   public constructor(context: IWindowPartContext) {
     this.context = context;
+    this.unfollow = SignInEvents.follow(context, signIn => this.readAgain(signIn.state));
+  }
+
+  public stop(): void {
+    this.unfollow();
   }
 
   public claims(remote: GitRemote): boolean {
@@ -57,8 +78,26 @@ export class GitHubPullRequests implements IGitPullRequests {
       return known;
     const answer: WritableSignal<GitCommitComments | null> = signal<GitCommitComments | null>(null);
     this.comments.set(key, answer);
-    if (!Object.isNull(remote.host) && !Object.isNull(remote.path))
-      void this.readCommentsAsync(new CommitQuery(remote.host, remote.path, commitId), key, answer);
+    if (!Object.isNull(remote.host) && !Object.isNull(remote.path)) {
+      const query: CommitQuery = new CommitQuery(remote.host, remote.path, commitId);
+      this.commentQueries.set(key, [query, answer]);
+      void this.readCommentsAsync(query, key, answer, GitHubPullRequests.claim(this.commentReads, key));
+    }
+    return answer;
+  }
+
+  public commitFor(_folder: string, remote: GitRemote, commitId: string): Signal<GitBranchPullRequest | null> {
+    const key: string = JSON.stringify([remote.host, remote.path, commitId]);
+    const known: WritableSignal<GitBranchPullRequest | null> | undefined = this.commits.get(key);
+    if (!Object.isUndefined(known))
+      return known;
+    const answer: WritableSignal<GitBranchPullRequest | null> = signal<GitBranchPullRequest | null>(null);
+    this.commits.set(key, answer);
+    if (!Object.isNull(remote.host) && !Object.isNull(remote.path)) {
+      const query: CommitQuery = new CommitQuery(remote.host, remote.path, commitId);
+      this.commitQueries.set(key, [query, answer]);
+      void this.readCommitAsync(query, key, answer, GitHubPullRequests.claim(this.commitReads, key));
+    }
     return answer;
   }
 
@@ -71,6 +110,23 @@ export class GitHubPullRequests implements IGitPullRequests {
       void this.readReviewsAsync(new RepositoryQuery(remote.host, remote.path));
   }
 
+  private readAgain(state: SignInState): void {
+    if (state === SignInState.Waiting)
+      return;
+    for (const query of this.queries.values())
+      void this.readAsync(query);
+    for (const query of this.reviewQueries.values())
+      void this.readReviewsAsync(query);
+    for (const [key, [query, answer]] of this.commitQueries) {
+      const read: number = GitHubPullRequests.claim(this.commitReads, key);
+      this.rereads.add(() => this.readCommitAsync(query, key, answer, read));
+    }
+    for (const [key, [query, answer]] of this.commentQueries) {
+      const read: number = GitHubPullRequests.claim(this.commentReads, key);
+      this.rereads.add(() => this.readCommentsAsync(query, key, answer, read));
+    }
+  }
+
   private listOf(key: string): WritableSignal<GitPullRequestList | null> {
     return GitHubPullRequests.listIn(this.lists, key);
   }
@@ -78,6 +134,7 @@ export class GitHubPullRequests implements IGitPullRequests {
   private async readReviewsAsync(query: RepositoryQuery): Promise<void> {
     const key: string = GitHubPullRequests.keyOf(query);
     const list = GitHubPullRequests.listIn(this.reviews, key);
+    this.reviewQueries.set(key, query);
     const read: number = (this.reviewReads.get(key) ?? 0) + 1;
     this.reviewReads.set(key, read);
     const shown: readonly GitPullRequestRow[] = list()?.rows ?? [];
@@ -96,17 +153,45 @@ export class GitHubPullRequests implements IGitPullRequests {
     }
   }
 
-  private async readCommentsAsync(query: CommitQuery, key: string, answer: WritableSignal<GitCommitComments | null>): Promise<void> {
+  private async readCommitAsync(query: CommitQuery, key: string, answer: WritableSignal<GitBranchPullRequest | null>, read: number): Promise<void> {
+    try {
+      const found = BranchPullRequest.fromJson(await this.context.requestAsync(GitHubNames.readCommitPullRequestMethod, query.toJson()));
+      if (this.commitReads.get(key) === read)
+        answer.set(GitHubPullRequests.commitAnswerOf(found));
+    }
+    catch (error) {
+      if (!(error instanceof WindowException))
+        throw error;
+      this.context.log(Resources.formatRequestFailed(GitHubNames.readCommitPullRequestMethod, String(error)));
+      if (this.commitReads.get(key) !== read)
+        return;
+      this.commits.delete(key);
+      this.commitQueries.delete(key);
+      answer.set(GitBranchPullRequest.failed(error instanceof RuntimeRequestException ? error.message : Resources.commitPullRequestUnanswered));
+    }
+  }
+
+  private async readCommentsAsync(query: CommitQuery, key: string, answer: WritableSignal<GitCommitComments | null>, read: number): Promise<void> {
     try {
       const found = HostCommitComments.fromJson(await this.context.requestAsync(GitHubNames.readCommitCommentsMethod, query.toJson()));
-      answer.set(new GitCommitComments(found.count, found.isCapped, found.url));
+      if (this.commentReads.get(key) === read)
+        answer.set(new GitCommitComments(found.count, found.isCapped, found.url));
     }
     catch (error) {
       if (!(error instanceof WindowException))
         throw error;
       this.context.log(Resources.formatRequestFailed(GitHubNames.readCommitCommentsMethod, String(error)));
-      this.comments.delete(key);
+      if (this.commentReads.get(key) === read) {
+        this.comments.delete(key);
+        this.commentQueries.delete(key);
+      }
     }
+  }
+
+  private static claim(reads: Map<string, number>, key: string): number {
+    const read: number = (reads.get(key) ?? 0) + 1;
+    reads.set(key, read);
+    return read;
   }
 
   private static listIn(lists: Map<string, WritableSignal<GitPullRequestList | null>>, key: string): WritableSignal<GitPullRequestList | null> {
@@ -118,6 +203,17 @@ export class GitHubPullRequests implements IGitPullRequests {
     return list;
   }
 
+  private static commitAnswerOf(found: BranchPullRequest): GitBranchPullRequest {
+    const item: HostItem | null = found.pullRequest;
+    if (Object.isNull(item) || Object.isNull(item.changes))
+      return GitBranchPullRequest.none(0, 0, 0);
+    const count = (...states: readonly CheckState[]): number => found.checks.filter(t => states.includes(t.state)).length;
+    const row: GitPullRequestRow = new GitPullRequestRow(item.reference.text, Resources.formatPullRequestLabel(item.reference.number), item.title, item.url,
+      item.state === ReferenceState.Draft, found.approvals ?? 0, count(CheckState.Succeeded), count(CheckState.Failed), count(CheckState.Queued, CheckState.Running),
+      "", item.changes.baseBranch);
+    return GitBranchPullRequest.of(row, GitHubPullRequests.STATES[item.state], item.state === ReferenceState.Open && found.reviewDecision === ReviewDecision.Waiting);
+  }
+
   private static reviewRowOf(request: HostReviewRequest): GitPullRequestRow {
     return new GitPullRequestRow(request.reference.text, Resources.formatPullRequestLabel(request.reference.number), request.title, request.url, request.isDraft, 0,
       0, 0, 0, "");
@@ -126,6 +222,7 @@ export class GitHubPullRequests implements IGitPullRequests {
   private async readAsync(query: RepositoryQuery): Promise<void> {
     const key: string = GitHubPullRequests.keyOf(query);
     const list = this.listOf(key);
+    this.queries.set(key, query);
     const read: number = (this.reads.get(key) ?? 0) + 1;
     this.reads.set(key, read);
     list.set(GitPullRequestList.reading(list()?.rows ?? []));

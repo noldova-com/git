@@ -6,13 +6,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Component, computed, effect, inject, Injector, input, type InputSignal, PendingTasks, type Signal, signal, untracked,
+import { Component, computed, DestroyRef, effect, inject, Injector, input, type InputSignal, PendingTasks, type Signal, signal, untracked,
   type WritableSignal } from "@angular/core";
 import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
-import { HostPullRequest, type HostReference, type HostWorkItem, type HostWorkItemDetail, HostWorkItemList, PolicyState, WorkItemScope, WorkItemsQuery }
+import { HostPullRequest, type HostReference, type HostWorkItem, type HostWorkItemDetail, HostWorkItemList, PolicyState, SignInState, WorkItemScope, WorkItemsQuery }
   from "@noldova/git.hosting.protocol";
 import type { GitCommit } from "@noldova/git.protocol";
 import { GitFolder, GitHistorySelection } from "@noldova/git.window";
@@ -27,6 +27,7 @@ import { Resources } from "../../../resources.ts";
 import { AzureDevOpsChipItems } from "../../services/azure-devops-chip-items.ts";
 import { AzureDevOpsLinkedCommits } from "../../services/azure-devops-linked-commits.ts";
 import { BranchDialog } from "../../services/branch-dialog.ts";
+import { SignInEvents } from "../../services/sign-in-events.ts";
 import { WorkItemSelection } from "../../services/work-item-selection.ts";
 import { AzureDevOpsPersonAvatarComponent } from "../azure-devops-person-avatar/azure-devops-person-avatar.component.ts";
 
@@ -41,13 +42,13 @@ export class AzureDevOpsWorkItemDetailComponent {
   private readonly injector: Injector = inject(Injector);
   private readonly tasks: PendingTasks = inject(PendingTasks);
   private readonly history: AzureDevOpsLinkedCommits = new AzureDevOpsLinkedCommits(this.context);
-  private readonly chipItems: AzureDevOpsChipItems = new AzureDevOpsChipItems(this.context);
+  private chipItems: AzureDevOpsChipItems = new AzureDevOpsChipItems(this.context);
   private readonly dates: Intl.DateTimeFormat = new Intl.DateTimeFormat(undefined, Resources.linkedCommitDateFormat);
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly small: AvatarSize = AvatarSize.Small;
   protected readonly folder: Signal<string | null> = GitFolder.folder;
-  protected readonly choice: Signal<WorkItemChoice | null> = WorkItemSelection.of(this.context).shown;
+  protected readonly choice: Signal<WorkItemChoice | null> = WorkItemSelection.of(this.context).choice;
   protected readonly selected: Signal<HostWorkItemDetail | null> = computed(() => this.choice()?.detail ?? null);
   protected readonly children: WritableSignal<readonly HostWorkItemDetail[]> = signal<readonly HostWorkItemDetail[]>([]);
   protected readonly pullRequests: WritableSignal<ReadonlyMap<number, HostPullRequest>> = signal<ReadonlyMap<number, HostPullRequest>>(new Map());
@@ -62,6 +63,10 @@ export class AzureDevOpsWorkItemDetailComponent {
   public readonly instance: InputSignal<string> = input.required<string>();
 
   public constructor() {
+    inject(DestroyRef).onDestroy(SignInEvents.follow(this.context, signIn => {
+      if (signIn.state !== SignInState.Waiting)
+        this.chipItems = new AzureDevOpsChipItems(this.context);
+    }));
     effect(() => {
       const id: number | undefined = this.selected()?.item.id;
       const instance: string = this.instance();

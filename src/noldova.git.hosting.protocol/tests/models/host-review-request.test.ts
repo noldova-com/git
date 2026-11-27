@@ -24,11 +24,20 @@ describe("HostReviewRequest", () => {
     assert.deepEqual(HostReviewRequest.fromJson(JSON.parse(JSON.stringify(request.toJson()))), request);
   });
 
+  it("returns the account it is for, when it names one, as JSON that reads back the same", () => {
+    const request: HostReviewRequest = new HostReviewRequest(reference, "Fix", url, false, opened, "hubot");
+
+    assert.deepEqual(request.toJson(), { reference: reference.toJson(), title: "Fix", url, isDraft: false, createdAt: opened, account: "hubot" });
+    assert.deepEqual(HostReviewRequest.fromJson(JSON.parse(JSON.stringify(request.toJson()))), request);
+    assert.equal(HostReviewRequest.fromJson({ ...request.toJson(), account: null }).account, null);
+  });
+
   it("refuses a blank title, a page that isn't https and an opening time that isn't a positive whole number, naming the parameter", () => {
     assert.throws(() => new HostReviewRequest(reference, " ", url, false, opened), { name: "HostingArgumentException", parameterName: "title" });
     assert.throws(() => new HostReviewRequest(reference, "Fix", "http://github.com/x", false, opened), { name: "HostingArgumentException", parameterName: "url" });
     assert.throws(() => new HostReviewRequest(reference, "Fix", url, false, 0), { name: "HostingArgumentException", parameterName: "createdAt" });
     assert.throws(() => new HostReviewRequest(reference, "Fix", url, false, 1.5), { name: "HostingArgumentException", parameterName: "createdAt" });
+    assert.throws(() => new HostReviewRequest(reference, "Fix", url, false, opened, " "), { name: "HostingArgumentException", parameterName: "account" });
   });
 
   it("refuses JSON with a field it doesn't define or out of its range, naming the field by its path", () => {
@@ -38,6 +47,7 @@ describe("HostReviewRequest", () => {
     assert.throws(() => HostReviewRequest.fromJson({ ...json, title: "" }, "$.rows.0"), { name: "HostingFieldException", field: "$.rows.0.title" });
     assert.throws(() => HostReviewRequest.fromJson({ ...json, reference: { ...reference.toJson(), number: 0 } }), { name: "HostingFieldException", field: "$.reference.number" });
     assert.throws(() => HostReviewRequest.fromJson({ ...json, isDraft: "no" }), { name: "JsonException", path: "$.isDraft" });
+    assert.throws(() => HostReviewRequest.fromJson({ ...json, account: "" }, "$.rows.0"), { name: "HostingFieldException", field: "$.rows.0.account" });
     assert.throws(() => HostReviewRequest.fromJson(Object.fromEntries(Object.entries(json).filter(([t]) => t !== "createdAt"))), { name: "JsonException", path: "$.createdAt" });
   });
 });

@@ -483,6 +483,35 @@ describe("AzureDevOpsWindowPart", () => {
     expect(first).toEqual(signedOutCards);
   });
 
+  it("updates the repository panel's pull requests and the account's card together at once when someone signs in or out anywhere", async () => {
+    const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
+    const azure: GitRemote = new GitRemote("origin", "dev.azure.com", "fabrikam/web/_git/site", RemoteTransport.Https);
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    const requests: RequestAnswers = new RequestAnswers(context);
+    requests.answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    requests.answer(AzureDevOpsNames.readPullRequestsMethod, HostPullRequestList.signedOut().toJson(), new HostPullRequestList([new HostPullRequestRow(
+      new HostReference("git-azure-devops", "fabrikam", "3f2504e0-4f89-11d3-9a0c-0305e82c3301", 12), "Fix the sign-in",
+      "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/12", false, 0, 0, 0, 0, "fix-sign-in", "main")], false).toJson(), HostPullRequestList.signedOut().toJson());
+    await part.activateAsync(context);
+    await Promise.allSettled(requests.answered);
+    const pullRequests = GitPullRequests.of(azure);
+    const list = pullRequests?.listFor("/work/site", azure);
+    pullRequests?.refresh("/work/site", azure);
+    const until = (state: GitPullRequestsState) => Wait.until(() => expect(list?.()?.state).toBe(state));
+    await until(GitPullRequestsState.SignedOut);
+
+    context.raiseEvent(AzureDevOpsNames.signInChangedEvent, signedIn.toJson());
+    const cardsOnSignIn: readonly GitHostCard[] | null = cardsOf();
+    await until(GitPullRequestsState.Ready);
+    const titlesOnSignIn = list?.()?.rows.map(t => t.title);
+    context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+    const cardsOnSignOut: readonly GitHostCard[] | null = cardsOf();
+    await until(GitPullRequestsState.SignedOut);
+    await part.deactivateAsync();
+
+    expect([cardsOnSignIn, titlesOnSignIn, cardsOnSignOut]).toEqual([signedInCards, ["Fix the sign-in"], signedOutCards]);
+  });
+
   it("follows the sign-in's changes with its card, the browser's wait among them, until it deactivates", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
@@ -501,8 +530,8 @@ describe("AzureDevOpsWindowPart", () => {
     await part.deactivateAsync();
     context.raiseEvent(AzureDevOpsNames.signInChangedEvent, signedIn.toJson());
 
-    expect([context.callsOf("onEvent").map(t => t[0]), context.activeCallsOf("onEvent")]).toEqual([[GitNames.changedEvent, AzureDevOpsNames.signInChangedEvent],
-      []]);
+    expect([context.callsOf("onEvent").map(t => t[0]), context.activeCallsOf("onEvent")]).toEqual([[AzureDevOpsNames.signInChangedEvent, AzureDevOpsNames.signInChangedEvent,
+      AzureDevOpsNames.signInChangedEvent, GitNames.changedEvent, AzureDevOpsNames.signInChangedEvent], []]);
     expect([whileWaiting, afterSignIn, afterRevoke, account?.account.cards()]).toEqual([waitingCards, signedInCards, signedOutCards, signedOutCards]);
   });
 

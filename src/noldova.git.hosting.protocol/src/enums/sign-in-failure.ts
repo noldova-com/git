@@ -13,7 +13,8 @@ export const SignInFailure = {
   Unreachable: "Unreachable",
   Refused: "Refused",
   Unkept: "Unkept",
-  Unforgotten: "Unforgotten"
+  Unforgotten: "Unforgotten",
+  AlreadyKept: "AlreadyKept"
 } as const;
 
 export type SignInFailure = (typeof SignInFailure)[keyof typeof SignInFailure];

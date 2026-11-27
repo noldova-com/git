@@ -16,6 +16,11 @@ describe("GitHubAccessGrant", () => {
   it("holds the token and the login, and no reason, so a module that takes only types tells it from a refusal by its token", () => {
     const grant: GitHubAccessGrant = new GitHubAccessGrant("gho_example", "example-user");
 
-    assert.deepEqual([grant.token, grant.login, Object.keys(grant), "reason" in grant], ["gho_example", "example-user", ["token", "login"], false]);
+    assert.deepEqual([grant.token, grant.login, grant.host, Object.keys(grant), "reason" in grant],
+      ["gho_example", "example-user", "github.com", ["token", "login", "host"], false]);
+  });
+
+  it("holds the host it is given", () => {
+    assert.equal(new GitHubAccessGrant("ghp_example", "example-user", "github.example.com").host, "github.example.com");
   });
 });

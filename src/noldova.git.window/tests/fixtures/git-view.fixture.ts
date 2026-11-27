@@ -60,7 +60,6 @@ export class GitViewFixture {
     const panel: ComponentFixture<GitViewComponent> = TestBed.createComponent(GitViewComponent);
     panel.autoDetectChanges();
     const fixture: ComponentFixture<GitCommitDetailViewComponent> = TestBed.createComponent(GitCommitDetailViewComponent);
-    fixture.componentRef.setInput("instance", "selected");
     fixture.autoDetectChanges();
     document.body.append(panel.nativeElement);
     const view: GitViewFixture = new GitViewFixture(context, fixture, folder, panel.nativeElement);

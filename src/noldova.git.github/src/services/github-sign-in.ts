@@ -19,19 +19,19 @@ import { SignInExpiredException } from "../exceptions/sign-in-expired.exception.
 import { SignInNotKeptException } from "../exceptions/sign-in-not-kept.exception.ts";
 import { SignInTokenRefusedException } from "../exceptions/sign-in-token-refused.exception.ts";
 import { SignInUnreachableException } from "../exceptions/sign-in-unreachable.exception.ts";
-import type { IGitHubToken } from "../interfaces/i-github-token.ts";
 import type { AccountRead } from "../models/account-read.ts";
 import type { DeviceGrant } from "../models/device-grant.ts";
 import { KeptSignIn } from "../models/kept-sign-in.ts";
 import { Resources } from "../resources.ts";
 import type { GitHubDeviceFlow } from "./github-device-flow.ts";
 
-export class GitHubSignIn implements IGitHubToken {
+export class GitHubSignIn {
   private readonly flow: GitHubDeviceFlow;
   private readonly secrets: IModuleSecrets;
   private readonly appWindows: IAppWindows;
   private readonly log: IModuleLog;
   private readonly changed: (signIn: HostSignIn) => void;
+  private readonly secret: string;
   private readonly stopped: AbortController = new AbortController();
   private signIn: HostSignIn = HostSignIn.signedOut();
   private waiting: AbortController | null = null;
@@ -41,12 +41,14 @@ export class GitHubSignIn implements IGitHubToken {
   private heldToken: string | null = null;
   private unreadable: boolean = false;
 
-  public constructor(flow: GitHubDeviceFlow, secrets: IModuleSecrets, appWindows: IAppWindows, log: IModuleLog, changed: (signIn: HostSignIn) => void) {
+  public constructor(flow: GitHubDeviceFlow, secrets: IModuleSecrets, appWindows: IAppWindows, log: IModuleLog, changed: (signIn: HostSignIn) => void,
+    secret: string = Resources.signInSecret) {
     this.flow = flow;
     this.secrets = secrets;
     this.appWindows = appWindows;
     this.log = log;
     this.changed = changed;
+    this.secret = secret;
   }
 
   public get current(): HostSignIn {
@@ -66,7 +68,7 @@ export class GitHubSignIn implements IGitHubToken {
       return;
     let kept: string | null;
     try {
-      kept = await this.secrets.readAsync(Resources.signInSecret);
+      kept = await this.secrets.readAsync(this.secret);
     }
     catch (error) {
       if (this.stopped.signal.aborted)
@@ -135,6 +137,11 @@ export class GitHubSignIn implements IGitHubToken {
     return this.signIn;
   }
 
+  public async alreadyKeptAsync(): Promise<void> {
+    if (this.signIn.state === SignInState.SignedIn)
+      await this.forgetAsync(SignInFailure.AlreadyKept);
+  }
+
   public async refusedAsync(token: string): Promise<void> {
     if (this.heldToken === token)
       await this.forgetAsync(SignInFailure.Revoked);
@@ -187,7 +194,7 @@ export class GitHubSignIn implements IGitHubToken {
     const { account } = read;
     const save: number = ++this.saves;
     try {
-      await this.secrets.saveAsync(Resources.signInSecret, JSON.stringify(new KeptSignIn(token, account).toJson()));
+      await this.secrets.saveAsync(this.secret, JSON.stringify(new KeptSignIn(token, account).toJson()));
     }
     catch (error) {
       if (!(error instanceof MethodFailureException))
@@ -259,7 +266,7 @@ export class GitHubSignIn implements IGitHubToken {
 
   private async removeKeptAsync(): Promise<boolean> {
     try {
-      await this.secrets.removeAsync(Resources.signInSecret);
+      await this.secrets.removeAsync(this.secret);
       return true;
     }
     catch (error) {

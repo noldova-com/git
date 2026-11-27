@@ -10,8 +10,9 @@
     "methods": ["git-github.readSignIn", "git-github.startSignIn", "git-github.cancelSignIn", "git-github.signOut", "git-github.readReference",
       "git-github.readBranchPullRequest", "git-github.createPullRequest",
       "git-github.readAuthorAvatar", "git-github.readPullRequests", "git-github.readReviewRequests",
-      "git-github.readCommitComments", "git-github.readPullRequest", "git-github.readPullRequestThreads"],
-    "events": ["git-github.signInChanged"],
+      "git-github.readCommitComments", "git-github.readPullRequest", "git-github.readPullRequestThreads", "git-github.readCommitPullRequest",
+      "git-github.readAccounts", "git-github.addAccount", "git-github.readRepositoryAccount", "git-github.pickAccount"],
+    "events": ["git-github.signInChanged", "git-github.accountsChanged"],
     "tools": ["git_github_read", "git_github_pr_checks", "git_github_pr_create"]
   }
 }

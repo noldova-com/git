@@ -71,7 +71,7 @@ An agent writes only through its tools, `git_stage`, `git_unstage`, `git_create_
 | Create one branch in several repositories | Low | The person's own Create in the workspace toolbar's New branch dialog, for the chosen repositories; no agent tool offers it, and it asks nothing more than the name, since the person undoes each in the Git view. Create stays unavailable until the name is one `git.createBranch` takes, and a name it refuses writes nothing. Each is the history's Create branch, `git.createBranch`, which makes the branch at the current commit and switches to it, with `--no-track`, so it never gets an upstream whatever the repository's `branch.autoSetupMerge` says, and with the same hooks rule. Each repository's branches are read just before, and one that already has the branch is skipped and left as it is; its status is read then, so the request is based on it. They run at most four at a time and go on past a failure; the toolbar names each repository written, skipped and failed, with why, and nothing is retried. |
 | Stash | Low | The person's own click only; no agent tool offers it, and it never asks. It refuses a folder with nothing to stash as `NothingToStash` before git runs, changes only inside a submodule included, since a stash never saves them, then runs `git stash push`, without `--quiet` so a failure carries git's own words, with `--include-untracked` when asked and the person's message after `--message`, the whole folder as its pathspec, which leaves the folder as HEAD has it; the repository's `post-index-change` and `reference-transaction` hooks run, and its clean filters as the stash reads the changes and its smudge filters as it puts the files back as HEAD has them, as for the person's own `git stash`, and the undo's `git stash pop` runs the same hooks and smudge filters. It reads `refs/stash` before and after the push, and since git exits 0 without a stash when it finds nothing it can save, a push that leaves `refs/stash` where it was, or on a commit not made on the status's HEAD, is refused as `NothingToStash` and journals nothing, so an undo never pops an older stash; otherwise the journal keeps the new stash's commit for its undo. |
 | Undo | High | The person's own click only; no agent tool offers it yet, and an agent's request will be High risk, asked every time, with no "Always allow". It undoes a write the journal recorded, below. |
-| Open a pull request | High | Always asks, with the repository on GitHub, the branch it comes from and the branch it goes into, the title and the whole body as the agent wrote them, and whether it is a draft, so the person can read everything the pull request will publish; the title can't hold a line break. It offers only "Allow once" and "Deny", never "Always allow", so no remembered answer opens a pull request. |
+| Open a pull request | High | Always asks, with the GitHub account it opens the pull request as, the repository on GitHub, the branch it comes from and the branch it goes into, the title and the whole body as the agent wrote them, and whether it is a draft, so the person can read everything the pull request will publish; the title can't hold a line break. It offers only "Allow once" and "Deny", never "Always allow", so no remembered answer opens a pull request. The account is chosen before it asks, the pull request goes with that account's token only, and it fails as signed out when that account signed out after the answer. |
 
 A branch counts as the session's only when no remote-tracking branch of that name existed, as of the last fetch, when the session made it, so a push never offers "Always allow" for someone else's branch.
 Noldova Desktop remembers an "Always allow" by the action, the subject and the conversation, so the push request that offers it names the session in its subject: the remembered answer holds only for that session's later pushes of the branch, and never for another session's in the same conversation.
@@ -124,7 +124,8 @@ A change to any of these is risky in review:
 - which of the person's git settings, hooks or filters run, or are turned off;
 - what failures, cards and logs carry from git's output or a remote's URL;
 - a new write;
-- which modules can read the GitHub token through `git-github.access`, or what it answers.
+- which modules can read the GitHub tokens through `git-github.access`, which account it answers for a repository, or what it answers;
+- how the GitHub module chooses the account for a repository, what that check sends, or how the picks and the other accounts' secrets are kept.
 - which hosts the GitHub token goes to, whether GitHub's sign-in and API follow a redirect, how much of an answer they read, or what the avatar read sends, follows or takes;
 - who may give the Azure DevOps module a token, which hosts the token goes to, whether a request follows a redirect with it, or how it is kept;
 - the sign-in with Microsoft: its client, authority or scopes, what the loopback listener binds to, accepts or answers, how its state and PKCE verifier are made, or how its refresh token is kept and renewed;
@@ -152,6 +153,18 @@ A read on the API follows one redirect by hand, only when its target stays on `h
 Any other redirect fails as `Unavailable`, saying the repository moved and to update the remote, so the token never goes on to another host.
 An answer is read a chunk at a time, at most 64 KiB for the sign-in's and 8 MiB for the API's; a longer one is refused, as `SignInAnswerTooLargeException` or `Unavailable`, and the rest of it let go of.
 
+## Which GitHub account reads a repository
+
+The GitHub module keeps several accounts: the first in `git-github.signIn`, each other in `git-github.account<id>`, and the index `git-github.accounts` with each other account's id, host and login and the person's picks, each a repository's host and path with the account picked for it.
+The index is local data in the module's secrets; nothing in it is logged or sent.
+Each read, tool and other module's access takes the account for the repository it acts on: the person's pick if that account is signed in, else the only signed-in account, else the first signed-in account that can read the repository, else the first.
+For that check the module asks `api.github.com` for the repository, by its path, with each signed-in token in turn, until one reads it; it asks once a session for each repository, and again after any account changes.
+A token GitHub refuses as unauthorized is reported to its account; a token refused another way, such as a 403, moves on to the next account, and the choice isn't kept.
+Picks match a repository's host and path without case.
+An added account that signs in as a login another account already holds keeps no token: the module forgets it and ends that account signed out with `AlreadyKept`, so no login is held twice.
+`git-github.access` answers `accessAsync` with the first account's token and login, and `accessForAsync` with the token and login of the account chosen for the repository it names, so another module's runtime part gets only the account the GitHub module would read that repository with.
+The API's answer cache is kept apart for each token, so one account never gets an answer read with another's token, and the cache of a token no account holds any more is let go of.
+
 ## What reaches GitHub for a picture
 
 `git-github.readAuthorAvatar` reads a commit author's picture for the Git view.
@@ -178,7 +191,7 @@ The workspace page's Needs you reads, for each listed repository on a host that 
 
 | Read | What it sends and keeps |
 |---|---|
-| `git-github.readReviewRequests` | One search of the signed-in account's open review requests, `review-requested:@me`, with the token, at most once a minute whatever the number of repositories or focuses: the answer, or the failure, is held for that minute and shared out by repository in the runtime, and the window keeps the rows it showed after a failure. It names no repository to GitHub, and a repository off github.com, or signed out, asks nothing. |
+| `git-github.readReviewRequests` | One search of each signed-in account's open review requests, `review-requested:@me`, with that account's token, at most once a minute whatever the number of repositories or focuses: each account's answer, or its failure, is held apart for that minute and shared out by repository in the runtime, the rows of the accounts that answered are merged and labelled with their account's login, and the list says there is more when one search failed, and the window keeps the rows it showed after a failure. It names no repository to GitHub, and a repository off github.com, or signed out, asks nothing. |
 | `git-azure-devops.readReviewRequests` | Only for a repository in the organization of the sign-in: that organization's `connectionData`, once for each token, for the person's id, then the repository's active pull requests with that id as `reviewerId`, with the sign-in. It keeps only the id, while the token stays the same, and asks nothing signed out or for another organization or host. |
 
 ## What reaches Azure DevOps for stacks

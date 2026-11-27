@@ -72,7 +72,7 @@ describe("GitWindowPart", () => {
     expect(answers).toEqual([false, true, true, false, false]);
     expect(GitAvatars.imageOf("/repository", "kim@example.com", "a1")).toBeNull();
     expect(context.calls.map(t => t.member)).toEqual(["registerView", "registerView", "registerView", "registerDocument", "registerDocument", "registerDocument", "registerView",
-      "registerView", "registerView", "registerView", "onViewClosed", "onViewClosed", "onViewClosed", "registerCommand", "registerCommand", "registerCommand", "onViewClosed",
+      "registerView", "registerView", "registerView", "registerView", "onViewClosed", "onViewClosed", "onViewClosed", "registerCommand", "registerCommand", "registerCommand", "onViewClosed",
       "registerDocument", "registerDocument", "registerCommand", "registerCommand", "registerSettingsPage", "setSettingsRows", "registerStatusBarItem",
       "registerStatusBarItem", "registerStatusBarItem", "onEvent", "provideUndo", "onEvent"]);
     expect([context.activeCallsOf("onEvent").length, context.activeCallsOf("provideUndo").length]).toEqual([0, 0]);
@@ -250,9 +250,9 @@ describe("GitWindowPart", () => {
     const view: ViewContribution | undefined = views[4];
 
     expect([view?.name, view?.title, view?.icon, view?.defaultSide, view?.isShownByDefault, view?.padding, view?.hasInstances, view?.defaultGroup, view?.defaultOrder])
-      .toEqual(["git.commitView", "Commit", "commit", DockSide.Right, false, ContentPadding.None, true, 0, 45]);
+      .toEqual(["git.commitView", "Commit", "commit", DockSide.Right, true, ContentPadding.None, false, 0, 45]);
     expect(await view?.loadComponent()).toBe(GitCommitDetailViewComponent);
-    expect(context.callsOf("onViewClosed").map(t => t[0])).toContain("git.commitView");
+    expect(context.callsOf("onViewClosed").map(t => t[0])).not.toContain("git.commitView");
   });
 
   it("registers the Conflict view with one instance, in the right dock's first group at order 50, hidden by default, with no padding, loading its component, and follows its closing", async () => {
@@ -379,7 +379,7 @@ describe("GitWindowPart", () => {
     expect(JSON.parse(localStorage.getItem("git.commandLogs") ?? "null")).toEqual(["C:\\Repos\\commitline\\", "/home/kim/site"]);
   });
 
-  it("registers the history, conflict and rebase documents, loading their components with no padding, and commands that open the history and the conflicts for a folder, first among the repositories opened lately", async () => {
+  it("registers the history, conflict and rebase documents, loading their components with no padding, and commands that open the history and the conflicts for a folder, leaving the repositories opened lately to the history's first read", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     context.allow("provideUndo");
     const documents: DocumentContribution[] = [];
@@ -428,7 +428,7 @@ describe("GitWindowPart", () => {
       ["git.history", "C:\\Repos\\commitline\\", "commitline"],
       ["git.history", "/home/kim/site", "site"]
     ]);
-    expect(GitRecentRepositories.recent().slice(0, 2).map(t => GitRecentRepositories.nameOf(t))).toEqual(["site", "commitline"]);
+    expect(GitRecentRepositories.recent()).toEqual(["/work/project"]);
   });
 
   it("reads the workspaces, the repositories opened lately and the rebase targets, and registers the workspace page and a command that opens a workspace's page or the open repositories'", async () => {

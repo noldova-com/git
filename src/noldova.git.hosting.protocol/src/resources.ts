@@ -77,6 +77,7 @@ export class Resources {
   public static readonly commitCommentsCappedExpected: string = "capped only with comments";
   public static readonly commitCommentsUrlExpected: string = "a page exactly when there are comments";
   public static readonly countsExpected: string = "zero counts when the host doesn't count them";
+  public static readonly accountIdsExpected: string = "accounts with each id once";
   public static readonly commentParentExpected: string = "a parent other than the comment itself";
   public static readonly lineExpected: string = "a line only on a thread that names a file";
   public static readonly commentsExpected: string = "at least one comment";
@@ -85,6 +86,8 @@ export class Resources {
   public static readonly deviceCodeField: string = "deviceCode";
   public static readonly addressField: string = "address";
   public static readonly accountField: string = "account";
+  public static readonly accountsField: string = "accounts";
+  public static readonly signInField: string = "signIn";
   public static readonly failureField: string = "failure";
   public static readonly userCodeField: string = "userCode";
   public static readonly verificationUriField: string = "verificationUri";

@@ -13,7 +13,7 @@ import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
-import { HostAvatar, HostChanges, HostItem, HostPerson, HostPolicy, HostPullRequest, HostReference, HostWorkItem, HostWorkItemDetail, HostWorkItemList, HostWorkItemType, PolicyState,
+import { HostAvatar, HostChanges, HostItem, HostPerson, HostPolicy, HostPullRequest, HostReference, HostSignIn, HostWorkItem, HostWorkItemDetail, HostWorkItemList, HostWorkItemType, PolicyState,
   ReferenceKind, ReferenceState, WorkItemCategory } from "@noldova/git.hosting.protocol";
 import { GitCommit, GitGraph, GitGraphCommit, GitMessageReferences, GitNames, GitRemote, GitStatus, RemoteTransport } from "@noldova/git.protocol";
 import { GitFolder } from "@noldova/git.window";
@@ -173,6 +173,48 @@ describe("AzureDevOpsWorkItemComponent in the kit's look", () => {
     AppearanceFixture.expectPixels(detail.height, px(40));
     await page.screenshot({ element: find(root, ".window"), path: `${screenshots}/work-items-${mode}.png` });
   });
+
+  it.each(AppearanceFixture.modes)("says the person signed out in a notice at the page's inset, its key and words inside its padding before Sign in, on one centre line, in %s mode",
+    async mode => {
+      AppearanceFixture.apply(DefaultTheme.theme, mode);
+      const context = new FakeWindowPartContext();
+      const requests = new RequestAnswers(context);
+      requests.answer(AzureDevOpsNames.readWorkItemsMethod, new HostWorkItemList(mine, false).toJson());
+      TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: context },
+        { provide: WindowPartTokens.activeDocument, useValue: signal(false) }] });
+      const fixture = TestBed.createComponent(AzureDevOpsWorkItemComponent);
+      fixture.componentRef.setInput("instance", "fabrikam/Sample%20Project/7521");
+      fixture.autoDetectChanges();
+      const root: HTMLElement = fixture.nativeElement;
+      root.style.display = "block";
+      root.style.width = "44rem";
+      await untilAsync(() => !Object.isNull(root.querySelector(".item")));
+
+      context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+      await untilAsync(() => !Object.isNull(root.querySelector(".signed-out")));
+      await fixture.whenStable();
+      const probe: HTMLElement = root.appendChild(document.createElement("div"));
+      probe.style.cssText = "width: var(--nol-space-3); height: calc(var(--nol-border-width) + var(--nol-view-padding-inline))";
+      const margin: number = probe.getBoundingClientRect().width;
+      const padding: number = probe.getBoundingClientRect().height;
+      probe.remove();
+      const frame: DOMRect = root.getBoundingClientRect();
+      const notice: DOMRect = boxOf(root, ".signed-out");
+      const mark: DOMRect = boxOf(root, ".signed-out .notice-mark");
+      const text: DOMRect = boxOf(root, ".signed-out .notice-text");
+      const button: DOMRect = boxOf(root, ".signed-out button");
+      const middle = (box: DOMRect): number => box.top + box.height / 2;
+
+      AppearanceFixture.expectPixels(notice.left - frame.left, margin);
+      AppearanceFixture.expectPixels(notice.top - frame.top, margin);
+      AppearanceFixture.expectPixels(frame.right - notice.right, margin);
+      AppearanceFixture.expectPixels(mark.left - notice.left, padding);
+      AppearanceFixture.expectPixels(notice.right - button.right, padding);
+      AppearanceFixture.expectPixels(middle(mark) - middle(button), 0);
+      AppearanceFixture.expectPixels(middle(text) - middle(button), 0);
+      expect([text.left > mark.right, button.left > text.right, requests.methods]).toEqual([true, true, [AzureDevOpsNames.readWorkItemsMethod]]);
+      await page.screenshot({ element: root, path: `${screenshots}/work-items-signed-out-${mode}.png` });
+    });
 
   it.each(AppearanceFixture.modes)("says in the dock, 0.75rem in, that no work item is chosen before a document chooses one, in %s mode", async mode => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);

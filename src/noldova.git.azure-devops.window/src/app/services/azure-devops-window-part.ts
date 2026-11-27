@@ -72,8 +72,9 @@ export class AzureDevOpsWindowPart implements IWindowPart {
     context.registerCommand(AzureDevOpsWindowPart.openCommand(context, Resources.openWorkItemsCommand, Resources.openWorkItemsTitle, Resources.workItemsIcon,
       Resources.workItemsDocument, Resources.myWorkItemsTitle, Resources.noProjectForWorkItems));
     let references: AzureDevOpsReferenceSource | null = null;
-    const withdrawPullRequests = GitPullRequests.provide(context, new AzureDevOpsPullRequests(context,
-      (url, reference) => (references ??= AzureDevOpsReferenceSource.register(context)).rememberPage(url, reference)));
+    const pullRequests = new AzureDevOpsPullRequests(context,
+      (url, reference) => (references ??= AzureDevOpsReferenceSource.register(context)).rememberPage(url, reference));
+    const withdrawPullRequests = GitPullRequests.provide(context, pullRequests);
     const withdrawRows = GitHostRows.provide(context, { claims: (remote: GitRemote) => AzureDevOpsRemote.isAzureDevOps(remote), component: AzureDevOpsHostRowComponent });
     const withdrawRepositoryLinks = GitRepositoryLinks.provide(new AzureDevOpsRepositoryLinks(context));
     this.withdraw = () => {
@@ -81,6 +82,7 @@ export class AzureDevOpsWindowPart implements IWindowPart {
       withdrawPullRequestClosed();
       withdrawRows();
       withdrawPullRequests();
+      pullRequests.stop();
       withdrawRepositoryLinks();
     };
     const withdrawLinks = GitLinkReferences.provide({
