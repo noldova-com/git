@@ -14,6 +14,8 @@ import { JsonReader, type JsonValue } from "@noldova/context.json";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { ConflictKind, FailureCode, FileState, GitBranches, GitRemote, GitRepositoryScan, RemoteTransport, ScanEnd, StatusUpstream } from "@noldova/git.protocol";
+import { DefaultTheme } from "@noldova/ui.components.angular";
+import { AppearanceFixture } from "@noldova/ui.components.angular/testing";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { GitVisibleDirective } from "../../../../src/app/components/git-workspace/git-visible.directive.ts";
@@ -287,13 +289,37 @@ describe("GitWorkspaceComponent", () => {
     const workspace: GitWorkspace = fresh("/work/lost", "/work/merge");
     const conflicted: JsonValue = GitFixtures.status([GitFixtures.entry("a.ts", FileState.Unmodified, FileState.Unmodified, null, ConflictKind.BothModified)], null).toJson();
     const screen: Screen = Screen.render(workspace.id, {
-      "/work/lost": GitFixtures.failure(FailureCode.NotRepository, null, "The folder isn't a repository."), "/work/merge": conflicted
+      "/work/lost": GitFixtures.failure(FailureCode.Git, null, "Git couldn't read the index."), "/work/merge": conflicted
     });
 
     await screen.untilAsync(() => screen.has(".failure") && screen.texts(".changes")[1] !== "");
 
-    expect(screen.texts(".failure")).toEqual(["The folder isn't a repository."]);
+    expect(screen.texts(".failure")).toEqual(["Git couldn't read the index."]);
     expect(screen.has(".changes.conflicts")).toBe(true);
+  });
+
+  it.each(AppearanceFixture.modes)("shows a folder that isn't a repository as one calm cell, its words and Remove on one line, and Remove takes it off, in %s mode", async mode => {
+    AppearanceFixture.apply(DefaultTheme.theme, mode);
+    onTestFinished(() => AppearanceFixture.reset());
+    const workspace: GitWorkspace = fresh("/work/notes", "/work/a");
+    const screen: Screen = Screen.render(workspace.id, { "/work/notes": GitFixtures.failure(FailureCode.NotRepository, null, "The folder isn't a repository.") });
+    await screen.untilAsync(() => screen.has(".not-repository") && screen.texts(".changes")[1] !== "");
+    const rem: number = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const middleOf = (selector: string): number => {
+      const box: DOMRect = screen.element.querySelector(selector)?.getBoundingClientRect() ?? new DOMRect();
+      return (box.top + box.height / 2) / rem;
+    };
+    const probe: HTMLSpanElement = document.createElement("span");
+    probe.style.color = "var(--nol-text-muted)";
+    screen.element.append(probe);
+    const muted: string = getComputedStyle(probe).color;
+    probe.remove();
+    const shown: readonly unknown[] = [screen.texts(".not-repository"), screen.has(".failure"), getComputedStyle(screen.element.querySelector(".not-repository .muted") ?? screen.element).color,
+      Math.abs(middleOf(".not-repository .muted") - middleOf(".not-repository .remove-one")) < 0.0625];
+    screen.click(".not-repository .remove-one");
+    await screen.untilAsync(() => screen.rows().length === 1);
+
+    expect([shown, GitWorkspaces.find(workspace.id)?.folders]).toEqual([[["Not a Git repository Remove"], false, muted, true], ["/work/a"]]);
   });
 
   it("fetches every listed repository, shows each as fetching meanwhile, and keeps Fetch all unavailable until they end", async () => {
@@ -560,13 +586,13 @@ describe("GitWorkspaceComponent", () => {
     expect(screen.texts(".side [aria-current=page]")).toEqual(["dashboard Dashboard 2"]);
   });
 
-  it("opens a repository's history from its name, which puts it first among the ones opened lately", () => {
+  it("opens a repository's history from its name, which puts it among the ones opened lately only once it reads it", () => {
     const workspace: GitWorkspace = fresh("/work/site");
     const screen: Screen = Screen.render(workspace.id);
 
     screen.click(".name-cell");
 
-    expect([screen.context.callsOf("openDocument"), GitRecentRepositories.recent()]).toEqual([[["git.history", "/work/site", "site"]], ["/work/site"]]);
+    expect([screen.context.callsOf("openDocument"), GitRecentRepositories.recent()]).toEqual([[["git.history", "/work/site", "site"]], []]);
   });
 
   it("opens another workspace's page, the open repositories' page, and a new workspace's page from the Workspaces view", () => {

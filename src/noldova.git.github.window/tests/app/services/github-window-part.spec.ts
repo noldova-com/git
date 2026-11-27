@@ -9,10 +9,11 @@
 import "@noldova/context.core";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitHubNames } from "@noldova/git.github.protocol";
-import { DeviceCode, HostAccount, HostAvatar, HostSignIn } from "@noldova/git.hosting.protocol";
+import { BranchPullRequest, DeviceCode, HostAccount, HostAvatar, HostChanges, HostItem, HostPullRequestList, HostPullRequestRow, HostReference, HostSignIn,
+  ReferenceKind, ReferenceState } from "@noldova/git.hosting.protocol";
 import { GitRemote, GitStatus, RemoteTransport } from "@noldova/git.protocol";
-import { GitAvatars, GitHostAccounts, GitHostCard, GitHostCardState, GitHostFeature, GitHostRows, GitLinkReferences, GitPullRequests,
-  type IProvidedGitHostAccount } from "@noldova/git.window";
+import { GitAvatars, GitBranchPullRequest, GitHostAccounts, GitHostCard, GitHostCardState, GitHostFeature, GitHostRows, GitLinkReferences, GitPullRequestList,
+  GitPullRequestRow, GitPullRequests, GitPullRequestState, GitPullRequestsState, type IProvidedGitHostAccount } from "@noldova/git.window";
 import { describe, expect, it } from "vitest";
 
 import { GitHubHostRowComponent } from "../../../src/app/components/github-host-row/github-host-row.component.ts";
@@ -176,8 +177,67 @@ describe("GitHubWindowPart", () => {
     await part.deactivateAsync();
     context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedOut().toJson());
 
-    expect([context.callsOf("onEvent").map(t => t[0]), context.activeCallsOf("onEvent")]).toEqual([[GitHubNames.signInChangedEvent], []]);
+    expect([context.callsOf("onEvent").map(t => t[0]), context.activeCallsOf("onEvent")]).toEqual([[GitHubNames.signInChangedEvent, GitHubNames.signInChangedEvent], []]);
     expect([whileWaiting, afterSignIn, account?.account.cards()]).toEqual([waitingCards, signedInCards, signedInCards]);
+  });
+
+  it("updates the repository panel's pull requests and the account's card together at once when someone signs in or out anywhere", async () => {
+    const part: GitHubWindowPart = new GitHubWindowPart();
+    const gitHub: GitRemote = new GitRemote("origin", "github.com", "example-owner/example-repository", RemoteTransport.Https);
+    const url: string = "https://github.com/example-owner/example-repository/pull/12";
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    const requests: RequestAnswers = new RequestAnswers(context);
+    requests.answer(GitHubNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    requests.answer(GitHubNames.readPullRequestsMethod, HostPullRequestList.signedOut().toJson(), new HostPullRequestList([new HostPullRequestRow(
+      new HostReference("git-github", "example-owner", "example-repository", 12), "Fix the sign-in", url, false, 0, 0, 0, 0, "fix-sign-in", "main")], false).toJson(),
+    HostPullRequestList.signedOut().toJson());
+    await part.activateAsync(context);
+    await Promise.allSettled(requests.answered);
+    const pullRequests = GitPullRequests.of(gitHub);
+    const list = pullRequests?.listFor("/work/site", gitHub);
+    pullRequests?.refresh("/work/site", gitHub);
+    const until = (state: GitPullRequestsState) => Wait.until(() => expect(list?.()?.state).toBe(state));
+    await until(GitPullRequestsState.SignedOut);
+
+    context.raiseEvent(GitHubNames.signInChangedEvent, signedIn.toJson());
+    const cardsOnSignIn: readonly GitHostCard[] | null = cardsOf();
+    await until(GitPullRequestsState.Ready);
+    const listOnSignIn = list?.();
+    context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+    const cardsOnSignOut: readonly GitHostCard[] | null = cardsOf();
+    await until(GitPullRequestsState.SignedOut);
+    await part.deactivateAsync();
+
+    expect([cardsOnSignIn, listOnSignIn, cardsOnSignOut, list?.()]).toEqual([signedInCards,
+      GitPullRequestList.ready([new GitPullRequestRow("example-owner/example-repository#12", "#12", "Fix the sign-in", url, false, 0, 0, 0, 0, "fix-sign-in", "main")]),
+      signedOutCards, GitPullRequestList.signedOut()]);
+  });
+
+  it("gives the commit detail the pull request that brought a github.com commit in, opened in the browser, and none once someone signs out", async () => {
+    const part: GitHubWindowPart = new GitHubWindowPart();
+    const gitHub: GitRemote = new GitRemote("origin", "github.com", "example-owner/example-repository", RemoteTransport.Https);
+    const url: string = "https://github.com/example-owner/example-repository/pull/12";
+    const commit: string = "6dcb09b5b57875f334f61aebed695e2e4193db5e";
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    const requests: RequestAnswers = new RequestAnswers(context);
+    requests.answer(GitHubNames.readSignInMethod, signedIn.toJson());
+    requests.answer(GitHubNames.readCommitPullRequestMethod, new BranchPullRequest(new HostItem(new HostReference("git-github", "example-owner",
+      "example-repository", 12), ReferenceKind.PullRequest, ReferenceState.Merged, "Fix the sign-in", url, null, 1_800_000_000_000, 1_800_000_100_000, 0,
+    HostChanges.uncounted("fix-sign-in", "main", commit)), []).toJson(), new BranchPullRequest(null, []).toJson());
+    await part.activateAsync(context);
+    await Promise.allSettled(requests.answered);
+    const pullRequests = GitPullRequests.of(gitHub);
+    const answer = pullRequests?.commitFor?.("/work/site", gitHub, commit);
+    await Wait.until(() => expect(answer?.()?.state).toBe(GitPullRequestsState.Ready));
+    const shown = answer?.();
+
+    context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+    await Wait.until(() => expect(answer?.()?.pullRequest).toBeNull());
+    await part.deactivateAsync();
+
+    expect([shown, "open" in (pullRequests ?? {}), answer?.(), requests.methods.filter(t => t === GitHubNames.readCommitPullRequestMethod).length]).toEqual([
+      GitBranchPullRequest.of(new GitPullRequestRow("example-owner/example-repository#12", "#12", "Fix the sign-in", url, false, 0, 0, 0, 0, "", "main"),
+        GitPullRequestState.Merged, false), false, GitBranchPullRequest.none(0, 0, 0), 2]);
   });
 
   it("drops the sign-in it read once a change arrived while the read was on its way, so the newer card stays", async () => {

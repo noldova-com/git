@@ -12,6 +12,7 @@ import type { IconName } from "@noldova/ui.components.angular";
 export class Resources {
   public static readonly accountsPage: string = "git.accounts";
   public static readonly pullRequestsUnanswered: string = "GitHub didn't answer. Try again to read this repository's pull requests.";
+  public static readonly commitPullRequestUnanswered: string = "GitHub didn't answer. Its pull request reads again when the commit opens again.";
   public static readonly accountId: string = "git-github.account";
   public static readonly hostName: string = "GitHub";
   public static readonly hostColumn: string = "GitHub";

@@ -10,7 +10,7 @@
     "methods": ["git-github.readSignIn", "git-github.startSignIn", "git-github.cancelSignIn", "git-github.signOut", "git-github.readReference",
       "git-github.readBranchPullRequest", "git-github.createPullRequest",
       "git-github.readAuthorAvatar", "git-github.readPullRequests", "git-github.readReviewRequests",
-      "git-github.readCommitComments", "git-github.readPullRequest", "git-github.readPullRequestThreads"],
+      "git-github.readCommitComments", "git-github.readPullRequest", "git-github.readPullRequestThreads", "git-github.readCommitPullRequest"],
     "events": ["git-github.signInChanged"],
     "tools": ["git_github_read", "git_github_pr_checks", "git_github_pr_create"]
   }

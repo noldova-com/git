@@ -343,7 +343,7 @@ describe("GitWindowPart", () => {
     expect(JSON.parse(localStorage.getItem("git.commandLogs") ?? "null")).toEqual(["C:\\Repos\\commitline\\", "/home/kim/site"]);
   });
 
-  it("registers the history, conflict and rebase documents, loading their components with no padding, and commands that open the history and the conflicts for a folder, first among the repositories opened lately", async () => {
+  it("registers the history, conflict and rebase documents, loading their components with no padding, and commands that open the history and the conflicts for a folder, leaving the repositories opened lately to the history's first read", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     context.allow("provideUndo");
     const documents: DocumentContribution[] = [];
@@ -392,7 +392,7 @@ describe("GitWindowPart", () => {
       ["git.history", "C:\\Repos\\commitline\\", "commitline"],
       ["git.history", "/home/kim/site", "site"]
     ]);
-    expect(GitRecentRepositories.recent().slice(0, 2).map(t => GitRecentRepositories.nameOf(t))).toEqual(["site", "commitline"]);
+    expect(GitRecentRepositories.recent()).toEqual(["/work/project"]);
   });
 
   it("reads the workspaces, the repositories opened lately and the rebase targets, and registers the workspace page and a command that opens a workspace's page or the open repositories'", async () => {

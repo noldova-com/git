@@ -6,7 +6,13 @@ This source code is licensed under the license found in the
 LICENSE file in the root directory of this source tree.
 -->
 
-@if (failure(); as failure) {
+@if (isSignedOut()) {
+  <div class="notice signed-out" role="status">
+    <span class="material-symbols-rounded notice-mark" aria-hidden="true">{{ resources.signedOutIcon }}</span>
+    <span class="notice-text">{{ resources.workItemsSignedOut }}</span>
+    <button type="button" nol-button [variant]="secondary" (click)="signIn()">{{ resources.signInAction }}</button>
+  </div>
+} @else if (failure(); as failure) {
   <div class="notice" role="alert">
     <span class="material-symbols-rounded notice-icon" aria-hidden="true">{{ resources.failureIcon }}</span>
     <span class="notice-text">{{ failure }}</span>

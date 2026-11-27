@@ -147,6 +147,7 @@ export class Resources {
   public static readonly noFolderHeading: string = "No folder";
   public static readonly noFolderText: string = "Open a folder to see its Git state.";
   public static readonly notRepositoryHeading: string = "Not a Git repository";
+  public static readonly removeLabel: string = "Remove";
   public static readonly folderUnreadableHeading: string = "Can't read this folder";
   public static readonly gitMissingHeading: string = "Git isn't installed";
   public static readonly gitMissingText: string = "The Git view uses the Git on your computer. Install Git 2.39 or newer, then select Check again.";
@@ -314,8 +315,28 @@ export class Resources {
     return `Your account doesn't have permission to open this folder, ${folder}.`;
   }
 
-  public static formatNotRepositoryText(folder: string): string {
-    return `This folder, ${folder}, isn't inside a Git repository.`;
+  public static formatLookingBelow(folder: string): string {
+    return `This folder, ${folder}, isn't inside a Git repository. Looking for repositories under it…`;
+  }
+
+  public static formatChooseBelow(folder: string): string {
+    return `This folder, ${folder}, isn't inside a Git repository. Choose from the repositories under it.`;
+  }
+
+  public static formatNoneBelow(folder: string): string {
+    return `This folder, ${folder}, isn't inside a Git repository, and no folder under it holds one. Open a folder inside a repository, or run git init here to make one.`;
+  }
+
+  public static formatNoneInFirstBelow(folder: string): string {
+    return `This folder, ${folder}, isn't inside a Git repository, and none of the first 10,000 folders under it holds one. Open a folder further down, or one inside a repository.`;
+  }
+
+  public static formatScanFailedBelow(folder: string): string {
+    return `This folder, ${folder}, isn't inside a Git repository. Open a folder inside a repository, or use Add repository on the Dashboard to look for the ones under it.`;
+  }
+
+  public static formatUnreadableBelow(folder: string): string {
+    return `This folder, ${folder}, isn't inside a Git repository, and Git can't read the folders under it. Open a folder inside a repository.`;
   }
 
   public static formatPush(ahead: number): string {
@@ -639,7 +660,7 @@ export class Resources {
   public static readonly openConflictsCommand: string = "git.openConflicts";
   public static readonly openConflictsTitle: string = "Open conflicts";
   public static readonly commandLogLabel: string = "Command log";
-  public static readonly commandLogHint: string = "The git commands your writes in this repository ran since the app started, newest first.";
+  public static readonly commandLogEndSlack: number = 1;
   public static readonly commandLogEmpty: string = "No git commands yet: each write you make here shows its command as it runs.";
   public static readonly commandDoneIcon: IconName = "check_circle";
   public static readonly commandFailedIcon: IconName = "error";
