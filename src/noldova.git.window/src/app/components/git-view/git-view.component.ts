@@ -52,7 +52,7 @@ export class GitViewComponent {
   protected readonly state: GitViewStateService = inject(GitViewStateService);
   protected readonly showsBranch: Signal<boolean> = GitViewOptions.showsBranch;
   protected readonly switching: Signal<string | null> = computed(() => GitPendingSwitch.branchOf(this.state.folder()));
-  protected readonly empty: Signal<GitEmptyState | null> = computed(() => this.emptyOf(this.state.phase()));
+  protected readonly empty: Signal<GitEmptyState | null> = computed(() => this.emptyOf(this.state.phase(), this.look()?.text() ?? ""));
   protected readonly linkFailed: WritableSignal<boolean> = signal(false);
   protected readonly firstConflict: Signal<string | null> = computed(() =>
     this.state.groups().filter(t => t.kind === GitFileGroupKind.Conflicts).flatMap(t => t.rows)[0]?.path ?? null);
@@ -138,12 +138,12 @@ export class GitViewComponent {
     }));
   }
 
-  private emptyOf(phase: GitViewPhase): GitEmptyState | null {
+  private emptyOf(phase: GitViewPhase, lookText: string): GitEmptyState | null {
     switch (phase) {
       case GitViewPhase.NoFolder:
         return new GitEmptyState(Resources.noFolderIcon, Resources.noFolderHeading, Resources.noFolderText);
       case GitViewPhase.NotRepository:
-        return new GitEmptyState(Resources.noFolderIcon, Resources.notRepositoryHeading, this.look()?.text() ?? Resources.formatLookingBelow(this.state.readFolder()));
+        return new GitEmptyState(Resources.noFolderIcon, Resources.notRepositoryHeading, lookText);
       case GitViewPhase.FolderUnreadable:
         return new GitEmptyState(Resources.folderUnreadableIcon, Resources.folderUnreadableHeading, Resources.formatFolderUnreadableText(this.state.readFolder()));
       case GitViewPhase.GitMissing:
