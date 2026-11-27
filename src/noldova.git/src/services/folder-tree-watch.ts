@@ -85,7 +85,7 @@ export class FolderTreeWatch {
     this.skipped.delete(folder);
     let watcher: FSWatcher;
     try {
-      watcher = watch(path.join(this.worktree, folder), { persistent: false }, (event, name) => this.note(folder, event, name));
+      watcher = watch(path.join(this.worktree, folder), { persistent: false }, (event, name) => this.note(folder, watcher, event, name));
     } catch (error) {
       if (FolderTreeWatch.isGone(error))
         return;
@@ -95,9 +95,16 @@ export class FolderTreeWatch {
     this.watchers.set(folder, watcher);
   }
 
-  private note(folder: string, event: string, name: string | null): void {
+  private note(folder: string, watcher: FSWatcher, event: string, name: string | null): void {
     if (this.stop.signal.aborted)
       return;
+    if (name !== null && path.isAbsolute(name)) {
+      if (this.watchers.get(folder) === watcher) {
+        this.forget(folder);
+        this.follow(this.serially(() => this.settleAsync(folder)));
+      }
+      return;
+    }
     if (name === null) {
       this.onChange(null);
       return;
@@ -117,18 +124,12 @@ export class FolderTreeWatch {
       throw error;
     });
     if (!isFolder) {
-      for (const [folder, watcher] of this.watchers)
-        if (FolderTreeWatch.isIn(folder, changed)) {
-          watcher.close();
-          this.watchers.delete(folder);
-        }
-      for (const folder of [...this.skipped].filter(t => FolderTreeWatch.isIn(t, changed)))
-        this.skipped.delete(folder);
+      this.forget(changed);
       return;
     }
     if (this.watchers.has(changed))
       return;
-    if ((await this.ignored.ignoredFoldersAsync(this.top, [changed], this.stop.signal)).has(changed))
+    if (changed !== "" && (await this.ignored.ignoredFoldersAsync(this.top, [changed], this.stop.signal)).has(changed))
       this.skipped.add(changed);
     else
       await this.addTreeAsync(changed);
@@ -159,6 +160,17 @@ export class FolderTreeWatch {
     const isThere = await stat(path.join(this.worktree, folder)).then(() => true, () => false);
     if (isThere)
       throw error;
+    this.forget(folder);
+  }
+
+  private forget(gone: string): void {
+    for (const [folder, watcher] of this.watchers)
+      if (FolderTreeWatch.isIn(folder, gone)) {
+        watcher.close();
+        this.watchers.delete(folder);
+      }
+    for (const folder of [...this.skipped].filter(t => FolderTreeWatch.isIn(t, gone)))
+      this.skipped.delete(folder);
   }
 
   private serially(walk: () => Promise<void>): Promise<void> {
@@ -177,7 +189,7 @@ export class FolderTreeWatch {
   }
 
   private static isIn(folder: string, outer: string): boolean {
-    return folder === outer || folder.startsWith(`${outer}/`);
+    return outer === "" || folder === outer || folder.startsWith(`${outer}/`);
   }
 
   private static join(folder: string, name: string): string {

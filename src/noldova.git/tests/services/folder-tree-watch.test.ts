@@ -300,7 +300,7 @@ describe("FolderTreeWatch", () => {
     await repository.runGitAsync(["add", "--force", "bin/keep.dll"]);
     paths.forgetIndex(repository.folder);
     tree.recheck();
-    await untilAsync(() => live().includes("bin"));
+    await untilAsync(() => live().includes("bin") && asked.folders.some(t => t.includes("bin/obj")));
     const added = live();
     await heardAsync("bin/keep.dll");
     await removedAsync("bin");
@@ -349,5 +349,58 @@ describe("FolderTreeWatch", () => {
     await untilAsync(() => failures.length > 0 && live().length === 0);
 
     assert.deepEqual(failures.map(String), ["Error: EACCES"]);
+  });
+
+  test("drops the watches of a folder and those in it once the folder above says it went", async () => {
+    await tree.startAsync();
+    vi.mocked(stat).mockRejectedValueOnce(failure("ENOENT"));
+    openedOf("").watcher.emit("change", "rename", "src");
+    await untilAsync(() => openedOf("src").isClosed && openedOf("src/deep").isClosed);
+    await checkedAsync();
+
+    assert.deepEqual([live(), failures], [[""], []]);
+  });
+
+  test("drops the watch of a folder removed whose own watch names its full path, as Windows does, hearing no such name", async () => {
+    await tree.startAsync();
+    const deep = openedOf("src/deep");
+    const full = path.join(repository.folder, "src", "deep");
+    await rm(full, { recursive: true });
+    deep.watcher.emit("change", "rename", full);
+    deep.watcher.emit("change", "rename", full);
+    await untilAsync(() => deep.isClosed);
+    await checkedAsync();
+
+    assert.deepEqual([live(), names.filter(t => t?.includes(full)), failures], [["", "src"], [], []]);
+  });
+
+  test("watches again a folder removed and made again before it is looked at, whose own watch names its full path", async () => {
+    await tree.startAsync();
+    const deep = openedOf("src/deep");
+    deep.watcher.emit("change", "rename", path.join(repository.folder, "src", "deep"));
+    await untilAsync(() => openedOf("src/deep") !== deep && live().includes("src/deep"));
+    await checkedAsync();
+
+    assert.deepEqual([deep.isClosed, live(), failures], [true, ["", "src", "src/deep"], []]);
+  });
+
+  test("walks the whole tree again when the worktree's own watch names its full path while the worktree is still there", async () => {
+    await tree.startAsync();
+    const top = openedOf("");
+    top.watcher.emit("change", "rename", repository.folder);
+    await untilAsync(() => openedOf("") !== top && live().length === 3);
+    await checkedAsync();
+
+    assert.deepEqual([top.isClosed, live(), names.filter(t => t?.includes(repository.folder)), failures], [true, ["", "src", "src/deep"], [], []]);
+  });
+
+  test("forgets every folder it watched once the worktree itself is gone", async () => {
+    await tree.startAsync();
+    vi.mocked(stat).mockRejectedValueOnce(failure("ENOENT"));
+    openedOf("").watcher.emit("change", "rename", repository.folder);
+    await untilAsync(() => live().length === 0);
+    await checkedAsync();
+
+    assert.deepEqual([live(), failures], [[], []]);
   });
 });
