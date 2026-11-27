@@ -11,26 +11,36 @@ import "@noldova/context.core";
 import { type IWindowPartContext, RuntimeRequestException, WindowException } from "@noldova/desktop.window";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { CommitQuery, HostCommitComments, HostPullRequestList, type HostPullRequestRow, type HostReviewRequest, HostReviewRequestList,
-  RepositoryQuery } from "@noldova/git.hosting.protocol";
+  RepositoryQuery, SignInState } from "@noldova/git.hosting.protocol";
 import type { GitRemote } from "@noldova/git.protocol";
 import { GitCommitComments, GitPullRequestList, GitPullRequestRow, type IGitPullRequests } from "@noldova/git.window";
 
 import type { IRemotePlace } from "../interfaces/i-remote-place.ts";
+import { SignInEvents } from "./sign-in-events.ts";
 import { Resources } from "../../resources.ts";
 
 export class GitHubPullRequests implements IGitPullRequests {
   private readonly lists: Map<string, WritableSignal<GitPullRequestList | null>> = new Map();
+  private readonly queries: Map<string, RepositoryQuery> = new Map();
   private readonly reads: Map<string, number> = new Map();
   private readonly reviews: Map<string, WritableSignal<GitPullRequestList | null>> = new Map();
   private readonly reviewReads: Map<string, number> = new Map();
+  private readonly reviewQueries: Map<string, RepositoryQuery> = new Map();
   private readonly comments: Map<string, WritableSignal<GitCommitComments | null>> = new Map();
+  private readonly commentQueries: Map<string, [CommitQuery, WritableSignal<GitCommitComments | null>]> = new Map();
   private readonly context: IWindowPartContext;
+  private readonly unfollow: () => void;
 
   public readonly hostName: string = Resources.hostName;
   public readonly signInPage: string = Resources.accountsPage;
 
   public constructor(context: IWindowPartContext) {
     this.context = context;
+    this.unfollow = SignInEvents.follow(context, signIn => this.readAgain(signIn.state));
+  }
+
+  public stop(): void {
+    this.unfollow();
   }
 
   public claims(remote: GitRemote): boolean {
@@ -57,8 +67,11 @@ export class GitHubPullRequests implements IGitPullRequests {
       return known;
     const answer: WritableSignal<GitCommitComments | null> = signal<GitCommitComments | null>(null);
     this.comments.set(key, answer);
-    if (!Object.isNull(remote.host) && !Object.isNull(remote.path))
-      void this.readCommentsAsync(new CommitQuery(remote.host, remote.path, commitId), key, answer);
+    if (!Object.isNull(remote.host) && !Object.isNull(remote.path)) {
+      const query: CommitQuery = new CommitQuery(remote.host, remote.path, commitId);
+      this.commentQueries.set(key, [query, answer]);
+      void this.readCommentsAsync(query, key, answer);
+    }
     return answer;
   }
 
@@ -71,6 +84,17 @@ export class GitHubPullRequests implements IGitPullRequests {
       void this.readReviewsAsync(new RepositoryQuery(remote.host, remote.path));
   }
 
+  private readAgain(state: SignInState): void {
+    if (state === SignInState.Waiting)
+      return;
+    for (const query of this.queries.values())
+      void this.readAsync(query);
+    for (const query of this.reviewQueries.values())
+      void this.readReviewsAsync(query);
+    for (const [key, [query, answer]] of this.commentQueries)
+      void this.readCommentsAsync(query, key, answer);
+  }
+
   private listOf(key: string): WritableSignal<GitPullRequestList | null> {
     return GitHubPullRequests.listIn(this.lists, key);
   }
@@ -78,6 +102,7 @@ export class GitHubPullRequests implements IGitPullRequests {
   private async readReviewsAsync(query: RepositoryQuery): Promise<void> {
     const key: string = GitHubPullRequests.keyOf(query);
     const list = GitHubPullRequests.listIn(this.reviews, key);
+    this.reviewQueries.set(key, query);
     const read: number = (this.reviewReads.get(key) ?? 0) + 1;
     this.reviewReads.set(key, read);
     const shown: readonly GitPullRequestRow[] = list()?.rows ?? [];
@@ -106,6 +131,7 @@ export class GitHubPullRequests implements IGitPullRequests {
         throw error;
       this.context.log(Resources.formatRequestFailed(GitHubNames.readCommitCommentsMethod, String(error)));
       this.comments.delete(key);
+      this.commentQueries.delete(key);
     }
   }
 
@@ -126,6 +152,7 @@ export class GitHubPullRequests implements IGitPullRequests {
   private async readAsync(query: RepositoryQuery): Promise<void> {
     const key: string = GitHubPullRequests.keyOf(query);
     const list = this.listOf(key);
+    this.queries.set(key, query);
     const read: number = (this.reads.get(key) ?? 0) + 1;
     this.reads.set(key, read);
     list.set(GitPullRequestList.reading(list()?.rows ?? []));

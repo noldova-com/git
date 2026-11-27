@@ -23,6 +23,7 @@ import { PullRequestDocument } from "../models/pull-request-document.ts";
 import { WorkItemsPlace } from "../models/work-items-place.ts";
 import { Resources } from "../../resources.ts";
 import { PullRequestPages } from "./pull-request-pages.ts";
+import { SignInEvents } from "./sign-in-events.ts";
 
 export class AzureDevOpsPullRequests implements IGitPullRequests {
   private static readonly STATES: Readonly<Record<ReferenceState, GitPullRequestState>> = {
@@ -31,15 +32,22 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
     [ReferenceState.ClosedNotPlanned]: GitPullRequestState.Closed
   };
   private readonly lists: Map<string, WritableSignal<GitPullRequestList | null>> = new Map();
+  private readonly queries: Map<string, RepositoryQuery> = new Map();
   private readonly reads: Map<string, number> = new Map();
   private readonly reviews: Map<string, WritableSignal<GitPullRequestList | null>> = new Map();
   private readonly reviewReads: Map<string, number> = new Map();
+  private readonly reviewQueries: Map<string, RepositoryQuery> = new Map();
   private readonly branches: Map<string, WritableSignal<GitBranchPullRequest | null>> = new Map();
+  private readonly branchQueries: Map<string, BranchQuery> = new Map();
   private readonly commits: Map<string, WritableSignal<GitBranchPullRequest | null>> = new Map();
+  private readonly commitQueries: Map<string, [CommitQuery, WritableSignal<GitBranchPullRequest | null>]> = new Map();
   private readonly comments: Map<string, WritableSignal<GitCommitComments | null>> = new Map();
+  private readonly commentQueries: Map<string, [CommitQuery, WritableSignal<GitCommitComments | null>]> = new Map();
   private readonly stacks: Map<string, WritableSignal<GitPullRequestList | null>> = new Map();
+  private readonly stackQueries: Map<string, [RepositoryQuery, WritableSignal<GitPullRequestList | null>]> = new Map();
   private readonly context: IWindowPartContext;
   private readonly remember: (url: string, reference: HostReference) => void;
+  private readonly unfollow: () => void;
 
   public readonly hostName: string = Resources.hostName;
   public readonly signInPage: string = Resources.accountsPage;
@@ -47,6 +55,11 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
   public constructor(context: IWindowPartContext, remember: (url: string, reference: HostReference) => void) {
     this.context = context;
     this.remember = remember;
+    this.unfollow = SignInEvents.follow(context, signIn => this.readAgain(signIn.state));
+  }
+
+  public stop(): void {
+    this.unfollow();
   }
 
   public claims(remote: GitRemote): boolean {
@@ -87,8 +100,11 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
     const answer: WritableSignal<GitPullRequestList | null> = signal<GitPullRequestList | null>(null);
     this.stacks.set(key, answer);
     const path: string | null = AzureDevOpsRemote.pathOf(remote);
-    if (!Object.isNull(remote.host) && !Object.isNull(path))
-      void this.readStacksAsync(new RepositoryQuery(remote.host, path), key, answer);
+    if (!Object.isNull(remote.host) && !Object.isNull(path)) {
+      const query: RepositoryQuery = new RepositoryQuery(remote.host, path);
+      this.stackQueries.set(key, [query, answer]);
+      void this.readStacksAsync(query, key, answer);
+    }
     return answer;
   }
 
@@ -99,8 +115,11 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
       return known;
     const answer: WritableSignal<GitBranchPullRequest | null> = AzureDevOpsPullRequests.answerOf(this.commits, key);
     const path: string | null = AzureDevOpsRemote.pathOf(remote);
-    if (!Object.isNull(remote.host) && !Object.isNull(path))
-      void this.readCommitAsync(new CommitQuery(remote.host, path, commitId), key, answer);
+    if (!Object.isNull(remote.host) && !Object.isNull(path)) {
+      const query: CommitQuery = new CommitQuery(remote.host, path, commitId);
+      this.commitQueries.set(key, [query, answer]);
+      void this.readCommitAsync(query, key, answer);
+    }
     return answer;
   }
 
@@ -112,8 +131,11 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
     const answer: WritableSignal<GitCommitComments | null> = signal<GitCommitComments | null>(null);
     this.comments.set(key, answer);
     const path: string | null = AzureDevOpsRemote.pathOf(remote);
-    if (!Object.isNull(remote.host) && !Object.isNull(path))
-      void this.readCommentsAsync(new CommitQuery(remote.host, path, commitId), key, answer);
+    if (!Object.isNull(remote.host) && !Object.isNull(path)) {
+      const query: CommitQuery = new CommitQuery(remote.host, path, commitId);
+      this.commentQueries.set(key, [query, answer]);
+      void this.readCommentsAsync(query, key, answer);
+    }
     return answer;
   }
 
@@ -138,6 +160,23 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
     return true;
   }
 
+  private readAgain(state: SignInState): void {
+    if (state === SignInState.Waiting)
+      return;
+    for (const query of this.queries.values())
+      void this.readAsync(query);
+    for (const query of this.reviewQueries.values())
+      void this.readReviewsAsync(query);
+    for (const query of this.branchQueries.values())
+      void this.readBranchAsync(query);
+    for (const [key, [query, answer]] of this.stackQueries)
+      void this.readStacksAsync(query, key, answer);
+    for (const [key, [query, answer]] of this.commitQueries)
+      void this.readCommitAsync(query, key, answer);
+    for (const [key, [query, answer]] of this.commentQueries)
+      void this.readCommentsAsync(query, key, answer);
+  }
+
   private listOf(key: string): WritableSignal<GitPullRequestList | null> {
     return AzureDevOpsPullRequests.listIn(this.lists, key);
   }
@@ -145,6 +184,7 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
   private async readReviewsAsync(query: RepositoryQuery): Promise<void> {
     const key: string = AzureDevOpsPullRequests.keyOf(query);
     const list = AzureDevOpsPullRequests.listIn(this.reviews, key);
+    this.reviewQueries.set(key, query);
     const read: number = (this.reviewReads.get(key) ?? 0) + 1;
     this.reviewReads.set(key, read);
     const shown: readonly GitPullRequestRow[] = list()?.rows ?? [];
@@ -182,6 +222,7 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
   private async readAsync(query: RepositoryQuery): Promise<void> {
     const key: string = AzureDevOpsPullRequests.keyOf(query);
     const list = this.listOf(key);
+    this.queries.set(key, query);
     const read: number = (this.reads.get(key) ?? 0) + 1;
     this.reads.set(key, read);
     list.set(GitPullRequestList.reading(list()?.rows ?? []));
@@ -202,6 +243,7 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
   private async readBranchAsync(query: BranchQuery): Promise<void> {
     const key: string = AzureDevOpsPullRequests.branchKeyOf(query, query.branch, query.headCommit);
     const answer: WritableSignal<GitBranchPullRequest | null> = AzureDevOpsPullRequests.answerOf(this.branches, key);
+    this.branchQueries.set(key, query);
     const read: number = (this.reads.get(key) ?? 0) + 1;
     this.reads.set(key, read);
     answer.set(GitBranchPullRequest.reading(answer()));
@@ -232,6 +274,7 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
         throw error;
       this.context.log(Resources.formatRequestFailed(AzureDevOpsNames.readCommitPullRequestMethod, String(error)));
       this.commits.delete(key);
+      this.commitQueries.delete(key);
       answer.set(GitBranchPullRequest.failed(error instanceof RuntimeRequestException ? error.message : Resources.commitPullRequestUnanswered));
     }
   }
@@ -246,6 +289,7 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
         throw error;
       this.context.log(Resources.formatRequestFailed(AzureDevOpsNames.readPullRequestHeadsMethod, String(error)));
       this.stacks.delete(key);
+      this.stackQueries.delete(key);
     }
   }
 
@@ -259,6 +303,7 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
         throw error;
       this.context.log(Resources.formatRequestFailed(AzureDevOpsNames.readCommitCommentsMethod, String(error)));
       this.comments.delete(key);
+      this.commentQueries.delete(key);
     }
   }
 

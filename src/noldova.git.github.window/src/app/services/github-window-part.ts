@@ -40,10 +40,12 @@ export class GitHubWindowPart implements IWindowPart {
 
   public async activateAsync(context: IWindowPartContext): Promise<void> {
     const withdrawRows = GitHostRows.provide(context, { claims: (remote: GitRemote) => remote.host === Resources.gitHubHost, component: GitHubHostRowComponent });
-    const withdrawPullRequests = GitPullRequests.provide(context, new GitHubPullRequests(context));
+    const pullRequests = new GitHubPullRequests(context);
+    const withdrawPullRequests = GitPullRequests.provide(context, pullRequests);
     this.withdraw = () => {
       withdrawRows();
       withdrawPullRequests();
+      pullRequests.stop();
     };
     let references: GitHubReferenceSource | null = null;
     const withdrawLinks = GitLinkReferences.provide({

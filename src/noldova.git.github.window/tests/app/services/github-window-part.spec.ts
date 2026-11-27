@@ -9,10 +9,10 @@
 import "@noldova/context.core";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitHubNames } from "@noldova/git.github.protocol";
-import { DeviceCode, HostAccount, HostAvatar, HostSignIn } from "@noldova/git.hosting.protocol";
+import { DeviceCode, HostAccount, HostAvatar, HostPullRequestList, HostPullRequestRow, HostReference, HostSignIn } from "@noldova/git.hosting.protocol";
 import { GitRemote, GitStatus, RemoteTransport } from "@noldova/git.protocol";
-import { GitAvatars, GitHostAccounts, GitHostCard, GitHostCardState, GitHostFeature, GitHostRows, GitLinkReferences, GitPullRequests,
-  type IProvidedGitHostAccount } from "@noldova/git.window";
+import { GitAvatars, GitHostAccounts, GitHostCard, GitHostCardState, GitHostFeature, GitHostRows, GitLinkReferences, GitPullRequestList, GitPullRequestRow,
+  GitPullRequests, GitPullRequestsState, type IProvidedGitHostAccount } from "@noldova/git.window";
 import { describe, expect, it } from "vitest";
 
 import { GitHubHostRowComponent } from "../../../src/app/components/github-host-row/github-host-row.component.ts";
@@ -176,8 +176,40 @@ describe("GitHubWindowPart", () => {
     await part.deactivateAsync();
     context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedOut().toJson());
 
-    expect([context.callsOf("onEvent").map(t => t[0]), context.activeCallsOf("onEvent")]).toEqual([[GitHubNames.signInChangedEvent], []]);
+    expect([context.callsOf("onEvent").map(t => t[0]), context.activeCallsOf("onEvent")]).toEqual([[GitHubNames.signInChangedEvent, GitHubNames.signInChangedEvent], []]);
     expect([whileWaiting, afterSignIn, account?.account.cards()]).toEqual([waitingCards, signedInCards, signedInCards]);
+  });
+
+  it("updates the repository panel's pull requests and the account's card together at once when someone signs in or out anywhere", async () => {
+    const part: GitHubWindowPart = new GitHubWindowPart();
+    const gitHub: GitRemote = new GitRemote("origin", "github.com", "example-owner/example-repository", RemoteTransport.Https);
+    const url: string = "https://github.com/example-owner/example-repository/pull/12";
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    const requests: RequestAnswers = new RequestAnswers(context);
+    requests.answer(GitHubNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    requests.answer(GitHubNames.readPullRequestsMethod, HostPullRequestList.signedOut().toJson(), new HostPullRequestList([new HostPullRequestRow(
+      new HostReference("git-github", "example-owner", "example-repository", 12), "Fix the sign-in", url, false, 0, 0, 0, 0, "fix-sign-in", "main")], false).toJson(),
+    HostPullRequestList.signedOut().toJson());
+    await part.activateAsync(context);
+    await Promise.allSettled(requests.answered);
+    const pullRequests = GitPullRequests.of(gitHub);
+    const list = pullRequests?.listFor("/work/site", gitHub);
+    pullRequests?.refresh("/work/site", gitHub);
+    const until = (state: GitPullRequestsState) => Wait.until(() => expect(list?.()?.state).toBe(state));
+    await until(GitPullRequestsState.SignedOut);
+
+    context.raiseEvent(GitHubNames.signInChangedEvent, signedIn.toJson());
+    const cardsOnSignIn: readonly GitHostCard[] | null = cardsOf();
+    await until(GitPullRequestsState.Ready);
+    const listOnSignIn = list?.();
+    context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+    const cardsOnSignOut: readonly GitHostCard[] | null = cardsOf();
+    await until(GitPullRequestsState.SignedOut);
+    await part.deactivateAsync();
+
+    expect([cardsOnSignIn, listOnSignIn, cardsOnSignOut, list?.()]).toEqual([signedInCards,
+      GitPullRequestList.ready([new GitPullRequestRow("example-owner/example-repository#12", "#12", "Fix the sign-in", url, false, 0, 0, 0, 0, "fix-sign-in", "main")]),
+      signedOutCards, GitPullRequestList.signedOut()]);
   });
 
   it("drops the sign-in it read once a change arrived while the read was on its way, so the newer card stays", async () => {

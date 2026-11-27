@@ -611,4 +611,45 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
 
     expect([first, await commitRejected, host.context.callsOf("log")]).toEqual([branch, commit, []]);
   });
+
+  it("reads every list, branch, stack, commit and comment count it read again when someone signs in or out, but not while a sign-in waits or once it stops",
+    async () => {
+      const host = new Host();
+      const methods: readonly string[] = [AzureDevOpsNames.readPullRequestsMethod, AzureDevOpsNames.readReviewRequestsMethod, AzureDevOpsNames.readBranchPullRequestMethod,
+        AzureDevOpsNames.readPullRequestHeadsMethod, AzureDevOpsNames.readCommitPullRequestMethod, AzureDevOpsNames.readCommitCommentsMethod];
+      const count = (): number[] => methods.map(t => host.requests.methods.filter(m => m === t).length);
+      host.requests.answer(AzureDevOpsNames.readPullRequestsMethod, HostPullRequestList.signedOut().toJson(), new HostPullRequestList([row], false).toJson(),
+        HostPullRequestList.signedOut().toJson());
+      host.requests.answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson(), signedIn, HostSignIn.signedOut().toJson());
+      host.requests.otherwise(AzureDevOpsNames.readReviewRequestsMethod, HostReviewRequestList.signedOut().toJson())
+        .otherwise(AzureDevOpsNames.readBranchPullRequestMethod, pullRequestOf(ReferenceState.Open).toJson())
+        .otherwise(AzureDevOpsNames.readPullRequestHeadsMethod, HostPullRequestHeads.signedOut().toJson())
+        .otherwise(AzureDevOpsNames.readCommitPullRequestMethod, pullRequestOf(ReferenceState.Merged, ReviewDecision.Approved, 1).toJson())
+        .otherwise(AzureDevOpsNames.readCommitCommentsMethod, HostCommitComments.none().toJson());
+      const list = await host.readAsync(remote, GitPullRequestsState.SignedOut);
+      const branch = await branchAsync(host, "export-notes", GitPullRequestsState.SignedOut);
+      host.pullRequests.reviewsFor(remote);
+      host.pullRequests.refreshReviews(remote);
+      host.pullRequests.stackListFor(FOLDER, remote);
+      host.pullRequests.commitFor(FOLDER, remote, HEAD);
+      host.pullRequests.commentsFor(FOLDER, remote, COMMENTED);
+      await host.requests.askedAsync(7);
+
+      host.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.waitingInBrowser("https://login.microsoftonline.com/example").toJson());
+      const whileWaiting = count();
+      host.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, signedIn);
+      await Host.untilAsync(list, GitPullRequestsState.Ready);
+      const answer = host.pullRequests.branchFor(FOLDER, remote, "export-notes", HEAD);
+      await untilAsync(answer, GitPullRequestsState.Ready);
+      const onSignIn = [list(), answer(), count()];
+      host.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+      await Host.untilAsync(list, GitPullRequestsState.SignedOut);
+      await untilAsync(answer, GitPullRequestsState.SignedOut);
+      host.pullRequests.stop();
+      host.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, signedIn);
+
+      expect([branch, whileWaiting, count(), host.context.activeCallsOf("onEvent")]).toEqual([GitBranchPullRequest.signedOut(), [1, 1, 1, 1, 1, 1],
+        [3, 3, 3, 3, 3, 3], []]);
+      expect(onSignIn).toEqual([GitPullRequestList.ready([shown]), GitBranchPullRequest.of(rowOf(2), GitPullRequestState.Open, true, "Active"), [2, 2, 2, 2, 2, 2]]);
+    });
 });
