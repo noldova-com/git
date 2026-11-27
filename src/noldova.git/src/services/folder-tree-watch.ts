@@ -19,17 +19,19 @@ export class FolderTreeWatch {
   private readonly ignored: IgnoredPaths;
   private readonly onChange: (name: string | null) => void;
   private readonly onFailed: (error: unknown) => void;
+  private readonly onRefused: (folder: string, error: unknown) => void;
   private readonly watchers: Map<string, FSWatcher> = new Map();
   private readonly skipped: Set<string> = new Set();
   private readonly stop: AbortController = new AbortController();
   private walks: Promise<void> = Promise.resolve();
 
-  public constructor(worktree: string, top: string, ignored: IgnoredPaths, onChange: (name: string | null) => void, onFailed: (error: unknown) => void) {
+  public constructor(worktree: string, top: string, ignored: IgnoredPaths, onChange: (name: string | null) => void, onFailed: (error: unknown) => void, onRefused: (folder: string, error: unknown) => void) {
     this.worktree = worktree;
     this.top = top;
     this.ignored = ignored;
     this.onChange = onChange;
     this.onFailed = onFailed;
+    this.onRefused = onRefused;
   }
 
   public async startAsync(): Promise<void> {
@@ -92,6 +94,7 @@ export class FolderTreeWatch {
       if (folder === "" || !FolderTreeWatch.isRefused(error))
         throw error;
       this.skipped.add(folder);
+      this.onRefused(path.join(this.worktree, folder), error);
       return;
     }
     watcher.on("error", (error: Error) => this.follow(this.loseAsync(folder, watcher, error)));

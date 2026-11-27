@@ -858,6 +858,10 @@ export class Resources {
     return `${folder} has more than ${limit} folders git doesn't ignore, more than the module watches one at a time`;
   }
 
+  public static formatWatchRefused(folder: string, failure: string): string {
+    return `Couldn't watch ${folder} yet, as while it is being removed, so the module watches it once the folder above reports it or the index changes: ${failure}`;
+  }
+
   public static formatWatchFailed(folder: string, failure: string): string {
     return `Couldn't watch ${folder}, so the module checks the worktree for changes every few seconds instead: ${failure}`;
   }

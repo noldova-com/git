@@ -40,6 +40,7 @@ describe("FolderTreeWatch", () => {
   let create: () => FolderTreeWatch;
   let names: (string | null)[];
   let failures: unknown[];
+  let refusals: string[];
   let opened: IOpened[];
   let listeners: (() => boolean)[];
   let refusing: (folder: string) => string | null;
@@ -64,6 +65,7 @@ describe("FolderTreeWatch", () => {
     });
     names = [];
     failures = [];
+    refusals = [];
     opened = [];
     listeners = [];
     await repository.writeAsync(".gitignore", "bin/\n");
@@ -93,6 +95,9 @@ describe("FolderTreeWatch", () => {
         hear();
       }, error => {
         failures.push(error);
+        hear();
+      }, (folder, error) => {
+        refusals.push(`${path.relative(repository.folder, folder).replaceAll("\\", "/")} ${String(error)}`);
         hear();
       });
       cleanUps.add(() => created.close());
@@ -342,7 +347,7 @@ describe("FolderTreeWatch", () => {
     tree.recheck();
     await untilAsync(() => asked.folders.length > removed);
 
-    assert.deepEqual([pending, asked.folders[removed], live(), failures], [[["", "src"], true, false], ["bin"], ["", "src"], []]);
+    assert.deepEqual([pending, asked.folders[removed], live(), refusals, failures], [[["", "src"], true, false], ["bin"], ["", "src"], ["src/deep Error: EPERM"], []]);
   });
 
   test("watches a folder Windows refused once a recheck or the folder above finds it no longer refused, and fails the start when the top folder is refused", async () => {
@@ -351,6 +356,8 @@ describe("FolderTreeWatch", () => {
     await tree.startAsync();
     const refused = live();
     tree.recheck();
+    await untilAsync(() => refusals.length === 2);
+    const stillRefused = [live(), failures.length];
     code = null;
     tree.recheck();
     await untilAsync(() => live().includes("src/deep"));
@@ -369,7 +376,7 @@ describe("FolderTreeWatch", () => {
     refusing = folder => (folder === "" ? "EPERM" : null);
 
     await assert.rejects(create().startAsync(), (error: unknown) => error instanceof Error && error.message === "EPERM");
-    assert.deepEqual([refused, rechecked, settled, failures], [["", "src"], ["", "src", "src/deep"], ["", "src", "src/deep"], []]);
+    assert.deepEqual([refused, stillRefused, rechecked, settled, refusals.length, failures], [["", "src"], [["", "src"], 0], ["", "src", "src/deep"], ["", "src", "src/deep"], 3, []]);
   });
 
   test("skips a folder gone before it is read, and fails the start on any other error reading one", async () => {
