@@ -89,6 +89,8 @@ export class Resources {
   public static readonly headField: string = "head";
   public static readonly baseField: string = "base";
   public static readonly refField: string = "ref";
+  public static readonly repoField: string = "repo";
+  public static readonly defaultBranchField: string = "default_branch";
   public static readonly shaField: string = "sha";
   public static readonly additionsField: string = "additions";
   public static readonly deletionsField: string = "deletions";
@@ -221,6 +223,7 @@ export class Resources {
   public static readonly checkRunsPageSize: number = 100;
   public static readonly reviewsPageSize: number = 100;
   public static readonly commentsPageSize: number = 100;
+  public static readonly commitPullsPageSize: number = 100;
   public static readonly newestCommentsCount: number = 100;
   public static readonly approvedReview: string = "APPROVED";
   public static readonly changesRequestedReview: string = "CHANGES_REQUESTED";
@@ -348,8 +351,8 @@ export class Resources {
     return `commits/${commit}/comments?per_page=${Resources.commentsPageSize}`;
   }
 
-  public static formatCommitPullsPath(commit: string): string {
-    return `commits/${commit}/${Resources.pullsPath}?per_page=1`;
+  public static formatCommitPullRequestsPath(commit: string): string {
+    return `commits/${commit}/${Resources.pullsPath}?per_page=${Resources.commitPullsPageSize}`;
   }
 
   public static formatPullCommentsPath(number: number): string {
