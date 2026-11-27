@@ -8,6 +8,9 @@ Each version's section is written by the pull request that changes the version, 
 
 - Add repository on a folder that isn't in a repository looks through its subfolders, four levels down, and offers the repositories it finds in a dialog, all ticked, adding the ones still ticked. It says when it stops at 1,000 repositories or 10,000 folders, or can't read the folder. The runtime's new `git.scanRepositories` method answers a `GitRepositoryScan` with a `ScanEnd`, both new in `@noldova/git.protocol` (#56).
 - In the Workspaces and Repository panels, a header's add button lines up with the counts and labels beside it (#64).
+- A sign-in or sign-out with GitHub or Azure DevOps reads every view's pull requests again at once, the Pull requests section, the commit detail's card and Azure DevOps' Your vote included, rather than when the window next takes the focus (#66).
+- A folder that isn't in a repository shows one calm empty state, "Not a Git repository", in the Git view, the History page and the Repository panel, and the window looks in its subfolders and offers the repositories it finds, adding the ticked ones to the Dashboard and never the folder itself; the Dashboard shows a listed folder that is no longer a repository in one muted cell with Remove, and a history keeps its folder among the recent repositories only once it reads one (#67).
+- A GitHub commit's detail shows the pull request that brought it in, with its checks and review decision, through the GitHub runtime's new `git-github.readCommitPullRequest` method and `GitHubNames.readCommitPullRequestMethod` in `@noldova/git.github.protocol` (#80).
 
 ## 0.0.8
 
