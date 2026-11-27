@@ -677,6 +677,34 @@ describe("GitHubHostRowComponent", () => {
     expect([page.texts(".account .notice-text"), page.requests.methods.filter(t => t === GitHubNames.readBranchPullRequestMethod).length]).toEqual([["Account: example-user"], 2]);
   });
 
+  it.each([["answered", false], ["failed", true]] as const)("drops a switch %s for a repository the row no longer shows", async (_, fails) => {
+    const page = new Page();
+    const other: GitRemote = new GitRemote("origin", "github.com", "example-owner/other", RemoteTransport.Https);
+    GitHubAccountList.show(page.context, accountsOf(signedIn, lee));
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson(), answer.toJson());
+    page.requests.answer(GitHubNames.readRepositoryAccountMethod, new RepositoryAccount(2).toJson(), new RepositoryAccount(2).toJson());
+    const fail = fails ? page.requests.holdFailure(GitHubNames.pickAccountMethod) : null;
+    const release = fails ? null : page.requests.hold(GitHubNames.pickAccountMethod);
+    await page.openAsync(signedIn);
+    await page.clickAsync("Switch account");
+    await page.untilAsync(() => menuRows().length === 2);
+    document.querySelectorAll<HTMLElement>("button[nol-menu-item]")[0]?.click();
+    while (!page.requests.methods.includes(GitHubNames.pickAccountMethod))
+      await page.requests.askedAsync(page.requests.answered.length + 1);
+
+    page.fixture?.componentRef.setInput("remote", other);
+    while (page.requests.methods.filter(t => t === GitHubNames.readRepositoryAccountMethod).length < 2)
+      await page.requests.askedAsync(page.requests.answered.length + 1);
+    await page.settleAsync();
+    fail?.(new WindowFailure("Not connected."));
+    release?.(new RepositoryAccount(1).toJson());
+    await Promise.allSettled(page.requests.answered);
+    await page.settleAsync();
+
+    expect([page.texts(".account .notice-text"), page.element.querySelector("[role=alert]"), page.requests.methods.filter(t => t === GitHubNames.readBranchPullRequestMethod).length])
+      .toEqual([["Account: lee"], null, 2]);
+  });
+
   it("logs an account read that fails and names no account, and passes on a failure that isn't the window's", async () => {
     const page = new Page();
     GitHubAccountList.show(page.context, accountsOf(signedIn, lee));

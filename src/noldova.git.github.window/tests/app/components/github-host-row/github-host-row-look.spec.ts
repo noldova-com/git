@@ -167,7 +167,7 @@ describe("GitHubHostRowComponent in the kit's look", () => {
     expect(shown).toEqual([null, `#1234 ${title}`, longCheck]);
   });
 
-  it.each(AppearanceFixture.modes)("sets the account line under the card, its mark on the card's icons, its quiet switch's end on the card's, in %s mode", async mode => {
+  it.each(AppearanceFixture.modes)("sets the account line under the card, its mark on the card's icons, its quiet switch's end on the card's with a 1.5rem target that leaves the line as it was, in %s mode", async mode => {
     const fixture = await openAsync(mode, HostSignIn.signedIn(account), answer, (context, requests) => {
       GitHubAccountList.show(context, new HostAccountList([new HostAccountEntry(1, HostSignIn.signedIn(account)),
         new HostAccountEntry(2, HostSignIn.signedIn(new HostAccount("example-bot", null, null, ["repo"])))]));
@@ -194,6 +194,11 @@ describe("GitHubHostRowComponent in the kit's look", () => {
     AppearanceFixture.expectPixels(mark.top + mark.height / 2, line.top + line.height / 2);
     AppearanceFixture.expectPixels(text.getBoundingClientRect().left - mark.right, px(0.5));
     AppearanceFixture.expectPixels(button.top + button.height / 2, text.getBoundingClientRect().top + text.getBoundingClientRect().height / 2);
+    AppearanceFixture.expectPixels(button.height, px(1.5));
+    switcher.style.display = "none";
+    const without = find(root, ".account").getBoundingClientRect();
+    switcher.style.display = "";
+    AppearanceFixture.expectPixels(without.height, line.height);
     expect([text.textContent?.trim(), words.color]).toEqual(["Account: example-bot", getComputedStyle(find(root, ".account")).color]);
     expect([switcher.textContent?.trim(), quiet.color, quiet.borderTopWidth, quiet.backgroundColor, quiet.paddingLeft, quiet.fontSize, quiet.fontWeight])
       .toEqual(["Switch account", link, "0px", "rgba(0, 0, 0, 0)", "0px", words.fontSize, words.fontWeight]);

@@ -203,14 +203,16 @@ export class GitHubHostRowComponent implements OnInit {
     const done = this.tasks.add();
     this.isBusy.set(true);
     try {
-      this.showReader(RepositoryAccount.fromJson(await this.context.requestAsync(GitHubNames.pickAccountMethod,
-        new AccountPick(query.host, query.path, account).toJson())).account);
+      const answer = RepositoryAccount.fromJson(await this.context.requestAsync(GitHubNames.pickAccountMethod, new AccountPick(query.host, query.path, account).toJson()));
+      if (this.readerQuery() === query)
+        this.showReader(answer.account);
     }
     catch (error) {
       if (!(error instanceof WindowException))
         throw error;
       this.context.log(Resources.formatRequestFailed(GitHubNames.pickAccountMethod, String(error)));
-      this.failure.set(Resources.accountNotSwitched);
+      if (this.readerQuery() === query)
+        this.failure.set(Resources.accountNotSwitched);
     }
     finally {
       this.isBusy.set(false);

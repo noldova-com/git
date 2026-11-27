@@ -52,7 +52,8 @@
 
 .switch {
   flex-shrink: 0;
-  padding: 0;
+  margin-block: calc((1lh - 1.5rem) / 2);
+  padding: calc((1.5rem - 1lh) / 2) 0;
   border: 0;
   background: none;
   color: var(--nol-link);
