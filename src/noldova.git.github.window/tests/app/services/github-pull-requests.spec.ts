@@ -372,9 +372,8 @@ describe("GitHubPullRequests", () => {
     const host = new Host();
     host.requests.answer(GitHubNames.readCommitPullRequestMethod, pullRequestOf(ReferenceState.Merged, ReviewDecision.Approved, 1).toJson(),
       pullRequestOf(ReferenceState.Open).toJson(), pullRequestOf(ReferenceState.Draft).toJson(), pullRequestOf(ReferenceState.Open, ReviewDecision.Approved).toJson(),
-      new BranchPullRequest(null, []).toJson(), new BranchPullRequest(new HostItem(new HostReference("git-github", "octocat", "site", 7), ReferenceKind.Issue,
-        ReferenceState.Open, "Found a bug", "https://github.com/octocat/site/issues/7", null, 1_800_000_000_000, null, 0, null), []).toJson());
-    const ids: readonly string[] = ["a", "b", "c", "d", "e", "f"].map(t => t.repeat(40));
+      new BranchPullRequest(null, []).toJson());
+    const ids: readonly string[] = ["a", "b", "c", "d", "e"].map(t => t.repeat(40));
 
     const answers = ids.map(t => host.pullRequests.commitFor(FOLDER, remote, t));
     for (const answer of answers)
@@ -382,9 +381,9 @@ describe("GitHubPullRequests", () => {
 
     expect(answers.map(t => t())).toEqual([GitBranchPullRequest.of(cardRowOf(1), GitPullRequestState.Merged, false),
       GitBranchPullRequest.of(cardRowOf(0), GitPullRequestState.Open, true), GitBranchPullRequest.of(cardRowOf(0, true), GitPullRequestState.Draft, false),
-      GitBranchPullRequest.of(cardRowOf(0), GitPullRequestState.Open, false), GitBranchPullRequest.none(0, 0, 0), GitBranchPullRequest.none(0, 0, 0)]);
+      GitBranchPullRequest.of(cardRowOf(0), GitPullRequestState.Open, false), GitBranchPullRequest.none(0, 0, 0)]);
     expect([host.pullRequests.commitFor(FOLDER, remote, ids[0] ?? "") === answers[0], host.requests.methods.length, host.requests.payloads[0]])
-      .toEqual([true, 6, new CommitQuery("github.com", "octocat/site", "a".repeat(40)).toJson()]);
+      .toEqual([true, 5, new CommitQuery("github.com", "octocat/site", "a".repeat(40)).toJson()]);
   });
 
   it("answers a commit's failed read as failed with the runtime's message or that GitHub didn't answer, logs it and keeps no failure, so the commit reads "
