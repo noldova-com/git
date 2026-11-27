@@ -72,7 +72,7 @@ describe("GitWindowPart", () => {
     expect(answers).toEqual([false, true, true, false, false]);
     expect(GitAvatars.imageOf("/repository", "kim@example.com", "a1")).toBeNull();
     expect(context.calls.map(t => t.member)).toEqual(["registerView", "registerView", "registerView", "registerDocument", "registerDocument", "registerDocument", "registerView",
-      "registerView", "registerView", "registerView", "registerView", "onViewClosed", "onViewClosed", "onViewClosed", "registerCommand", "registerCommand", "registerCommand", "onViewClosed",
+      "registerView", "registerView", "registerView", "onViewClosed", "onViewClosed", "registerCommand", "registerCommand", "registerCommand", "onViewClosed",
       "registerDocument", "registerDocument", "registerCommand", "registerCommand", "registerSettingsPage", "setSettingsRows", "registerStatusBarItem",
       "registerStatusBarItem", "registerStatusBarItem", "onEvent", "provideUndo", "onEvent"]);
     expect([context.activeCallsOf("onEvent").length, context.activeCallsOf("provideUndo").length]).toEqual([0, 0]);
