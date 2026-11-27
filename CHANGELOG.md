@@ -6,9 +6,6 @@ Each version's section is written by the pull request that changes the version, 
 
 ## 0.0.8
 
-- The Undo menu's Recent actions name a fetch as Fetch and a rebase as Rebase, rather than by the method's name, such as "git.fetch on main" (#50).
-- `git.watch` drops a removed folder's watch at once when Windows names the removed folder itself in its event, as it does on a Dev Drive tens of thousands of times a second, rather than reporting each such event as a changed file and never dropping the watch (#52).
-- `git.watch` no longer ends when Windows refuses to watch a folder whose removal is pending: a subfolder whose watch is refused with `EPERM` waits, with nothing in it read, until the folder above reports it gone or it can be watched, and the log says so once (#58).
 - `git.status` counts no lines for an untracked path swapped for a FIFO, or for a link to one, after it was checked, rather than waiting for a writer and never answering (#55).
 
 ## 0.0.7
@@ -29,6 +26,7 @@ Each version's section is written by the pull request that changes the version, 
 - Edit → Undo and Mod+Z undo the open repository's last write, as the Undo menu does, while nothing editable has the focus, and Undo is greyed while that write can't be undone; a text field keeps its own undo (#32).
 - A commit author with no picture on the repository's host shows their Gravatar picture, which the setting `git.gravatar` turns on by default: to read it, Git sends Gravatar a hash of each shown author's email (#32).
 - Git's Settings page Accounts and hosts, `git.accounts`, where the host modules show their accounts, replaces the GitHub module's own page `git-github.account`: an app that opens the page by id opens `git.accounts`; nothing a person saved is kept under the old id (#32).
+- The Undo menu's Recent actions name a fetch as Fetch and a rebase as Rebase, rather than by the method's name, such as "git.fetch on main" (#50).
 - Breaks for an app that takes 0.0.6, and what it changes (#32):
   - New parameters come before `reader` in `BranchPullRequest` (`approvals`, after `reviewDecision`) of `@noldova/git.hosting.protocol`, and in `StatusUpstream` (`id`), `GitBranches` (`tracks`, `tips`), `GitStatus` (`uncheckedLfsFiles`, `fetchedAt`), `DiffFile` (`similarity`) and `GitDiff` (`totals`) of `@noldova/git.protocol`: a caller that passes `reader` passes the new arguments, or `null`, first.
   - These classes' JSON always carries the new fields, which 0.0.6's `fromJson` refuses, and 0.0.7's `fromJson` needs those of `@noldova/git.protocol`, so a 0.0.6 part and a 0.0.7 part can't read each other's answers: an app moves every `@noldova/git.*` package to 0.0.7 together, and drops any saved 0.0.6 JSON of these classes rather than reading it.
