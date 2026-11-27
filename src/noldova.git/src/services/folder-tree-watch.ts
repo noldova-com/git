@@ -19,17 +19,20 @@ export class FolderTreeWatch {
   private readonly ignored: IgnoredPaths;
   private readonly onChange: (name: string | null) => void;
   private readonly onFailed: (error: unknown) => void;
+  private readonly onRefused: (folder: string) => void;
   private readonly watchers: Map<string, FSWatcher> = new Map();
   private readonly skipped: Set<string> = new Set();
+  private readonly refused: Set<string> = new Set();
   private readonly stop: AbortController = new AbortController();
   private walks: Promise<void> = Promise.resolve();
 
-  public constructor(worktree: string, top: string, ignored: IgnoredPaths, onChange: (name: string | null) => void, onFailed: (error: unknown) => void) {
+  public constructor(worktree: string, top: string, ignored: IgnoredPaths, onChange: (name: string | null) => void, onFailed: (error: unknown) => void, onRefused: (folder: string) => void) {
     this.worktree = worktree;
     this.top = top;
     this.ignored = ignored;
     this.onChange = onChange;
     this.onFailed = onFailed;
+    this.onRefused = onRefused;
   }
 
   public async startAsync(): Promise<void> {
@@ -52,6 +55,7 @@ export class FolderTreeWatch {
       watcher.close();
     this.watchers.clear();
     this.skipped.clear();
+    this.refused.clear();
   }
 
   private async addTreeAsync(start: string): Promise<void> {
@@ -60,8 +64,8 @@ export class FolderTreeWatch {
       if (this.watchers.size + level.length > Resources.treeFoldersLimit)
         throw new RangeError(Resources.formatTreeTooLarge(this.worktree, Resources.treeFoldersLimit));
       for (const folder of level)
-        this.add(folder);
-      const children = (await Promise.all(level.map(t => this.childrenAsync(t)))).flat();
+        await this.addAsync(folder);
+      const children = (await Promise.all(level.filter(t => this.watchers.has(t)).map(t => this.childrenAsync(t)))).flat();
       const ignored = await this.ignored.ignoredFoldersAsync(this.top, children, this.stop.signal);
       for (const folder of children.filter(t => ignored.has(t)))
         this.skipped.add(folder);
@@ -80,7 +84,7 @@ export class FolderTreeWatch {
     }
   }
 
-  private add(folder: string): void {
+  private async addAsync(folder: string): Promise<void> {
     this.stop.signal.throwIfAborted();
     this.skipped.delete(folder);
     let watcher: FSWatcher;
@@ -89,10 +93,18 @@ export class FolderTreeWatch {
     } catch (error) {
       if (FolderTreeWatch.isGone(error))
         return;
-      throw error;
+      if (folder === "" || !FolderTreeWatch.isRefused(error))
+        throw error;
+      this.skipped.add(folder);
+      if (!this.refused.has(folder)) {
+        this.refused.add(folder);
+        this.onRefused(path.join(this.worktree, folder));
+      }
+      return;
     }
     watcher.on("error", (error: Error) => this.follow(this.loseAsync(folder, watcher, error)));
     this.watchers.set(folder, watcher);
+    this.refused.delete(folder);
   }
 
   private note(folder: string, watcher: FSWatcher, event: string, name: string | null): void {
@@ -157,10 +169,13 @@ export class FolderTreeWatch {
     watcher.close();
     if (this.watchers.get(folder) === watcher)
       this.watchers.delete(folder);
-    const isThere = await stat(path.join(this.worktree, folder)).then(() => true, () => false);
-    if (isThere)
+    if (await this.isThereAsync(folder))
       throw error;
     this.forget(folder);
+  }
+
+  private async isThereAsync(folder: string): Promise<boolean> {
+    return await stat(path.join(this.worktree, folder)).then(() => true, () => false);
   }
 
   private forget(gone: string): void {
@@ -171,6 +186,8 @@ export class FolderTreeWatch {
       }
     for (const folder of [...this.skipped].filter(t => FolderTreeWatch.isIn(t, gone)))
       this.skipped.delete(folder);
+    for (const folder of [...this.refused].filter(t => FolderTreeWatch.isIn(t, gone)))
+      this.refused.delete(folder);
   }
 
   private serially(walk: () => Promise<void>): Promise<void> {
@@ -194,6 +211,10 @@ export class FolderTreeWatch {
 
   private static join(folder: string, name: string): string {
     return folder === "" ? name : `${folder}/${name}`;
+  }
+
+  private static isRefused(error: unknown): boolean {
+    return error instanceof Error && "code" in error && error.code === "EPERM";
   }
 
   private static isGone(error: unknown): boolean {

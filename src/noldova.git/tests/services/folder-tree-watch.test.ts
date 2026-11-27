@@ -40,6 +40,7 @@ describe("FolderTreeWatch", () => {
   let create: () => FolderTreeWatch;
   let names: (string | null)[];
   let failures: unknown[];
+  let refusals: string[];
   let opened: IOpened[];
   let listeners: (() => boolean)[];
   let refusing: (folder: string) => string | null;
@@ -64,6 +65,7 @@ describe("FolderTreeWatch", () => {
     });
     names = [];
     failures = [];
+    refusals = [];
     opened = [];
     listeners = [];
     await repository.writeAsync(".gitignore", "bin/\n");
@@ -93,6 +95,9 @@ describe("FolderTreeWatch", () => {
         hear();
       }, error => {
         failures.push(error);
+        hear();
+      }, folder => {
+        refusals.push(path.relative(repository.folder, folder).replaceAll("\\", "/"));
         hear();
       });
       cleanUps.add(() => created.close());
@@ -327,6 +332,61 @@ describe("FolderTreeWatch", () => {
 
     await assert.rejects(create().startAsync(), (error: unknown) => error instanceof Error && error.message === "EACCES");
     assert.deepEqual([gone, failures], [["", "src"], []]);
+  });
+
+  test("waits on a folder Windows refuses to watch while its removal is pending, though stat still finds it, reading nothing in it, and forgets it once the folder above says it went", async () => {
+    const asked = askedOf();
+    const deep = path.join(repository.folder, "src", "deep");
+    refusing = folder => (folder === "src/deep" ? "EPERM" : null);
+    await tree.startAsync();
+    const pending = [live(), (await stat(deep)).isDirectory(), vi.mocked(readdir).mock.calls.some(t => String(t[0]) === deep)];
+    await rm(deep, { recursive: true });
+    openedOf("src").watcher.emit("change", "rename", "deep");
+    await checkedAsync();
+    const removed = asked.folders.length;
+    tree.recheck();
+    await untilAsync(() => asked.folders.length > removed);
+
+    assert.deepEqual([pending, asked.folders[removed], live(), refusals, failures], [[["", "src"], true, false], ["bin"], ["", "src"], ["src/deep"], []]);
+  });
+
+  test("logs a folder whose watch is refused once until it is watched again, watches it once a recheck or the folder above finds it no longer refused, and fails the start when the top folder is refused", async () => {
+    let code: string | null = "EPERM";
+    let attempts = 0;
+    refusing = folder => {
+      if (folder !== "src/deep" || code === null)
+        return null;
+      attempts++;
+      hear();
+      return code;
+    };
+    await tree.startAsync();
+    const refused = live();
+    tree.recheck();
+    await untilAsync(() => attempts === 2);
+    const stillRefused = [live(), refusals.length, failures.length];
+    code = null;
+    tree.recheck();
+    await untilAsync(() => live().includes("src/deep"));
+    const rechecked = live();
+    code = "EPERM";
+    openedOf("src/deep").watcher.emit("change", "rename", path.join(repository.folder, "src", "deep"));
+    await untilAsync(() => refusals.length === 2);
+    tree.close();
+    await untilAsync(() => live().length === 0);
+    code = "EPERM";
+    tree = create();
+    await tree.startAsync();
+    code = null;
+    openedOf("src").watcher.emit("change", "rename", "deep");
+    await untilAsync(() => live().includes("src/deep"));
+    const settled = live();
+    tree.close();
+    await untilAsync(() => live().length === 0);
+    refusing = folder => (folder === "" ? "EPERM" : null);
+
+    await assert.rejects(create().startAsync(), (error: unknown) => error instanceof Error && error.message === "EPERM");
+    assert.deepEqual([refused, stillRefused, rechecked, settled, refusals.length, failures], [["", "src"], [["", "src"], 1, 0], ["", "src", "src/deep"], ["", "src", "src/deep"], 3, []]);
   });
 
   test("skips a folder gone before it is read, and fails the start on any other error reading one", async () => {
