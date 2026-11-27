@@ -4,6 +4,11 @@
 
 Each version's section is written by the pull request that changes the version, from the pull requests merged since the previous version; other pull requests don't edit this file.
 
+## 0.0.9
+
+- Add repository on a folder that isn't in a repository looks through its subfolders, four levels down, and offers the repositories it finds in a dialog, all ticked, adding the ones still ticked. It says when it stops at 1,000 repositories or 10,000 folders, or can't read the folder. The runtime's new `git.scanRepositories` method answers a `GitRepositoryScan` with a `ScanEnd`, both new in `@noldova/git.protocol` (#56).
+- In the Workspaces and Repository panels, a header's add button lines up with the counts and labels beside it (#64).
+
 ## 0.0.8
 
 - `git.status` counts no lines for an untracked path swapped for a FIFO, or for a link to one, after it was checked, rather than waiting for a writer and never answering (#55).
