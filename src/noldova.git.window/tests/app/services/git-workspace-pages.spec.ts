@@ -48,7 +48,7 @@ describe("GitWorkspacePages", () => {
     expect(context.callsOf("openDocument")).toEqual([["git.workspace", "open", "Dashboard"], ["git.workspace", "open", "Dashboard"]]);
   });
 
-  it("opens a repository's history named for its folder, and puts it first among the repositories opened lately", () => {
+  it("opens a repository's history named for its folder, leaving the repositories opened lately as they were until the history reads it", () => {
     fresh();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     GitRecentRepositories.remember("/work/site");
@@ -56,6 +56,6 @@ describe("GitWorkspacePages", () => {
 
     GitWorkspacePages.openRepository(context, "/work/site");
 
-    expect([context.callsOf("openDocument"), GitRecentRepositories.recent().slice(0, 2)]).toEqual([[["git.history", "/work/site", "site"]], ["/work/site", "/work/api"]]);
+    expect([context.callsOf("openDocument"), GitRecentRepositories.recent().slice(0, 2)]).toEqual([[["git.history", "/work/site", "site"]], ["/work/api", "/work/site"]]);
   });
 });

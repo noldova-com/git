@@ -6,14 +6,15 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { computed, ErrorHandler } from "@angular/core";
+import { ApplicationRef, computed, ErrorHandler } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import type { JsonValue } from "@noldova/context.json";
 import {
-  ConflictKind, FailureCode, FileState, GitCode, GitJournal, GitJournalEntry, GitOperation, GitRemote, type GitStatus, OperationKind, RemoteTransport, StatusUpstream, UndoMode
+  ConflictKind, FailureCode, FileState, GitCode, GitJournal, GitJournalEntry, GitOperation, GitRemote, GitRepositoryScan, type GitStatus, OperationKind, RemoteTransport, ScanEnd, StatusUpstream,
+  UndoMode
 } from "@noldova/git.protocol";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { userEvent } from "vitest/browser";
@@ -21,8 +22,10 @@ import { userEvent } from "vitest/browser";
 import { GitViewComponent } from "../../../../src/app/components/git-view/git-view.component.ts";
 import { GitViewPhase } from "../../../../src/app/enums/git-view-phase.ts";
 import { GitFolder } from "../../../../src/app/services/git-folder.ts";
+import { GitRecentRepositories } from "../../../../src/app/services/git-recent-repositories.ts";
 import { GitResolving } from "../../../../src/app/services/git-resolving.ts";
 import { GitViewOptions } from "../../../../src/app/services/git-view-options.ts";
+import { Resources } from "../../../../src/resources.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 import { GitViewFixture } from "../../../fixtures/git-view.fixture.ts";
@@ -73,10 +76,37 @@ describe("GitViewComponent", () => {
     expect([element.querySelectorAll(".actions").length, context.callsOf("requestAsync")]).toEqual([0, []]);
   });
 
-  it("says the folder isn't a repository, naming it", async () => {
-    const view: GitViewFixture = await GitViewFixture.renderAsync({ ...GitFixtures.watching, "git.status": GitFixtures.failure(FailureCode.NotRepository) }, ".empty");
+  it("says the folder isn't a repository, looks once under it and offers what it finds, keeping the ticked ones on the Dashboard and never the folder", async () => {
+    onTestFinished(() => GitRecentRepositories.forget(new Set(["/work/project", "/work/project/api"])));
+    const view: GitViewFixture = await GitViewFixture.renderAsync({ ...GitFixtures.watching, "git.status": GitFixtures.failure(FailureCode.NotRepository),
+      "git.scanRepositories": new GitRepositoryScan(ScanEnd.Complete, ["/work/project/api"]).toJson() }, ".empty");
+    const dialogs = (): HTMLElement[] => [...document.querySelectorAll<HTMLElement>("nol-git-repository-scan-dialog")];
+    await Wait.until(() => dialogs().length === 1);
+    TestBed.inject(ApplicationRef).tick();
+    dialogs()[0]?.querySelector<HTMLButtonElement>(".open")?.click();
+    await Wait.until(() => dialogs().length === 0);
+    await view.state.refreshAsync();
+    view.fixture.detectChanges();
+    const scans: number = view.context.callsOf("requestAsync").filter(t => t[0] === "git.scanRepositories").length;
 
-    expect(view.texts(".heading, .text")).toEqual(["Not a Git repository", "This folder, /work/project, isn't inside a Git repository."]);
+    expect([view.texts(".heading, .text"), scans, GitRecentRepositories.recent().filter(t => t.startsWith("/work/project")), view.context.callsOf("openDocument").map(t => t[0])])
+      .toEqual([["Not a Git repository", "This folder, /work/project, isn't inside a Git repository. Choose from the repositories under it."], 1, ["/work/project/api"],
+        [Resources.workspaceDocumentName]]);
+  });
+
+  it.each([
+    ["a runtime failure, unreported", GitFixtures.failure(FailureCode.Git, null, "It broke."), []],
+    ["any other failure, reported", new TypeError("broken"), ["TypeError: broken"]]
+  ])("says how to open a repository when the look under a folder that isn't one fails with %s", async (_name, failure, reported) => {
+    let status: JsonValue | Error = GitFixtures.status().toJson();
+    const view: GitViewFixture = await GitViewFixture.renderAsync({ ...GitFixtures.watching, "git.status": () => status, "git.scanRepositories": () => failure });
+    const handled: string[] = [];
+    vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.push(String(error)));
+    status = GitFixtures.failure(FailureCode.NotRepository);
+    await view.state.refreshAsync();
+    await view.untilAsync(() => view.texts(".text")[0] === Resources.formatScanFailedBelow(GitFixtures.folder));
+
+    expect([view.texts(".heading"), handled]).toEqual([["Not a Git repository"], reported]);
   });
 
   it("says the folder can't be read, naming it, and offers no Git", async () => {

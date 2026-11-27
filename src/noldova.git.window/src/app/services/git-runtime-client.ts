@@ -11,6 +11,7 @@ import { JsonException } from "@noldova/context.json";
 import {
   type ConflictResolution,
   type DiffScope,
+  FailureCode,
   GitAvatar,
   GitAvatarParams,
   GitBranches,
@@ -89,6 +90,10 @@ export class GitRuntimeClient {
         return null;
       throw failure;
     }
+  }
+
+  public static isNotRepository(error: unknown): boolean {
+    return GitRuntimeClient.failureOf(error)?.code === FailureCode.NotRepository;
   }
 
   public static isFailure(error: unknown): boolean {

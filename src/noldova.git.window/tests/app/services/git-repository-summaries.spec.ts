@@ -121,11 +121,22 @@ describe("GitRepositorySummaries", () => {
     expect(callsOf(context, "git.status")).toBe(2);
   });
 
+  it("marks a folder that isn't a repository as such, with no failure to show", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.failure(FailureCode.NotRepository, null, "The folder isn't a repository.") });
+    const summaries: GitRepositorySummaries = disposedAfter(new GitRepositorySummaries(context));
+
+    summaries.watch(folder);
+    const shown: GitRepositorySummary = await shownAsync(summaries.summaryOf(folder), () => true);
+
+    expect([shown.failure, shown.isRepository]).toEqual([null, false]);
+  });
+
   it("shows a read's failure without counts, and logs a watch or unwatch that fails", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const logged: Promise<void> = GitFixtures.loggedAsync(context, 2);
     GitFixtures.answerWith(context, {
-      "git.status": GitFixtures.failure(FailureCode.NotRepository, null, "The folder isn't a repository."),
+      "git.status": GitFixtures.failure(FailureCode.Git, null, "Git couldn't read the index."),
       "git.watch": GitFixtures.lost("The runtime went away."),
       "git.unwatch": GitFixtures.lost("The runtime went away.")
     });
@@ -136,7 +147,7 @@ describe("GitRepositorySummaries", () => {
     summaries.unwatch(folder);
     await logged;
 
-    expect([shown.failure, shown.branch, shown.upstream, shown.ahead, shown.files, shown.isTruncated]).toEqual(["The folder isn't a repository.", null, null, 0, 0, false]);
+    expect([shown.failure, shown.isRepository, shown.branch, shown.upstream, shown.ahead, shown.files, shown.isTruncated]).toEqual(["Git couldn't read the index.", true, null, null, 0, 0, false]);
     expect(context.callsOf("log")).toEqual([
       [`Changes in ${folder} made outside the workspace aren't followed, since the folder couldn't be watched: The runtime went away.`],
       [`The workspace couldn't stop watching ${folder}: The runtime went away.`]

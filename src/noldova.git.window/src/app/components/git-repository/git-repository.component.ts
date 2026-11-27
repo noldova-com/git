@@ -57,7 +57,8 @@ export class GitRepositoryComponent {
   protected readonly folder: Signal<string | null> = GitFolder.folder;
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly busy: WritableSignal<boolean> = signal(false);
-  protected readonly isReading: Signal<boolean> = computed(() => Object.isNull(this.branches()) && Object.isNull(this.failure()));
+  protected readonly isRepository: WritableSignal<boolean> = signal(true);
+  protected readonly isReading: Signal<boolean> = computed(() => Object.isNull(this.branches()) && Object.isNull(this.failure()) && this.isRepository());
   protected readonly readingIndent: number = Resources.rowInsetRem + Resources.treeStepRem;
   protected readonly changes: Signal<number> = computed(() => this.status()?.entries.length ?? 0);
   protected readonly links: Signal<readonly GitRepositoryLink[]> = computed(() => {
@@ -89,6 +90,7 @@ export class GitRepositoryComponent {
       this.worktrees.set(null);
       this.items.set(null);
       this.failure.set(null);
+      this.isRepository.set(true);
       if (Object.isNull(folder))
         return;
       untracked(() => {
@@ -264,12 +266,15 @@ export class GitRepositoryComponent {
       this.branches.set(branches);
       this.worktrees.set(worktrees);
       this.items.set(items);
+      this.isRepository.set(true);
     }
     catch (error) {
       if (reading !== this.reading)
         return;
       this.report(error);
-      if (GitRuntimeClient.isFailure(error))
+      if (GitRuntimeClient.isNotRepository(error))
+        this.isRepository.set(false);
+      else if (GitRuntimeClient.isFailure(error))
         this.failure.set(GitRuntimeClient.failureOf(error)?.message ?? Resources.historyFailed);
     }
   }
