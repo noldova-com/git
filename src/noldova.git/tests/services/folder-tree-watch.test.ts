@@ -352,6 +352,16 @@ describe("FolderTreeWatch", () => {
     assert.deepEqual(failures.map(String), ["Error: EACCES"]);
   });
 
+  test("drops the watches of a folder and those in it once the folder above says it went", async () => {
+    await tree.startAsync();
+    vi.mocked(stat).mockRejectedValueOnce(failure("ENOENT"));
+    openedOf("").watcher.emit("change", "rename", "src");
+    await untilAsync(() => openedOf("src").isClosed && openedOf("src/deep").isClosed);
+    await checkedAsync();
+
+    assert.deepEqual([live(), failures], [[""], []]);
+  });
+
   test("drops the watch of a folder removed whose own watch names its full path, as Windows does, hearing no such name", async () => {
     await tree.startAsync();
     const deep = openedOf("src/deep");
