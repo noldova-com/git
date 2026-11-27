@@ -8,7 +8,7 @@
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { chmod, readdir, realpath, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it, onTestFinished, vi } from "vitest";
@@ -208,6 +208,7 @@ describe("RuntimePart", () => {
       GitNames.commitSigningMethod,
       GitNames.pullHooksMethod,
       GitNames.avatarMethod,
+      GitNames.scanRepositoriesMethod,
       GitNames.conflictMethod,
       GitNames.markerCheckMethod,
       GitNames.watchMethod,
@@ -363,6 +364,15 @@ describe("RuntimePart", () => {
     await chmod(hook, 0o755);
 
     assert.deepEqual(await callAsync(GitNames.pullHooksMethod, { folder: repository.folder }), { hooks: ["post-merge"] });
+  });
+
+  it("registers git.scanRepositories, which answers that a repository is one and lists the repositories in a folder's subfolders, and refuses a call without a folder", async () => {
+    const parent = path.join(repository.root, "scanned");
+    await mkdir(path.join(parent, "site", ".git"), { recursive: true });
+
+    assert.deepEqual(await callAsync(GitNames.scanRepositoriesMethod, { folder: repository.folder }), { end: "Repository", repositories: [] });
+    assert.deepEqual(await callAsync(GitNames.scanRepositoriesMethod, { folder: parent }), { end: "Complete", repositories: [path.join(parent, "site")] });
+    await assert.rejects(callAsync(GitNames.scanRepositoriesMethod, {}), { name: "JsonException", path: "$.folder" });
   });
 
   it("registers git.avatar, which answers an author's Gravatar picture as a data address, and refuses a call without an email", async () => {

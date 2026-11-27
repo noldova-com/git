@@ -37,6 +37,7 @@ import {
   GitGraph,
   GitGraphParams,
   GitHooks,
+  GitRepositoryScan,
   GitJournal,
   GitLog,
   GitLogParams,
@@ -120,6 +121,10 @@ export class GitRuntimeClient {
 
   public async repositoryItemsAsync(folder: string): Promise<GitRepositoryItems> {
     return GitRepositoryItems.fromJson(await this.context.requestAsync(GitNames.repositoryItemsMethod, new GitFolderParams(folder).toJson()));
+  }
+
+  public async scanRepositoriesAsync(folder: string): Promise<GitRepositoryScan> {
+    return GitRepositoryScan.fromJson(await this.context.requestAsync(GitNames.scanRepositoriesMethod, new GitFolderParams(folder).toJson()));
   }
 
   public async worktreesAsync(folder: string): Promise<GitWorktrees> {
