@@ -7,19 +7,19 @@
  */
 
 import type { IWindowPartContext } from "@noldova/desktop.window";
-import { GitDetailView } from "@noldova/git.window";
 
 import type { PullRequestChoice } from "../models/pull-request-choice.ts";
 import { Resources } from "../../resources.ts";
+import { SignedInDetailView } from "./signed-in-detail-view.ts";
 
 export class PullRequestSelection {
-  private static readonly windows: WeakMap<IWindowPartContext, GitDetailView<PullRequestChoice>> = new WeakMap();
+  private static readonly windows: WeakMap<IWindowPartContext, SignedInDetailView<PullRequestChoice>> = new WeakMap();
 
-  public static of(context: IWindowPartContext): GitDetailView<PullRequestChoice> {
+  public static of(context: IWindowPartContext): SignedInDetailView<PullRequestChoice> {
     const known = PullRequestSelection.windows.get(context);
     if (!Object.isUndefined(known))
       return known;
-    const view = new GitDetailView<PullRequestChoice>(context, Resources.pullRequestView, Resources.pullRequestViewInstance,
+    const view = new SignedInDetailView<PullRequestChoice>(context, Resources.pullRequestView, Resources.pullRequestViewInstance,
       t => Resources.formatPullRequestViewTitle(t.pullRequest.item.reference.number));
     PullRequestSelection.windows.set(context, view);
     return view;

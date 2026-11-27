@@ -28,7 +28,6 @@ import { AzureDevOpsChipItems } from "../../services/azure-devops-chip-items.ts"
 import { AzureDevOpsLinkedCommits } from "../../services/azure-devops-linked-commits.ts";
 import { BranchDialog } from "../../services/branch-dialog.ts";
 import { SignInEvents } from "../../services/sign-in-events.ts";
-import { SignedInChoice } from "../../services/signed-in-choice.ts";
 import { WorkItemSelection } from "../../services/work-item-selection.ts";
 import { AzureDevOpsPersonAvatarComponent } from "../azure-devops-person-avatar/azure-devops-person-avatar.component.ts";
 
@@ -49,7 +48,7 @@ export class AzureDevOpsWorkItemDetailComponent {
   protected readonly resources: typeof Resources = Resources;
   protected readonly small: AvatarSize = AvatarSize.Small;
   protected readonly folder: Signal<string | null> = GitFolder.folder;
-  protected readonly choice: Signal<WorkItemChoice | null> = SignedInChoice.of(this.context, WorkItemSelection.of(this.context).shown, inject(DestroyRef));
+  protected readonly choice: Signal<WorkItemChoice | null> = WorkItemSelection.of(this.context).choice;
   protected readonly selected: Signal<HostWorkItemDetail | null> = computed(() => this.choice()?.detail ?? null);
   protected readonly children: WritableSignal<readonly HostWorkItemDetail[]> = signal<readonly HostWorkItemDetail[]>([]);
   protected readonly pullRequests: WritableSignal<ReadonlyMap<number, HostPullRequest>> = signal<ReadonlyMap<number, HostPullRequest>>(new Map());

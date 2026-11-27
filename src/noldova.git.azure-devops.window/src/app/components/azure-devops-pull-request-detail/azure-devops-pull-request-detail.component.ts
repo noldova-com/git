@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Component, computed, DestroyRef, effect, inject, input, type InputSignal, type Signal, signal, untracked, type WritableSignal } from "@angular/core";
+import { Component, computed, effect, inject, input, type InputSignal, type Signal, signal, untracked, type WritableSignal } from "@angular/core";
 import "@noldova/context.core";
 import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { type HostBuild, type HostPullRequest, type HostReviewer, PolicyState, ReferenceState } from "@noldova/git.hosting.protocol";
@@ -14,7 +14,6 @@ import { AvatarSize, IconButtonComponent } from "@noldova/ui.components.angular"
 
 import type { PullRequestChoice } from "../../models/pull-request-choice.ts";
 import { PullRequestSelection } from "../../services/pull-request-selection.ts";
-import { SignedInChoice } from "../../services/signed-in-choice.ts";
 import { Resources } from "../../../resources.ts";
 import { AzureDevOpsAddReviewerComponent } from "../azure-devops-add-reviewer/azure-devops-add-reviewer.component.ts";
 import { AzureDevOpsCompleteComponent } from "../azure-devops-complete/azure-devops-complete.component.ts";
@@ -35,7 +34,7 @@ export class AzureDevOpsPullRequestDetailComponent {
   protected readonly policyStates: typeof PolicyState = PolicyState;
   protected readonly small: AvatarSize = AvatarSize.Small;
   protected readonly open: ReferenceState = ReferenceState.Open;
-  protected readonly choice: Signal<PullRequestChoice | null> = SignedInChoice.of(this.context, PullRequestSelection.of(this.context).shown, inject(DestroyRef));
+  protected readonly choice: Signal<PullRequestChoice | null> = PullRequestSelection.of(this.context).choice;
   private readonly pullRequest: Signal<HostPullRequest | null> = computed(() => this.choice()?.pullRequest ?? null);
   protected readonly isAdding: WritableSignal<boolean> = signal<boolean>(false);
 

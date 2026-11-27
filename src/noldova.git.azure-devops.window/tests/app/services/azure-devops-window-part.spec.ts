@@ -530,8 +530,8 @@ describe("AzureDevOpsWindowPart", () => {
     await part.deactivateAsync();
     context.raiseEvent(AzureDevOpsNames.signInChangedEvent, signedIn.toJson());
 
-    expect([context.callsOf("onEvent").map(t => t[0]), context.activeCallsOf("onEvent")]).toEqual([[AzureDevOpsNames.signInChangedEvent, GitNames.changedEvent,
-      AzureDevOpsNames.signInChangedEvent], []]);
+    expect([context.callsOf("onEvent").map(t => t[0]), context.activeCallsOf("onEvent")]).toEqual([[AzureDevOpsNames.signInChangedEvent, AzureDevOpsNames.signInChangedEvent,
+      AzureDevOpsNames.signInChangedEvent, GitNames.changedEvent, AzureDevOpsNames.signInChangedEvent], []]);
     expect([whileWaiting, afterSignIn, afterRevoke, account?.account.cards()]).toEqual([waitingCards, signedInCards, signedOutCards, signedOutCards]);
   });
 

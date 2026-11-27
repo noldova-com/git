@@ -30,6 +30,7 @@ import { AzureDevOpsPullRequestComponent } from "../../../../src/app/components/
 import { AzureDevOpsPullRequestDetailComponent }
   from "../../../../src/app/components/azure-devops-pull-request-detail/azure-devops-pull-request-detail.component.ts";
 import { PullRequestPages } from "../../../../src/app/services/pull-request-pages.ts";
+import { PullRequestSelection } from "../../../../src/app/services/pull-request-selection.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
@@ -160,9 +161,15 @@ class Page {
   public create(instance: string = INSTANCE): void {
     TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: this.context },
       { provide: WindowPartTokens.activeDocument, useValue: this.active }, { provide: TestComponentRenderer, useClass: SideBySideRenderer }, provideMarkdown()] });
+    onTestFinished(PullRequestSelection.of(this.context).listen());
     this.fixture = TestBed.createComponent(AzureDevOpsPullRequestComponent);
     this.fixture.componentRef.setInput("instance", instance);
     this.fixture.autoDetectChanges();
+    this.remakeView();
+  }
+
+  public remakeView(): void {
+    this.view?.destroy();
     this.view = TestBed.createComponent(AzureDevOpsPullRequestDetailComponent);
     this.view.componentRef.setInput("instance", "selected");
     this.view.autoDetectChanges();
@@ -664,6 +671,36 @@ describe("AzureDevOpsPullRequestComponent", () => {
 
     expect([reading, page.query("[role=status]")]).toEqual(["Reading the pull request on Azure DevOps.", null]);
     expect(page.texts(".title")).toEqual(["Export notes as Markdown from the shared notes list"]);
+  });
+
+  it("drops the pull request a read brings back after the person signed out while it was on its way", async () => {
+    const page = new Page();
+    const release = page.requests.hold(AzureDevOpsNames.readPullRequestMethod);
+    page.create();
+    await page.requests.askedAsync(1);
+
+    page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+    await page.untilAsync(() => !Object.isNull(page.query(".signed-out")));
+    release(pullRequest.toJson());
+    await page.settleAsync();
+
+    expect([page.texts(".title"), page.queryAll(".signed-out, .reviewer").length, page.payloadsOf(AzureDevOpsNames.readPullRequestMethod).length]).toEqual([[], 1, 1]);
+  });
+
+  it("shows a view made after the person signed out none of the pull request an earlier view kept", async () => {
+    const page = new Page();
+    page.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson());
+    await page.openAsync();
+    page.active.set(false);
+    await page.settleAsync();
+    const kept: number = page.queryAll(".reviewer").length;
+
+    page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+    await page.settleAsync();
+    page.remakeView();
+    await page.settleAsync();
+
+    expect([kept, page.queryAll(".reviewer").length, wordsOf(page.detail)]).toEqual([4, 0, "Open a pull request to see its details here."]);
   });
 
   it("logs a request the window fails, offers to try again, and shows the pull request the retry reads", async () => {

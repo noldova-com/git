@@ -14,7 +14,6 @@ import { GitFolderParams, GitGraph, GitNames, GitStatus } from "@noldova/git.pro
 import { GitFolder } from "@noldova/git.window";
 import { describe, expect, it, onTestFinished } from "vitest";
 
-import { WorkItemSelection } from "../../../../src/app/services/work-item-selection.ts";
 import { WorkItemsPages } from "../../../../src/app/services/work-items-pages.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { Wait } from "../../../fixtures/wait.fixture.ts";
@@ -163,6 +162,20 @@ describe("AzureDevOpsWorkItemComponent", () => {
     expect(page.texts(".empty")).toHaveLength(1);
   });
 
+  it("drops the work items a read brings back after the person signed out while it was on its way", async () => {
+    const page = new Page();
+    const release = page.requests.hold(AzureDevOpsNames.readWorkItemsMethod);
+    page.open();
+    await page.requests.askedAsync(1);
+
+    page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+    await Wait.until(() => page.find(".signed-out"));
+    release(listOf(mine));
+    await page.settleAsync();
+
+    expect([page.ids, page.texts(".signed-out").length, page.requests.methods.length]).toEqual([[], 1, 1]);
+  });
+
   it("logs a read the window fails, offers to try again, and lists what the retry reads", async () => {
     const page = new Page();
     page.requests.fail(AzureDevOpsNames.readWorkItemsMethod, new WindowFailure("The runtime stopped."));
@@ -270,7 +283,6 @@ describe("AzureDevOpsWorkItemComponent", () => {
     page.requests.answer(AzureDevOpsNames.readWorkItemsMethod, listOf([]));
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, null);
     await page.openAsync();
-    WorkItemSelection.of(page.context).listen();
     page.context.raiseViewClosed("git-azure-devops.workItemDetail", "selected");
     page.element.querySelectorAll<HTMLElement>(".item")[4]?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
     await page.settleAsync();
