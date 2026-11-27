@@ -15,6 +15,8 @@ import * as api from "../../src/api/index.ts";
 describe("The hosting protocol package's API", () => {
   it("exports its values, and each enum valued by its names", () => {
     assert.deepEqual(Object.keys(api).toSorted(), [
+      "AccountPick",
+      "AccountQuery",
       "AuthorQuery",
       "BranchPullRequest",
       "BranchQuery",
@@ -23,6 +25,8 @@ describe("The hosting protocol package's API", () => {
       "DeviceCode",
       "FileChangeKind",
       "HostAccount",
+      "HostAccountEntry",
+      "HostAccountList",
       "HostAvatar",
       "HostBuild",
       "HostCapabilities",
@@ -68,6 +72,7 @@ describe("The hosting protocol package's API", () => {
       "PullRequestStatus",
       "ReferenceKind",
       "ReferenceState",
+      "RepositoryAccount",
       "RepositoryQuery",
       "ReviewDecision",
       "SignInFailure",

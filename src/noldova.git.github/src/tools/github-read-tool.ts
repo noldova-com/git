@@ -11,14 +11,14 @@ import { type IToolDescriptor, type IToolHandler, type ToolCall, ToolContent, To
 import { type HostItem, HostReference } from "@noldova/git.hosting.protocol";
 import { GitHubNames } from "@noldova/git.github.protocol";
 
-import type { IGitHubToken } from "../interfaces/i-github-token.ts";
+import type { IGitHubTokens } from "../interfaces/i-github-tokens.ts";
 import { Resources } from "../resources.ts";
 import type { GitHubReads } from "../services/github-reads.ts";
 import { GitHubToolFailures } from "./github-tool-failures.ts";
 
 export class GitHubReadTool implements IToolHandler {
   private readonly reads: GitHubReads;
-  private readonly token: IGitHubToken;
+  private readonly tokens: IGitHubTokens;
 
   public readonly descriptor: IToolDescriptor = {
     name: GitHubNames.readTool,
@@ -41,14 +41,14 @@ export class GitHubReadTool implements IToolHandler {
     deadline: { default: Resources.readToolDeadline, maximum: Resources.readToolMaximumDeadline }
   };
 
-  public constructor(reads: GitHubReads, token: IGitHubToken) {
+  public constructor(reads: GitHubReads, tokens: IGitHubTokens) {
     this.reads = reads;
-    this.token = token;
+    this.tokens = tokens;
   }
 
   public async handleAsync(call: ToolCall): Promise<ToolResult> {
     const reference: HostReference = GitHubReadTool.referenceOf(call);
-    if (this.token.token === null)
+    if (this.tokens.signedIn.length === 0)
       throw GitHubToolFailures.signedOut();
     let item: HostItem | null;
     try {
@@ -58,7 +58,7 @@ export class GitHubReadTool implements IToolHandler {
       throw GitHubToolFailures.fromGitHub(error);
     }
     if (item === null)
-      throw this.token.token === null
+      throw this.tokens.signedIn.length === 0
         ? GitHubToolFailures.signedOut()
         : GitHubToolFailures.fail(ToolFailureCode.Unavailable, Resources.itemNotFoundMessage, Resources.notFoundToolCode);
     return new ToolResult([ToolContent.fromText(JSON.stringify(item.toJson()), Resources.gitHubOrigin)]);

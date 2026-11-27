@@ -13,7 +13,7 @@ import { HostingProtocolException, type HostItem, PullRequestDraft } from "@nold
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { GitNames, type GitRepositories } from "@noldova/git.protocol";
 
-import type { IGitHubToken } from "../interfaces/i-github-token.ts";
+import type { IGitHubTokens } from "../interfaces/i-github-tokens.ts";
 import { Resources } from "../resources.ts";
 import type { GitHubReads } from "../services/github-reads.ts";
 import { BoundRepository } from "./bound-repository.ts";
@@ -21,7 +21,7 @@ import { GitHubToolFailures } from "./github-tool-failures.ts";
 
 export class GitHubPrCreateTool implements IToolHandler {
   private readonly reads: GitHubReads;
-  private readonly token: IGitHubToken;
+  private readonly tokens: IGitHubTokens;
   private readonly repositories: () => GitRepositories;
 
   public readonly descriptor: IToolDescriptor = {
@@ -49,16 +49,16 @@ export class GitHubPrCreateTool implements IToolHandler {
     nextTool: GitHubNames.prChecksTool
   };
 
-  public constructor(reads: GitHubReads, token: IGitHubToken, repositories: () => GitRepositories) {
+  public constructor(reads: GitHubReads, tokens: IGitHubTokens, repositories: () => GitRepositories) {
     this.reads = reads;
-    this.token = token;
+    this.tokens = tokens;
     this.repositories = repositories;
   }
 
   public async handleAsync(call: ToolCall): Promise<ToolResult> {
     const repository: BoundRepository = await BoundRepository.readAsync(call, this.repositories);
     const draft: PullRequestDraft = GitHubPrCreateTool.draftOf(call, repository);
-    if (this.token.token === null)
+    if (this.tokens.signedIn.length === 0)
       throw GitHubToolFailures.signedOut();
     const request: IPermissionRequest = {
       action: GitHubNames.createPullRequestMethod,

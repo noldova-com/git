@@ -13,6 +13,11 @@ export class Resources {
   public static readonly scope: string = "repo";
   public static readonly grantType: string = "urn:ietf:params:oauth:grant-type:device_code";
   public static readonly signInSecret: string = "git-github.signIn";
+  public static readonly accountsSecret: string = "git-github.accounts";
+  public static readonly picksCap: number = 200;
+  public static readonly unknownAccountMessage: string = "This GitHub account isn't kept on this computer any more.";
+  public static readonly keptAccountsUnreadable: string = "The GitHub accounts kept on this computer couldn't be read; only the first account was restored.";
+  public static readonly accountsNotKept: string = "The GitHub accounts couldn't be kept on this computer; added accounts and chosen accounts last until the app closes.";
   public static readonly accessSignedOutReason: string = "Sign in to GitHub in Settings, GitHub.";
   public static readonly accessUnreadableReason: string = "The GitHub sign-in kept on this computer couldn't be read; sign in again in Settings, GitHub.";
   public static readonly accessWaitingReason: string = "The sign-in to GitHub isn't finished yet: enter its code at GitHub, or sign in again in Settings, GitHub.";
@@ -98,6 +103,9 @@ export class Resources {
   public static readonly userField: string = "user";
   public static readonly authorField: string = "author";
   public static readonly loginField: string = "login";
+  public static readonly hostField: string = "host";
+  public static readonly accountsField: string = "accounts";
+  public static readonly picksField: string = "picks";
   public static readonly avatarUrlField: string = "avatar_url";
   public static readonly titleField: string = "title";
   public static readonly htmlUrlField: string = "html_url";
@@ -395,6 +403,18 @@ export class Resources {
 
   public static formatBody(body: string): string {
     return `${Resources.bodyStart}${body}`;
+  }
+
+  public static formatRepositoryReadPath(owner: string, repository: string): string {
+    return `/repos/${owner}/${repository}`;
+  }
+
+  public static formatAccountSecret(id: number): string {
+    return `git-github.account${id}`;
+  }
+
+  public static formatKeptAccountsUnread(reason: string): string {
+    return `The GitHub accounts kept on this computer couldn't be read: ${reason}`;
   }
 
   public static formatRepositoryPath(owner: string, repository: string, rest: string): string {

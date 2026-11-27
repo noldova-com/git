@@ -1,0 +1,261 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import { JsonException, JsonReader } from "@noldova/context.json";
+import { FailureCode, SecretFailureReason, SecretFailures } from "@noldova/desktop.protocol";
+import { type IAppWindows, type IModuleLog, type IModuleSecrets, MethodFailureException } from "@noldova/desktop.runtime";
+import { AccountPick, HostAccountEntry, HostAccountList, HostingProtocolException, type HostSignIn, SignInState } from "@noldova/git.hosting.protocol";
+
+import type { IGitHubTokens } from "../interfaces/i-github-tokens.ts";
+import { GitHubRepository } from "../models/github-repository.ts";
+import { KeptAccount } from "../models/kept-account.ts";
+import { KeptAccounts } from "../models/kept-accounts.ts";
+import { SignedInAccount } from "../models/signed-in-account.ts";
+import { Resources } from "../resources.ts";
+import { GitHubApi } from "./github-api.ts";
+import type { GitHubDeviceFlow } from "./github-device-flow.ts";
+import { GitHubSignIn } from "./github-sign-in.ts";
+
+export class GitHubAccounts implements IGitHubTokens {
+  private static readonly firstId: number = 1;
+
+  private readonly flow: GitHubDeviceFlow;
+  private readonly secrets: IModuleSecrets;
+  private readonly appWindows: IAppWindows;
+  private readonly log: IModuleLog;
+  private readonly api: GitHubApi;
+  private readonly changed: (id: number, signIn: HostSignIn) => void;
+  private readonly entries: Map<number, GitHubSignIn> = new Map();
+  private readonly found: Map<string, Promise<number>> = new Map();
+  private picks: readonly AccountPick[] = [];
+  private kept: string | null = null;
+  private saving: Promise<void> = Promise.resolve();
+  private unfollowWindows: (() => void) | null = null;
+  private stopped: boolean = false;
+
+  public constructor(flow: GitHubDeviceFlow, secrets: IModuleSecrets, appWindows: IAppWindows, log: IModuleLog, api: GitHubApi,
+    changed: (id: number, signIn: HostSignIn) => void) {
+    this.flow = flow;
+    this.secrets = secrets;
+    this.appWindows = appWindows;
+    this.log = log;
+    this.api = api;
+    this.changed = changed;
+    this.entries.set(GitHubAccounts.firstId, this.make(GitHubAccounts.firstId));
+  }
+
+  public get first(): GitHubSignIn {
+    return this.signInOf(GitHubAccounts.firstId);
+  }
+
+  public get list(): HostAccountList {
+    return new HostAccountList([...this.entries].map(([id, signIn]) => new HostAccountEntry(id, signIn.current)));
+  }
+
+  public get signedIn(): readonly SignedInAccount[] {
+    const accounts: SignedInAccount[] = [];
+    for (const [id, signIn] of this.entries) {
+      const token: string | null = signIn.token;
+      const login: string | undefined = signIn.current.account?.login;
+      if (token !== null && login !== undefined)
+        accounts.push(new SignedInAccount(id, login, token));
+    }
+    return accounts;
+  }
+
+  public async restoreAsync(): Promise<void> {
+    if (this.stopped)
+      return;
+    const kept: KeptAccounts | null = await this.readKeptAsync();
+    if (this.stopped)
+      return;
+    for (const account of kept?.accounts ?? []) {
+      if (!this.entries.has(account.id))
+        this.entries.set(account.id, this.make(account.id));
+    }
+    this.picks = kept?.picks ?? [];
+    await Promise.all([...this.entries.values()].map(t => t.restoreAsync()));
+    for (const [id, signIn] of this.entries) {
+      if (id !== GitHubAccounts.firstId && signIn.current.state === SignInState.SignedOut && !signIn.keptUnreadable)
+        this.leave(id);
+    }
+    this.save();
+  }
+
+  public signInOf(id: number): GitHubSignIn {
+    const signIn: GitHubSignIn | undefined = this.entries.get(id);
+    if (signIn === undefined)
+      throw GitHubApi.failure(FailureCode.NotFound, Resources.unknownAccountMessage);
+    return signIn;
+  }
+
+  public async addAsync(): Promise<HostAccountEntry> {
+    const id: number = Math.max(...this.entries.keys()) + 1;
+    const signIn: GitHubSignIn = this.make(id);
+    this.entries.set(id, signIn);
+    return new HostAccountEntry(id, await signIn.startAsync());
+  }
+
+  public async signOutAsync(id: number): Promise<HostSignIn> {
+    const signIn: GitHubSignIn = this.signInOf(id);
+    const answer: HostSignIn = await signIn.signOutAsync();
+    if (id !== GitHubAccounts.firstId && this.entries.has(id)) {
+      this.leave(id);
+      this.publish(id, answer);
+    }
+    return answer;
+  }
+
+  public async pickAsync(pick: AccountPick, signal: AbortSignal): Promise<number | null> {
+    this.signInOf(pick.account);
+    const others: readonly AccountPick[] = this.picks.filter(t => t.host !== pick.host || t.path !== pick.path);
+    this.picks = [...others, pick].slice(-Resources.picksCap);
+    this.found.delete(GitHubAccounts.keyOf(pick.host, pick.path));
+    this.save();
+    return this.accountForAsync(pick.host, pick.path, signal);
+  }
+
+  public async accountForAsync(host: string, path: string, signal: AbortSignal): Promise<number | null> {
+    const signedIn: readonly SignedInAccount[] = this.signedIn;
+    const first: SignedInAccount | undefined = signedIn[0];
+    if (first === undefined)
+      return null;
+    const pick: number | undefined = this.picks.find(t => t.host === host && t.path === path)?.account;
+    if (pick !== undefined && signedIn.some(t => t.id === pick))
+      return pick;
+    if (signedIn.length === 1 || host !== Resources.host)
+      return first.id;
+    const key: string = GitHubAccounts.keyOf(host, path);
+    let found: Promise<number> | undefined = this.found.get(key);
+    if (found === undefined) {
+      found = this.probeAsync(key, path, signedIn, first.id);
+      this.found.set(key, found);
+    }
+    const id: number = await found;
+    signal.throwIfAborted();
+    const now: readonly SignedInAccount[] = this.signedIn;
+    return now.some(t => t.id === id) ? id : now[0]?.id ?? null;
+  }
+
+  public async tokenForAsync(host: string, path: string, signal: AbortSignal): Promise<string | null> {
+    const id: number | null = await this.accountForAsync(host, path, signal);
+    return id === null ? null : this.signInOf(id).token;
+  }
+
+  public holds(token: string): boolean {
+    return [...this.entries.values()].some(t => t.token === token);
+  }
+
+  public async refusedAsync(token: string): Promise<void> {
+    await Promise.all([...this.entries.values()].map(t => t.refusedAsync(token)));
+  }
+
+  public dispose(): void {
+    this.stopped = true;
+    this.unfollowWindows?.();
+    this.unfollowWindows = null;
+    for (const signIn of this.entries.values())
+      signIn.dispose();
+  }
+
+  private make(id: number): GitHubSignIn {
+    const secret: string = id === GitHubAccounts.firstId ? Resources.signInSecret : Resources.formatAccountSecret(id);
+    return new GitHubSignIn(this.flow, this.secrets, this.appWindows, this.log, t => this.onChanged(id, t), secret);
+  }
+
+  private onChanged(id: number, signIn: HostSignIn): void {
+    if (id !== GitHubAccounts.firstId && signIn.state === SignInState.SignedOut && signIn.failure === null)
+      this.leave(id);
+    this.publish(id, signIn);
+  }
+
+  private publish(id: number, signIn: HostSignIn): void {
+    this.found.clear();
+    this.save();
+    this.changed(id, signIn);
+  }
+
+  private leave(id: number): void {
+    this.signInOf(id).dispose();
+    this.entries.delete(id);
+    this.picks = this.picks.filter(t => t.account !== id);
+  }
+
+  private async probeAsync(key: string, path: string, signedIn: readonly SignedInAccount[], first: number): Promise<number> {
+    const repository: GitHubRepository | null = GitHubRepository.parse(path);
+    if (repository === null)
+      return first;
+    for (const account of signedIn) {
+      try {
+        if (await this.api.getAsync(repository.path, account.token, new AbortController().signal) !== null)
+          return account.id;
+      }
+      catch (error) {
+        if (!GitHubApi.isUnauthorized(error)) {
+          this.found.delete(key);
+          return first;
+        }
+        await this.refusedAsync(account.token);
+      }
+    }
+    return first;
+  }
+
+  private async readKeptAsync(): Promise<KeptAccounts | null> {
+    let kept: string | null;
+    try {
+      kept = await this.secrets.readAsync(Resources.accountsSecret);
+    }
+    catch (error) {
+      if (!(error instanceof MethodFailureException))
+        throw error;
+      if (SecretFailures.reasonOf(error.failure) === SecretFailureReason.NotConnected && this.unfollowWindows === null)
+        this.unfollowWindows = this.appWindows.onChanged(() => this.restoreOnceConnected());
+      else
+        this.log.write(Resources.formatKeptAccountsUnread(error.failure.message));
+      return null;
+    }
+    this.kept = kept;
+    if (kept === null)
+      return null;
+    try {
+      return KeptAccounts.fromJson(JsonReader.parseValue(kept));
+    }
+    catch (error) {
+      if (!(error instanceof JsonException || error instanceof HostingProtocolException))
+        throw error;
+      this.log.write(Resources.keptAccountsUnreadable);
+      return null;
+    }
+  }
+
+  private restoreOnceConnected(): void {
+    this.unfollowWindows?.();
+    this.unfollowWindows = null;
+    this.restoreAsync().catch((error: unknown) => this.log.write(Resources.formatSignInBroken(String(error))));
+  }
+
+  private save(): void {
+    const accounts: KeptAccount[] = [];
+    for (const [id, signIn] of this.entries) {
+      const login: string | null = signIn.current.account?.login ?? null;
+      if (id !== GitHubAccounts.firstId && (login !== null || signIn.keptUnreadable))
+        accounts.push(new KeptAccount(id, Resources.host, login));
+    }
+    const value: string = JSON.stringify(new KeptAccounts(accounts, this.picks).toJson());
+    if (this.stopped || value === this.kept || (this.kept === null && accounts.length === 0 && this.picks.length === 0))
+      return;
+    this.kept = value;
+    this.saving = this.saving.then(() => this.secrets.saveAsync(Resources.accountsSecret, value)).catch((error: unknown) =>
+      this.log.write(error instanceof MethodFailureException ? Resources.accountsNotKept : Resources.formatSignInBroken(String(error))));
+  }
+
+  private static keyOf(host: string, path: string): string {
+    return Resources.formatDraftSubject(host, path);
+  }
+}

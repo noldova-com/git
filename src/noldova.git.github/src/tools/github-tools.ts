@@ -9,7 +9,7 @@
 import type { IToolHandler, IToolDescriptor, IToolsContext, Registration } from "@noldova/desktop.runtime";
 import type { GitRepositories } from "@noldova/git.protocol";
 
-import type { IGitHubToken } from "../interfaces/i-github-token.ts";
+import type { IGitHubTokens } from "../interfaces/i-github-tokens.ts";
 import type { GitHubReads } from "../services/github-reads.ts";
 import { GitHubPrChecksTool } from "./github-pr-checks-tool.ts";
 import { GitHubPrCreateTool } from "./github-pr-create-tool.ts";
@@ -19,8 +19,8 @@ export class GitHubTools {
   private readonly registrations: Registration[] = [];
   public readonly tools: readonly (IToolHandler & { readonly descriptor: IToolDescriptor })[];
 
-  public constructor(reads: GitHubReads, token: IGitHubToken, repositories: () => GitRepositories) {
-    this.tools = [new GitHubReadTool(reads, token), new GitHubPrChecksTool(reads, token, repositories), new GitHubPrCreateTool(reads, token, repositories)];
+  public constructor(reads: GitHubReads, tokens: IGitHubTokens, repositories: () => GitRepositories) {
+    this.tools = [new GitHubReadTool(reads, tokens), new GitHubPrChecksTool(reads, tokens, repositories), new GitHubPrCreateTool(reads, tokens, repositories)];
   }
 
   public publish(tools: IToolsContext): void {

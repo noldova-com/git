@@ -9,24 +9,26 @@
 import { JsonException } from "@noldova/context.json";
 import { Failure, FailureCode, ShellClients } from "@noldova/desktop.protocol";
 import { type EventChannel, type IRuntimePart, type IRuntimePartContext, MethodFailureException, type RequestContext } from "@noldova/desktop.runtime";
-import { AuthorQuery, BranchQuery, CommitQuery, HostAvatar, HostingProtocolException, HostReference, PullRequestDraft, RepositoryQuery,
-  SignInState } from "@noldova/git.hosting.protocol";
+import { AccountPick, AccountQuery, AuthorQuery, BranchQuery, CommitQuery, HostAvatar, HostingProtocolException, HostReference, PullRequestDraft,
+  RepositoryAccount, RepositoryQuery, SignInState } from "@noldova/git.hosting.protocol";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { GitNames, GitRepositories } from "@noldova/git.protocol";
 
 import { SignInMethod } from "./models/sign-in-method.ts";
 import { Resources } from "./resources.ts";
 import { GitHubAccess } from "./services/github-access.ts";
+import { GitHubAccounts } from "./services/github-accounts.ts";
 import { GitHubApi } from "./services/github-api.ts";
 import { GitHubAvatars } from "./services/github-avatars.ts";
 import { GitHubDeviceFlow } from "./services/github-device-flow.ts";
 import { GitHubReads } from "./services/github-reads.ts";
-import { GitHubSignIn } from "./services/github-sign-in.ts";
 import { GitHubTools } from "./tools/github-tools.ts";
 
 export class RuntimePart implements IRuntimePart {
+  private static readonly firstAccount: number = 1;
+
   private context: IRuntimePartContext | null = null;
-  private signIn: GitHubSignIn | null = null;
+  private accounts: GitHubAccounts | null = null;
   private tools: GitHubTools | null = null;
 
   public get isActive(): boolean {
@@ -35,23 +37,29 @@ export class RuntimePart implements IRuntimePart {
 
   public async activateAsync(context: IRuntimePartContext): Promise<void> {
     const changed: EventChannel = context.declareEvent(GitHubNames.signInChangedEvent);
+    const accountsChanged: EventChannel = context.declareEvent(GitHubNames.accountsChangedEvent);
     const fetcher = (url: string, init: RequestInit): Promise<Response> => fetch(url, init);
     const api = new GitHubApi(fetcher);
     const avatars = new GitHubAvatars(fetcher, context.log);
-    const signIn = new GitHubSignIn(new GitHubDeviceFlow(fetcher, avatars), context.secrets, context.appWindows, context.log, t => {
+    const accounts: GitHubAccounts = new GitHubAccounts(new GitHubDeviceFlow(fetcher, avatars), context.secrets, context.appWindows, context.log, api, (id, t) => {
       if (t.state !== SignInState.SignedIn)
         api.clear();
-      changed.publish(t.toJson());
+      if (id === RuntimePart.firstAccount)
+        changed.publish(t.toJson());
+      accountsChanged.publish(accounts.list.toJson());
     });
-    const reads = new GitHubReads(api, signIn, avatars);
+    const reads = new GitHubReads(api, accounts, avatars);
     const methods: readonly SignInMethod[] = [
-      new SignInMethod(GitHubNames.readSignInMethod, () => signIn.current),
-      new SignInMethod(GitHubNames.startSignInMethod, () => signIn.startAsync()),
-      new SignInMethod(GitHubNames.cancelSignInMethod, () => signIn.cancel()),
-      new SignInMethod(GitHubNames.signOutMethod, () => signIn.signOutAsync())
+      new SignInMethod(GitHubNames.readSignInMethod, t => accounts.signInOf(t).current),
+      new SignInMethod(GitHubNames.startSignInMethod, t => accounts.signInOf(t).startAsync()),
+      new SignInMethod(GitHubNames.cancelSignInMethod, t => accounts.signInOf(t).cancel()),
+      new SignInMethod(GitHubNames.signOutMethod, t => accounts.signOutAsync(t))
     ];
-    for (const method of methods)
-      context.registerMethod(method.name, { handleAsync: async () => (await method.run()).toJson() });
+    for (const method of methods) {
+      context.registerMethod(method.name, {
+        handleAsync: async request => (await method.run(request.payload === null ? RuntimePart.firstAccount : RuntimePart.read(request, AccountQuery.fromJson).account)).toJson()
+      });
+    }
     context.registerMethod(GitHubNames.readReferenceMethod, {
       handleAsync: async request => (await reads.readShownReferenceAsync(RuntimePart.read(request, HostReference.fromJson), request.signal))?.toJson() ?? null
     });
@@ -80,20 +88,31 @@ export class RuntimePart implements IRuntimePart {
       handleAsync: async request => (await reads.createPullRequestAsync(RuntimePart.read(RuntimePart.fromWindow(request), PullRequestDraft.fromJson),
         request.signal)).toJson()
     });
-    context.publishService(GitHubNames.accessService, new GitHubAccess(signIn));
-    const tools = new GitHubTools(reads, signIn, () => context.getService(GitNames.repositoriesService, GitRepositories));
+    context.registerMethod(GitHubNames.readAccountsMethod, { handleAsync: () => Promise.resolve(accounts.list.toJson()) });
+    context.registerMethod(GitHubNames.addAccountMethod, { handleAsync: async () => (await accounts.addAsync()).toJson() });
+    context.registerMethod(GitHubNames.readRepositoryAccountMethod, {
+      handleAsync: async request => {
+        const query: RepositoryQuery = RuntimePart.read(request, RepositoryQuery.fromJson);
+        return new RepositoryAccount(await accounts.accountForAsync(query.host, query.path, request.signal)).toJson();
+      }
+    });
+    context.registerMethod(GitHubNames.pickAccountMethod, {
+      handleAsync: async request => new RepositoryAccount(await accounts.pickAsync(RuntimePart.read(request, AccountPick.fromJson), request.signal)).toJson()
+    });
+    context.publishService(GitHubNames.accessService, new GitHubAccess(accounts));
+    const tools = new GitHubTools(reads, accounts, () => context.getService(GitNames.repositoriesService, GitRepositories));
     this.context = context;
-    this.signIn = signIn;
+    this.accounts = accounts;
     this.tools = tools;
-    await signIn.restoreAsync();
+    await accounts.restoreAsync();
     tools.publish(context.tools);
   }
 
   public async deactivateAsync(): Promise<void> {
     this.tools?.dispose();
     this.tools = null;
-    this.signIn?.dispose();
-    this.signIn = null;
+    this.accounts?.dispose();
+    this.accounts = null;
     this.context = null;
   }
 

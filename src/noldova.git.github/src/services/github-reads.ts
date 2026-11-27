@@ -13,25 +13,27 @@ import { type AuthorQuery, BranchPullRequest, type BranchQuery, CheckState, type
   type PullRequestDraft, ReferenceKind, ReferenceState, type RepositoryQuery, ReviewDecision, ThreadStatus } from "@noldova/git.hosting.protocol";
 import { GitHubNames } from "@noldova/git.github.protocol";
 
-import type { IGitHubToken } from "../interfaces/i-github-token.ts";
+import type { IGitHubTokens } from "../interfaces/i-github-tokens.ts";
+import { AccountSearch } from "../models/account-search.ts";
 import { GitHubRepository } from "../models/github-repository.ts";
 import { NewestItems } from "../models/newest-items.ts";
 import { ReviewSearchAnswer } from "../models/review-search-answer.ts";
 import { ReviewSearch } from "../models/review-search.ts";
 import { ReviewVerdict } from "../models/review-verdict.ts";
+import type { SignedInAccount } from "../models/signed-in-account.ts";
 import { Resources } from "../resources.ts";
 import { GitHubApi } from "./github-api.ts";
 import type { GitHubAvatars } from "./github-avatars.ts";
 
 export class GitHubReads {
   private readonly api: GitHubApi;
-  private readonly signIn: IGitHubToken;
+  private readonly tokens: IGitHubTokens;
   private readonly avatars: GitHubAvatars;
-  private reviewSearch: ReviewSearch | null = null;
+  private readonly reviewSearches: Map<string, ReviewSearch> = new Map();
 
-  public constructor(api: GitHubApi, signIn: IGitHubToken, avatars: GitHubAvatars) {
+  public constructor(api: GitHubApi, tokens: IGitHubTokens, avatars: GitHubAvatars) {
     this.api = api;
-    this.signIn = signIn;
+    this.tokens = tokens;
     this.avatars = avatars;
   }
 
@@ -45,7 +47,7 @@ export class GitHubReads {
 
   public async readBranchPullRequestAsync(query: BranchQuery, signal: AbortSignal): Promise<BranchPullRequest> {
     const none: BranchPullRequest = new BranchPullRequest(null, []);
-    const token: string | null = this.signIn.token;
+    const token: string | null = await this.tokens.tokenForAsync(query.host, query.path, signal);
     const repository: GitHubRepository | null = GitHubRepository.parse(query.path);
     if (query.host !== Resources.host || token === null || repository === null)
       return none;
@@ -64,12 +66,12 @@ export class GitHubReads {
       const checks: HostCheck[] = await this.readChecksAsync(repository, commit, token, signal);
       return new BranchPullRequest(pullRequest, checks, await this.readReviewDecisionAsync(repository, number, token, signal));
     });
-    return this.signIn.token === token ? answer : none;
+    return this.tokens.holds(token) ? answer : none;
   }
 
   public async readPullRequestsAsync(query: RepositoryQuery, signal: AbortSignal): Promise<HostPullRequestList> {
     const none: HostPullRequestList = new HostPullRequestList([], false);
-    const token: string | null = this.signIn.token;
+    const token: string | null = await this.tokens.tokenForAsync(query.host, query.path, signal);
     const repository: GitHubRepository | null = GitHubRepository.parse(query.path);
     if (token === null)
       return HostPullRequestList.signedOut();
@@ -81,28 +83,33 @@ export class GitHubReads {
       const rows: HostPullRequestRow[] = await Promise.all(read.slice(0, HostPullRequestList.maximumRows).map(t => this.readRowAsync(repository, t, token, signal)));
       return new HostPullRequestList(rows, read.length > HostPullRequestList.maximumRows);
     });
-    return this.signIn.token === token ? list : HostPullRequestList.signedOut();
+    return this.tokens.holds(token) ? list : HostPullRequestList.signedOut();
   }
 
   public async readReviewRequestsAsync(query: RepositoryQuery, signal: AbortSignal): Promise<HostReviewRequestList> {
-    const token: string | null = this.signIn.token;
+    const accounts: readonly SignedInAccount[] = this.tokens.signedIn;
     const repository: GitHubRepository | null = GitHubRepository.parse(query.path);
-    if (token === null)
+    if (accounts.length === 0)
       return HostReviewRequestList.signedOut();
     if (query.host !== Resources.host || repository === null)
       return new HostReviewRequestList([], false);
-    const { rows, isCut } = await this.searchReviewRequestsAsync(token);
+    const searches: readonly AccountSearch[] = await Promise.all(accounts.map(async t => new AccountSearch(t, await this.searchReviewRequestsAsync(t.token))));
     signal.throwIfAborted();
-    if (this.signIn.token !== token)
+    const held: readonly AccountSearch[] = searches.filter(t => this.tokens.holds(t.account.token));
+    if (held.length === 0)
       return HostReviewRequestList.signedOut();
     const key: string = GitHubReads.repositoryKeyOf(repository.owner, repository.name);
-    return new HostReviewRequestList(rows.filter(t => GitHubReads.repositoryKeyOf(t.reference.owner, t.reference.repository) === key)
-      .toSorted((a, b) => b.createdAt - a.createdAt), isCut);
+    const rows: readonly HostReviewRequest[] = held.flatMap(({ account, answer }) => answer.rows
+      .filter(t => GitHubReads.repositoryKeyOf(t.reference.owner, t.reference.repository) === key)
+      .map(t => accounts.length === 1 ? t : new HostReviewRequest(t.reference, t.title, t.url, t.isDraft, t.createdAt, account.login)))
+      .toSorted((a, b) => b.createdAt - a.createdAt);
+    return new HostReviewRequestList(rows.slice(0, HostReviewRequestList.maximumRows),
+      rows.length > HostReviewRequestList.maximumRows || held.some(t => t.answer.isCut));
   }
 
   public async readCommitCommentsAsync(query: CommitQuery, signal: AbortSignal): Promise<HostCommitComments> {
     const none: HostCommitComments = HostCommitComments.none();
-    const token: string | null = this.signIn.token;
+    const token: string | null = await this.tokens.tokenForAsync(query.host, query.path, signal);
     const repository: GitHubRepository | null = GitHubRepository.parse(query.path);
     if (query.host !== Resources.host || token === null || repository === null)
       return none;
@@ -116,7 +123,7 @@ export class GitHubReads {
       const reviewComments: readonly JsonReader[] = reviews === null ? [] : GitHubApi.read(() => reviews.readObjectArray(Resources.itemsField));
       return GitHubApi.read(() => GitHubReads.commitCommentsOf(query.commit, commitComments, reviewComments));
     });
-    return this.signIn.token === token ? answer : none;
+    return this.tokens.holds(token) ? answer : none;
   }
 
   public async readAuthorAvatarAsync(query: AuthorQuery, signal: AbortSignal): Promise<string | null> {
@@ -126,7 +133,7 @@ export class GitHubReads {
     if (Resources.noReplyPattern.test(email))
       return this.avatars.readAsync(email.replace(Resources.noReplyPattern, (_email, id: string | undefined, login: string) => Resources.formatAccountAvatar(id ?? null, login)),
         signal);
-    const token: string | null = this.signIn.token;
+    const token: string | null = await this.tokens.tokenForAsync(query.host, query.path, signal);
     const repository: GitHubRepository | null = GitHubRepository.parse(query.path);
     if (token === null || repository === null)
       return null;
@@ -135,11 +142,12 @@ export class GitHubReads {
       return commit === null ? null : GitHubApi.read(() => commit.readNullableObject(Resources.authorField)?.readNullableString(Resources.avatarUrlField) ?? null);
     });
     const avatar: string | null = await this.avatars.readAsync(address, signal);
-    return this.signIn.token === token ? avatar : null;
+    return this.tokens.holds(token) ? avatar : null;
   }
 
   public async readPullRequestAsync(reference: HostReference, signal: AbortSignal): Promise<HostPullRequest | null> {
-    const token: string | null = this.signIn.token;
+    const token: string | null = reference.host === GitHubNames.moduleId
+      ? await this.tokens.tokenForAsync(Resources.host, Resources.formatRepositoryName(reference.owner, reference.repository), signal) : null;
     const repository: GitHubRepository | null = GitHubRepository.parse(Resources.formatRepositoryName(reference.owner, reference.repository));
     if (reference.host !== GitHubNames.moduleId || token === null || repository === null)
       return null;
@@ -153,12 +161,13 @@ export class GitHubReads {
       signal.throwIfAborted();
       return GitHubApi.read(() => GitHubReads.pullRequestPageOf(reference, pull, avatar, reviews, runs));
     });
-    return this.signIn.token === token ? pullRequest : null;
+    return this.tokens.holds(token) ? pullRequest : null;
   }
 
   public async readPullRequestThreadsAsync(reference: HostReference, signal: AbortSignal): Promise<HostPullRequestThreads> {
     const none: HostPullRequestThreads = new HostPullRequestThreads([], false);
-    const token: string | null = this.signIn.token;
+    const token: string | null = reference.host === GitHubNames.moduleId
+      ? await this.tokens.tokenForAsync(Resources.host, Resources.formatRepositoryName(reference.owner, reference.repository), signal) : null;
     const repository: GitHubRepository | null = GitHubRepository.parse(Resources.formatRepositoryName(reference.owner, reference.repository));
     if (reference.host !== GitHubNames.moduleId || token === null || repository === null)
       return none;
@@ -173,11 +182,11 @@ export class GitHubReads {
         this.readNewestAsync(page => repository.pathOf(Resources.formatPullCommentsPagePath(reference.number, page)), reviewCount, token, signal)]);
       return GitHubApi.read(() => new HostPullRequestThreads(GitHubReads.threadsOf(conversation.items, reviews.items), conversation.hasMore || reviews.hasMore));
     });
-    return this.signIn.token === token ? threads : none;
+    return this.tokens.holds(token) ? threads : none;
   }
 
   public async createPullRequestAsync(draft: PullRequestDraft, signal: AbortSignal): Promise<HostItem> {
-    const token: string | null = this.signIn.token;
+    const token: string | null = await this.tokens.tokenForAsync(draft.host, draft.path, signal);
     if (token === null)
       throw GitHubApi.failure(FailureCode.Unauthorized, Resources.signedOutMessage);
     const repository: GitHubRepository | null = GitHubRepository.parse(draft.path);
@@ -194,7 +203,8 @@ export class GitHubReads {
   }
 
   private async readItemAsync(reference: HostReference, signal: AbortSignal, withAvatar: boolean): Promise<HostItem | null> {
-    const token: string | null = this.signIn.token;
+    const token: string | null = reference.host === GitHubNames.moduleId
+      ? await this.tokens.tokenForAsync(Resources.host, Resources.formatRepositoryName(reference.owner, reference.repository), signal) : null;
     const repository: GitHubRepository | null = GitHubRepository.parse(Resources.formatRepositoryName(reference.owner, reference.repository));
     if (reference.host !== GitHubNames.moduleId || token === null || repository === null)
       return null;
@@ -211,7 +221,7 @@ export class GitHubReads {
         return GitHubApi.read(() => GitHubReads.issueOf(reference, issue, avatar));
       return pull === null ? null : GitHubApi.read(() => GitHubReads.pullRequestOf(reference, pull, avatar));
     });
-    return this.signIn.token === token ? item : null;
+    return this.tokens.holds(token) ? item : null;
   }
 
   private async readChecksAsync(repository: GitHubRepository, commit: string, token: string, signal: AbortSignal): Promise<HostCheck[]> {
@@ -295,14 +305,18 @@ export class GitHubReads {
 
   private searchReviewRequestsAsync(token: string): Promise<ReviewSearchAnswer> {
     const now: number = Date.now();
-    const held: ReviewSearch | null = this.reviewSearch;
-    if (held !== null && held.token === token && now - held.startedAt < Resources.reviewRequestsHeldFor)
+    for (const kept of this.reviewSearches.keys()) {
+      if (!this.tokens.holds(kept))
+        this.reviewSearches.delete(kept);
+    }
+    const held: ReviewSearch | undefined = this.reviewSearches.get(token);
+    if (held !== undefined && now - held.startedAt < Resources.reviewRequestsHeldFor)
       return held.answer;
     const answer: Promise<ReviewSearchAnswer> = this.askAsync<ReviewSearchAnswer>(token, async () => {
       const found: JsonReader | null = await this.api.getAsync(Resources.reviewRequestsPath, token, new AbortController().signal);
       return found === null ? new ReviewSearchAnswer([], false) : GitHubApi.read(() => GitHubReads.reviewSearchOf(found));
     });
-    this.reviewSearch = new ReviewSearch(token, now, answer);
+    this.reviewSearches.set(token, new ReviewSearch(token, now, answer));
     return answer;
   }
 
@@ -312,7 +326,7 @@ export class GitHubReads {
     }
     catch (error) {
       if (GitHubApi.isUnauthorized(error))
-        await this.signIn.refusedAsync(token);
+        await this.tokens.refusedAsync(token);
       throw error;
     }
   }
