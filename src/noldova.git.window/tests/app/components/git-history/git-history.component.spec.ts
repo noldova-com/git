@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { signal, type WritableSignal } from "@angular/core";
+import { ErrorHandler, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
@@ -14,7 +14,7 @@ import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { FileState, GitCommit, GitGraph, GitGraphCommit, GitRef, RefKind, StatusUpstream } from "@noldova/git.protocol";
 import { DefaultTheme } from "@noldova/ui.components.angular";
 import { AppearanceFixture } from "@noldova/ui.components.angular/testing";
-import { describe, expect, it, onTestFinished } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { GitHistoryComponent } from "../../../../src/app/components/git-history/git-history.component.ts";
 import { GitBranchView } from "../../../../src/app/models/git-branch-view.ts";
@@ -303,6 +303,16 @@ describe("GitHistoryComponent", () => {
       .toEqual(["Second", "First", [], []]);
   });
 
+  const downWithoutCommitViewAsync = async (context: FakeWindowPartContext, element: HTMLElement): Promise<readonly unknown[]> => {
+    const options = (): readonly HTMLElement[] => [...element.querySelectorAll<HTMLElement>("[role=option]")];
+    const selectedAt = (): number => options().findIndex(t => t.getAttribute("aria-selected") === "true");
+    await untilAsync(element, () => options().length === 3 && selectedAt() >= 0 && selectedAt() < 2);
+    const before: number = selectedAt();
+    element.querySelector<HTMLElement>("[aria-selected=true]")?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    await untilAsync(element, () => selectedAt() === before + 1);
+    return [Object.isNull(GitCommitDetails.of(context).shown()), context.callsOf("showView").filter(t => t[0] === "git.commitView")];
+  };
+
   it("ends a click's wait for a commit once a tag's commit is never found, so keyboard Down then keeps the focus in the history", async () => {
     onTestFinished(() => {
       GitViewing.branch.set(null);
@@ -317,17 +327,35 @@ describe("GitHistoryComponent", () => {
     const fixture: ComponentFixture<GitHistoryComponent> = TestBed.createComponent(GitHistoryComponent);
     fixture.componentRef.setInput("instance", GitFixtures.folder);
     fixture.autoDetectChanges();
-    const element: HTMLElement = fixture.nativeElement;
-    const options = (): readonly HTMLElement[] => [...element.querySelectorAll<HTMLElement>("[role=option]")];
-    await untilAsync(element, () => options().length === 3);
-    options()[0]?.click();
+
+    expect(await downWithoutCommitViewAsync(context, fixture.nativeElement)).toEqual([false, []]);
+  });
+
+  it("ends a click's wait for a commit once the page read looking for a tag's commit fails, so keyboard Down then keeps the focus in the history", async () => {
+    onTestFinished(() => {
+      GitViewing.branch.set(null);
+      GitViewing.showChanges(GitFixtures.folder);
+    });
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.answer("requestAsync", async (method: string, params: unknown) => {
+      if (method === "git.graph" && Object.isObject(params) && "skip" in params && params.skip !== 0)
+        throw new Error("page broke");
+      if (method === "git.graph")
+        return new GitGraph(graph.commits, true).toJson();
+      return GitFixtures.answerFor({ ...GitFixtures.watching, "git.status": GitFixtures.status([GitFixtures.entry("a.ts", FileState.Unmodified, FileState.Modified)]).toJson() }, method);
+    });
+    GitFixtures.setUp(context, [{ provide: WindowPartTokens.activeDocument, useValue: signal(true) }]);
+    const handled: WritableSignal<readonly string[]> = signal([]);
+    vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.update(t => [...t, String(error)]));
+    GitViewing.branch.set(new GitBranchView(GitFixtures.folder, "", false, "f".repeat(40)));
+    GitCommitDetails.of(context).bringForward();
+    const fixture: ComponentFixture<GitHistoryComponent> = TestBed.createComponent(GitHistoryComponent);
+    fixture.componentRef.setInput("instance", GitFixtures.folder);
+    fixture.autoDetectChanges();
+    await untilAsync(fixture.nativeElement, () => context.callsOf("requestAsync").some(t => t[0] === "git.graph" && Object.isObject(t[1]) && "skip" in t[1] && t[1].skip !== 0));
     await fixture.whenStable();
 
-    element.querySelector<HTMLElement>("[aria-selected=true]")?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
-    await untilAsync(element, () => options()[1]?.getAttribute("aria-selected") === "true");
-
-    expect([GitCommitDetails.of(context).shown()?.commit.commit.subject, context.callsOf("showView").filter(t => t[0] === "git.commitView")])
-      .toEqual(["Second", []]);
+    expect([...await downWithoutCommitViewAsync(context, fixture.nativeElement), handled()]).toEqual([false, [], ["Error: page broke"]]);
   });
 
   it("keeps each folder's chosen commit, so a commit chosen in one History leaves another folder's History on its own", async () => {

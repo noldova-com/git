@@ -445,6 +445,7 @@ export class GitHistoryComponent {
       this.hasMore.set(graph.truncated);
     }
     catch (error) {
+      this.jumped.set(GitViewing.branchOf(folder));
       this.report(error);
     }
     finally {
