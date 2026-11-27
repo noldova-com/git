@@ -9,14 +9,16 @@
 import { ErrorHandler, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import "@noldova/context.core";
+import { DatePattern } from "@noldova/desktop.protocol";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { FailureCode, GitCommand, GitCommandLog } from "@noldova/git.protocol";
-import { describe, expect, it, onTestFinished, vi } from "vitest";
+import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { GitCommandLogComponent } from "../../../../src/app/components/git-command-log/git-command-log.component.ts";
 import { GitRuntimeClient } from "../../../../src/app/services/git-runtime-client.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
+import { TimeFormatsFixture } from "../../../fixtures/time-formats.fixture.ts";
 import { Wait } from "../../../fixtures/wait.fixture.ts";
 
 class MountedLog {
@@ -36,6 +38,7 @@ class MountedLog {
 describe("GitCommandLogComponent", () => {
   const at: string = "2026-11-22T18:05:00Z";
   const push: GitCommand = new GitCommand("2", at, `git push --porcelain -- origin 8c41e0a:refs/heads/${"feature/".repeat(40)}graph`, 1, 1_250);
+  const time: string = DatePattern.format(new Date(at), "h:mm a");
   const commands: GitCommandLog = new GitCommandLog([new GitCommand("1", at, "git add -- a.txt", 0, 40), push, new GitCommand("3", at, "git fetch --quiet", null, 30_000)]);
 
   const mount = (context: FakeWindowPartContext): MountedLog => {
@@ -53,12 +56,13 @@ describe("GitCommandLogComponent", () => {
   const requests = (context: FakeWindowPartContext): readonly (readonly unknown[])[] => context.callsOf("requestAsync").filter(t => t[0] !== "git.status");
   const rem = (pixels: number): number => pixels / parseFloat(getComputedStyle(document.documentElement).fontSize);
 
+  afterEach(() => TimeFormatsFixture.reset());
+
   it("lists the commands oldest first, the newest at the end, with when each started, its line, how it ended and how long it took, cutting a long line in its column", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.commandLog": commands.toJson() });
     const { element } = mount(context);
     await until(() => element.querySelectorAll(".command").length === 3);
-    const time: string = new Date(at).toLocaleTimeString("en-US");
     const line: HTMLElement | null = element.querySelector<HTMLElement>(".command:nth-child(2) .line");
     const row: DOMRect = element.querySelector(".command")?.getBoundingClientRect() ?? new DOMRect();
     const list: DOMRect = element.querySelector(".commands")?.getBoundingClientRect() ?? new DOMRect();
@@ -72,6 +76,20 @@ describe("GitCommandLogComponent", () => {
     expect([line?.title, (line?.scrollWidth ?? 0) > (line?.clientWidth ?? 0), rem(row.height), rem(row.left - list.left), rem(row.width) === rem(list.width)]).toEqual([
       push.line, true, 1.75, 0, true
     ]);
+  });
+
+  it("shows when each command started by the time format setting, and again when it changes", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.commandLog": commands.toJson() });
+    const { element } = mount(context);
+    await until(() => element.querySelectorAll(".command").length === 3);
+    const before: string[] = [...element.querySelectorAll(".command .time")].map(t => (t.textContent ?? "").trim());
+    TimeFormatsFixture.use24Hour();
+    const after: string = DatePattern.format(new Date(at), "HH:mm");
+    await until(() => element.querySelector(".command .time")?.textContent?.trim() === after);
+
+    expect([before, [...element.querySelectorAll(".command .time")].map(t => (t.textContent ?? "").trim())])
+      .toEqual([[time, time, time], [after, after, after]]);
   });
 
   it("draws no card, heading, help text or line between rows, the first row at its top and each row's time at its edge", async () => {
