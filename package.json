@@ -12,6 +12,7 @@
   "scripts": {
     "build": "node scripts/build.ts",
     "test": "node scripts/test.ts",
+    "test:merge": "node scripts/test-merge.ts",
     "test:timing": "node scripts/timing/test-timing.ts"
   },
   "dependencies": {

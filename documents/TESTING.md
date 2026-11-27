@@ -40,6 +40,9 @@ Arguments make a filtered run, as `npm test -- <test file>` does.
 A window spec, named from the repository root with forward slashes, runs alone in its window part after the cache removal, `ngc` and the Playwright install, through `ng test` without coverage.
 Vitest takes the other arguments as the root suite's filters and still measures coverage, but the coverage gates are off, since only the whole suite can meet them; a filtered run is not the gate.
 
+`npm test -- --shard=<part>/<parts>`, with 2 to 8 parts, runs one part of the suite, for a target whose whole suite doesn't fit its job's 20 minutes: the checks run in part 1 only; every part runs its share of the root suite's files through Vitest's `--shard`, with the coverage gates off, and writes Vitest's blob report, with its coverage, to `_build/vitest-blob/blob-<part>.json`, beside `root-<part>.txt`, the folder the part ran in; the window parts are dealt from the last part back, one each, and the installed-package check runs in part 1.
+A part is not the gate either: `npm run test:merge -- <folder> <parts>` (`scripts/test-merge.ts`) takes every part's `_build/vitest-blob`, from any folders under `<folder>`, rewrites each part's folder in its report to this checkout's, since a part may have run on another system, installs the packages with `npm ci` when Vitest isn't installed, as in CI's merge job, and merges the reports with Vitest's `--merge-reports`, which measures the whole root suite's coverage against the gates and writes `_build/test-times.json`; then the test-time check runs on it.
+
 ### Running CI's other steps
 
 These steps of "Build and test" aren't part of `npm test`; each runs locally after `npm run build` on a clean checkout, with the pipelines tool the shared workflow pins, `@noldova/tools.pipelines.github@0.0.20`, installed with `npm install --prefix <folder> @noldova/tools.pipelines.github@0.0.20`, whose `node_modules/.bin/pipelines` runs them:
@@ -73,6 +76,7 @@ The window part's specs measure its `src` the same way, through the unit-test bu
 ## The targets
 
 The modules' tests run on Linux x64, Windows x64 and macOS arm64 for every pull request, draft or ready, and on pushes to `main` and runs started by hand on all six targets, Linux arm64, Windows arm64 and macOS x64 too, on GitHub-hosted runners.
+On those runs, Windows arm64's tests run as 3 parts and macOS x64's as 2, each a job of its own, since their whole suite runs past the job's 20 minutes; a job per target then runs `npm run test:merge` on Linux x64 with every part's blob reports, and "All targets" fails unless that merge passes too.
 The workflow's one job, `build-and-test`, named "Build and test", calls the shared workflow, which runs one job per target, such as "Linux x64", which GitHub lists as "Build and test / Linux x64", and its "All targets" fails unless every one of them passed.
 
 ## What the tests cover

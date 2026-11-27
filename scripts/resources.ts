@@ -243,6 +243,23 @@ export class Resources {
   public static readonly defaultRepeat: number = 1;
   public static readonly wholeNumberPattern: RegExp = /^[1-9][0-9]*$/u;
   public static readonly dotReporter: string = "--reporter=dot";
+  public static readonly shardPrefix: string = "--shard=";
+  public static readonly shardPattern: RegExp = /^--shard=([1-8])\/([2-8])$/u;
+  public static readonly shardValue: string = "--shard takes <part>/<parts>: 2 to 8 parts, and a part from 1 to their number.";
+  public static readonly shardOnce: string = "--shard may be given only once.";
+  public static readonly shardFiltered: string = "--shard runs a whole part of the suite, so it takes no test files.";
+  public static readonly blobFolder: string = "_build/vitest-blob";
+  public static readonly blobReporter: string = "--reporter=blob";
+  public static readonly mergeFolder: string = "_build/vitest-merge";
+  public static readonly blobFilePattern: RegExp = /^blob-([1-8])\.json$/u;
+  public static readonly partRootFilePattern: RegExp = /^root-([1-8])\.txt$/u;
+  public static readonly fileUrlPrefix: string = "file://";
+  public static readonly escapedWindowsPathSeparator: string = "\\\\";
+  public static readonly mergeUsage: string = "Usage: npm run test:merge -- <folder of the parts' outputs> <parts>";
+  public static readonly mergeInstall: readonly string[] = ["ci", "--ignore-scripts", "--no-audit", "--no-fund"];
+  public static readonly vitestScript: string = "node_modules/vitest/vitest.mjs";
+  public static readonly mergeReportsOption: string = "--merge-reports=";
+  public static readonly mergeReporters: readonly string[] = ["--coverage", "--coverage.skipFull", "--reporter=dot", "--reporter=json", "--outputFile.json=_build/test-times.json"];
   public static readonly skipFullCoverage: string = "--coverage.skipFull";
   public static readonly noCoverage: string = "--coverage=false";
   public static readonly includeOption: string = "--include";
@@ -624,8 +641,24 @@ export class Resources {
     return `Coverage ignores ${calls} compiler-generated class-metadata calls for ${classes} classes, which run only in development mode.`;
   }
 
+  public static formatShardOption(part: number, parts: number): string {
+    return `${Resources.shardPrefix}${part}/${parts}`;
+  }
+
+  public static formatBlobOutput(part: number): string {
+    return `--outputFile.blob=${Resources.blobFolder}/blob-${part}.json`;
+  }
+
+  public static formatPartRootFile(part: number): string {
+    return `root-${part}.txt`;
+  }
+
+  public static formatPartsMissing(folder: string, parts: number, found: readonly number[]): string {
+    return `${folder} holds the blob reports of parts ${found.length === 0 ? "none" : found.join(", ")}, not of each of the ${parts} parts with its root.`;
+  }
+
   public static formatUnknownTestOptions(options: readonly string[], unknown: readonly string[]): string {
-    return `npm test takes ${options.join(", ")} and ${Resources.repeatOption} <count>, then any test files, not ${unknown.join(Resources.listSeparator)}.`;
+    return `npm test takes ${options.join(", ")}, ${Resources.repeatOption} <count> and ${Resources.shardPrefix}<part>/<parts>, then any test files, not ${unknown.join(Resources.listSeparator)}.`;
   }
 
   public static formatRunHeading(run: number, repeat: number): string {
