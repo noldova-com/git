@@ -28,6 +28,16 @@ function signInOf(github: FakeGitHub, secrets: FakeModuleSecrets = new FakeModul
   return new GitHubSignIn(new GitHubDeviceFlow(github.fetch, new GitHubAvatars(github.fetch, new FakeModuleLog())), secrets, new FakeAppWindows(), new FakeModuleLog(), () => undefined);
 }
 
+type AccessSignIn = Pick<GitHubSignIn, "current" | "token" | "keptUnreadable">;
+
+function accessOf(first: AccessSignIn, others: ReadonlyMap<number, AccessSignIn> = new Map(), chosen: number | null = null): GitHubAccess {
+  return new GitHubAccess({
+    first,
+    accountForAsync: () => Promise.resolve(chosen),
+    signInOf: id => id === 1 ? first : others.get(id) ?? first
+  });
+}
+
 describe("GitHubAccess", () => {
   beforeEach(() => {
     vi.useFakeTimers({ now: 1_800_000_000_000 });
@@ -44,14 +54,14 @@ describe("GitHubAccess", () => {
     const secrets = new FakeModuleSecrets();
     new KeptSecrets(secrets).values.set("git-github.signIn", JSON.stringify({ token: "gho_kept", account: account.toJson() }));
     const restored = signInOf(new FakeGitHub(), secrets);
-    const before = await new GitHubAccess(waiting).accessAsync(signal);
+    const before = await accessOf(waiting).accessAsync(signal);
 
     await waiting.startAsync();
-    const whileWaiting = await new GitHubAccess(waiting).accessAsync(signal);
+    const whileWaiting = await accessOf(waiting).accessAsync(signal);
     await restored.restoreAsync();
-    const signedIn = await new GitHubAccess(restored).accessAsync(signal);
+    const signedIn = await accessOf(restored).accessAsync(signal);
     await restored.refusedAsync("gho_kept");
-    const revoked = await new GitHubAccess(restored).accessAsync(signal);
+    const revoked = await accessOf(restored).accessAsync(signal);
     waiting.dispose();
     restored.dispose();
 
@@ -64,7 +74,7 @@ describe("GitHubAccess", () => {
   });
 
   it("answers no token for a held token without a signed-in account", async () => {
-    const answer = await new GitHubAccess({ current: HostSignIn.signedOut(), token: "gho_stale", keptUnreadable: false }).accessAsync(signal);
+    const answer = await accessOf({ current: HostSignIn.signedOut(), token: "gho_stale", keptUnreadable: false }).accessAsync(signal);
 
     assert.deepEqual(answer, new GitHubAccessRefusal("Sign in to GitHub in Settings, GitHub."));
   });
@@ -75,7 +85,7 @@ describe("GitHubAccess", () => {
     const signIn = signInOf(new FakeGitHub(), unreadable);
 
     await signIn.restoreAsync();
-    const answer = await new GitHubAccess(signIn).accessAsync(signal);
+    const answer = await accessOf(signIn).accessAsync(signal);
     signIn.dispose();
 
     assert.deepEqual(answer, new GitHubAccessRefusal("The GitHub sign-in kept on this computer couldn't be read; sign in again in Settings, GitHub."));
@@ -95,14 +105,14 @@ describe("GitHubAccess", () => {
 
     await nothingKept.restoreAsync();
     await restored.restoreAsync();
-    const unconnected = await Promise.all([nothingKept, restored].map(t => new GitHubAccess(t).accessAsync(signal)));
+    const unconnected = await Promise.all([nothingKept, restored].map(t => accessOf(t).accessAsync(signal)));
     empty.readFailure = null;
     kept.readFailure = null;
     kept.values.set("git-github.signIn", JSON.stringify({ token: "gho_kept", account: account.toJson() }));
     emptyWindows.raiseChanged();
     keptWindows.raiseChanged();
     await vi.advanceTimersByTimeAsync(0);
-    const connected = await Promise.all([nothingKept, restored].map(t => new GitHubAccess(t).accessAsync(signal)));
+    const connected = await Promise.all([nothingKept, restored].map(t => accessOf(t).accessAsync(signal)));
     nothingKept.dispose();
     restored.dispose();
 
@@ -116,11 +126,11 @@ describe("GitHubAccess", () => {
     new KeptSecrets(secrets).values.set("git-github.signIn", JSON.stringify({ token: "gho_kept", account: account.toJson() }));
     const signIn = signInOf(new FakeGitHub(), secrets);
     await signIn.restoreAsync();
-    const before = await new GitHubAccess(signIn).accessAsync(signal);
+    const before = await accessOf(signIn).accessAsync(signal);
 
     signIn.dispose();
 
-    assert.deepEqual([before, signIn.token, await new GitHubAccess(signIn).accessAsync(signal)],
+    assert.deepEqual([before, signIn.token, await accessOf(signIn).accessAsync(signal)],
       [new GitHubAccessGrant("gho_kept", "octocat"), null, new GitHubAccessRefusal("Sign in to GitHub in Settings, GitHub.")]);
   });
 
@@ -134,7 +144,29 @@ describe("GitHubAccess", () => {
       return HostSignIn.signedIn(account);
     }, token: "gho_token", keptUnreadable: false };
 
-    await assert.rejects(new GitHubAccess(signIn).accessAsync(stop.signal), t => t === reason);
+    await assert.rejects(accessOf(signIn).accessAsync(stop.signal), t => t === reason);
     assert.equal(reads, 0);
+  });
+
+  it("answers the account the module reads a repository with, its host, and the first account's reason when none is signed in", async () => {
+    const first = { current: HostSignIn.signedOut(), token: null, keptUnreadable: true };
+    const second = { current: HostSignIn.signedIn(new HostAccount("hubot", null, null, ["repo"])), token: "gho_hubot", keptUnreadable: false };
+    const repository = { host: "github.com", path: "octocat/hello-world" };
+
+    const answers = [await accessOf(first, new Map([[2, second]]), 2).accessForAsync(repository, signal), await accessOf(first).accessForAsync(repository, signal),
+      await accessOf(first, new Map([[2, second]]), 2).accessAsync(signal)];
+
+    assert.deepEqual(answers, [new GitHubAccessGrant("gho_hubot", "hubot", "github.com"),
+      new GitHubAccessRefusal("The GitHub sign-in kept on this computer couldn't be read; sign in again in Settings, GitHub."),
+      new GitHubAccessRefusal("The GitHub sign-in kept on this computer couldn't be read; sign in again in Settings, GitHub.")]);
+  });
+
+  it("refuses an aborted call for a repository with the signal's reason", async () => {
+    const stop = new AbortController();
+    const reason = new Error("The turn was cancelled.");
+    stop.abort(reason);
+
+    await assert.rejects(accessOf({ current: HostSignIn.signedOut(), token: null, keptUnreadable: false }).accessForAsync({ host: "github.com", path: "octocat/hello-world" },
+      stop.signal), t => t === reason);
   });
 });

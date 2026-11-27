@@ -6,15 +6,16 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { signal, type WritableSignal } from "@angular/core";
+import { ApplicationRef, ErrorHandler, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
-import { FileState, GitCommit, GitGraph, GitGraphCommit, GitRef, RefKind, StatusUpstream } from "@noldova/git.protocol";
+import { FailureCode, FileState, GitChanged, GitCommit, GitGraph, GitGraphCommit, GitNames, GitRef, GitRepositoryScan, type JsonValue, RefKind, ScanEnd, StatusUpstream }
+  from "@noldova/git.protocol";
 import { DefaultTheme } from "@noldova/ui.components.angular";
 import { AppearanceFixture } from "@noldova/ui.components.angular/testing";
-import { describe, expect, it, onTestFinished } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { GitHistoryComponent } from "../../../../src/app/components/git-history/git-history.component.ts";
 import { GitBranchView } from "../../../../src/app/models/git-branch-view.ts";
@@ -26,8 +27,10 @@ import { GitFolder } from "../../../../src/app/services/git-folder.ts";
 import { GitPendingSwitch } from "../../../../src/app/services/git-pending-switch.ts";
 import { GitRecentRepositories } from "../../../../src/app/services/git-recent-repositories.ts";
 import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
+import { Resources } from "../../../../src/resources.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
+import { Wait } from "../../../fixtures/wait.fixture.ts";
 
 class RenderedHistory {
   public readonly element: HTMLElement;
@@ -218,7 +221,7 @@ describe("GitHistoryComponent", () => {
     expect([shown, context.callsOf("requestAsync").filter(t => t[0] === "git.graph").length, GitViewing.branch()]).toEqual(["Commit 4", 2, null]);
   });
 
-  it("brings the Commit view to the front, through openView only, once for each commit the person clicks, and shows its choice there until it closes",
+  it("brings the Commit view to the front, through showView only, once for each commit the person clicks, and shows its choice there until it closes",
     async () => {
     onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
     const context: FakeWindowPartContext = new FakeWindowPartContext();
@@ -242,7 +245,7 @@ describe("GitHistoryComponent", () => {
     fixture.destroy();
 
     expect([opened, context.callsOf("openView"), context.callsOf("showView"), first, second, details.shown()])
-      .toEqual([0, [["git.commitView", "selected", "Commit"], ["git.commitView", "selected", "Commit"]], [["git.repository"]],
+      .toEqual([0, [], [["git.repository"], ["git.commitView"], ["git.commitView"]],
         "First", "Second", null]);
   });
 
@@ -269,6 +272,93 @@ describe("GitHistoryComponent", () => {
     await fixture.whenStable();
 
     expect([afterKey - keyed, context.callsOf("showView").slice(afterKey)]).toEqual([0, [["git.view"]]]);
+  });
+
+  it("keeps the focus in History as Down moves from the changes row through the commits, never showing the Commit view, which shows each one",
+    async () => {
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.graph": graph.toJson(),
+      "git.status": GitFixtures.status([GitFixtures.entry("a.ts", FileState.Unmodified, FileState.Modified)]).toJson() });
+    GitFixtures.setUp(context, [{ provide: WindowPartTokens.activeDocument, useValue: signal(true) }]);
+    const fixture: ComponentFixture<GitHistoryComponent> = TestBed.createComponent(GitHistoryComponent);
+    fixture.componentRef.setInput("instance", GitFixtures.folder);
+    fixture.autoDetectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    const details: GitDetailView<GitCommitView> = GitCommitDetails.of(context);
+    const options = (): readonly HTMLElement[] => [...element.querySelectorAll<HTMLElement>("[role=option]")];
+    const down = (): void => {
+      element.querySelector<HTMLElement>("[aria-selected=true]")?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    };
+    await untilAsync(element, () => options().length === 3);
+    options()[0]?.click();
+    await fixture.whenStable();
+    const before: number = context.callsOf("showView").length;
+
+    down();
+    await untilAsync(element, () => options()[1]?.getAttribute("aria-selected") === "true");
+    const first: string | undefined = details.shown()?.commit.commit.subject;
+    down();
+    await untilAsync(element, () => options()[2]?.getAttribute("aria-selected") === "true");
+    const second: string | undefined = details.shown()?.commit.commit.subject;
+
+    expect([first, second, context.callsOf("showView").slice(before).filter(t => t[0] === "git.commitView"), context.callsOf("openView")])
+      .toEqual(["Second", "First", [], []]);
+  });
+
+  const downWithoutCommitViewAsync = async (context: FakeWindowPartContext, element: HTMLElement): Promise<readonly unknown[]> => {
+    const options = (): readonly HTMLElement[] => [...element.querySelectorAll<HTMLElement>("[role=option]")];
+    const selectedAt = (): number => options().findIndex(t => t.getAttribute("aria-selected") === "true");
+    await untilAsync(element, () => options().length === 3 && selectedAt() >= 0 && selectedAt() < 2);
+    const before: number = selectedAt();
+    element.querySelector<HTMLElement>("[aria-selected=true]")?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    await untilAsync(element, () => selectedAt() === before + 1);
+    return [Object.isNull(GitCommitDetails.of(context).shown()), context.callsOf("showView").filter(t => t[0] === "git.commitView")];
+  };
+
+  it("ends a click's wait for a commit once a tag's commit is never found, so keyboard Down then keeps the focus in the history", async () => {
+    onTestFinished(() => {
+      GitViewing.branch.set(null);
+      GitViewing.showChanges(GitFixtures.folder);
+    });
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.graph": graph.toJson(),
+      "git.status": GitFixtures.status([GitFixtures.entry("a.ts", FileState.Unmodified, FileState.Modified)]).toJson() });
+    GitFixtures.setUp(context, [{ provide: WindowPartTokens.activeDocument, useValue: signal(true) }]);
+    GitViewing.branch.set(new GitBranchView(GitFixtures.folder, "", false, "f".repeat(40)));
+    GitCommitDetails.of(context).bringForward();
+    const fixture: ComponentFixture<GitHistoryComponent> = TestBed.createComponent(GitHistoryComponent);
+    fixture.componentRef.setInput("instance", GitFixtures.folder);
+    fixture.autoDetectChanges();
+
+    expect(await downWithoutCommitViewAsync(context, fixture.nativeElement)).toEqual([false, []]);
+  });
+
+  it("ends a click's wait for a commit once the page read looking for a tag's commit fails, so keyboard Down then keeps the focus in the history", async () => {
+    onTestFinished(() => {
+      GitViewing.branch.set(null);
+      GitViewing.showChanges(GitFixtures.folder);
+    });
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.answer("requestAsync", async (method: string, params: unknown) => {
+      if (method === "git.graph" && Object.isObject(params) && "skip" in params && params.skip !== 0)
+        throw new Error("page broke");
+      if (method === "git.graph")
+        return new GitGraph(graph.commits, true).toJson();
+      return GitFixtures.answerFor({ ...GitFixtures.watching, "git.status": GitFixtures.status([GitFixtures.entry("a.ts", FileState.Unmodified, FileState.Modified)]).toJson() }, method);
+    });
+    GitFixtures.setUp(context, [{ provide: WindowPartTokens.activeDocument, useValue: signal(true) }]);
+    const handled: WritableSignal<readonly string[]> = signal([]);
+    vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.update(t => [...t, String(error)]));
+    GitViewing.branch.set(new GitBranchView(GitFixtures.folder, "", false, "f".repeat(40)));
+    GitCommitDetails.of(context).bringForward();
+    const fixture: ComponentFixture<GitHistoryComponent> = TestBed.createComponent(GitHistoryComponent);
+    fixture.componentRef.setInput("instance", GitFixtures.folder);
+    fixture.autoDetectChanges();
+    await untilAsync(fixture.nativeElement, () => context.callsOf("requestAsync").some(t => t[0] === "git.graph" && Object.isObject(t[1]) && "skip" in t[1] && t[1].skip !== 0));
+    await fixture.whenStable();
+
+    expect([...await downWithoutCommitViewAsync(context, fixture.nativeElement), [...new Set(handled())]]).toEqual([false, [], ["Error: page broke"]]);
   });
 
   it("keeps each folder's chosen commit, so a commit chosen in one History leaves another folder's History on its own", async () => {
@@ -337,7 +427,7 @@ describe("GitHistoryComponent", () => {
     expect([behind, context.callsOf("showView")]).toEqual([0, [["git.repository"], ["git.repository"]]]);
   });
 
-  it("puts its repository first among the repositories opened lately when it opens, as a tab restored with the window or opened from the panel does", async () => {
+  it("puts its repository first among the repositories opened lately once its first read finds it, as a tab restored with the window or opened from the panel does", async () => {
     onTestFinished(() => GitRecentRepositories.forget(new Set(["/work/restored", "/work/earlier"])));
     GitRecentRepositories.remember("/work/restored");
     GitRecentRepositories.remember("/work/earlier");
@@ -347,7 +437,8 @@ describe("GitHistoryComponent", () => {
     const fixture: ComponentFixture<GitHistoryComponent> = TestBed.createComponent(GitHistoryComponent);
     fixture.componentRef.setInput("instance", "/work/restored");
     fixture.autoDetectChanges();
-    await fixture.whenStable();
+    const element: HTMLElement = fixture.nativeElement;
+    await untilAsync(element, () => element.querySelectorAll("[role=option]").length === 2);
 
     expect(GitRecentRepositories.recent().slice(0, 2)).toEqual(["/work/restored", "/work/earlier"]);
   });
@@ -455,5 +546,93 @@ describe("GitHistoryComponent", () => {
     await untilAsync(element, () => element.querySelectorAll("[role=option]").length > 30);
 
     expect(element.querySelectorAll("[role=option]").length).toBeGreaterThanOrEqual(50);
+  });
+  describe("for a folder that isn't a repository", () => {
+    const notRepository = GitFixtures.failure(FailureCode.NotRepository, null, "This folder isn't inside a git repository with a working tree.");
+    const renderAsync = async (scan: JsonValue | Error): Promise<RenderedHistory> => {
+      const context: FakeWindowPartContext = new FakeWindowPartContext();
+      GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": notRepository, "git.graph": notRepository, "git.scanRepositories": scan });
+      GitFixtures.setUp(context);
+      const fixture: ComponentFixture<GitHistoryComponent> = TestBed.createComponent(GitHistoryComponent);
+      fixture.componentRef.setInput("instance", "/work/group");
+      fixture.autoDetectChanges();
+      return new RenderedHistory(fixture.nativeElement, context);
+    };
+    const scansOf = (history: RenderedHistory): number => history.context.callsOf("requestAsync").filter(t => t[0] === "git.scanRepositories").length;
+    const textOf = (history: RenderedHistory): string => history.element.querySelector(".empty .text")?.textContent?.trim() ?? "";
+
+    it("looks once for the repositories under it, offers them, keeps the ticked ones among the repositories opened lately and opens the Dashboard, never keeping the folder", async () => {
+      onTestFinished(() => GitRecentRepositories.forget(new Set(["/work/group", "/work/group/api", "/work/group/site"])));
+      const history: RenderedHistory = await renderAsync(new GitRepositoryScan(ScanEnd.Complete, ["/work/group/api", "/work/group/site"]).toJson());
+      const dialogs = (): HTMLElement[] => [...document.querySelectorAll<HTMLElement>("nol-git-repository-scan-dialog")];
+      await untilAsync(document.body, () => dialogs().length === 1);
+      TestBed.inject(ApplicationRef).tick();
+      dialogs()[0]?.querySelector<HTMLButtonElement>(".open")?.click();
+      await untilAsync(document.body, () => dialogs().length === 0);
+      const reads = (): number => history.context.callsOf("requestAsync").filter(t => t[0] === "git.graph").length;
+      history.context.raiseEvent(GitNames.changedEvent, new GitChanged("/work/group").toJson());
+      await untilAsync(document.body, () => reads() === 2);
+      TestBed.inject(ApplicationRef).tick();
+      const opened: readonly unknown[] = history.context.callsOf("openDocument").map(t => t[0]);
+
+      expect([scansOf(history), dialogs().length, textOf(history), GitRecentRepositories.recent().filter(t => t.startsWith("/work/group")), opened.includes(Resources.workspaceDocumentName)])
+        .toEqual([1, 0, "This folder, /work/group, isn't inside a Git repository. Choose from the repositories under it.", ["/work/group/site", "/work/group/api"], true]);
+    });
+
+    it.each([
+      [new GitRepositoryScan(ScanEnd.Complete, []).toJson(), "This folder, /work/group, isn't inside a Git repository, and no folder under it holds one. Open a folder inside a repository, or run git init here to make one."],
+      [new GitRepositoryScan(ScanEnd.FolderLimit, []).toJson(), "This folder, /work/group, isn't inside a Git repository, and none of the first 10,000 folders under it holds one. Open a folder further down, or one inside a repository."],
+      [new GitRepositoryScan(ScanEnd.Unreadable, []).toJson(), "This folder, /work/group, isn't inside a Git repository, and Git can't read the folders under it. Open a folder inside a repository."],
+      [GitFixtures.failure(FailureCode.Git, null, "It broke."), "This folder, /work/group, isn't inside a Git repository. Open a folder inside a repository, or use Add repository on the Dashboard to look for the ones under it."]
+    ])("says in its one sentence how the look under it ended, offering nothing: %j", async (scan, text) => {
+      const history: RenderedHistory = await renderAsync(scan);
+      await untilAsync(history.element, () => scansOf(history) === 1 && textOf(history) === text);
+
+      expect([document.querySelectorAll("nol-git-repository-scan-dialog").length, GitRecentRepositories.recent().includes("/work/group")]).toEqual([0, false]);
+    });
+
+    it("drops a look's answer for a folder it no longer shows, so a page moved to another folder or closed mid-look opens no dialog", async () => {
+      const context: FakeWindowPartContext = new FakeWindowPartContext();
+      const held: GitHeldRequests = new GitHeldRequests(context, ["git.scanRepositories"], { ...GitFixtures.watching, "git.status": notRepository, "git.graph": notRepository });
+      GitFixtures.setUp(context);
+      const fixture: ComponentFixture<GitHistoryComponent> = TestBed.createComponent(GitHistoryComponent);
+      fixture.componentRef.setInput("instance", "/work/group");
+      fixture.autoDetectChanges();
+      const history: RenderedHistory = new RenderedHistory(fixture.nativeElement, context);
+      await untilAsync(history.element, () => scansOf(history) === 1 && textOf(history).endsWith("…"));
+      fixture.componentRef.setInput("instance", "/work/other");
+      await untilAsync(history.element, () => scansOf(history) === 2 && textOf(history).includes("/work/other"));
+      const dialogs = (): number => document.querySelectorAll("nol-git-repository-scan-dialog").length;
+      await held.answerAsync("git.scanRepositories", new GitRepositoryScan(ScanEnd.Complete, ["/work/group/api"]).toJson());
+      await Wait.drainedAsync();
+      const moved: readonly unknown[] = [textOf(history), dialogs()];
+      fixture.destroy();
+      await held.answerAsync("git.scanRepositories", new GitRepositoryScan(ScanEnd.Complete, ["/work/other/site"]).toJson());
+      await Wait.drainedAsync();
+
+      expect([moved, dialogs()]).toEqual([["This folder, /work/other, isn't inside a Git repository. Looking for repositories under it…", 0], 0]);
+    });
+
+    it.each(AppearanceFixture.modes)("shows one calm message, no columns, no filter and Terminal as its only action, the message starting under the toolbar at its inset, in %s mode",
+      async mode => {
+        AppearanceFixture.apply(DefaultTheme.theme, mode);
+        onTestFinished(() => AppearanceFixture.reset());
+        const history: RenderedHistory = await renderAsync(new GitRepositoryScan(ScanEnd.Complete, []).toJson());
+        const element: HTMLElement = history.element;
+        element.style.width = "60rem";
+        await untilAsync(element, () => textOf(history).endsWith("one."));
+        const rem: number = parseFloat(getComputedStyle(document.documentElement).fontSize);
+        const box = (selector: string): DOMRect => (element.querySelector(selector) ?? element).getBoundingClientRect();
+        const probe: HTMLSpanElement = document.createElement("span");
+        probe.style.color = "var(--nol-text-muted)";
+        element.append(probe);
+        const muted: string = getComputedStyle(probe).color;
+        probe.remove();
+
+        expect([element.querySelectorAll(".empty").length, element.querySelectorAll(".empty p, .empty h2").length, element.querySelectorAll(".header, [role=listbox], .note").length,
+          [...element.querySelectorAll(".toolbar [data-action]")].map(t => t.getAttribute("data-action")), box(".field").width, getComputedStyle(element.querySelector(".empty .text") ?? element).color,
+          (box(".empty").top - box(".toolbar").bottom) / rem, [box(".empty .heading").left, box(".empty .text").left].map(t => (t - element.getBoundingClientRect().left) / rem)])
+          .toEqual([1, 2, 0, ["Terminal"], 0, muted, 0, [0.75, 0.75]]);
+      });
   });
 });

@@ -235,6 +235,18 @@
   color: var(--nol-error);
 }
 
+.not-repository {
+  display: flex;
+  grid-column: span 2;
+  gap: var(--nol-space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.remove-one {
+  font-weight: inherit;
+}
+
 .conflicts {
   color: var(--nol-warning);
 }
@@ -337,7 +349,8 @@
     display: none;
   }
 
-  .failure {
+  .failure,
+  .not-repository {
     grid-column: span 1;
   }
 }

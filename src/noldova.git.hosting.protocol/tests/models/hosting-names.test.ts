@@ -21,6 +21,14 @@ describe("HostingNames", () => {
       "git-github.signInChanged"]);
   });
 
+  it("names each account member after the host module's id", () => {
+    const names: readonly string[] = [HostingNames.readAccountsMethod, HostingNames.addAccountMethod, HostingNames.readRepositoryAccountMethod,
+      HostingNames.pickAccountMethod, HostingNames.accountsChangedEvent].map(t => HostingNames.nameOf("git-github", t));
+
+    assert.deepEqual(names, ["git-github.readAccounts", "git-github.addAccount", "git-github.readRepositoryAccount", "git-github.pickAccount",
+      "git-github.accountsChanged"]);
+  });
+
   it("names each pull request member after the host module's id", () => {
     const names: readonly string[] = [HostingNames.readReferenceMethod, HostingNames.readBranchPullRequestMethod, HostingNames.readPullRequestMethod,
       HostingNames.createPullRequestMethod, HostingNames.readAuthorAvatarMethod, HostingNames.readPersonAvatarMethod,

@@ -7,19 +7,19 @@
  */
 
 import type { IWindowPartContext } from "@noldova/desktop.window";
-import { GitDetailView } from "@noldova/git.window";
 
 import type { WorkItemChoice } from "../models/work-item-choice.ts";
 import { Resources } from "../../resources.ts";
+import { SignedInDetailView } from "./signed-in-detail-view.ts";
 
 export class WorkItemSelection {
-  private static readonly windows: WeakMap<IWindowPartContext, GitDetailView<WorkItemChoice>> = new WeakMap();
+  private static readonly windows: WeakMap<IWindowPartContext, SignedInDetailView<WorkItemChoice>> = new WeakMap();
 
-  public static of(context: IWindowPartContext): GitDetailView<WorkItemChoice> {
+  public static of(context: IWindowPartContext): SignedInDetailView<WorkItemChoice> {
     const known = WorkItemSelection.windows.get(context);
     if (!Object.isUndefined(known))
       return known;
-    const view = new GitDetailView<WorkItemChoice>(context, Resources.workItemView, Resources.workItemViewInstance,
+    const view = new SignedInDetailView<WorkItemChoice>(context, Resources.workItemView, Resources.workItemViewInstance,
       t => Resources.formatWorkItemViewTitle(t.detail.item.id));
     WorkItemSelection.windows.set(context, view);
     return view;

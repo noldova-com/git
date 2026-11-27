@@ -11,6 +11,7 @@ import { Failure, FailureCode } from "@noldova/desktop.protocol";
 import { MethodFailureException } from "@noldova/desktop.runtime";
 import { HostingProtocolException } from "@noldova/git.hosting.protocol";
 
+import { GitHubUnreachableException } from "../exceptions/github-unreachable.exception.ts";
 import { CachedAnswer } from "../models/cached-answer.ts";
 import { Resources } from "../resources.ts";
 import type { Fetcher } from "../types/fetcher.ts";
@@ -18,20 +19,20 @@ import { AnswerText } from "./answer-text.ts";
 
 export class GitHubApi {
   private readonly fetcher: Fetcher;
-  private readonly answers: Map<string, CachedAnswer> = new Map();
-  private answersToken: string | null = null;
+  private readonly answers: Map<string, Map<string, CachedAnswer>> = new Map();
 
   public constructor(fetcher: Fetcher) {
     this.fetcher = fetcher;
   }
 
   public async getAsync(path: string, token: string, signal: AbortSignal): Promise<JsonReader | null> {
-    if (this.answersToken !== token) {
-      this.answers.clear();
-      this.answersToken = token;
+    let answers: Map<string, CachedAnswer> | undefined = this.answers.get(token);
+    if (answers === undefined) {
+      answers = new Map();
+      this.answers.set(token, answers);
     }
     const url: string = Resources.apiUrl + path;
-    const cached: CachedAnswer | undefined = this.answers.get(url);
+    const cached: CachedAnswer | undefined = answers.get(url);
     const now: number = Date.now();
     if (cached !== undefined && now - cached.readAt < Resources.freshFor)
       return this.reuse(url, cached, cached.readAt, token);
@@ -69,9 +70,15 @@ export class GitHubApi {
     return GitHubApi.readerOf(await GitHubApi.bodyOf(response, signal));
   }
 
-  public clear(): void {
-    this.answers.clear();
-    this.answersToken = null;
+  public keepOnly(isHeld: (token: string) => boolean): void {
+    for (const token of [...this.answers.keys()]) {
+      if (!isHeld(token))
+        this.answers.delete(token);
+    }
+  }
+
+  public static isAnswered(error: unknown): boolean {
+    return error instanceof MethodFailureException && !(error instanceof GitHubUnreachableException);
   }
 
   public static isUnauthorized(error: unknown): boolean {
@@ -99,16 +106,17 @@ export class GitHubApi {
   }
 
   private keep(url: string, answer: CachedAnswer, token: string): void {
-    if (this.answersToken !== token)
+    const answers: Map<string, CachedAnswer> | undefined = this.answers.get(token);
+    if (answers === undefined)
       return;
-    this.answers.delete(url);
+    answers.delete(url);
     if (answer.body.length > Resources.maximumKeptLength)
       return;
-    this.answers.set(url, answer);
-    for (const oldest of this.answers.keys()) {
-      if (this.answers.size <= Resources.cacheSize)
+    answers.set(url, answer);
+    for (const oldest of answers.keys()) {
+      if (answers.size <= Resources.cacheSize)
         break;
-      this.answers.delete(oldest);
+      answers.delete(oldest);
     }
   }
 
@@ -189,9 +197,9 @@ export class GitHubApi {
     if (signal.aborted)
       return signal.reason;
     if (error instanceof DOMException && error.name === Resources.timeoutErrorName)
-      return GitHubApi.failure(FailureCode.DeadlineExceeded, Resources.unreachableMessage);
+      return new GitHubUnreachableException(FailureCode.DeadlineExceeded);
     if (error instanceof TypeError)
-      return GitHubApi.failure(FailureCode.Unavailable, Resources.unreachableMessage);
+      return new GitHubUnreachableException(FailureCode.Unavailable);
     return error;
   }
 

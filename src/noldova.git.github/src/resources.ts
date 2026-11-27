@@ -13,6 +13,12 @@ export class Resources {
   public static readonly scope: string = "repo";
   public static readonly grantType: string = "urn:ietf:params:oauth:grant-type:device_code";
   public static readonly signInSecret: string = "git-github.signIn";
+  public static readonly accountsSecret: string = "git-github.accounts";
+  public static readonly picksCap: number = 200;
+  public static readonly unknownAccountMessage: string = "This GitHub account isn't kept on this computer any more.";
+  public static readonly keptAccountsUnreadable: string = "The GitHub accounts kept on this computer couldn't be read; only the first account was restored.";
+  public static readonly accountAlreadyKept: string = "An added GitHub account signed in as an account already kept here, so its token was forgotten and it ended signed out as already kept.";
+  public static readonly accountsNotKept: string = "The GitHub accounts couldn't be kept on this computer; added accounts and chosen accounts last until the app closes.";
   public static readonly accessSignedOutReason: string = "Sign in to GitHub in Settings, GitHub.";
   public static readonly accessUnreadableReason: string = "The GitHub sign-in kept on this computer couldn't be read; sign in again in Settings, GitHub.";
   public static readonly accessWaitingReason: string = "The sign-in to GitHub isn't finished yet: enter its code at GitHub, or sign in again in Settings, GitHub.";
@@ -89,6 +95,8 @@ export class Resources {
   public static readonly headField: string = "head";
   public static readonly baseField: string = "base";
   public static readonly refField: string = "ref";
+  public static readonly repoField: string = "repo";
+  public static readonly defaultBranchField: string = "default_branch";
   public static readonly shaField: string = "sha";
   public static readonly additionsField: string = "additions";
   public static readonly deletionsField: string = "deletions";
@@ -98,6 +106,9 @@ export class Resources {
   public static readonly userField: string = "user";
   public static readonly authorField: string = "author";
   public static readonly loginField: string = "login";
+  public static readonly hostField: string = "host";
+  public static readonly accountsField: string = "accounts";
+  public static readonly picksField: string = "picks";
   public static readonly avatarUrlField: string = "avatar_url";
   public static readonly titleField: string = "title";
   public static readonly htmlUrlField: string = "html_url";
@@ -170,6 +181,7 @@ export class Resources {
   public static readonly createToolDeadline: number = 60_000;
   public static readonly createToolMaximumDeadline: number = 120_000;
   public static readonly branchLabel: string = "Branch";
+  public static readonly accountLabel: string = "GitHub account";
   public static readonly titleLabel: string = "Title";
   public static readonly draftLabel: string = "Draft";
   public static readonly bodyLabel: string = "Body";
@@ -221,6 +233,7 @@ export class Resources {
   public static readonly checkRunsPageSize: number = 100;
   public static readonly reviewsPageSize: number = 100;
   public static readonly commentsPageSize: number = 100;
+  public static readonly commitPullsPageSize: number = 100;
   public static readonly newestCommentsCount: number = 100;
   public static readonly approvedReview: string = "APPROVED";
   public static readonly changesRequestedReview: string = "CHANGES_REQUESTED";
@@ -348,8 +361,8 @@ export class Resources {
     return `commits/${commit}/comments?per_page=${Resources.commentsPageSize}`;
   }
 
-  public static formatCommitPullsPath(commit: string): string {
-    return `commits/${commit}/${Resources.pullsPath}?per_page=1`;
+  public static formatCommitPullRequestsPath(commit: string): string {
+    return `commits/${commit}/${Resources.pullsPath}?per_page=${Resources.commitPullsPageSize}`;
   }
 
   public static formatPullCommentsPath(number: number): string {
@@ -395,6 +408,18 @@ export class Resources {
 
   public static formatBody(body: string): string {
     return `${Resources.bodyStart}${body}`;
+  }
+
+  public static formatRepositoryReadPath(owner: string, repository: string): string {
+    return `/repos/${owner}/${repository}`;
+  }
+
+  public static formatAccountSecret(id: number): string {
+    return `git-github.account${id}`;
+  }
+
+  public static formatKeptAccountsUnread(reason: string): string {
+    return `The GitHub accounts kept on this computer couldn't be read: ${reason}`;
   }
 
   public static formatRepositoryPath(owner: string, repository: string, rest: string): string {

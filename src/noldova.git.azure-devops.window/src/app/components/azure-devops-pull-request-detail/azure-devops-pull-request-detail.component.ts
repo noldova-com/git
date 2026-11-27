@@ -34,7 +34,7 @@ export class AzureDevOpsPullRequestDetailComponent {
   protected readonly policyStates: typeof PolicyState = PolicyState;
   protected readonly small: AvatarSize = AvatarSize.Small;
   protected readonly open: ReferenceState = ReferenceState.Open;
-  protected readonly choice: Signal<PullRequestChoice | null> = PullRequestSelection.of(this.context).shown;
+  protected readonly choice: Signal<PullRequestChoice | null> = PullRequestSelection.of(this.context).choice;
   private readonly pullRequest: Signal<HostPullRequest | null> = computed(() => this.choice()?.pullRequest ?? null);
   protected readonly isAdding: WritableSignal<boolean> = signal<boolean>(false);
 

@@ -103,9 +103,46 @@ describe("RuntimePart", () => {
     const waiting = HostSignIn.waiting(new DeviceCode("WDJB-MJHT", "https://github.com/login/device", 1_800_000_900_000)).toJson();
     assert.deepEqual([...context.methods.keys()], ["git-github.readSignIn", "git-github.startSignIn", "git-github.cancelSignIn", "git-github.signOut",
       "git-github.readReference", "git-github.readBranchPullRequest", "git-github.readAuthorAvatar", "git-github.readPullRequests", "git-github.readReviewRequests",
-      "git-github.readCommitComments", "git-github.readPullRequest", "git-github.readPullRequestThreads", "git-github.createPullRequest"]);
+      "git-github.readCommitComments", "git-github.readPullRequest", "git-github.readPullRequestThreads", "git-github.readCommitPullRequest",
+      "git-github.createPullRequest", "git-github.readAccounts", "git-github.addAccount", "git-github.readRepositoryAccount", "git-github.pickAccount"]);
     assert.deepEqual(answers, [HostSignIn.signedOut().toJson(), waiting, HostSignIn.signedOut().toJson(), HostSignIn.signedOut().toJson()]);
     assert.deepEqual([context.events.get("git-github.signInChanged"), github.urls()], [[waiting, HostSignIn.signedOut().toJson()], ["https://github.com/login/device/code"]]);
+  });
+
+  it("serves every account: lists them, acts on one by its id, adds one, and picks the one a repository is read with, publishing each change", async () => {
+    const github = new FakeGitHub();
+    github.answer(FakeGitHub.json({ login: "octocat", name: null, avatar_url: null }, 200, { "X-OAuth-Scopes": "repo" }),
+      FakeGitHub.json({ login: "hubot", name: null, avatar_url: null }, 200, { "X-OAuth-Scopes": "repo" }));
+    vi.stubGlobal("fetch", github.fetch);
+    const part = new RuntimePart();
+    const context = new RuntimeContext();
+    const hubot = new HostAccount("hubot", null, null, ["repo"]);
+    context.secrets.values.set("git-github.signIn", JSON.stringify({ token: "gho_octocat", account: new HostAccount("octocat", null, null, ["repo"]).toJson() }));
+    context.secrets.values.set("git-github.account2", JSON.stringify({ token: "gho_hubot", account: hubot.toJson() }));
+    context.secrets.values.set("git-github.accounts", JSON.stringify({ accounts: [{ id: 2, host: "github.com", login: "hubot" }], picks: [] }));
+    const repository = { host: "github.com", path: "octocat/hello-world" };
+
+    await part.activateAsync(context.fake);
+    await github.askedAsync(2);
+    github.answer(FakeGitHub.json(grant));
+    const listed = await callAsync(context, "git-github.readAccounts");
+    const second = await callAsync(context, "git-github.readSignIn", { account: 2 });
+    const picked = await callAsync(context, "git-github.pickAccount", { ...repository, account: 2 });
+    const read = await callAsync(context, "git-github.readRepositoryAccount", repository);
+    const added = await callAsync(context, "git-github.addAccount");
+    const cancelled = await callAsync(context, "git-github.cancelSignIn", { account: 3 });
+    const signedOut = await callAsync(context, "git-github.signOut", { account: 2 });
+    const failures = await Promise.all([callAsync(context, "git-github.readSignIn", { account: 9 }), callAsync(context, "git-github.readSignIn", { account: 0 }),
+      callAsync(context, "git-github.readRepositoryAccount", { host: "github.com" })].map(t => t.then(() => null, failureOf)));
+    const events = context.events.get("git-github.accountsChanged") ?? [];
+    await part.deactivateAsync();
+
+    assert.deepEqual([(listed as { accounts: { id: number }[] }).accounts.map(t => t.id), second, picked, read],
+      [[1, 2], HostSignIn.signedIn(hubot).toJson(), { account: 2 }, { account: 2 }]);
+    assert.deepEqual([(added as { id: number }).id, cancelled, signedOut, failures.map(t => t?.[0])],
+      [3, HostSignIn.signedOut().toJson(), HostSignIn.signedOut().toJson(), [FailureCode.NotFound, FailureCode.InvalidParams, FailureCode.InvalidParams]]);
+    assert.deepEqual(events.at(-1), { accounts: [{ id: 1, signIn: HostSignIn.signedIn(new HostAccount("octocat", null, null, ["repo"])).toJson() }] });
+    assert.equal(context.events.get("git-github.signInChanged")?.every(t => (t as { account: { login: string } | null }).account?.login !== "hubot"), true);
   });
 
   it("restores the kept sign-in on activation and stops following the app's windows on deactivation", async () => {
@@ -128,7 +165,7 @@ describe("RuntimePart", () => {
     await waiting.deactivateAsync();
 
     assert.deepEqual([restored, keptContext.secrets.values.has("git-github.signIn")], [HostSignIn.signedIn(account).toJson(), true]);
-    assert.deepEqual([following, waitingContext.fake.appWindows.activeCallsOf("onChanged").length], [1, 0]);
+    assert.deepEqual([following, waitingContext.fake.appWindows.activeCallsOf("onChanged").length], [2, 0]);
   });
 
   it("publishes git-github.access, which answers the held token with its login while signed in and why not otherwise, never logging the token", async () => {
@@ -170,7 +207,8 @@ describe("RuntimePart", () => {
       await callAsync(context, "git-github.readReviewRequests", new RepositoryQuery("github.com", "octocat/hello-world").toJson()),
       await callAsync(context, "git-github.readCommitComments", new CommitQuery("github.com", "octocat/hello-world", "6dcb09b5b57875f334f61aebed695e2e4193db5e").toJson()),
       await callAsync(context, "git-github.readPullRequest", new HostReference("git-github", "octocat", "hello-world", 1).toJson()),
-      await callAsync(context, "git-github.readPullRequestThreads", new HostReference("git-github", "octocat", "hello-world", 1).toJson())];
+      await callAsync(context, "git-github.readPullRequestThreads", new HostReference("git-github", "octocat", "hello-world", 1).toJson()),
+      await callAsync(context, "git-github.readCommitPullRequest", new CommitQuery("github.com", "octocat/hello-world", "6dcb09b5b57875f334f61aebed695e2e4193db5e").toJson())];
     const refusals = [await callAsync(context, "git-github.readReference", null).then(() => null, failureOf),
       await callAsync(context, "git-github.readBranchPullRequest", { host: "github.com" }).then(() => null, failureOf),
       await callAsync(context, "git-github.readAuthorAvatar", { host: "github.com" }).then(() => null, failureOf),
@@ -179,14 +217,14 @@ describe("RuntimePart", () => {
       await callAsync(context, "git-github.readCommitComments", { host: "github.com" }).then(() => null, failureOf),
       await callAsync(context, "git-github.readPullRequest", null).then(() => null, failureOf),
       await callAsync(context, "git-github.readPullRequestThreads", { number: 1 }).then(() => null, failureOf),
+      await callAsync(context, "git-github.readCommitPullRequest", { host: "github.com" }).then(() => null, failureOf),
       await callAsync(context, "git-github.readReference", { ...new HostReference("git-github", "octocat", "hello-world", 1).toJson(), title: "x" })
         .then(() => null, failureOf)];
     await part.deactivateAsync();
 
     assert.deepEqual([answers, github.requests.length], [[null, new BranchPullRequest(null, []).toJson(), { avatar: null },
-      HostPullRequestList.signedOut().toJson(), HostReviewRequestList.signedOut().toJson(), HostCommitComments.none().toJson(), null, new HostPullRequestThreads([], false).toJson()], 0]);
-    assert.deepEqual(refusals.map(t => t?.[0]), [FailureCode.InvalidParams, FailureCode.InvalidParams, FailureCode.InvalidParams, FailureCode.InvalidParams,
-      FailureCode.InvalidParams, FailureCode.InvalidParams, FailureCode.InvalidParams, FailureCode.InvalidParams, FailureCode.InvalidParams]);
+      HostPullRequestList.signedOut().toJson(), HostReviewRequestList.signedOut().toJson(), HostCommitComments.none().toJson(), null, new HostPullRequestThreads([], false).toJson(), new BranchPullRequest(null, []).toJson()], 0]);
+    assert.deepEqual(refusals.map(t => t?.[0]), Array.from({ length: 10 }, () => FailureCode.InvalidParams));
   });
 
   it("rethrows an error other than a malformed payload while it reads a request, rather than refusing it as InvalidParams", async () => {

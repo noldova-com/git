@@ -6,7 +6,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-export interface IGitHubToken {
-  readonly token: string | null;
-  refusedAsync(token: string): Promise<void>;
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
 }

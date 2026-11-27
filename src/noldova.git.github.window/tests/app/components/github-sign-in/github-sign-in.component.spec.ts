@@ -172,7 +172,8 @@ describe("GitHubSignInComponent", () => {
       ["GitHub couldn't be reached.", "Check the connection, then sign in again.", true],
       ["GitHub's answer couldn't be used.", "Sign in again; the app's log has the details.", true],
       ["This computer couldn't keep the sign-in.", "Sign in again; the app's log has the details.", true],
-      ["This computer couldn't remove the sign-in.", "The app may sign in with it when it next starts; the app's log has the details.", true]
+      ["This computer couldn't remove the sign-in.", "The app may sign in with it when it next starts; the app's log has the details.", true],
+      ["This GitHub account is already in the list.", "Sign this entry out, or sign in again as another account.", true]
     ]);
   });
 

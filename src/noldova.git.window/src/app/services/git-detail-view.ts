@@ -14,14 +14,16 @@ import { GitDetailFront } from "../models/git-detail-front.ts";
 import { GitDetailPage } from "../models/git-detail-page.ts";
 
 export class GitDetailView<T> {
+  private static readonly unsettled: Signal<boolean> = signal<boolean>(false).asReadonly();
   private readonly context: IWindowPartContext;
   private readonly view: string;
-  private readonly instance: string;
-  private readonly titleOf: (choice: T) => string;
+  private readonly instance: string | null;
+  private readonly titleOf: ((choice: T) => string) | null;
   private readonly isBroughtForward: boolean;
   private readonly pages: WritableSignal<readonly GitDetailPage<T>[]> = signal([]);
   private readonly opened: WritableSignal<boolean> = signal<boolean>(false);
   private lastOpened: T | null = null;
+  private isAwaitingChoice: boolean = false;
 
   public readonly front: Signal<T | null | undefined> = computed(() => this.pages().find(t => t.active())?.choice());
 
@@ -36,7 +38,10 @@ export class GitDetailView<T> {
 
   public readonly isOpen: Signal<boolean> = this.opened.asReadonly();
 
-  public constructor(context: IWindowPartContext, view: string, instance: string, titleOf: (choice: T) => string, isBroughtForward: boolean = true) {
+  public constructor(context: IWindowPartContext, view: string, instance: string, titleOf: (choice: T) => string, isBroughtForward?: boolean);
+  public constructor(context: IWindowPartContext, view: string, instance: null, titleOf: null, isBroughtForward?: boolean);
+  public constructor(context: IWindowPartContext, view: string, instance: string | null, titleOf: ((choice: T) => string) | null,
+    isBroughtForward: boolean = true) {
     this.context = context;
     this.view = view;
     this.instance = instance;
@@ -44,8 +49,8 @@ export class GitDetailView<T> {
     this.isBroughtForward = isBroughtForward;
   }
 
-  public follow(choice: Signal<T | null>, active: Signal<boolean>, injector: Injector): void {
-    const page: GitDetailPage<T> = new GitDetailPage(choice, active);
+  public follow(choice: Signal<T | null>, active: Signal<boolean>, injector: Injector, settled: Signal<boolean> = GitDetailView.unsettled): void {
+    const page: GitDetailPage<T> = new GitDetailPage(choice, active, settled);
     this.pages.update(t => [...t, page]);
     injector.get(DestroyRef).onDestroy(() => this.pages.update(t => t.filter(u => u !== page)));
     let wasShowing: boolean = false;
@@ -53,14 +58,17 @@ export class GitDetailView<T> {
     effect(() => {
       const isActive: boolean = active();
       const chosen: T | null = choice();
+      const isSettled: boolean = settled();
       const isShowing: boolean = isActive && !Object.isNull(chosen);
       untracked(() => {
         if (wasActive && !isActive)
           this.lastOpened = null;
-        if (isShowing && !wasShowing && !Object.isNull(chosen) && chosen !== this.lastOpened && this.isBroughtForward)
+        if (isShowing && !wasShowing && !Object.isNull(chosen) && chosen !== this.lastOpened && (this.isBroughtForward || this.isAwaitingChoice))
           this.open(chosen);
-        else if (wasActive && !isActive && this.opened() && Object.isUndefined(this.front()))
+        else if (wasActive && !isActive && this.opened() && Object.isUndefined(this.front()) && !Object.isNull(this.instance))
           this.context.returnView(this.view, this.instance);
+        if (isActive && isSettled && Object.isNull(chosen))
+          this.isAwaitingChoice = false;
       });
       wasShowing = isShowing;
       wasActive = isActive;
@@ -72,12 +80,17 @@ export class GitDetailView<T> {
   }
 
   public bringForward(): void {
-    const front: T | null | undefined = this.front();
-    if (!Object.isNullOrUndefined(front))
+    const page: GitDetailPage<T> | undefined = this.pages().find(t => t.active());
+    const front: T | null | undefined = page?.choice();
+    if (Object.isNullOrUndefined(front))
+      this.isAwaitingChoice = Object.isUndefined(page) || !page.settled();
+    else
       this.open(front);
   }
 
   public listen(): () => void {
+    if (Object.isNull(this.instance))
+      return () => undefined;
     return this.context.onViewClosed(this.view, instance => {
       if (instance === this.instance)
         this.opened.set(false);
@@ -85,8 +98,12 @@ export class GitDetailView<T> {
   }
 
   private open(choice: T): void {
+    this.isAwaitingChoice = false;
     this.lastOpened = choice;
     this.opened.set(true);
-    this.context.openView(this.view, this.instance, this.titleOf(choice));
+    if (Object.isNull(this.instance) || Object.isNull(this.titleOf))
+      this.context.showView(this.view);
+    else
+      this.context.openView(this.view, this.instance, this.titleOf(choice));
   }
 }

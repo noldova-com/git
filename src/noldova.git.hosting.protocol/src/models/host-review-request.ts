@@ -14,24 +14,29 @@ import { HostReference } from "./host-reference.ts";
 
 export class HostReviewRequest {
   private static readonly FIELDS: readonly string[] = [Resources.referenceField, Resources.titleField, Resources.urlField, Resources.isDraftField,
-    Resources.createdAtField];
+    Resources.createdAtField, Resources.accountField];
 
   public readonly reference: HostReference;
   public readonly title: string;
   public readonly url: string;
   public readonly isDraft: boolean;
   public readonly createdAt: number;
+  public readonly account: string | null;
 
-  public constructor(reference: HostReference, title: string, url: string, isDraft: boolean, createdAt: number, reader?: JsonReader) {
+  public constructor(reference: HostReference, title: string, url: string, isDraft: boolean, createdAt: number, account: string | null = null,
+    reader?: JsonReader) {
     FieldCheck.requireText(title, Resources.titleField, reader);
     FieldCheck.requireHttps(url, Resources.urlField, reader);
     FieldCheck.requirePositive(createdAt, Resources.createdAtField, reader);
+    if (account !== null)
+      FieldCheck.requireText(account, Resources.accountField, reader);
 
     this.reference = reference;
     this.title = title;
     this.url = url;
     this.isDraft = isDraft;
     this.createdAt = createdAt;
+    this.account = account;
   }
 
   public static fromJson(value: unknown, path?: string): HostReviewRequest {
@@ -44,6 +49,7 @@ export class HostReviewRequest {
       reader.readString(Resources.urlField),
       reader.readBoolean(Resources.isDraftField),
       reader.readInteger(Resources.createdAtField),
+      reader.hasField(Resources.accountField) ? reader.readNullableString(Resources.accountField) : null,
       reader);
   }
 
@@ -53,7 +59,8 @@ export class HostReviewRequest {
       [Resources.titleField]: this.title,
       [Resources.urlField]: this.url,
       [Resources.isDraftField]: this.isDraft,
-      [Resources.createdAtField]: this.createdAt
+      [Resources.createdAtField]: this.createdAt,
+      ...(this.account === null ? {} : { [Resources.accountField]: this.account })
     };
   }
 }
