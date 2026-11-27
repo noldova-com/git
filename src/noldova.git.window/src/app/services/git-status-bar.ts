@@ -22,7 +22,6 @@ export class GitStatusBar {
   private static commandFolder: string | null = null;
   private static command: GitCommand | null = null;
 
-  // The fetched item's tooltip shows its time by the time and date format settings, so a change of either draws the items again.
   public static provide(context: IWindowPartContext, branch: StatusBarItem, fetched: StatusBarItem, command: StatusBarItem): () => void {
     const items: GitStatusBarItems = new GitStatusBarItems(branch, fetched, command, context.timeFormats);
     GitStatusBar.items = items;
