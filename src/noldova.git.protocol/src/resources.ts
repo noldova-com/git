@@ -182,6 +182,10 @@ export class Resources {
   public static readonly lockedField: string = "locked";
   public static readonly prunableField: string = "prunable";
   public static readonly hooksField: string = "hooks";
+  public static readonly inRepositoryField: string = "inRepository";
+  public static readonly repositoriesField: string = "repositories";
+  public static readonly maximumScanRepositories: number = 1000;
+  public static readonly scanRepositoriesExpected: string = "at most 1000 repositories";
   public static readonly methodField: string = "method";
   public static readonly atField: string = "at";
   public static readonly movesField: string = "moves";

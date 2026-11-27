@@ -1,0 +1,21 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+.text {
+  margin: 0;
+}
+
+.repositories {
+  display: grid;
+  gap: 0.25rem;
+  max-height: 20rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}

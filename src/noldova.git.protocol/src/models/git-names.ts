@@ -48,6 +48,7 @@ export class GitNames {
   public static readonly forcePushMethod: string = "git.forcePush";
   public static readonly pullHooksMethod: string = "git.pullHooks";
   public static readonly avatarMethod: string = "git.avatar";
+  public static readonly scanRepositoriesMethod: string = "git.scanRepositories";
   public static readonly watchMethod: string = "git.watch";
   public static readonly unwatchMethod: string = "git.unwatch";
   public static readonly conflictMethod: string = "git.conflict";

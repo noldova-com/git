@@ -6,14 +6,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { ErrorHandler, signal, type WritableSignal } from "@angular/core";
+import { ApplicationRef, ErrorHandler, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import { By } from "@angular/platform-browser";
 import "@noldova/context.core";
 import { JsonReader, type JsonValue } from "@noldova/context.json";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
-import { ConflictKind, FailureCode, FileState, GitBranches, GitRemote, RemoteTransport, StatusUpstream } from "@noldova/git.protocol";
+import { ConflictKind, FailureCode, FileState, GitBranches, GitRemote, GitRepositoryScan, RemoteTransport, StatusUpstream } from "@noldova/git.protocol";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { GitVisibleDirective } from "../../../../src/app/components/git-workspace/git-visible.directive.ts";
@@ -170,7 +170,7 @@ describe("GitWorkspaceComponent", () => {
           resolve();
         };
         const observer: MutationObserver = new MutationObserver(check);
-        for (const root of [this.element, this.viewElement, this.sideElement])
+        for (const root of [document.body, this.element, this.viewElement, this.sideElement])
           observer.observe(root, { attributes: true, characterData: true, childList: true, subtree: true });
         Screen.checks.add(check);
       });
@@ -409,6 +409,57 @@ describe("GitWorkspaceComponent", () => {
     await screen.untilAsync(() => screen.rows().length === 2);
 
     expect(GitWorkspaces.find(workspace.id)?.folders).toEqual(["/work/a", "/work/b"]);
+  });
+
+  it("offers the repositories found under a chosen folder that isn't one, adds the ticked ones, and nothing when the person cancels", async () => {
+    const workspace: GitWorkspace = fresh("/work/a");
+    const found: JsonValue = new GitRepositoryScan(false, ["/work/group/api", "/work/group/site", "/work/group/site/kit"]).toJson();
+    const screen: Screen = Screen.render(workspace.id, {}, Promise.resolve(), { "git.scanRepositories /work/group": found });
+    screen.context.answer("chooseFolderAsync", async () => "/work/group");
+    const dialogs = (): HTMLElement[] => [...document.querySelectorAll<HTMLElement>("nol-git-repository-scan-dialog")];
+    const dialog = (): HTMLElement | undefined => dialogs().at(-1);
+    const openAsync = async (count: number): Promise<void> => {
+      screen.click(".toolbar .add");
+      await screen.untilAsync(() => screen.context.callsOf("requestAsync").filter(t => t[0] === "git.scanRepositories").length === count && dialogs().length === 1);
+      TestBed.inject(ApplicationRef).tick();
+    };
+
+    await openAsync(1);
+    const asked: readonly string[] = [...dialog()?.querySelectorAll(".nol-dialog-title, li") ?? []].map(t => (t.textContent ?? "").trim());
+    dialog()?.querySelector<HTMLButtonElement>(".cancel")?.click();
+    await screen.untilAsync(() => dialogs().length === 0);
+    const cancelled: readonly string[] | undefined = GitWorkspaces.find(workspace.id)?.folders;
+    await openAsync(2);
+    dialog()?.querySelectorAll<HTMLInputElement>(".repository input")[1]?.click();
+    TestBed.inject(ApplicationRef).tick();
+    const ticks: readonly boolean[] = [...dialog()?.querySelectorAll<HTMLInputElement>(".repository input") ?? []].map(t => t.checked);
+    dialog()?.querySelector<HTMLButtonElement>(".open")?.click();
+    await screen.untilAsync(() => screen.rows().length === 3 && dialogs().length === 0);
+
+    expect(ticks).toEqual([true, false, true]);
+    expect([asked, cancelled, GitWorkspaces.find(workspace.id)?.folders]).toEqual([["Three repositories in group", "api", "site", "site/kit"],
+      ["/work/a"], ["/work/a", "/work/group/api", "/work/group/site/kit"]]);
+  });
+
+  it("says so when a chosen folder has no repository under it, and reports a scan that fails, adding nothing", async () => {
+    const workspace: GitWorkspace = fresh("/work/a");
+    const screen: Screen = Screen.render(workspace.id, {}, Promise.resolve(), {
+      "git.scanRepositories /work/notes": new GitRepositoryScan(false, []).toJson(),
+      "git.scanRepositories /work/locked": GitFixtures.failure(FailureCode.Git, null, "It broke.")
+    });
+    const chosen: string[] = ["/work/notes", "/work/locked"];
+    screen.context.answer("chooseFolderAsync", async () => chosen.shift() ?? null);
+    const handled: Promise<unknown> = new Promise(resolve => {
+      vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(resolve);
+    });
+
+    screen.click(".toolbar .add");
+    await screen.untilAsync(() => screen.texts(".result p").length === 1);
+    screen.click(".toolbar .add");
+    const failure: unknown = await handled;
+
+    expect([screen.texts(".result p"), failure instanceof Error, GitWorkspaces.find(workspace.id)?.folders])
+      .toEqual([["No repository in notes or the folders under it."], true, ["/work/a"]]);
   });
 
   it("moves the selected repositories up and down, and removes them from the workspace", async () => {

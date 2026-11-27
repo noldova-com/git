@@ -100,6 +100,7 @@ import { CommitDetailReader } from "./services/commit-detail.reader.ts";
 import { CommitSignatureReader } from "./services/commit-signature.reader.ts";
 import { CommitSigningReader } from "./services/commit-signing.reader.ts";
 import { RepositoryItemsReader } from "./services/repository-items.reader.ts";
+import { RepositoryScanReader } from "./services/repository-scan.reader.ts";
 import { WorktreesReader } from "./services/worktrees.reader.ts";
 import { WriteRunner } from "./services/write.runner.ts";
 import { CommandLog } from "./services/command-log.ts";
@@ -164,6 +165,7 @@ export class RuntimePart implements IRuntimePart {
     const hooks = new HooksReader(runner);
     const conflicts = new ConflictReader(runner);
     const markerChecks = new MarkerCheckReader(runner);
+    const scans = new RepositoryScanReader(repositories);
     await new WorktreeService(context, runner).reconcileAsync();
     const changed = context.declareEvent(GitNames.changedEvent);
     const watches = new WatchTable();
@@ -214,6 +216,9 @@ export class RuntimePart implements IRuntimePart {
         const params = GitAvatarParams.fromJson(request.payload);
         return new GitAvatar(context.settings.read(Resources.gravatarSetting) === false ? null : await gravatars.readAsync(params.email, request.signal)).toJson();
       })
+    });
+    context.registerMethod(GitNames.scanRepositoriesMethod, {
+      handleAsync: request => RuntimePart.answerAsync(async () => (await scans.readAsync(GitFolderParams.fromJson(request.payload).folder, request.signal)).toJson())
     });
     register(GitNames.conflictMethod, t => GitConflictParams.fromJson(t), (folders, params, signal) => conflicts.readAsync(folders, params.path, signal));
     register(GitNames.markerCheckMethod, t => GitFolderParams.fromJson(t), (folders, _params, signal) => markerChecks.readAsync(folders.top, signal));

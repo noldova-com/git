@@ -15,7 +15,7 @@ import { WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import type { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import {
   type ConflictKind, DiffFile, DiffHunk, DiffLine, FileChange, type FailureCode, FileState, GitBranches, type GitBranchTrack, type GitCode, GitCommandLog, GitCommitSignature, GitCommitSigning, GitDiff, GitFailure, type GitOperation, GitPrediction,
-  type GitRemote, GitStatus, LineCounts, LineKind, PredictionOutcome, SignatureState, SigningFormat, StatusEntry, type StatusUpstream
+  type GitRemote, GitRepositoryScan, GitStatus, LineCounts, LineKind, PredictionOutcome, SignatureState, SigningFormat, StatusEntry, type StatusUpstream
 } from "@noldova/git.protocol";
 import { onTestFinished } from "vitest";
 
@@ -59,7 +59,8 @@ export class GitFixtures {
   public static readonly watching: Readonly<Record<string, JsonValue>> = {
     "git.watch": null, "git.unwatch": null, "git.predict": new GitPrediction(PredictionOutcome.Unavailable, []).toJson(), "git.commandLog": new GitCommandLog([]).toJson(),
     "git.commitSignature": new GitCommitSignature("0".repeat(40), SignatureState.None, null, null).toJson(),
-    "git.commitSigning": new GitCommitSigning(false, SigningFormat.OpenPgp).toJson()
+    "git.commitSigning": new GitCommitSigning(false, SigningFormat.OpenPgp).toJson(),
+    "git.scanRepositories": new GitRepositoryScan(true, []).toJson()
   };
 
   public static entry(path: string, index: FileState, worktree: FileState, counts: LineCounts | null = new LineCounts(2, 1),

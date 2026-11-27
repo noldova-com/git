@@ -1,0 +1,43 @@
+/**
+ * @license
+ * Copyright (c) Noldova.
+ *
+ * This source code is licensed under the license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import { Component, computed, input, type InputSignal, output, type OutputEmitterRef, signal, type Signal, type WritableSignal } from "@angular/core";
+import { ButtonComponent, ButtonVariant, CheckboxComponent, DialogComponent } from "@noldova/ui.components.angular";
+
+import { Resources } from "../../../resources.ts";
+
+@Component({
+  selector: "nol-git-repository-scan-dialog",
+  imports: [ButtonComponent, CheckboxComponent, DialogComponent],
+  templateUrl: "./git-repository-scan-dialog.component.html",
+  styleUrl: "./git-repository-scan-dialog.component.css"
+})
+export class GitRepositoryScanDialogComponent {
+  public readonly folder: InputSignal<string> = input.required<string>();
+  public readonly repositories: InputSignal<readonly string[]> = input.required<readonly string[]>();
+  public readonly answered: OutputEmitterRef<readonly string[] | null> = output<readonly string[] | null>();
+
+  protected readonly resources: typeof Resources = Resources;
+  protected readonly secondary: ButtonVariant = ButtonVariant.Secondary;
+  protected readonly title: Signal<string> = computed(() => Resources.formatScanTitle(this.repositories().length, this.folder()));
+  protected readonly unticked: WritableSignal<ReadonlySet<string>> = signal(new Set());
+  protected readonly ticked: Signal<readonly string[]> = computed(() => this.repositories().filter(t => !this.unticked().has(t)));
+
+  protected labelOf(repository: string): string {
+    return repository.slice(this.folder().length).replace(Resources.scanPrefixPattern, "");
+  }
+
+  protected tick(repository: string, isTicked: boolean): void {
+    const unticked: Set<string> = new Set(this.unticked());
+    if (isTicked)
+      unticked.delete(repository);
+    else
+      unticked.add(repository);
+    this.unticked.set(unticked);
+  }
+}

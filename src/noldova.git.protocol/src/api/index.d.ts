@@ -1410,6 +1410,68 @@ export declare class GitHooks {
 }
 
 /**
+ * What a folder the person chose holds: whether it's in a repository, and otherwise the repositories found in its subfolders.
+ * @example
+ * ```ts
+ * import type { GitRepositoryScan } from "@noldova/git.protocol";
+ * export function count(scan: GitRepositoryScan): number {
+ *   return scan.inRepository ? 1 : scan.repositories.length;
+ * }
+ * ```
+ */
+export declare class GitRepositoryScan {
+  /**
+   * Whether the folder is in a repository itself, in which case no subfolder is looked at.
+   */
+  public readonly inRepository: boolean;
+
+  /**
+   * The absolute folders of the repositories found in the subfolders, sorted; empty when the folder is in a repository or none was found.
+   */
+  public readonly repositories: readonly string[];
+
+  /**
+   * Creates the scan's result.
+   * @param inRepository Whether the folder is in a repository itself.
+   * @param repositories The repositories' absolute folders; at most 1000.
+   * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
+   * @throws {ProtocolFieldException} When there are more than 1000 repositories, or one isn't an absolute path of at most 4096 characters.
+   * @example
+   * ```ts
+   * import { GitRepositoryScan } from "@noldova/git.protocol";
+   * export const scan: GitRepositoryScan = new GitRepositoryScan(false, ["/work/site"]);
+   * ```
+   */
+  public constructor(inRepository: boolean, repositories: readonly string[], reader?: JsonReader);
+
+  /**
+   * Reads the scan's result from its JSON form.
+   * @param value The parsed JSON value, untrusted.
+   * @param path The result's path in error messages; `$` by default.
+   * @returns The scan's result.
+   * @throws {JsonException} When the value isn't an object, `inRepository` isn't a boolean, or `repositories` isn't an array of texts; it comes from `@noldova/context.json`.
+   * @throws {ProtocolFieldException} When the value holds an unknown field, or `repositories` holds more than 1000 folders or one that isn't an absolute path.
+   * @example
+   * ```ts
+   * import { GitRepositoryScan } from "@noldova/git.protocol";
+   * export const scan: GitRepositoryScan = GitRepositoryScan.fromJson({ inRepository: true, repositories: [] });
+   * ```
+   */
+  public static fromJson(value: unknown, path?: string): GitRepositoryScan;
+
+  /**
+   * Writes the scan's JSON form, with the fields `inRepository` and `repositories`.
+   * @returns The JSON object.
+   * @example
+   * ```ts
+   * import { GitRepositoryScan, type JsonObject } from "@noldova/git.protocol";
+   * export const json: JsonObject = new GitRepositoryScan(true, []).toJson();
+   * ```
+   */
+  public toJson(): JsonObject;
+}
+
+/**
  * The operation a worktree is in the middle of, such as a merge stopped for a conflict.
  * @example
  * ```ts
@@ -4584,6 +4646,11 @@ export declare class GitNames {
    * `git.avatar`: reads an author's picture from Gravatar as {@link GitAvatar}, with {@link GitAvatarParams}.
    */
   public static readonly avatarMethod: string;
+
+  /**
+   * `git.scanRepositories`: looks for the repositories in a folder's subfolders as {@link GitRepositoryScan}, with {@link GitFolderParams}.
+   */
+  public static readonly scanRepositoriesMethod: string;
 
   /**
    * `git.watch`: starts sending `git.changed` for a folder, with {@link GitFolderParams}.

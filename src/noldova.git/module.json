@@ -25,6 +25,7 @@
       "git.commitSigning",
       "git.pullHooks",
       "git.avatar",
+      "git.scanRepositories",
       "git.watch",
       "git.unwatch",
       "git.stage",

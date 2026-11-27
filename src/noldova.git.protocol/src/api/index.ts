@@ -54,6 +54,7 @@ export { GitFailure } from "../models/git-failure.ts";
 export { GitFolderBinding } from "../models/git-folder-binding.ts";
 export { GitFolderParams } from "../models/git-folder-params.ts";
 export { GitHooks } from "../models/git-hooks.ts";
+export { GitRepositoryScan } from "../models/git-repository-scan.ts";
 export { GitLinesParams } from "../models/git-lines-params.ts";
 export { GitLog } from "../models/git-log.ts";
 export { GitLogParams } from "../models/git-log-params.ts";

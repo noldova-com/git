@@ -8,7 +8,7 @@
 
 import type { JsonValue } from "@noldova/context.json";
 import {
-  ConflictKind, ConflictResolution, DiffScope, DiffScopeKind, FailureCode, GitAvatar, GitBranches, GitBranchTrack, GitCommitSigning, GitConflict, GitDiff, GitFailure, GitHooks, GitJournal, GitMarkerCheck, GitPrediction, GitRebaseCheck, GitRebaseCommit, GitRebasePlan, GitRebaseStepCheck, GitRemoteTracks, GitStatus, OperationKind,
+  ConflictKind, ConflictResolution, DiffScope, DiffScopeKind, FailureCode, GitAvatar, GitBranches, GitBranchTrack, GitCommitSigning, GitConflict, GitDiff, GitFailure, GitHooks, GitJournal, GitMarkerCheck, GitPrediction, GitRebaseCheck, GitRebaseCommit, GitRebasePlan, GitRebaseStepCheck, GitRemoteTracks, GitRepositoryScan, GitStatus, OperationKind,
   PredictionAction, PredictionOutcome, RebaseAction, RebaseCheckOutcome, RebaseStep, SigningFormat
 } from "@noldova/git.protocol";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
@@ -74,6 +74,14 @@ describe("GitRuntimeClient", () => {
 
     expect(await new GitRuntimeClient(context).avatarAsync("kim@example.com")).toEqual(new GitAvatar("data:image/png;base64,QQ=="));
     expect(context.callsOf("requestAsync")).toEqual([["git.avatar", { email: "kim@example.com" }]]);
+  });
+
+  it("looks for the repositories in a chosen folder's subfolders, and parses the answer", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { "git.scanRepositories": { inRepository: false, repositories: ["/work/site"] } });
+
+    expect(await new GitRuntimeClient(context).scanRepositoriesAsync("/work")).toEqual(new GitRepositoryScan(false, ["/work/site"]));
+    expect(context.callsOf("requestAsync")).toEqual([["git.scanRepositories", { folder: "/work" }]]);
   });
 
   it("sends a branch's rename and delete and a tag's create and delete with the fingerprint each was based on", async () => {

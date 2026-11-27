@@ -1351,6 +1351,8 @@ export class Resources {
   public static readonly newBranchIcon: IconName = "call_split";
   public static readonly newBranchText: string = "Each repository gets the branch at its current commit and switches to it:";
   public static readonly branchNameRefused: string = "Git doesn't take this as a branch name.";
+  public static readonly scanText: string = "The ticked ones open:";
+  public static readonly scanPrefixPattern: RegExp = /^[\\/]+/u;
 
   private static readonly countWords: readonly string[] = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
 
@@ -1445,6 +1447,14 @@ export class Resources {
 
   public static formatNewBranchIn(count: number): string {
     return `New branch in ${count}`;
+  }
+
+  public static formatScanTitle(count: number, folder: string): string {
+    return `${Resources.formatCountStart(count)} ${count === 1 ? "repository" : "repositories"} in ${Resources.formatHistoryTitle(folder)}`;
+  }
+
+  public static formatNoRepositoryFound(folder: string): string {
+    return `No repository in ${Resources.formatHistoryTitle(folder)} or the folders under it.`;
   }
 
   public static formatNewBranchTitle(count: number): string {
