@@ -329,16 +329,47 @@ describe("FolderTreeWatch", () => {
     assert.deepEqual([gone, failures], [["", "src"], []]);
   });
 
-  test("skips a folder Windows refuses to watch while it is being removed, and fails the start when the refused folder is still there", async () => {
+  test("waits on a folder Windows refuses to watch while its removal is pending, though stat still finds it, reading nothing in it, and forgets it once the folder above says it went", async () => {
+    const asked = askedOf();
+    const deep = path.join(repository.folder, "src", "deep");
     refusing = folder => (folder === "src/deep" ? "EPERM" : null);
-    vi.mocked(stat).mockRejectedValueOnce(failure("EPERM"));
     await tree.startAsync();
-    const pending = live();
+    const pending = [live(), (await stat(deep)).isDirectory(), vi.mocked(readdir).mock.calls.some(t => String(t[0]) === deep)];
+    await rm(deep, { recursive: true });
+    openedOf("src").watcher.emit("change", "rename", "deep");
+    await checkedAsync();
+    const removed = asked.folders.length;
+    tree.recheck();
+    await untilAsync(() => asked.folders.length > removed);
+
+    assert.deepEqual([pending, asked.folders[removed], live(), failures], [[["", "src"], true, false], ["bin"], ["", "src"], []]);
+  });
+
+  test("watches a folder Windows refused once a recheck or the folder above finds it no longer refused, and fails the start when the top folder is refused", async () => {
+    let code: string | null = "EPERM";
+    refusing = folder => (folder === "src/deep" ? code : null);
+    await tree.startAsync();
+    const refused = live();
+    tree.recheck();
+    code = null;
+    tree.recheck();
+    await untilAsync(() => live().includes("src/deep"));
+    const rechecked = live();
     tree.close();
     await untilAsync(() => live().length === 0);
+    code = "EPERM";
+    tree = create();
+    await tree.startAsync();
+    code = null;
+    openedOf("src").watcher.emit("change", "rename", "deep");
+    await untilAsync(() => live().includes("src/deep"));
+    const settled = live();
+    tree.close();
+    await untilAsync(() => live().length === 0);
+    refusing = folder => (folder === "" ? "EPERM" : null);
 
     await assert.rejects(create().startAsync(), (error: unknown) => error instanceof Error && error.message === "EPERM");
-    assert.deepEqual([pending, failures], [["", "src"], []]);
+    assert.deepEqual([refused, rechecked, settled, failures], [["", "src"], ["", "src", "src/deep"], ["", "src", "src/deep"], []]);
   });
 
   test("skips a folder gone before it is read, and fails the start on any other error reading one", async () => {

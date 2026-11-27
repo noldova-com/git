@@ -61,7 +61,7 @@ export class FolderTreeWatch {
         throw new RangeError(Resources.formatTreeTooLarge(this.worktree, Resources.treeFoldersLimit));
       for (const folder of level)
         await this.addAsync(folder);
-      const children = (await Promise.all(level.map(t => this.childrenAsync(t)))).flat();
+      const children = (await Promise.all(level.filter(t => this.watchers.has(t)).map(t => this.childrenAsync(t)))).flat();
       const ignored = await this.ignored.ignoredFoldersAsync(this.top, children, this.stop.signal);
       for (const folder of children.filter(t => ignored.has(t)))
         this.skipped.add(folder);
@@ -87,9 +87,12 @@ export class FolderTreeWatch {
     try {
       watcher = watch(path.join(this.worktree, folder), { persistent: false }, (event, name) => this.note(folder, watcher, event, name));
     } catch (error) {
-      if (FolderTreeWatch.isGone(error) || !await this.isThereAsync(folder))
+      if (FolderTreeWatch.isGone(error))
         return;
-      throw error;
+      if (folder === "" || !FolderTreeWatch.isRefused(error))
+        throw error;
+      this.skipped.add(folder);
+      return;
     }
     watcher.on("error", (error: Error) => this.follow(this.loseAsync(folder, watcher, error)));
     this.watchers.set(folder, watcher);
@@ -197,6 +200,10 @@ export class FolderTreeWatch {
 
   private static join(folder: string, name: string): string {
     return folder === "" ? name : `${folder}/${name}`;
+  }
+
+  private static isRefused(error: unknown): boolean {
+    return error instanceof Error && "code" in error && error.code === "EPERM";
   }
 
   private static isGone(error: unknown): boolean {
