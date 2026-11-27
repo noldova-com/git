@@ -12,8 +12,8 @@ import { FailureCode } from "@noldova/desktop.protocol";
 import { RuntimeRequestException } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitHubNames } from "@noldova/git.github.protocol";
-import { CommitQuery, HostCommitComments, HostPullRequestList, HostPullRequestRow, HostReference, HostReviewRequest, HostReviewRequestList,
-  RepositoryQuery } from "@noldova/git.hosting.protocol";
+import { CommitQuery, DeviceCode, HostAccount, HostCommitComments, HostPullRequestList, HostPullRequestRow, HostReference, HostReviewRequest,
+  HostReviewRequestList, HostSignIn, RepositoryQuery } from "@noldova/git.hosting.protocol";
 import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
 import { GitCommitComments, GitPullRequestList, GitPullRequestRow, GitPullRequestsState } from "@noldova/git.window";
 import { describe, expect, it } from "vitest";
@@ -111,6 +111,84 @@ describe("GitHubPullRequests", () => {
     const list = await host.readAsync(remote, GitPullRequestsState.SignedOut);
 
     expect(list()).toEqual(GitPullRequestList.signedOut());
+  });
+
+  it("reads every list, review list and comment count it read again when someone signs in or out, but not while a sign-in waits or once it stops", async () => {
+    const host = new Host();
+    host.requests.answer(GitHubNames.readPullRequestsMethod, HostPullRequestList.signedOut().toJson(), new HostPullRequestList([row], false).toJson(),
+      HostPullRequestList.signedOut().toJson());
+    host.requests.answer(GitHubNames.readReviewRequestsMethod, HostReviewRequestList.signedOut().toJson(), new HostReviewRequestList([request], false).toJson(),
+      HostReviewRequestList.signedOut().toJson());
+    host.requests.answer(GitHubNames.readCommitCommentsMethod, HostCommitComments.none().toJson(), new HostCommitComments(2, false, URL).toJson(),
+      HostCommitComments.none().toJson());
+    const list = await host.readAsync(remote, GitPullRequestsState.SignedOut);
+    const reviews = host.pullRequests.reviewsFor(remote);
+    host.pullRequests.refreshReviews(remote);
+    await Host.untilAsync(reviews, GitPullRequestsState.SignedOut);
+    const comments = host.pullRequests.commentsFor(FOLDER, remote, COMMENTED);
+    await host.requests.askedAsync(3);
+
+    host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.waiting(new DeviceCode("WDJB-MJHT", "https://github.com/login/device", 1_800_000_000_000)).toJson());
+    const whileWaiting = host.requests.methods.length;
+    host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("octocat", null, null, ["repo"])).toJson());
+    await Host.untilAsync(list, GitPullRequestsState.Ready);
+    await Host.untilAsync(reviews, GitPullRequestsState.Ready);
+    await Wait.until(() => expect(comments()?.count).toBe(2));
+    const signedIn = [list(), reviews(), comments()];
+    host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+    await Host.untilAsync(list, GitPullRequestsState.SignedOut);
+    await Host.untilAsync(reviews, GitPullRequestsState.SignedOut);
+    await Wait.until(() => expect(comments()?.count).toBe(0));
+    host.pullRequests.stop();
+    host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+
+    expect([whileWaiting, host.requests.methods.length, host.context.activeCallsOf("onEvent")]).toEqual([3, 9, []]);
+    expect(signedIn).toEqual([GitPullRequestList.ready([shown]), GitPullRequestList.ready([asked], false), new GitCommitComments(2, false, URL)]);
+  });
+
+  it("keeps a sign-in's comment count when an earlier read answers or fails after it, and reads that commit again at the next sign-in", async () => {
+    const host = new Host();
+    const releaseFirst = host.requests.hold(GitHubNames.readCommitCommentsMethod);
+    const failFirst = host.requests.holdFailure(GitHubNames.readCommitCommentsMethod);
+    host.requests.answer(GitHubNames.readCommitCommentsMethod, new HostCommitComments(2, false, URL).toJson(), HostCommitComments.none().toJson(),
+      new HostCommitComments(3, false, URL).toJson(), HostCommitComments.none().toJson());
+    const commented = host.pullRequests.commentsFor(FOLDER, remote, COMMENTED);
+    const uncommented = host.pullRequests.commentsFor(FOLDER, remote, UNCOMMENTED);
+
+    host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("octocat", null, null, ["repo"])).toJson());
+    await Wait.until(() => expect([commented()?.count, uncommented()?.count]).toEqual([2, 0]));
+    releaseFirst(new HostCommitComments(5, false, URL).toJson());
+    failFirst(new WindowFailure("The runtime stopped."));
+    await Promise.allSettled(host.requests.answered);
+    const afterLate = [commented()?.count, uncommented()?.count];
+    host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+    await Wait.until(() => expect(commented()?.count).toBe(3));
+    await host.requests.askedAsync(6);
+
+    expect([afterLate, uncommented()?.count, host.requests.methods.length]).toEqual([[2, 0], 0, 6]);
+  });
+
+  it("keeps a re-read waiting behind the queue's limit when the commit's earlier read fails meanwhile, and reads that commit again at the next sign-in", async () => {
+    const host = new Host();
+    const ids: readonly string[] = ["a", "b", "c", "d", "e"].map(t => t.repeat(40));
+    host.requests.answer(GitHubNames.readCommitCommentsMethod, ...ids.slice(0, 4).map(() => HostCommitComments.none().toJson()));
+    const failFirst = host.requests.holdFailure(GitHubNames.readCommitCommentsMethod);
+    const held = ids.slice(0, 4).map(() => host.requests.hold(GitHubNames.readCommitCommentsMethod));
+    host.requests.answer(GitHubNames.readCommitCommentsMethod, new HostCommitComments(2, false, URL).toJson(), ...ids.map(() => HostCommitComments.none().toJson()));
+    const counts = ids.map(t => host.pullRequests.commentsFor(FOLDER, remote, t));
+    await host.requests.askedAsync(5);
+
+    host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("octocat", null, null, ["repo"])).toJson());
+    await host.requests.askedAsync(9);
+    failFirst(new WindowFailure("The runtime stopped."));
+    await Wait.until(() => expect(host.context.callsOf("log")).toHaveLength(1));
+    for (const release of held)
+      release(HostCommitComments.none().toJson());
+    await Wait.until(() => expect(counts[4]?.()?.count).toBe(2));
+    host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+    await Wait.until(() => expect(counts[4]?.()?.count).toBe(0));
+
+    expect([host.pullRequests.commentsFor(FOLDER, remote, ids[4] ?? "") === counts[4], host.requests.methods.length]).toEqual([true, 15]);
   });
 
   it("shows the runtime's message for a failed read, says plainly that the window failed, and logs both", async () => {
