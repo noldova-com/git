@@ -91,6 +91,7 @@ describe("The protocol package's API", () => {
       "GitRemoteTracks",
       "GitRepositories",
       "GitRepositoryItems",
+      "GitRepositoryScan",
       "GitResetParams",
       "GitResolveParams",
       "GitStash",
