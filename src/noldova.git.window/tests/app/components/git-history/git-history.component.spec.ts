@@ -303,6 +303,33 @@ describe("GitHistoryComponent", () => {
       .toEqual(["Second", "First", [], []]);
   });
 
+  it("ends a click's wait for a commit once a tag's commit is never found, so keyboard Down then keeps the focus in the history", async () => {
+    onTestFinished(() => {
+      GitViewing.branch.set(null);
+      GitViewing.showChanges(GitFixtures.folder);
+    });
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.graph": graph.toJson(),
+      "git.status": GitFixtures.status([GitFixtures.entry("a.ts", FileState.Unmodified, FileState.Modified)]).toJson() });
+    GitFixtures.setUp(context, [{ provide: WindowPartTokens.activeDocument, useValue: signal(true) }]);
+    GitViewing.branch.set(new GitBranchView(GitFixtures.folder, "", false, "f".repeat(40)));
+    GitCommitDetails.of(context).bringForward();
+    const fixture: ComponentFixture<GitHistoryComponent> = TestBed.createComponent(GitHistoryComponent);
+    fixture.componentRef.setInput("instance", GitFixtures.folder);
+    fixture.autoDetectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    const options = (): readonly HTMLElement[] => [...element.querySelectorAll<HTMLElement>("[role=option]")];
+    await untilAsync(element, () => options().length === 3);
+    options()[0]?.click();
+    await fixture.whenStable();
+
+    element.querySelector<HTMLElement>("[aria-selected=true]")?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    await untilAsync(element, () => options()[1]?.getAttribute("aria-selected") === "true");
+
+    expect([GitCommitDetails.of(context).shown()?.commit.commit.subject, context.callsOf("showView").filter(t => t[0] === "git.commitView")])
+      .toEqual(["Second", []]);
+  });
+
   it("keeps each folder's chosen commit, so a commit chosen in one History leaves another folder's History on its own", async () => {
     const other: string = "/work/other";
     onTestFinished(() => [GitFixtures.folder, other].forEach(t => GitViewing.showChanges(t)));

@@ -14,6 +14,7 @@ import { GitDetailFront } from "../models/git-detail-front.ts";
 import { GitDetailPage } from "../models/git-detail-page.ts";
 
 export class GitDetailView<T> {
+  private static readonly unsettled: Signal<boolean> = signal<boolean>(false).asReadonly();
   private readonly context: IWindowPartContext;
   private readonly view: string;
   private readonly instance: string | null;
@@ -48,8 +49,8 @@ export class GitDetailView<T> {
     this.isBroughtForward = isBroughtForward;
   }
 
-  public follow(choice: Signal<T | null>, active: Signal<boolean>, injector: Injector): void {
-    const page: GitDetailPage<T> = new GitDetailPage(choice, active);
+  public follow(choice: Signal<T | null>, active: Signal<boolean>, injector: Injector, settled: Signal<boolean> = GitDetailView.unsettled): void {
+    const page: GitDetailPage<T> = new GitDetailPage(choice, active, settled);
     this.pages.update(t => [...t, page]);
     injector.get(DestroyRef).onDestroy(() => this.pages.update(t => t.filter(u => u !== page)));
     let wasShowing: boolean = false;
@@ -57,6 +58,7 @@ export class GitDetailView<T> {
     effect(() => {
       const isActive: boolean = active();
       const chosen: T | null = choice();
+      const isSettled: boolean = settled();
       const isShowing: boolean = isActive && !Object.isNull(chosen);
       untracked(() => {
         if (wasActive && !isActive)
@@ -65,6 +67,8 @@ export class GitDetailView<T> {
           this.open(chosen);
         else if (wasActive && !isActive && this.opened() && Object.isUndefined(this.front()) && !Object.isNull(this.instance))
           this.context.returnView(this.view, this.instance);
+        if (isActive && isSettled && Object.isNull(chosen))
+          this.isAwaitingChoice = false;
       });
       wasShowing = isShowing;
       wasActive = isActive;
@@ -76,9 +80,10 @@ export class GitDetailView<T> {
   }
 
   public bringForward(): void {
-    const front: T | null | undefined = this.front();
+    const page: GitDetailPage<T> | undefined = this.pages().find(t => t.active());
+    const front: T | null | undefined = page?.choice();
     if (Object.isNullOrUndefined(front))
-      this.isAwaitingChoice = true;
+      this.isAwaitingChoice = Object.isUndefined(page) || !page.settled();
     else
       this.open(front);
   }

@@ -11,9 +11,11 @@ import type { Signal } from "@angular/core";
 export class GitDetailPage<T> {
   public readonly choice: Signal<T | null>;
   public readonly active: Signal<boolean>;
+  public readonly settled: Signal<boolean>;
 
-  public constructor(choice: Signal<T | null>, active: Signal<boolean>) {
+  public constructor(choice: Signal<T | null>, active: Signal<boolean>, settled: Signal<boolean>) {
     this.choice = choice;
     this.active = active;
+    this.settled = settled;
   }
 }

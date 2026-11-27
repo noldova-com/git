@@ -165,6 +165,50 @@ describe("GitDetailView", () => {
     expect([waiting, detail.shown(), context.callsOf("openView")]).toEqual([0, 7530, [["notes.detail", "selected", "Note 7521"]]]);
   });
 
+  it("ends the wait for a choice once the document in front settles with none, so its later choice leaves the view where it is", () => {
+    const context = new FakeWindowPartContext();
+    const detail = new GitDetailView<number>(context, "notes.detail", "selected", t => `Note ${t}`, false);
+    const choice: WritableSignal<number | null> = signal(null);
+    const settled: WritableSignal<boolean> = signal(false);
+    detail.follow(choice, signal(true), documentInjector(), settled);
+    TestBed.tick();
+    detail.bringForward();
+    settled.set(true);
+    TestBed.tick();
+    choice.set(7521);
+    TestBed.tick();
+
+    expect([detail.shown(), context.callsOf("openView")]).toEqual([7521, []]);
+  });
+
+  it("waits for no choice when the document in front is already settled with none", () => {
+    const context = new FakeWindowPartContext();
+    const detail = new GitDetailView<number>(context, "notes.detail", "selected", t => `Note ${t}`, false);
+    const choice: WritableSignal<number | null> = signal(null);
+    detail.follow(choice, signal(true), documentInjector(), signal(true));
+    TestBed.tick();
+    detail.bringForward();
+    choice.set(7521);
+    TestBed.tick();
+
+    expect([detail.shown(), context.callsOf("openView")]).toEqual([7521, []]);
+  });
+
+  it("brings the view forward for a choice the document in front settles with, after the person asked with none", () => {
+    const context = new FakeWindowPartContext();
+    const detail = new GitDetailView<number>(context, "notes.detail", "selected", t => `Note ${t}`, false);
+    const choice: WritableSignal<number | null> = signal(null);
+    const settled: WritableSignal<boolean> = signal(false);
+    detail.follow(choice, signal(true), documentInjector(), settled);
+    TestBed.tick();
+    detail.bringForward();
+    settled.set(true);
+    choice.set(7521);
+    TestBed.tick();
+
+    expect(context.callsOf("openView")).toEqual([["notes.detail", "selected", "Note 7521"]]);
+  });
+
   it("gives the group's front back when the person leaves the followed documents, and brings the view forward when they come back", () => {
     const context = new FakeWindowPartContext();
     const detail = viewOf(context);

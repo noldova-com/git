@@ -82,7 +82,7 @@ export class GitHistoryComponent {
   private readonly field: Signal<ElementRef<HTMLElement>> = viewChild.required<ElementRef<HTMLElement>>("field");
   private readonly fitting: WritableSignal<number> = signal(Resources.historyToolbars.length);
   private readonly injector: Injector = inject(Injector);
-  private jumped: GitBranchView | null = null;
+  private readonly jumped: WritableSignal<GitBranchView | null> = signal<GitBranchView | null>(null);
   private dragged: GitChipDrag | null = null;
   private static lists = 0;
   private reading = 0;
@@ -168,7 +168,11 @@ export class GitHistoryComponent {
     });
     const details: GitDetailView<GitCommitView> = GitCommitDetails.of(inject(WindowPartTokens.context));
     const chosen: Signal<GitCommitView | null> = computed(() => GitViewing.commitOf(this.instance()));
-    details.follow(chosen, active, inject(Injector));
+    const settled: Signal<boolean> = computed(() => {
+      const view: GitBranchView | null = GitViewing.branchOf(this.instance());
+      return !this.isLoading() && (Object.isNull(view) || view === this.jumped() || !Object.isNull(this.failure()));
+    });
+    details.follow(chosen, active, inject(Injector), settled);
     afterNextRender(() => {
       const row: HTMLElement = this.row().nativeElement;
       const observer: ResizeObserver = new ResizeObserver(() => this.fit(row));
@@ -348,17 +352,17 @@ export class GitHistoryComponent {
   }
 
   private jump(view: GitBranchView | null, commits: readonly GitGraphCommit[] | null): void {
-    if (Object.isNull(view) || view === this.jumped || Object.isNull(commits))
+    if (Object.isNull(view) || view === this.jumped() || Object.isNull(commits))
       return;
     const commit: GitGraphCommit | undefined = commits.find(t => view.isAt(t));
     if (Object.isUndefined(commit)) {
       if (!this.hasMore())
-        this.jumped = view;
+        this.jumped.set(view);
       else if (!this.isPaging)
         void this.pageAsync(view.folder);
       return;
     }
-    this.jumped = view;
+    this.jumped.set(view);
     this.showCentred(commit.commit.id);
   }
 

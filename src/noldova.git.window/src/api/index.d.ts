@@ -1384,8 +1384,8 @@ export declare class GitDetailView<T> {
   public constructor(context: IWindowPartContext, view: string, instance: string, titleOf: (choice: T) => string, isBroughtForward?: boolean);
 
   /**
-   * Makes the detail view for one window over a plain view, which a choice shows with `showView` under the title it was registered with; it has no
-   * instance, so `listen` hears nothing and leaving the followed documents gives its group no front back.
+   * Makes the detail view for one window over a plain view, which a choice shows with `showView` under the title it was registered with, moving the
+   * focus into it as `showView` does; it has no instance, so `listen` hears nothing and leaving the followed documents gives its group no front back.
    * @param context The window part's context, which shows the view.
    * @param view The view's name, a plain view the module registered.
    * @param instance `null`: a plain view has none.
@@ -1401,19 +1401,22 @@ export declare class GitDetailView<T> {
    * @param choice What the document chose, or `null` for nothing.
    * @param active Whether the document is the window's active document, such as `WindowPartTokens.activeDocument`.
    * @param injector The document's injector: the document is removed once it is destroyed, and the view reacts in its context.
+   * @param settled Whether the document is done reading, so that it has no choice coming without the person; while it is in front, settled and with no
+   * choice, `bringForward` waits for no next choice. Left out, the document is never settled, and a wait ends only at a choice.
    */
-  public follow(choice: Signal<T | null>, active: Signal<boolean>, injector: Injector): void;
+  public follow(choice: Signal<T | null>, active: Signal<boolean>, injector: Injector, settled?: Signal<boolean>): void;
 
   /**
-   * Opens the view, without moving the focus, for a choice the person made, and while it is open brings its tab to the front of its group again,
-   * retitled for the choice.
+   * Opens the view for a choice the person made, and while it is open brings its tab to the front of its group again, retitled for the choice. A view
+   * with instances leaves the focus in the document; a plain view takes it, as `showView` does.
    * @param choice The choice, which titles the tab.
    */
   public showInFront(choice: T): void;
 
   /**
-   * Brings the view to the front of its group, without moving the focus, for the choice of the followed document in front, titled for it; with none,
-   * the next followed document in front with a choice brings it.
+   * Brings the view to the front of its group for the choice of the followed document in front, titled for it; a view with instances leaves the focus
+   * in the document, and a plain view takes it, as `showView` does. With no choice, the next followed document in front with a choice brings it,
+   * unless a followed document in front is settled with none first.
    */
   public bringForward(): void;
 
