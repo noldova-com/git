@@ -6,11 +6,15 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
+import type { IWindowPartContext } from "@noldova/desktop.window";
 import { type GitRepositoryScan, ScanEnd } from "@noldova/git.protocol";
 import type { DialogService } from "@noldova/ui.components.angular";
 
 import { Resources } from "../../resources.ts";
 import { GitRepositoryScanDialogComponent } from "../components/git-repository-scan-dialog/git-repository-scan-dialog.component.ts";
+import { GitRecentRepositories } from "./git-recent-repositories.ts";
+import { GitWorkspacePages } from "./git-workspace-pages.ts";
 
 export class GitRepositoryScans {
   public static offer(dialogs: DialogService, folder: string, scan: GitRepositoryScan, add: (folders: readonly string[]) => void): void {
@@ -22,6 +26,14 @@ export class GitRepositoryScans {
       dialog.close();
       if (!Object.isNull(chosen))
         add(chosen);
+    });
+  }
+
+  public static offerToDashboard(dialogs: DialogService, context: IWindowPartContext, folder: string, scan: GitRepositoryScan): void {
+    GitRepositoryScans.offer(dialogs, folder, scan, chosen => {
+      for (const repository of chosen)
+        GitRecentRepositories.remember(repository);
+      GitWorkspacePages.open(context, null);
     });
   }
 

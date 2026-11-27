@@ -24,6 +24,7 @@ import { GitBranchDrop } from "../../models/git-branch-drop.ts";
 import { GitBranchView } from "../../models/git-branch-view.ts";
 import { GitChipDrag } from "../../models/git-chip-drag.ts";
 import { GitCommitView } from "../../models/git-commit-view.ts";
+import type { GitFolderLook } from "../../models/git-folder-look.ts";
 import type { GitHistoryAsk } from "../../models/git-history-ask.ts";
 import { GitHistoryToolbar } from "../../models/git-history-toolbar.ts";
 import { GitCommitDetails } from "../../services/git-commit-details.ts";
@@ -35,7 +36,7 @@ import { GitNewBranch } from "../../services/git-new-branch.ts";
 import { GitPendingSwitch } from "../../services/git-pending-switch.ts";
 import { GitRecentRepositories } from "../../services/git-recent-repositories.ts";
 import { GitRepositoryScans } from "../../services/git-repository-scans.ts";
-import { GitWorkspacePages } from "../../services/git-workspace-pages.ts";
+import { GitFolderLooks } from "../../services/git-folder-looks.ts";
 import { GitRebaseTarget, GitRebasing } from "../../services/git-rebasing.ts";
 import { GitRuntimeClient } from "../../services/git-runtime-client.ts";
 import { GitHistoryRows } from "../../services/git-history-rows.ts";
@@ -90,6 +91,7 @@ export class GitHistoryComponent {
   private static lists = 0;
   private reading = 0;
   private remembered = false;
+  private readonly offer = (scan: GitRepositoryScan): void => GitRepositoryScans.offerToDashboard(this.dialogs, this.context, this.instance(), scan);
   protected readonly list: number = ++GitHistoryComponent.lists;
   protected readonly activeOption: Signal<string | null> = computed(() => {
     const at: number = this.rows().findIndex(t => t.id === this.selectedId());
@@ -99,7 +101,7 @@ export class GitHistoryComponent {
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
-  protected readonly notRepository: WritableSignal<string | null> = signal<string | null>(null);
+  protected readonly notRepository: WritableSignal<GitFolderLook | null> = signal<GitFolderLook | null>(null);
   protected readonly actionFailure: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly notLoaded: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly busy: WritableSignal<boolean> = signal(false);
@@ -130,7 +132,7 @@ export class GitHistoryComponent {
       const folder: string = this.instance();
       untracked(() => {
         this.remembered = false;
-        this.notRepository.set(null);
+        this.leaveLook();
         void this.readAsync(folder);
         void this.client.watchAsync(folder).catch((error: unknown) => this.report(error));
       });
@@ -164,6 +166,7 @@ export class GitHistoryComponent {
       });
     });
     const destroyed: DestroyRef = inject(DestroyRef);
+    destroyed.onDestroy(() => this.leaveLook());
     destroyed.onDestroy(this.client.onChanged(folder => {
       if (folder === this.instance())
         void this.readAsync(folder);
@@ -417,7 +420,7 @@ export class GitHistoryComponent {
       this.loaded.set(true);
       this.hasMore.set(graph.truncated);
       this.failure.set(null);
-      this.notRepository.set(null);
+      this.leaveLook();
       if (!this.remembered) {
         this.remembered = true;
         GitRecentRepositories.remember(folder);
@@ -445,29 +448,15 @@ export class GitHistoryComponent {
   }
 
   private lookBelow(folder: string): void {
-    if (!Object.isNull(this.notRepository()))
-      return;
-    this.notRepository.set(Resources.formatLookingBelow(folder));
-    void this.lookBelowAsync(folder);
+    if (Object.isNull(this.notRepository()))
+      this.notRepository.set(GitFolderLooks.join(folder, this.client, this.offer, error => this.report(error)));
   }
 
-  private async lookBelowAsync(folder: string): Promise<void> {
-    let scan: GitRepositoryScan;
-    try {
-      scan = await this.client.scanRepositoriesAsync(folder);
-    }
-    catch (error) {
-      this.report(error);
-      this.notRepository.set(Resources.formatNotRepositoryText(folder));
-      return;
-    }
-    this.notRepository.set(GitRepositoryScans.belowTextOf(folder, scan));
-    if (scan.repositories.length > 0)
-      GitRepositoryScans.offer(this.dialogs, folder, scan, chosen => {
-        for (const repository of chosen)
-          GitRecentRepositories.remember(repository);
-        GitWorkspacePages.open(this.context, null);
-      });
+  private leaveLook(): void {
+    const look: GitFolderLook | null = this.notRepository();
+    if (!Object.isNull(look))
+      GitFolderLooks.leave(look, this.offer);
+    this.notRepository.set(null);
   }
 
   private async pageAsync(folder: string): Promise<void> {

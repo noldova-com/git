@@ -314,10 +314,6 @@ export class Resources {
     return `Your account doesn't have permission to open this folder, ${folder}.`;
   }
 
-  public static formatNotRepositoryText(folder: string): string {
-    return `This folder, ${folder}, isn't inside a Git repository.`;
-  }
-
   public static formatLookingBelow(folder: string): string {
     return `This folder, ${folder}, isn't inside a Git repository. Looking for repositories under it…`;
   }
@@ -327,15 +323,19 @@ export class Resources {
   }
 
   public static formatNoneBelow(folder: string): string {
-    return `This folder, ${folder}, isn't inside a Git repository, and no folder under it holds one.`;
+    return `This folder, ${folder}, isn't inside a Git repository, and no folder under it holds one. Open a folder inside a repository, or run git init here to make one.`;
   }
 
   public static formatNoneInFirstBelow(folder: string): string {
-    return `This folder, ${folder}, isn't inside a Git repository, and none of the first 10,000 folders under it holds one.`;
+    return `This folder, ${folder}, isn't inside a Git repository, and none of the first 10,000 folders under it holds one. Open a folder further down, or one inside a repository.`;
+  }
+
+  public static formatScanFailedBelow(folder: string): string {
+    return `This folder, ${folder}, isn't inside a Git repository. Open a folder inside a repository, or use Add repository on the Dashboard to look for the ones under it.`;
   }
 
   public static formatUnreadableBelow(folder: string): string {
-    return `This folder, ${folder}, isn't inside a Git repository, and Git can't read the folders under it.`;
+    return `This folder, ${folder}, isn't inside a Git repository, and Git can't read the folders under it. Open a folder inside a repository.`;
   }
 
   public static formatPush(ahead: number): string {

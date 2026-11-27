@@ -586,13 +586,13 @@ describe("GitWorkspaceComponent", () => {
     expect(screen.texts(".side [aria-current=page]")).toEqual(["dashboard Dashboard 2"]);
   });
 
-  it("opens a repository's history from its name, which puts it first among the ones opened lately", () => {
+  it("opens a repository's history from its name, which puts it among the ones opened lately only once it reads it", () => {
     const workspace: GitWorkspace = fresh("/work/site");
     const screen: Screen = Screen.render(workspace.id);
 
     screen.click(".name-cell");
 
-    expect([screen.context.callsOf("openDocument"), GitRecentRepositories.recent()]).toEqual([[["git.history", "/work/site", "site"]], ["/work/site"]]);
+    expect([screen.context.callsOf("openDocument"), GitRecentRepositories.recent()]).toEqual([[["git.history", "/work/site", "site"]], []]);
   });
 
   it("opens another workspace's page, the open repositories' page, and a new workspace's page from the Workspaces view", () => {

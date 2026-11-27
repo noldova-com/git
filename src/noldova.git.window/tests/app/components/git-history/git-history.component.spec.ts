@@ -30,6 +30,7 @@ import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
 import { Resources } from "../../../../src/resources.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
+import { Wait } from "../../../fixtures/wait.fixture.ts";
 
 class RenderedHistory {
   public readonly element: HTMLElement;
@@ -492,15 +493,37 @@ describe("GitHistoryComponent", () => {
     });
 
     it.each([
-      [new GitRepositoryScan(ScanEnd.Complete, []).toJson(), "This folder, /work/group, isn't inside a Git repository, and no folder under it holds one."],
-      [new GitRepositoryScan(ScanEnd.FolderLimit, []).toJson(), "This folder, /work/group, isn't inside a Git repository, and none of the first 10,000 folders under it holds one."],
-      [new GitRepositoryScan(ScanEnd.Unreadable, []).toJson(), "This folder, /work/group, isn't inside a Git repository, and Git can't read the folders under it."],
-      [GitFixtures.failure(FailureCode.Git, null, "It broke."), "This folder, /work/group, isn't inside a Git repository."]
+      [new GitRepositoryScan(ScanEnd.Complete, []).toJson(), "This folder, /work/group, isn't inside a Git repository, and no folder under it holds one. Open a folder inside a repository, or run git init here to make one."],
+      [new GitRepositoryScan(ScanEnd.FolderLimit, []).toJson(), "This folder, /work/group, isn't inside a Git repository, and none of the first 10,000 folders under it holds one. Open a folder further down, or one inside a repository."],
+      [new GitRepositoryScan(ScanEnd.Unreadable, []).toJson(), "This folder, /work/group, isn't inside a Git repository, and Git can't read the folders under it. Open a folder inside a repository."],
+      [GitFixtures.failure(FailureCode.Git, null, "It broke."), "This folder, /work/group, isn't inside a Git repository. Open a folder inside a repository, or use Add repository on the Dashboard to look for the ones under it."]
     ])("says in its one sentence how the look under it ended, offering nothing: %j", async (scan, text) => {
       const history: RenderedHistory = await renderAsync(scan);
       await untilAsync(history.element, () => scansOf(history) === 1 && textOf(history) === text);
 
       expect([document.querySelectorAll("nol-git-repository-scan-dialog").length, GitRecentRepositories.recent().includes("/work/group")]).toEqual([0, false]);
+    });
+
+    it("drops a look's answer for a folder it no longer shows, so a page moved to another folder or closed mid-look opens no dialog", async () => {
+      const context: FakeWindowPartContext = new FakeWindowPartContext();
+      const held: GitHeldRequests = new GitHeldRequests(context, ["git.scanRepositories"], { ...GitFixtures.watching, "git.status": notRepository, "git.graph": notRepository });
+      GitFixtures.setUp(context);
+      const fixture: ComponentFixture<GitHistoryComponent> = TestBed.createComponent(GitHistoryComponent);
+      fixture.componentRef.setInput("instance", "/work/group");
+      fixture.autoDetectChanges();
+      const history: RenderedHistory = new RenderedHistory(fixture.nativeElement, context);
+      await untilAsync(history.element, () => scansOf(history) === 1 && textOf(history).endsWith("…"));
+      fixture.componentRef.setInput("instance", "/work/other");
+      await untilAsync(history.element, () => scansOf(history) === 2 && textOf(history).includes("/work/other"));
+      const dialogs = (): number => document.querySelectorAll("nol-git-repository-scan-dialog").length;
+      await held.answerAsync("git.scanRepositories", new GitRepositoryScan(ScanEnd.Complete, ["/work/group/api"]).toJson());
+      await Wait.drainedAsync();
+      const moved: readonly unknown[] = [textOf(history), dialogs()];
+      fixture.destroy();
+      await held.answerAsync("git.scanRepositories", new GitRepositoryScan(ScanEnd.Complete, ["/work/other/site"]).toJson());
+      await Wait.drainedAsync();
+
+      expect([moved, dialogs()]).toEqual([["This folder, /work/other, isn't inside a Git repository. Looking for repositories under it…", 0], 0]);
     });
 
     it.each(AppearanceFixture.modes)("shows one calm message, no columns, no filter and Terminal as its only action, the message starting under the toolbar at its inset, in %s mode",

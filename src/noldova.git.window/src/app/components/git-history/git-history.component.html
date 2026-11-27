@@ -45,11 +45,11 @@ LICENSE file in the root directory of this source tree.
     }
   </nol-menu>
 </ng-template>
-@if (notRepository(); as text) {
+@if (notRepository(); as look) {
   <div class="empty">
     <span class="empty-icon material-symbols-rounded" aria-hidden="true">{{ resources.noFolderIcon }}</span>
     <h2 class="heading">{{ resources.notRepositoryHeading }}</h2>
-    <p class="text">{{ text }}</p>
+    <p class="text">{{ look.text() }}</p>
   </div>
 } @else {
   @if (actionFailure(); as message) {
