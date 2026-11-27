@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { rmSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { ScriptException } from "./exceptions/script.exception.ts";
@@ -44,19 +44,36 @@ class Test {
       return Resources.failureExitCode;
     }
     const repeat: number = Number(count);
-    const options: readonly string[] = rest.filter(t => t.startsWith(Resources.optionPrefix));
+    const shards: readonly string[] = rest.filter(t => t.startsWith(Resources.shardPrefix));
+    if (shards.length > 1) {
+      console.error(Resources.shardOnce);
+      return Resources.failureExitCode;
+    }
+    const shard: RegExpExecArray | null = shards.length === 0 ? null : Resources.shardPattern.exec(shards[0] ?? "");
+    const part: number = Number(shard?.[1] ?? 0);
+    const parts: number = Number(shard?.[2] ?? 0);
+    if (shards.length === 1 && (shard === null || part > parts)) {
+      console.error(Resources.shardValue);
+      return Resources.failureExitCode;
+    }
+    const tests: readonly string[] = rest.filter(t => !t.startsWith(Resources.shardPrefix));
+    if (parts > 0 && tests.some(t => !t.startsWith(Resources.optionPrefix))) {
+      console.error(Resources.shardFiltered);
+      return Resources.failureExitCode;
+    }
+    const options: readonly string[] = tests.filter(t => t.startsWith(Resources.optionPrefix));
     const unknown: readonly string[] = options.filter(t => !Test.options.includes(t));
     if (unknown.length > 0) {
       console.error(Resources.formatUnknownTestOptions(Test.options, unknown));
       return Resources.failureExitCode;
     }
-    const checked: number = await this.runStepsAsync(Test.checks, Test.root);
+    const checked: number = part > 1 ? Resources.successExitCode : await this.runStepsAsync(Test.checks, Test.root);
     if (checked !== Resources.successExitCode)
       return checked;
     for (let run = 1; run <= repeat; run++) {
       if (repeat > 1)
         process.stdout.write(Resources.formatRunHeading(run, repeat));
-      const ran: number = await this.runTestsAsync(rest, options);
+      const ran: number = parts > 0 ? await this.runPartAsync(options, part, parts) : await this.runTestsAsync(tests, options);
       if (ran !== Resources.successExitCode) {
         if (repeat > 1)
           process.stdout.write(Resources.formatRepeatStopped(run, repeat));
@@ -68,12 +85,34 @@ class Test {
     return Resources.successExitCode;
   }
 
-  private async runTestsAsync(values: readonly string[], options: readonly string[]): Promise<number> {
-    const rootTests: readonly string[] = [
+  private static rootTests(options: readonly string[]): readonly string[] {
+    return [
       ...Resources.vitestRun,
       ...(options.includes(Resources.skipTestDetails) ? [Resources.dotReporter] : []),
       ...(options.includes(Resources.skipCoverageDetails) ? [Resources.skipFullCoverage] : [])
     ];
+  }
+
+  private async runPartAsync(options: readonly string[], part: number, parts: number): Promise<number> {
+    const blobs: string = path.join(Test.root, Resources.blobFolder);
+    rmSync(blobs, { recursive: true, force: true });
+    mkdirSync(blobs, { recursive: true });
+    writeFileSync(path.join(blobs, Resources.formatPartRootFile(part)), Test.root.replaceAll(Resources.windowsPathSeparator, Resources.pathSeparator));
+    const root: readonly string[] = [
+      ...Test.rootTests(options), ...Test.noGates, Resources.formatShardOption(part, parts),
+      ...(options.includes(Resources.skipTestDetails) ? [] : [Resources.defaultReporter]), Resources.blobReporter, Resources.formatBlobOutput(part)
+    ];
+    const ran: number[] = [await this.runStepsAsync([root], Test.root)];
+    for (const [index, folder] of Test.windowFolders.entries())
+      if (parts - index % parts === part)
+        ran.push(await this.runWindowAsync(folder, null));
+    if (part === 1)
+      ran.push(await this.runStepsAsync([[Resources.installedPackageScript]], Test.root));
+    return ran.find(t => t !== Resources.successExitCode) ?? Resources.successExitCode;
+  }
+
+  private async runTestsAsync(values: readonly string[], options: readonly string[]): Promise<number> {
+    const rootTests: readonly string[] = Test.rootTests(options);
     const filters: readonly string[] = values.filter(t => !t.startsWith(Resources.optionPrefix));
     const paths: readonly string[] = filters.map(t => t.replaceAll(Resources.windowsPathSeparator, Resources.pathSeparator));
     const rootFilters: readonly string[] = paths.filter(t => !Test.windowFolders.some(w => t.startsWith(w)));
