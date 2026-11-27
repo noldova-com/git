@@ -6,7 +6,7 @@
   "parts": ["runtime", "window"],
   "dependencies": {},
   "optionalDependencies": { "checkpoints": "0.0.4", "terminal": "0.0.8" },
-  "noldovaDesktop": ">=0.0.17 <0.1.0",
+  "noldovaDesktop": ">=0.0.18 <0.1.0",
   "contributes": {
     "methods": [
       "git.status",
