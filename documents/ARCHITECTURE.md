@@ -161,7 +161,7 @@ A new layout, on a first start and after Reset layout, is the one Git's views de
 | Right dock | Git, then the Commit view once a history chooses a commit, in one group | `git.view` at order 20, shown by default, and `git.commitView` at order 45, hidden, in group 0 |
 | Bottom dock | The command log, hidden | `git.commands`, hidden, in group 0 |
 
-The Conflict, Rebase preview and Across repositories views open in the right dock's group only when their documents have something to show, so none of them is part of the layout. Reset layout is Noldova Desktop's and goes back to these declarations; Git adds nothing to it. `tests/app/services/git-window-part.spec.ts` checks each view's dock, whether it is shown by default, its group and its order.
+The Conflict and Rebase preview views open in the right dock's group only when their documents have something to show, and Across repositories is a document that only the person opens, so none of them is part of the layout. Reset layout is Noldova Desktop's and goes back to these declarations; Git adds nothing to it. `tests/app/services/git-window-part.spec.ts` checks each view's dock, whether it is shown by default, its group and its order.
 
 `GitDashboardComponent`, exported for an app's placeholder, shows the Dashboard, `GitWorkspaceComponent` for the open repositories, with no inputs. It provides Git's own window context, which the window part keeps in `GitWindowContext` while it is active, to the page, so a placeholder another module registers reads, opens and writes as Git; made while Git's window part isn't active, it fails with `GitWindowInactiveException`.
 
