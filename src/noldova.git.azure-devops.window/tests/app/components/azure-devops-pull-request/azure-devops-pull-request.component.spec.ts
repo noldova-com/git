@@ -815,6 +815,42 @@ describe("AzureDevOpsPullRequestComponent", () => {
     expect(page.texts(".vote-note")).toEqual(["Votes and comments go to Azure DevOps as you."]);
   });
 
+  it("shows the person's vote once they sign in anywhere, and leaves it out once they sign out, with no reload", async () => {
+    const page = new Page([], HostSignIn.signedOut());
+    const reviewers = [new HostReviewer(new HostPerson("hubot@fabrikam.test", null, null), 0, "No vote", false)];
+    page.requests.answer(AzureDevOpsNames.readPullRequestMethod, new HostPullRequest(item, reviewers, [], [], false, "", 5, []).toJson());
+    await page.openAsync();
+    const before: string[] = page.texts(".vote-note");
+
+    page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.waitingInBrowser("https://login.microsoftonline.com/example").toJson());
+    await page.settleAsync();
+    const whileWaiting: string[] = page.texts(".vote-note");
+    page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("Hubot@Fabrikam.test", null, null, [])).toJson());
+    await page.untilAsync(() => page.texts(".vote-note")[0] !== before[0]);
+    const signedIn: string[] = page.texts(".vote-note");
+    page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+    await page.untilAsync(() => page.texts(".vote-note")[0] === before[0]);
+
+    expect([before, whileWaiting, signedIn, page.texts(".vote-note")]).toEqual([["Votes and comments go to Azure DevOps as you."],
+      ["Votes and comments go to Azure DevOps as you."], ["Your vote: none yet. Votes and comments go to Azure DevOps as you."],
+      ["Votes and comments go to Azure DevOps as you."]]);
+  });
+
+  it("drops a sign-in read that answers after a sign-in change arrived, so the newer account stays", async () => {
+    const page = new Page([], HostSignIn.signedOut());
+    const reviewers = [new HostReviewer(new HostPerson("hubot@fabrikam.test", null, null), 0, "No vote", false)];
+    page.requests.answer(AzureDevOpsNames.readPullRequestMethod, new HostPullRequest(item, reviewers, [], [], false, "", 5, []).toJson());
+
+    page.create();
+    page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("Hubot@Fabrikam.test", null, null, [])).toJson());
+    await page.settleAsync();
+    await Promise.allSettled(page.requests.answered);
+    await page.settleAsync();
+
+    expect([page.requests.methods.includes(AzureDevOpsNames.readSignInMethod), page.texts(".vote-note")]).toEqual([true,
+      ["Your vote: none yet. Votes and comments go to Azure DevOps as you."]]);
+  });
+
   it("logs a sign-in read the window fails and leaves the vote out of the footer", async () => {
     const page = new Page([], new WindowFailure("The runtime stopped."));
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson());
