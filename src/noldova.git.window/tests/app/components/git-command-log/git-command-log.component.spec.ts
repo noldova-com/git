@@ -53,7 +53,7 @@ describe("GitCommandLogComponent", () => {
   const requests = (context: FakeWindowPartContext): readonly (readonly unknown[])[] => context.callsOf("requestAsync").filter(t => t[0] !== "git.status");
   const rem = (pixels: number): number => pixels / parseFloat(getComputedStyle(document.documentElement).fontSize);
 
-  it("lists the commands newest first, with when each started, its line, how it ended and how long it took, cutting a long line in its column", async () => {
+  it("lists the commands oldest first, the newest at the end, with when each started, its line, how it ended and how long it took, cutting a long line in its column", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.commandLog": commands.toJson() });
     const { element } = mount(context);
@@ -64,17 +64,17 @@ describe("GitCommandLogComponent", () => {
     const list: DOMRect = element.querySelector(".commands")?.getBoundingClientRect() ?? new DOMRect();
 
     expect(rows(element)).toEqual([
-      [time, "git fetch --quiet", "do_not_disturb_on Didn't finish", "30.0 s"],
+      [time, "git add -- a.txt", "check_circle Done", "40 ms"],
       [time, push.line, "error Exit code 1", "1.3 s"],
-      [time, "git add -- a.txt", "check_circle Done", "40 ms"]
+      [time, "git fetch --quiet", "do_not_disturb_on Didn't finish", "30.0 s"]
     ]);
-    expect([...element.querySelectorAll(".exit")].map(t => t.className)).toEqual(["exit muted", "exit failure", "exit ok"]);
+    expect([...element.querySelectorAll(".exit")].map(t => t.className)).toEqual(["exit ok", "exit failure", "exit muted"]);
     expect([line?.title, (line?.scrollWidth ?? 0) > (line?.clientWidth ?? 0), rem(row.height), rem(row.left - list.left), rem(row.width) === rem(list.width)]).toEqual([
       push.line, true, 1.75, 0, true
     ]);
   });
 
-  it("draws no card of its own, leaving the dock's background and inset, with the title, the hint and each row's time starting at its edge", async () => {
+  it("draws no card, heading, help text or line between rows, the first row at its top and each row's time at its edge", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.commandLog": commands.toJson() });
     const { element } = mount(context);
@@ -83,7 +83,37 @@ describe("GitCommandLogComponent", () => {
     const leftOf = (selector: string): number => rem((element.querySelector(selector)?.getBoundingClientRect().left ?? 0) - element.getBoundingClientRect().left);
 
     expect([getComputedStyle(element).padding, getComputedStyle(panel).backgroundColor, getComputedStyle(panel).borderTopWidth]).toEqual(["0px", "rgba(0, 0, 0, 0)", "0px"]);
-    expect([".title-icon", ".hint", ".command .time"].map(leftOf)).toEqual([0, 0, 0]);
+    const top: number = rem((element.querySelector(".command")?.getBoundingClientRect().top ?? -1) - element.getBoundingClientRect().top);
+    const lines: readonly string[] = [...element.querySelectorAll(".command")].flatMap(t => [getComputedStyle(t).borderTopWidth, getComputedStyle(t).borderBottomWidth]);
+
+    expect([element.querySelectorAll("h1, h2, header, .hint, hr").length, top, leftOf(".command .time"), new Set(lines)]).toEqual([0, 0, 0, new Set(["0px"])]);
+  });
+
+  it("keeps the newest row in sight as commands arrive, and leaves the list where it is once the person has scrolled up", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    let count: number = 30;
+    const logOf = (): GitCommandLog => new GitCommandLog(Array.from({ length: count }, (_, index) => new GitCommand(String(index), at, `git add -- f${index}.txt`, 0, 40)));
+    GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.commandLog": () => logOf().toJson() });
+    const { element } = mount(context);
+    element.style.height = "10rem";
+    const list = (): HTMLElement => element.querySelector<HTMLElement>(".commands") ?? element;
+    const gapUnderLast = (): number => rem(list().getBoundingClientRect().bottom - (element.querySelector(".command:last-child")?.getBoundingClientRect().bottom ?? 0));
+    const arriveAsync = async (more: number): Promise<void> => {
+      count += more;
+      context.raiseEvent("git.changed", { folder: GitFixtures.folder });
+      await until(() => element.querySelectorAll(".command").length === count);
+      await Wait.drainedAsync();
+    };
+    await until(() => element.querySelectorAll(".command").length === count);
+    await Wait.drainedAsync();
+    const opened: number = gapUnderLast();
+    await arriveAsync(5);
+    const followed: number = gapUnderLast();
+    list().scrollTop = 0;
+    list().dispatchEvent(new Event("scroll"));
+    await arriveAsync(5);
+
+    expect([opened, followed, list().scrollTop, rem((element.querySelector(".command")?.getBoundingClientRect().top ?? -1) - list().getBoundingClientRect().top)]).toEqual([0, 0, 0, 0]);
   });
 
   it("says no command ran yet, and reads the log again each time the repository changes", async () => {

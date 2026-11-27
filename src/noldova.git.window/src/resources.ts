@@ -638,7 +638,7 @@ export class Resources {
   public static readonly openConflictsCommand: string = "git.openConflicts";
   public static readonly openConflictsTitle: string = "Open conflicts";
   public static readonly commandLogLabel: string = "Command log";
-  public static readonly commandLogHint: string = "The git commands your writes in this repository ran since the app started, newest first.";
+  public static readonly commandLogEndSlack: number = 1;
   public static readonly commandLogEmpty: string = "No git commands yet: each write you make here shows its command as it runs.";
   public static readonly commandDoneIcon: IconName = "check_circle";
   public static readonly commandFailedIcon: IconName = "error";
