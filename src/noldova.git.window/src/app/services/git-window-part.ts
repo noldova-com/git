@@ -27,6 +27,7 @@ import { GitRecentRepositories } from "./git-recent-repositories.ts";
 import { GitRuntimeClient } from "./git-runtime-client.ts";
 import { GitStatusBar } from "./git-status-bar.ts";
 import { GitStatusFollower } from "./git-status-follower.ts";
+import { GitWindowContext } from "./git-window-context.ts";
 import { GitWorkspaceAcrossViews } from "./git-workspace-across-views.ts";
 import { GitWorkspacePages } from "./git-workspace-pages.ts";
 import { GitWorkspaces } from "./git-workspaces.ts";
@@ -39,6 +40,7 @@ export class GitWindowPart implements IWindowPart {
   private withdrawDetailViews: (() => void) | null = null;
   private unfollowAccounts: (() => void) | null = null;
   private withdrawUndo: (() => void) | null = null;
+  private withdrawContext: (() => void) | null = null;
 
   public readonly moduleId: string = GitNames.moduleId;
   public readonly padding: ContentPadding = ContentPadding.None;
@@ -49,6 +51,7 @@ export class GitWindowPart implements IWindowPart {
 
   public async activateAsync(context: IWindowPartContext): Promise<void> {
     this.context = context;
+    this.withdrawContext = GitWindowContext.provide(context);
     this.withdrawGravatars = GitAvatars.provideFallback(new GitGravatars(new GitRuntimeClient(context)));
     context.registerView(new ViewContribution(Resources.viewName, Resources.viewTitle, Resources.viewIcon, DockSide.Right, true,
       () => import("../components/git-view/git-view.component.ts").then(t => t.GitViewComponent), ContentPadding.None,
@@ -147,6 +150,8 @@ export class GitWindowPart implements IWindowPart {
     this.unfollowAccounts = null;
     this.withdrawUndo?.();
     this.withdrawUndo = null;
+    this.withdrawContext?.();
+    this.withdrawContext = null;
     this.context = null;
   }
 

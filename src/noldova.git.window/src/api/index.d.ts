@@ -1262,6 +1262,33 @@ export declare class GitRecentRepositories {
 }
 
 /**
+ * The Dashboard, the page of the repositories opened lately, for an app's placeholder to show while no document is open, as the Dashboard tab shows it:
+ * its toolbar, the repositories' table and its rows' reads, opens and writes go through Git's own window part, which must be active in the window, so a
+ * placeholder another module registers shows Git's Dashboard. It takes no inputs; its selector is `nol-git-dashboard`.
+ * @throws GitWindowException when Git's window part isn't active in the window as the component is made.
+ * @example
+ * ```ts
+ * import { ContentPadding, type IWindowPartContext, PlaceholderContribution } from "@noldova/desktop.window";
+ *
+ * export function registerStart(context: IWindowPartContext): void {
+ *   context.registerPlaceholder(new PlaceholderContribution("app.start", () => import("@noldova/git.window").then(t => t.GitDashboardComponent),
+ *     ContentPadding.None));
+ * }
+ * ```
+ */
+export declare class GitDashboardComponent {
+  /**
+   * Angular's factory for the component, as its compiler declares it.
+   */
+  public static ɵfac: ɵɵFactoryDeclaration<GitDashboardComponent, never>;
+
+  /**
+   * Angular's metadata for the standalone component: its selector and no inputs, as its compiler declares it.
+   */
+  public static ɵcmp: ɵɵComponentDeclaration<GitDashboardComponent, "nol-git-dashboard", never, Record<string, never>, Record<string, never>, never, never, true, never>;
+}
+
+/**
  * The files a diff changes in a repository, as the commit detail shows them: a header with their count and the lines added and removed, a folder tree or
  * flat list, and each file's diff under its row once opened. It reads the diff from the repository through `git.diff`, so nothing leaves the machine; a
  * failed read shows Git's message. Inside the Git view it follows the view's file layout and offers its layout button; elsewhere it shows folders.
