@@ -18,6 +18,7 @@ export { GitMessageReferenceKind } from "../enums/git-message-reference-kind.ts"
 export { LineKind } from "../enums/line-kind.ts";
 export { OperationKind } from "../enums/operation-kind.ts";
 export { RemoteTransport } from "../enums/remote-transport.ts";
+export { ScanEnd } from "../enums/scan-end.ts";
 export { RiskLevel } from "../enums/risk-level.ts";
 export { UntrustedSource } from "../enums/untrusted-source.ts";
 export { RefKind } from "../enums/ref-kind.ts";
@@ -54,6 +55,7 @@ export { GitFailure } from "../models/git-failure.ts";
 export { GitFolderBinding } from "../models/git-folder-binding.ts";
 export { GitFolderParams } from "../models/git-folder-params.ts";
 export { GitHooks } from "../models/git-hooks.ts";
+export { GitRepositoryScan } from "../models/git-repository-scan.ts";
 export { GitLinesParams } from "../models/git-lines-params.ts";
 export { GitLog } from "../models/git-log.ts";
 export { GitLogParams } from "../models/git-log-params.ts";

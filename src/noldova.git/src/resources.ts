@@ -342,6 +342,10 @@ export class Resources {
   public static readonly personConfigScopes: ReadonlySet<string> = new Set(["global", "system"]);
   public static readonly gitlinkPrefix: string = "160000 ";
   public static readonly gitEntry: string = ".git";
+  public static readonly scanDepth: number = 4;
+  public static readonly scanRepositoriesLimit: number = 1000;
+  public static readonly scanFoldersLimit: number = 10_000;
+  public static readonly scanSkippedFolders: ReadonlySet<string> = new Set([".git", "node_modules", "_build", "bin", "obj", "dist", "target", "vendor", ".venv", "venv", "__pycache__", ".cache"]);
   public static readonly tab: string = "\t";
   public static readonly filterPrefix: string = "filter.";
   public static readonly keySeparator: string = ".";

@@ -1351,6 +1351,12 @@ export class Resources {
   public static readonly newBranchIcon: IconName = "call_split";
   public static readonly newBranchText: string = "Each repository gets the branch at its current commit and switches to it:";
   public static readonly branchNameRefused: string = "Git doesn't take this as a branch name.";
+  public static readonly scanText: string = "The ticked ones open:";
+  public static readonly scanSuffixPattern: RegExp = /[\\/]+$/u;
+  public static readonly tickAllLabel: string = "All";
+  public static readonly scanRepositoryLimitText: string = "The list stops at the first 1000 repositories by name. Choose a folder further down to find the rest.";
+  public static readonly scanFolderLimitText: string = "The look stopped after 10,000 folders. Choose a folder further down to find the rest.";
+  public static readonly scanPrefixPattern: RegExp = /^[\\/]+/u;
 
   private static readonly countWords: readonly string[] = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
 
@@ -1445,6 +1451,26 @@ export class Resources {
 
   public static formatNewBranchIn(count: number): string {
     return `New branch in ${count}`;
+  }
+
+  public static formatScanTitle(count: number, folder: string): string {
+    return `${Resources.formatCountStart(count)} ${count === 1 ? "repository" : "repositories"} in ${Resources.formatHistoryTitle(folder)}`;
+  }
+
+  public static formatScanning(folder: string): string {
+    return `Looking for repositories in ${Resources.formatHistoryTitle(folder)}…`;
+  }
+
+  public static formatScanUnreadable(folder: string): string {
+    return `Git can't read ${Resources.formatHistoryTitle(folder)}.`;
+  }
+
+  public static formatNoRepositoryInFirst(folder: string): string {
+    return `No repository in the first 10,000 folders under ${Resources.formatHistoryTitle(folder)}. Choose a folder further down.`;
+  }
+
+  public static formatNoRepositoryFound(folder: string): string {
+    return `No repository in ${Resources.formatHistoryTitle(folder)} or the folders under it.`;
   }
 
   public static formatNewBranchTitle(count: number): string {
