@@ -7,6 +7,7 @@
  */
 
 import type { BinaryToTextEncoding } from "node:crypto";
+import { constants } from "node:fs";
 
 import { ConflictKind, ConflictResolution, FileChange, FileState, LineKind, OperationKind, ResetMode, SigningFormat, UndoMode } from "@noldova/git.protocol";
 
@@ -487,6 +488,7 @@ export class Resources {
   public static readonly binaryCount: string = "-";
   public static readonly countPattern: RegExp = /^\d+$/v;
   public static readonly lineCountFileBytes: number = 1024 * 1024;
+  public static readonly unwaitingReadFlags: number = constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW;
   public static readonly lineCountTotalBytes: number = 32 * 1024 * 1024;
   public static readonly missingFileCodes: readonly string[] = ["ENOENT", "ENOTDIR"];
   public static readonly deniedFileCodes: readonly string[] = ["EACCES", "EPERM"];
@@ -858,6 +860,10 @@ export class Resources {
 
   public static formatTreeTooLarge(folder: string, limit: number): string {
     return `${folder} has more than ${limit} folders git doesn't ignore, more than the module watches one at a time`;
+  }
+
+  public static formatWatchRefused(folder: string): string {
+    return `Couldn't watch ${folder}; it may be being removed or not readable, so its changes are picked up by the slower check until it can be watched.`;
   }
 
   public static formatWatchFailed(folder: string, failure: string): string {

@@ -69,6 +69,10 @@ button.row:hover {
   margin-top: 0.5rem;
 }
 
+.row > [nol-icon-button] {
+  margin-inline-end: calc((var(--nol-icon) - var(--nol-icon-button-target)) / 2);
+}
+
 .caps {
   color: var(--nol-text-muted);
   font-size: 0.75rem;

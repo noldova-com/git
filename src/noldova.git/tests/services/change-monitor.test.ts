@@ -889,6 +889,28 @@ describe("ChangeMonitor", () => {
       assert.deepEqual([before, changes.length, lines], [false, 3, []]);
     });
 
+    test("logs a folder whose watch is refused with EPERM, as while it is being removed, and keeps watching the rest of the worktree", async () => {
+      const { watch: realWatch } = await vi.importActual<typeof import("node:fs")>("node:fs");
+      const src = path.join(repository.folder, "src");
+      vi.mocked(watch).mockImplementation((folder: PathLike, _options: unknown, listener?: WatchListener<string>) => {
+        if (folder === src)
+          throw Object.assign(new Error("EPERM"), { code: "EPERM" });
+        return realWatch(folder, { persistent: false }, listener);
+      });
+      const starts = vi.spyOn(FolderTreeWatch.prototype, "startAsync");
+      monitor.watch(KEY, repository.folder, folders());
+      await startedAsync();
+      monitor.setVisible(KEY, true);
+      await fireNextAsync(DEBOUNCE);
+      await untilChangesAsync(1);
+      await starts.mock.results[0]?.value;
+      await repository.writeAsync("a.txt", "changed\n");
+      await fireNextAsync(DEBOUNCE);
+      await untilChangesAsync(2);
+
+      assert.deepEqual(lines, [`Couldn't watch ${src}; it may be being removed or not readable, so its changes are picked up by the slower check until it can be watched.`]);
+    });
+
     test("checks a shown worktree every few seconds when it has more folders than the module watches or a folder's watch fails, logging why", async () => {
       const starts = vi.spyOn(FolderTreeWatch.prototype, "startAsync");
       const limit = Resources.treeFoldersLimit;
