@@ -7,6 +7,7 @@
  */
 
 import type { BinaryToTextEncoding } from "node:crypto";
+import { constants } from "node:fs";
 
 import { ConflictKind, ConflictResolution, FileChange, FileState, LineKind, OperationKind, ResetMode, SigningFormat, UndoMode } from "@noldova/git.protocol";
 
@@ -483,6 +484,7 @@ export class Resources {
   public static readonly binaryCount: string = "-";
   public static readonly countPattern: RegExp = /^\d+$/v;
   public static readonly lineCountFileBytes: number = 1024 * 1024;
+  public static readonly unwaitingReadFlags: number = constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW;
   public static readonly lineCountTotalBytes: number = 32 * 1024 * 1024;
   public static readonly missingFileCodes: readonly string[] = ["ENOENT", "ENOTDIR"];
   public static readonly deniedFileCodes: readonly string[] = ["EACCES", "EPERM"];
