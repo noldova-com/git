@@ -9,7 +9,7 @@
 import { afterNextRender, Component, computed, effect, ElementRef, inject, Injector, input, type InputSignal, output, type OutputEmitterRef, PendingTasks, type Signal,
   signal, untracked, viewChildren, type WritableSignal } from "@angular/core";
 import type { JsonValue } from "@noldova/context.json";
-import { type IWindowPartContext, RuntimeRequestException, WindowException, WindowPartTokens } from "@noldova/desktop.window";
+import { type IWindowPartContext, RuntimeRequestException, TimeFormatService, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { HostComment, HostPullRequestThreads, type HostReference, HostThread, ThreadStatus } from "@noldova/git.hosting.protocol";
 import { AvatarSize, ButtonComponent, ButtonSize, ButtonVariant, type ILinkReferenceSource, type LinkOpenEvent, SpinnerComponent, TextFieldComponent }
   from "@noldova/ui.components.angular";
@@ -31,7 +31,7 @@ export class GitPullRequestThreadsComponent {
   private readonly tasks: PendingTasks = inject(PendingTasks);
   private readonly injector: Injector = inject(Injector);
   private readonly attempt: WritableSignal<number> = signal<number>(0);
-  private readonly dates: Intl.DateTimeFormat = new Intl.DateTimeFormat(undefined, Resources.commentDateFormat);
+  private readonly dates: TimeFormatService = inject(TimeFormatService);
   private readonly draftFields: Signal<readonly ElementRef<HTMLTextAreaElement>[]> = viewChildren("draft", { read: ElementRef });
   private generation: number = 0;
 
@@ -110,7 +110,7 @@ export class GitPullRequestThreadsComponent {
   }
 
   protected dateOf(comment: HostComment): string {
-    return this.dates.format(comment.publishedAt);
+    return this.dates.shortDateTime(comment.publishedAt);
   }
 
   protected draftOf(thread: HostThread): string {

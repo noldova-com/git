@@ -10,7 +10,7 @@ import {
   Component, computed, DestroyRef, effect, ErrorHandler, inject, Injector, input, type InputSignal, signal, type Signal, untracked, viewChild, type WritableSignal
 } from "@angular/core";
 import "@noldova/context.core";
-import { type IWindowPartContext, LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
+import { type IWindowPartContext, LinkPlace, TimeFormatService, WindowPartTokens } from "@noldova/desktop.window";
 import {
   DiffScope, DiffScopeKind, type GitCommitDetail, type GitCommitSignature, type GitGraphCommit, type GitRemote, PredictionAction, RefKind, SignatureState
 } from "@noldova/git.protocol";
@@ -57,6 +57,7 @@ export class GitCommitDetailComponent {
   private readonly client: GitRuntimeClient = new GitRuntimeClient(this.context);
   private readonly errors: ErrorHandler = inject(ErrorHandler);
   private readonly injector: Injector = inject(Injector);
+  private readonly dates: TimeFormatService = inject(TimeFormatService);
   protected readonly state: GitViewStateService = inject(GitViewStateService);
 
   protected readonly resources: typeof Resources = Resources;
@@ -119,12 +120,12 @@ export class GitCommitDetailComponent {
   protected readonly avatar: Signal<string> = computed(() => CommitLabels.avatarOf(this.commit().email));
   protected readonly image: Signal<string | null> = computed(() => GitAvatars.imageOf(this.folder(), this.commit().email, this.commit().commit.id));
   protected readonly authored: Signal<string> = computed(() =>
-    Resources.formatAuthored(new Date(this.commit().commit.authoredAt).toLocaleString(Resources.dateLocale, Resources.authoredFormat)));
+    Resources.formatAuthored(this.dates.shortDateTime(this.commit().commit.authoredAt)));
   protected readonly committed: Signal<string | null> = computed(() => {
     const more: GitCommitDetail | null = this.more();
     if (Object.isNull(more) || more.committer === this.commit().commit.author)
       return null;
-    return Resources.formatCommitted(more.committer, new Date(more.committedAt).toLocaleString(Resources.dateLocale, Resources.authoredFormat));
+    return Resources.formatCommitted(more.committer, this.dates.shortDateTime(more.committedAt));
   });
   protected readonly scope: Signal<DiffScope> = computed(() => {
     const id: string = this.commit().commit.id;
