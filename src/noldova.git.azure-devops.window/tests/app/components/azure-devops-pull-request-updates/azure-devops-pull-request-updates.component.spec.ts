@@ -9,6 +9,7 @@
 import { signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import "@noldova/context.core";
+import { DatePattern } from "@noldova/desktop.protocol";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
@@ -115,7 +116,7 @@ describe("AzureDevOpsPullRequestUpdatesComponent", () => {
       new HostPullRequestUpdate(1, null, OLD, COMMON, null)], false).toJson());
     await tab.openAsync();
 
-    const old: string = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(OLD);
+    const old: string = DatePattern.format(new Date(OLD), "MMM d");
     expect([tab.requests.methods, tab.requests.payloads]).toEqual([[AzureDevOpsNames.readPullRequestUpdatesMethod], [reference.toJson()]]);
     expect(tab.texts(".row")).toEqual(["Update 2 monalisa@fabrikam.test 2 h 9fceb02", `Update 1 Someone ${old} 0123456`]);
     expect([tab.element.querySelectorAll("button.row").length, tab.texts(".cap"), tab.counts]).toEqual([0, [], ["2"]]);

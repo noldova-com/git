@@ -9,6 +9,7 @@
 import { signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import "@noldova/context.core";
+import { DatePattern } from "@noldova/desktop.protocol";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { HostPullRequestCommit, HostPullRequestCommits, HostReference } from "@noldova/git.hosting.protocol";
@@ -112,7 +113,7 @@ describe("GitPullRequestCommitsComponent", () => {
       new HostPullRequestCommit(SECOND, "", "Hubot", OLD)], false).toJson());
     await tab.openAsync();
 
-    const old: string = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(OLD);
+    const old: string = DatePattern.format(new Date(OLD), "MMM d");
     expect([tab.requests.methods, tab.requests.payloads]).toEqual([[TestPullRequestHost.commitsMethod], [reference.toJson()]]);
     expect(tab.texts(".row")).toEqual(["9fceb02 Fix the sign-in Mona Lisa · 5 min", `0123456 Hubot · ${old}`]);
     expect([tab.texts(".cap"), tab.counts]).toEqual([[], ["2"]]);
@@ -216,7 +217,7 @@ describe("GitPullRequestCommitsComponent", () => {
     expect([tab.texts("[role=alert]"), tab.logs, tab.counts]).toEqual([["error Example didn't answer. Try again to read the commits. Try again"],
       ["The Example module's git-example.readPullRequestCommits request failed: WindowFailure: The runtime stopped."], []]);
     await tab.clickAsync("[role=alert] button");
-    expect([tab.texts(".row"), tab.counts]).toEqual([[`9fceb02 Step Mona Lisa · ${new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(OLD)}`], ["1"]]);
+    expect([tab.texts(".row"), tab.counts]).toEqual([[`9fceb02 Step Mona Lisa · ${DatePattern.format(new Date(OLD), "MMM d")}`], ["1"]]);
   });
 
   it("drops an answer or a failure for a pull request it left", async () => {
