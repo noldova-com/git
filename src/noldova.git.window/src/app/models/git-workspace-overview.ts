@@ -7,7 +7,7 @@
  */
 
 import "@noldova/context.core";
-import type { GitRemote } from "@noldova/git.protocol";
+import { type GitRemote, type GitRepositoryScan, ScanEnd } from "@noldova/git.protocol";
 
 import { Resources } from "../../resources.ts";
 import { GitAgentState } from "../enums/git-agent-state.ts";
@@ -109,6 +109,14 @@ export class GitWorkspaceOverview {
 
   public static pullTargetsOf(rows: readonly GitWorkspaceRow[]): readonly GitBulkTarget[] {
     return rows.map(row => new GitBulkTarget(row.folder, row.name, row.branch(), null, null));
+  }
+
+  public static scanLinesOf(folder: string, scan: GitRepositoryScan): readonly string[] {
+    if (scan.end === ScanEnd.Unreadable)
+      return [Resources.formatScanUnreadable(folder)];
+    if (scan.end === ScanEnd.Repository || scan.repositories.length > 0)
+      return [];
+    return [scan.end === ScanEnd.FolderLimit ? Resources.formatNoRepositoryInFirst(folder) : Resources.formatNoRepositoryFound(folder)];
   }
 
   public static resultLinesOf(verb: string, result: GitBulkResult): readonly string[] {

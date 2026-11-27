@@ -652,4 +652,83 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
         [3, 3, 3, 3, 3, 3], []]);
       expect(onSignIn).toEqual([GitPullRequestList.ready([shown]), GitBranchPullRequest.of(rowOf(2), GitPullRequestState.Open, true, "Active"), [2, 2, 2, 2, 2, 2]]);
     });
+
+
+  it("keeps a sign-in's stack list, commit pull request and comment count when an earlier read answers after it", async () => {
+    const host = new Host();
+    const stale = [host.requests.hold(AzureDevOpsNames.readPullRequestHeadsMethod), host.requests.hold(AzureDevOpsNames.readCommitPullRequestMethod),
+      host.requests.hold(AzureDevOpsNames.readCommitCommentsMethod)];
+    host.requests.answer(AzureDevOpsNames.readPullRequestHeadsMethod, new HostPullRequestHeads([], false).toJson());
+    host.requests.answer(AzureDevOpsNames.readCommitPullRequestMethod, pullRequestOf(ReferenceState.Merged, ReviewDecision.Approved, 1).toJson());
+    host.requests.answer(AzureDevOpsNames.readCommitCommentsMethod, new HostCommitComments(2, false, URL).toJson());
+    const stacks = host.pullRequests.stackListFor(FOLDER, remote);
+    const commit = host.pullRequests.commitFor(FOLDER, remote, HEAD);
+    const comments = host.pullRequests.commentsFor(FOLDER, remote, COMMENTED);
+
+    host.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, signedIn);
+    await Wait.until(() => expect([stacks()?.state, commit()?.state, comments()?.count]).toEqual([GitPullRequestsState.Ready, GitPullRequestsState.Ready, 2]));
+    stale[0]?.(HostPullRequestHeads.signedOut().toJson());
+    stale[1]?.(pullRequestOf(ReferenceState.Open).toJson());
+    stale[2]?.(new HostCommitComments(5, false, URL).toJson());
+    await Promise.allSettled(host.requests.answered);
+
+    expect([stacks(), commit(), comments()]).toEqual([GitPullRequestList.ready([], false),
+      GitBranchPullRequest.of(rowOf(1, false, ""), GitPullRequestState.Merged, false, "Completed"), new GitCommitComments(2, false, URL)]);
+  });
+
+  it("keeps a sign-in's answers when an earlier read fails after it, and reads them all again at the next sign-in", async () => {
+    const host = new Host();
+    const failures = [host.requests.holdFailure(AzureDevOpsNames.readPullRequestHeadsMethod), host.requests.holdFailure(AzureDevOpsNames.readCommitPullRequestMethod),
+      host.requests.holdFailure(AzureDevOpsNames.readCommitCommentsMethod)];
+    host.requests.otherwise(AzureDevOpsNames.readPullRequestHeadsMethod, new HostPullRequestHeads([], false).toJson())
+      .otherwise(AzureDevOpsNames.readCommitPullRequestMethod, pullRequestOf(ReferenceState.Merged, ReviewDecision.Approved, 1).toJson())
+      .otherwise(AzureDevOpsNames.readCommitCommentsMethod, new HostCommitComments(2, false, URL).toJson());
+    const stacks = host.pullRequests.stackListFor(FOLDER, remote);
+    const commit = host.pullRequests.commitFor(FOLDER, remote, HEAD);
+    const comments = host.pullRequests.commentsFor(FOLDER, remote, COMMENTED);
+
+    host.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, signedIn);
+    await Wait.until(() => expect([stacks()?.state, commit()?.state, comments()?.count]).toEqual([GitPullRequestsState.Ready, GitPullRequestsState.Ready, 2]));
+    for (const fail of failures)
+      fail(new WindowFailure("The runtime stopped."));
+    await Promise.allSettled(host.requests.answered);
+    const afterLate = [stacks(), commit(), comments()];
+    host.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+    await host.requests.askedAsync(9);
+
+    expect(afterLate).toEqual([GitPullRequestList.ready([], false), GitBranchPullRequest.of(rowOf(1, false, ""), GitPullRequestState.Merged, false, "Completed"),
+      new GitCommitComments(2, false, URL)]);
+    expect([host.pullRequests.stackListFor(FOLDER, remote), host.pullRequests.commitFor(FOLDER, remote, HEAD),
+      host.pullRequests.commentsFor(FOLDER, remote, COMMENTED), host.requests.methods.length]).toEqual([stacks, commit, comments, 9]);
+  });
+
+  it("keeps the re-reads waiting behind the queue's limit when a commit's earlier reads fail meanwhile, and reads that commit again at the next sign-in",
+    async () => {
+      const host = new Host();
+      const ids: readonly string[] = ["a", "b", "c", "d", "e"].map(t => t.repeat(40));
+      const merged = pullRequestOf(ReferenceState.Merged, ReviewDecision.Approved, 1).toJson();
+      host.requests.answer(AzureDevOpsNames.readCommitPullRequestMethod, ...ids.slice(0, 4).map(() => new BranchPullRequest(null, []).toJson()));
+      const failures = [host.requests.holdFailure(AzureDevOpsNames.readCommitPullRequestMethod), host.requests.holdFailure(AzureDevOpsNames.readCommitCommentsMethod)];
+      const held = ids.slice(0, 4).map(() => host.requests.hold(AzureDevOpsNames.readCommitPullRequestMethod));
+      host.requests.answer(AzureDevOpsNames.readCommitPullRequestMethod, merged, ...ids.map(() => new BranchPullRequest(null, []).toJson()));
+      host.requests.answer(AzureDevOpsNames.readCommitCommentsMethod, new HostCommitComments(2, false, URL).toJson(), HostCommitComments.none().toJson());
+      const commits = ids.map(t => host.pullRequests.commitFor(FOLDER, remote, t));
+      const comments = host.pullRequests.commentsFor(FOLDER, remote, COMMENTED);
+      await host.requests.askedAsync(6);
+
+      host.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, signedIn);
+      await host.requests.askedAsync(10);
+      for (const fail of failures)
+        fail(new WindowFailure("The runtime stopped."));
+      await Wait.until(() => expect(host.context.callsOf("log")).toHaveLength(2));
+      const whileWaiting = commits[4]?.();
+      for (const release of held)
+        release(new BranchPullRequest(null, []).toJson());
+      await Wait.until(() => expect([commits[4]?.()?.state, comments()?.count]).toEqual([GitPullRequestsState.Ready, 2]));
+      host.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+      await Wait.until(() => expect([commits[4]?.()?.pullRequest, comments()?.count]).toEqual([null, 0]));
+
+      expect([whileWaiting, host.pullRequests.commitFor(FOLDER, remote, ids[4] ?? "") === commits[4],
+        host.pullRequests.commentsFor(FOLDER, remote, COMMENTED) === comments, host.requests.methods.length]).toEqual([null, true, true, 18]);
+    });
 });

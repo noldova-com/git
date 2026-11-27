@@ -29,7 +29,7 @@ LICENSE file in the root directory of this source tree.
           [isShowingLabel]="true" [isUnavailable]="isWriting()" (click)="newBranchInChosen()"></button>
       }
       <button type="button" nol-toolbar-button class="add" [icon]="resources.addIcon" [label]="resources.addRepositoryTitle" [isShowingLabel]="true"
-        (click)="addRepositoryAsync()"></button>
+        [isUnavailable]="isScanning()" (click)="addRepositoryAsync()"></button>
       @if (chosen().size > 0) {
         @if (workspace(); as current) {
           <button type="button" nol-toolbar-button class="move-up" [icon]="resources.moveUpIcon" [label]="resources.moveUpTitle" (click)="moveChosen(current, -1)"></button>
@@ -115,7 +115,7 @@ LICENSE file in the root directory of this source tree.
         <div class="empty">
           <p>{{ folders().length === 0 ? resources.noRepositories : resources.noRepositoryMatches }}</p>
           @if (folders().length === 0) {
-            <button nol-button type="button" (click)="addRepositoryAsync()">{{ resources.addRepositoryTitle }}</button>
+            <button nol-button type="button" [disabled]="isScanning()" (click)="addRepositoryAsync()">{{ resources.addRepositoryTitle }}</button>
           }
         </div>
       }
