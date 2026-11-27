@@ -45,9 +45,9 @@
     "@noldova/code.editor.angular": ">=0.0.2 <0.1.0",
     "@noldova/code.editor.merge.angular": ">=0.0.2 <0.1.0",
     "@noldova/code.editor.textmate": ">=0.0.2 <0.1.0",
-    "@noldova/context.core": ">=0.0.12 <0.1.0",
-    "@noldova/context.exceptions": ">=0.0.12 <0.1.0",
-    "@noldova/context.json": ">=0.0.12 <0.1.0"
+    "@noldova/context.core": ">=0.0.18 <0.1.0",
+    "@noldova/context.exceptions": ">=0.0.18 <0.1.0",
+    "@noldova/context.json": ">=0.0.18 <0.1.0"
   },
   "peerDependenciesMeta": {
     "@noldova/code.editor": {
