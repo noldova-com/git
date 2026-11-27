@@ -4,6 +4,13 @@
 
 Each version's section is written by the pull request that changes the version, from the pull requests merged since the previous version; other pull requests don't edit this file.
 
+## 0.0.8
+
+- The Undo menu's Recent actions name a fetch as Fetch and a rebase as Rebase, rather than by the method's name, such as "git.fetch on main" (#50).
+- `git.watch` drops a removed folder's watch at once when Windows names the removed folder itself in its event, as it does on a Dev Drive tens of thousands of times a second, rather than reporting each such event as a changed file and never dropping the watch (#52).
+- `git.watch` no longer ends when Windows refuses to watch a folder whose removal is pending: a subfolder whose watch is refused with `EPERM` waits, with nothing in it read, until the folder above reports it gone or it can be watched, and the log says so once (#58).
+- `git.status` counts no lines for an untracked path swapped for a FIFO, or for a link to one, after it was checked, rather than waiting for a writer and never answering (#55).
+
 ## 0.0.7
 
 - The Azure DevOps host module, three new packages that move with the others: `@noldova/git.azure-devops`, `@noldova/git.azure-devops.window` and `@noldova/git.azure-devops.protocol` (#32).

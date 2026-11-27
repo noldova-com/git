@@ -1,6 +1,6 @@
 {
   "name": "@noldova/git.azure-devops",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "The Azure DevOps module for apps on Noldova Desktop: the sign-in to Azure DevOps with a Microsoft account or a personal access token, its pull requests with their reviewers' votes, policies and builds, and its work items.",
   "type": "module",
   "license": "MIT",
@@ -29,9 +29,9 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@noldova/git.azure-devops.protocol": "0.0.7",
-    "@noldova/git.azure-devops.window": "0.0.7",
-    "@noldova/git.hosting.protocol": "0.0.7"
+    "@noldova/git.azure-devops.protocol": "0.0.8",
+    "@noldova/git.azure-devops.window": "0.0.8",
+    "@noldova/git.hosting.protocol": "0.0.8"
   },
   "peerDependencies": {
     "@noldova/desktop.protocol": ">=0.0.17 <0.1.0",
