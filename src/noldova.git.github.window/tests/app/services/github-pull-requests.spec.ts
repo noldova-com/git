@@ -146,6 +146,28 @@ describe("GitHubPullRequests", () => {
     expect(signedIn).toEqual([GitPullRequestList.ready([shown]), GitPullRequestList.ready([asked], false), new GitCommitComments(2, false, URL)]);
   });
 
+  it("keeps a sign-in's comment count when an earlier read answers or fails after it, and reads that commit again at the next sign-in", async () => {
+    const host = new Host();
+    const releaseFirst = host.requests.hold(GitHubNames.readCommitCommentsMethod);
+    const failFirst = host.requests.holdFailure(GitHubNames.readCommitCommentsMethod);
+    host.requests.answer(GitHubNames.readCommitCommentsMethod, new HostCommitComments(2, false, URL).toJson(), HostCommitComments.none().toJson(),
+      new HostCommitComments(3, false, URL).toJson(), HostCommitComments.none().toJson());
+    const commented = host.pullRequests.commentsFor(FOLDER, remote, COMMENTED);
+    const uncommented = host.pullRequests.commentsFor(FOLDER, remote, UNCOMMENTED);
+
+    host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("octocat", null, null, ["repo"])).toJson());
+    await Wait.until(() => expect([commented()?.count, uncommented()?.count]).toEqual([2, 0]));
+    releaseFirst(new HostCommitComments(5, false, URL).toJson());
+    failFirst(new WindowFailure("The runtime stopped."));
+    await Promise.allSettled(host.requests.answered);
+    const afterLate = [commented()?.count, uncommented()?.count];
+    host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+    await Wait.until(() => expect(commented()?.count).toBe(3));
+    await host.requests.askedAsync(6);
+
+    expect([afterLate, uncommented()?.count, host.requests.methods.length]).toEqual([[2, 0], 0, 6]);
+  });
+
   it("shows the runtime's message for a failed read, says plainly that the window failed, and logs both", async () => {
     const host = new Host();
     host.requests.fail(GitHubNames.readPullRequestsMethod, new RuntimeRequestException(FailureCode.Unavailable, "The repository isn't reachable."));

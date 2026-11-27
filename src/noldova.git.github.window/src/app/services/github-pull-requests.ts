@@ -16,6 +16,7 @@ import type { GitRemote } from "@noldova/git.protocol";
 import { GitCommitComments, GitPullRequestList, GitPullRequestRow, type IGitPullRequests } from "@noldova/git.window";
 
 import type { IRemotePlace } from "../interfaces/i-remote-place.ts";
+import { ReadQueue } from "../models/read-queue.ts";
 import { SignInEvents } from "./sign-in-events.ts";
 import { Resources } from "../../resources.ts";
 
@@ -28,6 +29,8 @@ export class GitHubPullRequests implements IGitPullRequests {
   private readonly reviewQueries: Map<string, RepositoryQuery> = new Map();
   private readonly comments: Map<string, WritableSignal<GitCommitComments | null>> = new Map();
   private readonly commentQueries: Map<string, [CommitQuery, WritableSignal<GitCommitComments | null>]> = new Map();
+  private readonly commentReads: Map<string, number> = new Map();
+  private readonly rereads: ReadQueue = new ReadQueue(Resources.gitHubReferenceReadLimit);
   private readonly context: IWindowPartContext;
   private readonly unfollow: () => void;
 
@@ -92,7 +95,7 @@ export class GitHubPullRequests implements IGitPullRequests {
     for (const query of this.reviewQueries.values())
       void this.readReviewsAsync(query);
     for (const [key, [query, answer]] of this.commentQueries)
-      void this.readCommentsAsync(query, key, answer);
+      this.rereads.add(() => this.readCommentsAsync(query, key, answer));
   }
 
   private listOf(key: string): WritableSignal<GitPullRequestList | null> {
@@ -122,16 +125,21 @@ export class GitHubPullRequests implements IGitPullRequests {
   }
 
   private async readCommentsAsync(query: CommitQuery, key: string, answer: WritableSignal<GitCommitComments | null>): Promise<void> {
+    const read: number = (this.commentReads.get(key) ?? 0) + 1;
+    this.commentReads.set(key, read);
     try {
       const found = HostCommitComments.fromJson(await this.context.requestAsync(GitHubNames.readCommitCommentsMethod, query.toJson()));
-      answer.set(new GitCommitComments(found.count, found.isCapped, found.url));
+      if (this.commentReads.get(key) === read)
+        answer.set(new GitCommitComments(found.count, found.isCapped, found.url));
     }
     catch (error) {
       if (!(error instanceof WindowException))
         throw error;
       this.context.log(Resources.formatRequestFailed(GitHubNames.readCommitCommentsMethod, String(error)));
-      this.comments.delete(key);
-      this.commentQueries.delete(key);
+      if (this.commentReads.get(key) === read) {
+        this.comments.delete(key);
+        this.commentQueries.delete(key);
+      }
     }
   }
 

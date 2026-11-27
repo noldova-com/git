@@ -20,6 +20,7 @@ import type { IRemotePlace } from "../interfaces/i-remote-place.ts";
 import { AzureDevOpsRemote } from "../models/azure-devops-remote.ts";
 import { PullRequestClone } from "../models/pull-request-clone.ts";
 import { PullRequestDocument } from "../models/pull-request-document.ts";
+import { ReadQueue } from "../models/read-queue.ts";
 import { WorkItemsPlace } from "../models/work-items-place.ts";
 import { Resources } from "../../resources.ts";
 import { PullRequestPages } from "./pull-request-pages.ts";
@@ -45,6 +46,10 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
   private readonly commentQueries: Map<string, [CommitQuery, WritableSignal<GitCommitComments | null>]> = new Map();
   private readonly stacks: Map<string, WritableSignal<GitPullRequestList | null>> = new Map();
   private readonly stackQueries: Map<string, [RepositoryQuery, WritableSignal<GitPullRequestList | null>]> = new Map();
+  private readonly stackReads: Map<string, number> = new Map();
+  private readonly commitReads: Map<string, number> = new Map();
+  private readonly commentReads: Map<string, number> = new Map();
+  private readonly rereads: ReadQueue = new ReadQueue(Resources.referenceReadLimit);
   private readonly context: IWindowPartContext;
   private readonly remember: (url: string, reference: HostReference) => void;
   private readonly unfollow: () => void;
@@ -172,9 +177,9 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
     for (const [key, [query, answer]] of this.stackQueries)
       void this.readStacksAsync(query, key, answer);
     for (const [key, [query, answer]] of this.commitQueries)
-      void this.readCommitAsync(query, key, answer);
+      this.rereads.add(() => this.readCommitAsync(query, key, answer));
     for (const [key, [query, answer]] of this.commentQueries)
-      void this.readCommentsAsync(query, key, answer);
+      this.rereads.add(() => this.readCommentsAsync(query, key, answer));
   }
 
   private listOf(key: string): WritableSignal<GitPullRequestList | null> {
@@ -265,14 +270,19 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
   }
 
   private async readCommitAsync(query: CommitQuery, key: string, answer: WritableSignal<GitBranchPullRequest | null>): Promise<void> {
+    const read: number = (this.commitReads.get(key) ?? 0) + 1;
+    this.commitReads.set(key, read);
     try {
-      answer.set(this.branchAnswerOf(BranchPullRequest.fromJson(await this.context.requestAsync(AzureDevOpsNames.readCommitPullRequestMethod,
-        query.toJson())), ""));
+      const found = BranchPullRequest.fromJson(await this.context.requestAsync(AzureDevOpsNames.readCommitPullRequestMethod, query.toJson()));
+      if (this.commitReads.get(key) === read)
+        answer.set(this.branchAnswerOf(found, ""));
     }
     catch (error) {
       if (!(error instanceof WindowException))
         throw error;
       this.context.log(Resources.formatRequestFailed(AzureDevOpsNames.readCommitPullRequestMethod, String(error)));
+      if (this.commitReads.get(key) !== read)
+        return;
       this.commits.delete(key);
       this.commitQueries.delete(key);
       answer.set(GitBranchPullRequest.failed(error instanceof RuntimeRequestException ? error.message : Resources.commitPullRequestUnanswered));
@@ -280,30 +290,40 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
   }
 
   private async readStacksAsync(query: RepositoryQuery, key: string, answer: WritableSignal<GitPullRequestList | null>): Promise<void> {
+    const read: number = (this.stackReads.get(key) ?? 0) + 1;
+    this.stackReads.set(key, read);
     try {
       const found = HostPullRequestHeads.fromJson(await this.context.requestAsync(AzureDevOpsNames.readPullRequestHeadsMethod, query.toJson()));
-      answer.set(found.isSignedIn ? GitPullRequestList.ready(found.rows.map(t => this.headRowOf(t)), found.hasMore) : GitPullRequestList.signedOut());
+      if (this.stackReads.get(key) === read)
+        answer.set(found.isSignedIn ? GitPullRequestList.ready(found.rows.map(t => this.headRowOf(t)), found.hasMore) : GitPullRequestList.signedOut());
     }
     catch (error) {
       if (!(error instanceof WindowException))
         throw error;
       this.context.log(Resources.formatRequestFailed(AzureDevOpsNames.readPullRequestHeadsMethod, String(error)));
-      this.stacks.delete(key);
-      this.stackQueries.delete(key);
+      if (this.stackReads.get(key) === read) {
+        this.stacks.delete(key);
+        this.stackQueries.delete(key);
+      }
     }
   }
 
   private async readCommentsAsync(query: CommitQuery, key: string, answer: WritableSignal<GitCommitComments | null>): Promise<void> {
+    const read: number = (this.commentReads.get(key) ?? 0) + 1;
+    this.commentReads.set(key, read);
     try {
       const found = HostCommitComments.fromJson(await this.context.requestAsync(AzureDevOpsNames.readCommitCommentsMethod, query.toJson()));
-      answer.set(new GitCommitComments(found.count, found.isCapped, found.url));
+      if (this.commentReads.get(key) === read)
+        answer.set(new GitCommitComments(found.count, found.isCapped, found.url));
     }
     catch (error) {
       if (!(error instanceof WindowException))
         throw error;
       this.context.log(Resources.formatRequestFailed(AzureDevOpsNames.readCommitCommentsMethod, String(error)));
-      this.comments.delete(key);
-      this.commentQueries.delete(key);
+      if (this.commentReads.get(key) === read) {
+        this.comments.delete(key);
+        this.commentQueries.delete(key);
+      }
     }
   }
 
