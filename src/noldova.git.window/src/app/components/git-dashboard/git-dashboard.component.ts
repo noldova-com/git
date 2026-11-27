@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Component } from "@angular/core";
+import { Component, signal } from "@angular/core";
 import "@noldova/context.core";
 import { type IWindowPartContext, WindowPartTokens } from "@noldova/desktop.window";
 
@@ -19,7 +19,10 @@ import { GitWorkspaceComponent } from "../git-workspace/git-workspace.component.
   imports: [GitWorkspaceComponent],
   templateUrl: "./git-dashboard.component.html",
   styleUrl: "./git-dashboard.component.css",
-  providers: [{ provide: WindowPartTokens.context, useFactory: (): IWindowPartContext => GitWindowContext.current() }]
+  providers: [
+    { provide: WindowPartTokens.context, useFactory: (): IWindowPartContext => GitWindowContext.current() },
+    { provide: WindowPartTokens.activeDocument, useValue: signal(true) }
+  ]
 })
 export class GitDashboardComponent {
   protected readonly instance: string = Resources.openRepositoriesInstance;

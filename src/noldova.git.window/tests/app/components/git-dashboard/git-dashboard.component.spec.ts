@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import { signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
@@ -15,6 +16,8 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { GitDashboardComponent } from "../../../../src/app/components/git-dashboard/git-dashboard.component.ts";
 import { GitWindowInactiveException } from "../../../../src/app/exceptions/git-window-inactive.exception.ts";
 import { GitWindowContext } from "../../../../src/app/services/git-window-context.ts";
+import { GitWorkspaceAcrossViews } from "../../../../src/app/services/git-workspace-across-views.ts";
+import { GitWorkspaceSides } from "../../../../src/app/services/git-workspace-sides.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 
 describe("GitDashboardComponent", () => {
@@ -37,6 +40,16 @@ describe("GitDashboardComponent", () => {
 
     expect([element.querySelector("main")?.getAttribute("aria-label"), element.querySelector(".toolbar .name")?.textContent?.trim()]).toEqual(["Dashboard", "Dashboard"]);
     expect([git.callsOf("chooseFolderAsync").length, host.callsOf("chooseFolderAsync").length]).toEqual([1, 0]);
+  });
+
+  it("is the page in front as a placeholder, which Noldova Desktop makes under an inactive document, so the Workspaces view and Across repositories follow it", () => {
+    const git: FakeWindowPartContext = new FakeWindowPartContext();
+    onTestFinished(GitWindowContext.provide(git));
+    GitFixtures.setUp(new FakeWindowPartContext(), [{ provide: WindowPartTokens.activeDocument, useValue: signal(false) }]);
+
+    TestBed.createComponent(GitDashboardComponent).detectChanges();
+
+    expect([GitWorkspaceSides.of(git).front(), GitWorkspaceAcrossViews.of(git).front()].map(t => Object.isUndefined(t))).toEqual([false, false]);
   });
 
   it("refuses to show while Git's window part isn't active in the window", () => {
