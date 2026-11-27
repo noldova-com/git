@@ -1,6 +1,6 @@
 {
   "name": "@noldova/git.azure-devops.protocol",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "What the Azure DevOps module's parts share: AzureDevOpsNames, the module's id, its sign-in's and reads' method names, its sign-in's event and the capabilities it offers.",
   "type": "module",
   "license": "MIT",
@@ -27,6 +27,6 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@noldova/git.hosting.protocol": "0.0.7"
+    "@noldova/git.hosting.protocol": "0.0.8"
   }
 }
