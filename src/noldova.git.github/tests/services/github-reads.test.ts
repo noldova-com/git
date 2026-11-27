@@ -655,17 +655,16 @@ describe("GitHubReads", () => {
     assert.deepEqual(rig.github.urls(), [commitCommentsUrl, commitPullRequestsUrl, pullCommentsUrl]);
   });
 
-  it("counts the review comments in the pull request the commit detail's card shows: the one merged into the default branch, not the first listed",
-    async () => {
-      const rig = new Rig();
-      rig.github.answer(FakeGitHub.json([]), FakeGitHub.json([associated(7, null, "main"), associated(8, merged, "release"), associated(2, merged, "main")]),
-        FakeGitHub.json([reviewComment(10, head)]));
+  it("counts the review comments in the pull request the card shows, merged into the default branch, not one merged elsewhere and listed first", async () => {
+    const rig = new Rig();
+    rig.github.answer(FakeGitHub.json([]), FakeGitHub.json([associated(8, merged, "release"), associated(7, null, "main"), associated(2, merged, "main")]),
+      FakeGitHub.json([reviewComment(10, head)]));
 
-      const answer = await rig.reads.readCommitCommentsAsync(commitQuery, signal);
+    const answer = await rig.reads.readCommitCommentsAsync(commitQuery, signal);
 
-      assert.deepEqual([answer, rig.github.urls()], [new HostCommitComments(1, false, "https://github.com/octocat/hello-world/pull/2#discussion_r10"),
-        [commitCommentsUrl, commitPullRequestsUrl, pullCommentsUrl]]);
-    });
+    assert.deepEqual([answer, rig.github.urls()], [new HostCommitComments(1, false, "https://github.com/octocat/hello-world/pull/2#discussion_r10"),
+      [commitCommentsUrl, commitPullRequestsUrl, pullCommentsUrl]]);
+  });
 
   it("caps the count past 100 or when a page was full, reads the commit's own alone with no pull request, and answers none with nothing to count", async () => {
     const full = new Rig();
