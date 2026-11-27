@@ -11,7 +11,12 @@ import { Fake, UnansweredCallException } from "@noldova/desktop.protocol/testing
 import { MethodFailureException } from "@noldova/desktop.runtime";
 import type { FakeModuleLog, FakeModuleSecrets } from "@noldova/desktop.runtime/testing";
 
-import type { IGitHubToken } from "../../src/interfaces/i-github-token.ts";
+import type { IGitHubTokens } from "../../src/interfaces/i-github-tokens.ts";
+import { SignedInAccount } from "../../src/models/signed-in-account.ts";
+
+interface IHeldToken extends IGitHubTokens {
+  readonly token: string | null;
+}
 
 export class FakeRequest {
   public readonly url: string;
@@ -168,8 +173,8 @@ export class KeptSecrets {
   }
 }
 
-export class FakeToken extends Fake<IGitHubToken> implements IGitHubToken {
-  public readonly refusedAsync: IGitHubToken["refusedAsync"] = (...args) => this.respondAsync("refusedAsync", args, this.answers.refusedAsync);
+export class FakeToken extends Fake<IHeldToken> implements IHeldToken {
+  public readonly refusedAsync: IHeldToken["refusedAsync"] = (...args) => this.respondAsync("refusedAsync", args, this.answers.refusedAsync);
 
   public constructor(token: string | null = "gho_token") {
     super();
@@ -179,6 +184,33 @@ export class FakeToken extends Fake<IGitHubToken> implements IGitHubToken {
 
   public get token(): string | null {
     return this.propertyOf("token", this.answers.token);
+  }
+
+  private readonly chosen: Map<string, SignedInAccount> = new Map();
+  private readonly gone: Set<string> = new Set();
+
+  public readonly asked: string[] = [];
+
+  public get signedIn(): readonly SignedInAccount[] {
+    const token: string | null = this.token;
+    return [...token === null ? [] : [new SignedInAccount(1, "octocat", token)], ...new Set(this.chosen.values())].filter(t => !this.gone.has(t.token));
+  }
+
+  public choose(host: string, path: string, account: SignedInAccount): void {
+    this.chosen.set(`${host} ${path}`, account);
+  }
+
+  public signOut(token: string): void {
+    this.gone.add(token);
+  }
+
+  public tokenForAsync(host: string, path: string): Promise<string | null> {
+    this.asked.push(`${host} ${path}`);
+    return Promise.resolve(this.chosen.get(`${host} ${path}`)?.token ?? this.token);
+  }
+
+  public holds(token: string): boolean {
+    return this.signedIn.some(t => t.token === token);
   }
 
   public get refused(): readonly string[] {

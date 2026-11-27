@@ -8,6 +8,7 @@
 
 export class Resources {
   public static readonly accessMember: string = "access";
+  public static readonly gitHubHost: string = "github.com";
 
   public static formatManageAccessUrl(clientId: string): string {
     return `https://github.com/settings/connections/applications/${clientId}`;

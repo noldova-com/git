@@ -15,6 +15,7 @@ import { Resources } from "../src/resources.ts";
 describe("The GitHub protocol's Resources", () => {
   it("hold the access service's member and format the address that manages the app's access", () => {
     assert.equal(Resources.accessMember, "access");
+    assert.equal(Resources.gitHubHost, "github.com");
     assert.equal(Resources.formatManageAccessUrl("Iv1.a1"), "https://github.com/settings/connections/applications/Iv1.a1");
   });
 });

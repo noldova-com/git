@@ -15,6 +15,11 @@ export class HostingNames {
   public static readonly signInWithTokenMethod: string = "signInWithToken";
   public static readonly signOutMethod: string = "signOut";
   public static readonly signInChangedEvent: string = "signInChanged";
+  public static readonly readAccountsMethod: string = "readAccounts";
+  public static readonly addAccountMethod: string = "addAccount";
+  public static readonly readRepositoryAccountMethod: string = "readRepositoryAccount";
+  public static readonly pickAccountMethod: string = "pickAccount";
+  public static readonly accountsChangedEvent: string = "accountsChanged";
   public static readonly readReferenceMethod: string = "readReference";
   public static readonly readBranchPullRequestMethod: string = "readBranchPullRequest";
   public static readonly readCommitPullRequestMethod: string = "readCommitPullRequest";

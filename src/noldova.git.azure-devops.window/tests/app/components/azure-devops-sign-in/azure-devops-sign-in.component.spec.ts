@@ -556,7 +556,8 @@ describe("AzureDevOpsSignInComponent", () => {
       ["Azure DevOps didn't accept the sign-in.",
         "Check that the account belongs to this organization, or that the token was copied whole and hasn't expired, then sign in again.", true],
       ["This computer couldn't keep the sign-in.", "Sign in again; the app's log has the details.", true],
-      ["This computer couldn't remove the sign-in.", "The app may sign in with it when it next starts; the app's log has the details.", true]
+      ["This computer couldn't remove the sign-in.", "The app may sign in with it when it next starts; the app's log has the details.", true],
+      ["This account is already signed in.", "Sign this entry out, or sign in again as another account.", true]
     ]);
   });
 

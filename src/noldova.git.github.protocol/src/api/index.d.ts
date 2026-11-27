@@ -136,6 +136,29 @@ export declare class GitHubNames {
   public static readonly readCommitPullRequestMethod: string;
 
   /**
+   * `git-github.readAccounts`: answers every GitHub account kept on this computer as `HostAccountList` JSON, the first account first.
+   * The sign-in methods take nothing for the first account, or `AccountQuery` JSON for another.
+   */
+  public static readonly readAccountsMethod: string;
+
+  /**
+   * `git-github.addAccount`: starts a device-code sign-in for a new account and answers it as `HostAccountEntry` JSON.
+   */
+  public static readonly addAccountMethod: string;
+
+  /**
+   * `git-github.readRepositoryAccount`: takes a `RepositoryQuery` as JSON and answers the account the module reads the repository with as
+   * `RepositoryAccount` JSON: the one the person chose for it, else the first signed-in account that can read it, else the first signed-in account.
+   */
+  public static readonly readRepositoryAccountMethod: string;
+
+  /**
+   * `git-github.pickAccount`: takes an `AccountPick` as JSON, remembers the account for the repository on this computer, at most 200 repositories,
+   * and answers the account the module now reads it with as `RepositoryAccount` JSON.
+   */
+  public static readonly pickAccountMethod: string;
+
+  /**
    * `git-github.access`: the service the GitHub runtime part publishes as an `IGitHubAccess`, through which another module's runtime part,
    * such as an app's for GitHub's own MCP server, reads the signed-in token.
    */
@@ -155,6 +178,21 @@ export declare class GitHubNames {
    * ```
    */
   public static readonly signInChangedEvent: string;
+
+  /**
+   * `git-github.accountsChanged`: carries every account as `HostAccountList` JSON each time one is added, signs in, signs out or leaves.
+   *
+   * @example
+   * ```ts
+   * import type { IWindowPartContext } from "@noldova/desktop.window";
+   * import { GitHubNames } from "@noldova/git.github.protocol";
+   *
+   * export function followAccounts(context: IWindowPartContext): () => void {
+   *   return context.onEvent(GitHubNames.accountsChangedEvent, t => console.log(t));
+   * }
+   * ```
+   */
+  public static readonly accountsChangedEvent: string;
 
   /**
    * `git_github_read`: the agent tool that reads an issue or pull request on github.com by `owner`, `repository` and `number`, and answers
@@ -190,7 +228,7 @@ export declare class GitHubNames {
 }
 
 /**
- * The answer of `IGitHubAccess.accessAsync` while signed in: the token the sign-in holds and the account's login.
+ * The answer of `IGitHubAccess.accessAsync` and `accessForAsync` while signed in: the token the sign-in holds, the account's login and its host.
  * It holds no `reason`, so a module that takes only types from this package tells it from a `GitHubAccessRefusal` by `"token" in answer`.
  *
  * @example
@@ -214,10 +252,16 @@ export declare class GitHubAccessGrant {
   public readonly login: string;
 
   /**
-   * Holds a token with its account's login.
+   * The host the account signs in to, `github.com` unless it is a GitHub Enterprise server's.
+   */
+  public readonly host: string;
+
+  /**
+   * Holds a token with its account's login and host.
    *
    * @param token The signed-in token.
    * @param login The signed-in account's login.
+   * @param host The host the account signs in to, `github.com` by default.
    *
    * @example
    * ```ts
@@ -228,7 +272,7 @@ export declare class GitHubAccessGrant {
    * }
    * ```
    */
-  public constructor(token: string, login: string);
+  public constructor(token: string, login: string, host?: string);
 }
 
 /**
@@ -269,8 +313,9 @@ export declare class GitHubAccessRefusal {
 
 /**
  * The GitHub sign-in's token for another module's runtime part, published as `git-github.access`. It
- * answers the token the sign-in holds with the account's login, or why there is none: signed out, the kept sign-in unreadable, or a sign-in
+ * answers the token an account holds with the account's login, or why there is none: signed out, the kept sign-in unreadable, or a sign-in
  * still waiting for its code; only a module that names `git-github` as a dependency or an optional dependency can find it.
+ * The person may keep several accounts: `accessAsync` answers the first, and `accessForAsync` the one the module reads a repository with.
  * The token is never logged or shown; a module that reads it passes it only to GitHub, keeps it in memory only for that request, and reads it
  * again for the next one, so signing out stops the next request. A module that names `git-github` as an optional dependency finds it with
  * `context.findService` and a guard of its own, since it takes only types from this package.
@@ -290,9 +335,28 @@ export declare class GitHubAccessRefusal {
  */
 export interface IGitHubAccess {
   /**
-   * Answers the held token and the account's login as a `GitHubAccessGrant`, or why there is none as a `GitHubAccessRefusal`.
+   * Answers the first account's token and login as a `GitHubAccessGrant`, or why there is none as a `GitHubAccessRefusal`.
    *
    * @param signal Withdraws the call: an aborted signal rejects with its reason.
    */
   accessAsync(signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal>;
+
+  /**
+   * Answers the token and login of the account the module reads the repository with, as a `GitHubAccessGrant`: the one the person chose for it,
+   * else the first signed-in account that can read it, else the first signed-in account. With none signed in, it answers why, as
+   * `accessAsync` does for the first account.
+   *
+   * @param repository The repository's host, such as `github.com`, and its path, such as `octocat/hello-world`.
+   * @param signal Withdraws the call: an aborted signal rejects with its reason.
+   * @example
+   * ```ts
+   * import type { IGitHubAccess } from "@noldova/git.github.protocol";
+   *
+   * export async function loginForAsync(access: IGitHubAccess, signal: AbortSignal): Promise<string | null> {
+   *   const answer = await access.accessForAsync({ host: "github.com", path: "octocat/hello-world" }, signal);
+   *   return "login" in answer ? answer.login : null;
+   * }
+   * ```
+   */
+  accessForAsync(repository: { readonly host: string; readonly path: string }, signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal>;
 }

@@ -88,6 +88,11 @@ export declare const SignInFailure: {
    * The person signed out, but the token couldn't be removed from the module's secrets on this computer, so a later start may restore it.
    */
   readonly Unforgotten: "Unforgotten";
+
+  /**
+   * An added account signed in as an account the module already keeps, so its token was forgotten and the account isn't added twice.
+   */
+  readonly AlreadyKept: "AlreadyKept";
 };
 
 /**
@@ -741,11 +746,13 @@ export declare class HostingNames {
 
   /**
    * The method that starts a sign-in, or leaves one that waits or is signed in as it is, and answers the sign-in.
+   * It takes nothing for the first account, or `AccountQuery` JSON for another, on a module that keeps several.
    */
   public static readonly startSignInMethod: string;
 
   /**
    * The method that stops a sign-in that waits, and answers the sign-in.
+   * It takes nothing for the first account, or `AccountQuery` JSON for another, on a module that keeps several.
    */
   public static readonly cancelSignInMethod: string;
 
@@ -757,6 +764,8 @@ export declare class HostingNames {
 
   /**
    * The method that forgets the kept token on this computer, and answers the sign-in.
+   * It takes nothing for the first account, or `AccountQuery` JSON for another, on a module that keeps several; a signed-out account other than
+   * the first leaves the list.
    */
   public static readonly signOutMethod: string;
 
@@ -764,6 +773,33 @@ export declare class HostingNames {
    * The event that carries the sign-in as `HostSignIn` JSON each time it changes.
    */
   public static readonly signInChangedEvent: string;
+
+  /**
+   * The method that answers every account kept on this computer as `HostAccountList` JSON, the first account first, on a module that keeps
+   * several.
+   */
+  public static readonly readAccountsMethod: string;
+
+  /**
+   * The method that starts a sign-in for a new account and answers it as `HostAccountEntry` JSON, its sign-in waiting.
+   */
+  public static readonly addAccountMethod: string;
+
+  /**
+   * The method that takes a `RepositoryQuery` as JSON and answers the account the module reads that repository with, as `RepositoryAccount` JSON.
+   */
+  public static readonly readRepositoryAccountMethod: string;
+
+  /**
+   * The method that takes an `AccountPick` as JSON, remembers the account for that repository on this computer, and answers it as
+   * `RepositoryAccount` JSON.
+   */
+  public static readonly pickAccountMethod: string;
+
+  /**
+   * The event that carries every account as `HostAccountList` JSON each time one is added, signs in, signs out or leaves.
+   */
+  public static readonly accountsChangedEvent: string;
 
   /**
    * The method that takes a `HostReference` as JSON and answers the pull request or issue as `HostItem` JSON, or null when the module can't
@@ -4859,6 +4895,11 @@ export declare class HostReviewRequest {
   public readonly createdAt: number;
 
   /**
+   * The login of the account the request is for, when the module keeps several accounts and more than one is signed in; null otherwise.
+   */
+  public readonly account: string | null;
+
+  /**
    * Makes a review request from its parts.
    *
    * @param reference The pull request's reference.
@@ -4866,6 +4907,7 @@ export declare class HostReviewRequest {
    * @param url Its page, an https address.
    * @param isDraft Whether it is a draft.
    * @param createdAt When it was opened, a positive whole number of milliseconds since the Unix epoch.
+   * @param account The login of the account the request is for, not blank, or null, the default, when only one account is signed in.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
    * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `title`.
    * @throws {HostingFieldException} With a reader, when a part is out of its range, naming the field by its path, such as `$.title`.
@@ -4877,7 +4919,7 @@ export declare class HostReviewRequest {
    *   "https://github.com/octocat/hello-world/pull/533", false, Date.parse("2026-11-20T09:00:00Z"));
    * ```
    */
-  public constructor(reference: HostReference, title: string, url: string, isDraft: boolean, createdAt: number, reader?: JsonReader);
+  public constructor(reference: HostReference, title: string, url: string, isDraft: boolean, createdAt: number, account?: string | null, reader?: JsonReader);
 
   /**
    * Reads a review request from its JSON.
@@ -4897,7 +4939,7 @@ export declare class HostReviewRequest {
   public static fromJson(value: unknown, path?: string): HostReviewRequest;
 
   /**
-   * Writes the review request as JSON: `reference`, `title`, `url`, `isDraft` and `createdAt`.
+   * Writes the review request as JSON: `reference`, `title`, `url`, `isDraft` and `createdAt`, and `account` when it isn't null.
    *
    * @returns The JSON.
    * @example
@@ -5083,6 +5125,339 @@ export declare class HostReviewRequestList {
    * import { HostReviewRequestList } from "@noldova/git.hosting.protocol";
    *
    * console.log(HostReviewRequestList.signedOut().toJson());
+   * ```
+   */
+  public toJson(): JsonObject;
+}
+
+/**
+ * One of the accounts a module keeps, by its id, for a sign-in method that acts on one account.
+ *
+ * @example
+ * ```ts
+ * import { AccountQuery } from "@noldova/git.hosting.protocol";
+ *
+ * const query = new AccountQuery(2);
+ * ```
+ */
+export declare class AccountQuery {
+  /**
+   * The account's id, which the module gave it when it was added; the first account is 1.
+   */
+  public readonly account: number;
+
+  /**
+   * Makes the query from its parts.
+   *
+   * @param account The account's id, a positive whole number.
+   * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
+   * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `account`.
+   * @throws {HostingFieldException} With a reader, when a part is out of its range, naming the field by its path, such as `$.account`.
+   * @example
+   * ```ts
+   * import { AccountQuery } from "@noldova/git.hosting.protocol";
+   *
+   * const query = new AccountQuery(1);
+   * ```
+   */
+  public constructor(account: number, reader?: JsonReader);
+
+  /**
+   * Reads it from its JSON.
+   *
+   * @param value The JSON, with exactly the fields `toJson` writes.
+   * @param path The JSON's path, `$` by default.
+   * @returns The query.
+   * @throws {JsonException} When the value isn't an object, or a field is missing or of the wrong type; it comes from `@noldova/context.json`.
+   * @throws {HostingFieldException} When the value holds an unknown field, or a field is out of its range.
+   * @example
+   * ```ts
+   * import { AccountQuery } from "@noldova/git.hosting.protocol";
+   *
+   * const query = AccountQuery.fromJson({ account: 2 });
+   * ```
+   */
+  public static fromJson(value: unknown, path?: string): AccountQuery;
+
+  /**
+   * Writes it as JSON: `account`.
+   *
+   * @returns The JSON.
+   * @example
+   * ```ts
+   * import { AccountQuery } from "@noldova/git.hosting.protocol";
+   *
+   * console.log(AccountQuery.fromJson({ account: 2 }).toJson());
+   * ```
+   */
+  public toJson(): JsonObject;
+}
+
+/**
+ * One account a module keeps: its id and its sign-in.
+ *
+ * @example
+ * ```ts
+ * import { HostAccountEntry, HostSignIn } from "@noldova/git.hosting.protocol";
+ *
+ * const entry = new HostAccountEntry(2, HostSignIn.signedOut());
+ * ```
+ */
+export declare class HostAccountEntry {
+  /**
+   * The account's id, which the module gave it when it was added; the first account is 1.
+   */
+  public readonly id: number;
+
+  /**
+   * The account's sign-in: waiting with its device code, signed in with its login, or signed out.
+   */
+  public readonly signIn: HostSignIn;
+
+  /**
+   * Makes the entry from its parts.
+   *
+   * @param id The account's id, a positive whole number.
+   * @param signIn The account's sign-in.
+   * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
+   * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `account`.
+   * @throws {HostingFieldException} With a reader, when a part is out of its range, naming the field by its path, such as `$.account`.
+   * @example
+   * ```ts
+   * import { HostAccount, HostAccountEntry, HostSignIn } from "@noldova/git.hosting.protocol";
+   *
+   * const entry = new HostAccountEntry(1, HostSignIn.signedIn(new HostAccount("octocat", null, null, ["repo"])));
+   * ```
+   */
+  public constructor(id: number, signIn: HostSignIn, reader?: JsonReader);
+
+  /**
+   * Reads it from its JSON.
+   *
+   * @param value The JSON, with exactly the fields `toJson` writes.
+   * @param path The JSON's path, `$` by default.
+   * @returns The entry.
+   * @throws {JsonException} When the value isn't an object, or a field is missing or of the wrong type; it comes from `@noldova/context.json`.
+   * @throws {HostingFieldException} When the value holds an unknown field, or a field is out of its range.
+   * @example
+   * ```ts
+   * import { HostAccountEntry } from "@noldova/git.hosting.protocol";
+   *
+   * const entry = HostAccountEntry.fromJson({ id: 2, signIn: { state: "SignedOut", deviceCode: null, account: null, failure: null } });
+   * ```
+   */
+  public static fromJson(value: unknown, path?: string): HostAccountEntry;
+
+  /**
+   * Writes it as JSON: `id` and `signIn`.
+   *
+   * @returns The JSON.
+   * @example
+   * ```ts
+   * import { HostAccountEntry } from "@noldova/git.hosting.protocol";
+   *
+   * console.log(HostAccountEntry.fromJson({ id: 2, signIn: { state: "SignedOut", deviceCode: null, account: null, failure: null } }).toJson());
+   * ```
+   */
+  public toJson(): JsonObject;
+}
+
+/**
+ * Every account a module keeps on this computer, the first account first.
+ *
+ * @example
+ * ```ts
+ * import { HostAccountList } from "@noldova/git.hosting.protocol";
+ *
+ * const list = new HostAccountList([]);
+ * ```
+ */
+export declare class HostAccountList {
+  /**
+   * The accounts, each id once, the first account first and the others in the order they were added.
+   */
+  public readonly accounts: readonly HostAccountEntry[];
+
+  /**
+   * Makes the list from its parts.
+   *
+   * @param accounts The accounts, each id once.
+   * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
+   * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `account`.
+   * @throws {HostingFieldException} With a reader, when a part is out of its range, naming the field by its path, such as `$.account`.
+   * @example
+   * ```ts
+   * import { HostAccountEntry, HostAccountList, HostSignIn } from "@noldova/git.hosting.protocol";
+   *
+   * const list = new HostAccountList([new HostAccountEntry(1, HostSignIn.signedOut())]);
+   * ```
+   */
+  public constructor(accounts: readonly HostAccountEntry[], reader?: JsonReader);
+
+  /**
+   * Reads it from its JSON.
+   *
+   * @param value The JSON, with exactly the fields `toJson` writes.
+   * @param path The JSON's path, `$` by default.
+   * @returns The list.
+   * @throws {JsonException} When the value isn't an object, or a field is missing or of the wrong type; it comes from `@noldova/context.json`.
+   * @throws {HostingFieldException} When the value holds an unknown field, or a field is out of its range.
+   * @example
+   * ```ts
+   * import { HostAccountList } from "@noldova/git.hosting.protocol";
+   *
+   * const list = HostAccountList.fromJson({ accounts: [] });
+   * ```
+   */
+  public static fromJson(value: unknown, path?: string): HostAccountList;
+
+  /**
+   * Writes it as JSON: `accounts`.
+   *
+   * @returns The JSON.
+   * @example
+   * ```ts
+   * import { HostAccountList } from "@noldova/git.hosting.protocol";
+   *
+   * console.log(HostAccountList.fromJson({ accounts: [] }).toJson());
+   * ```
+   */
+  public toJson(): JsonObject;
+}
+
+/**
+ * The account a person chose for a repository, which the module remembers on this computer.
+ *
+ * @example
+ * ```ts
+ * import { AccountPick } from "@noldova/git.hosting.protocol";
+ *
+ * const pick = new AccountPick("github.com", "octocat/hello-world", 2);
+ * ```
+ */
+export declare class AccountPick {
+  /**
+   * The host the repository is on, such as `github.com`.
+   */
+  public readonly host: string;
+
+  /**
+   * The repository's path on the host, such as `octocat/hello-world`.
+   */
+  public readonly path: string;
+
+  /**
+   * The chosen account's id.
+   */
+  public readonly account: number;
+
+  /**
+   * Makes the pick from its parts.
+   *
+   * @param host The host, which isn't blank.
+   * @param path The repository's path, as `RepositoryQuery` takes it.
+   * @param account The account's id, a positive whole number.
+   * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
+   * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `account`.
+   * @throws {HostingFieldException} With a reader, when a part is out of its range, naming the field by its path, such as `$.account`.
+   * @example
+   * ```ts
+   * import { AccountPick } from "@noldova/git.hosting.protocol";
+   *
+   * const pick = new AccountPick("github.com", "octocat/hello-world", 1);
+   * ```
+   */
+  public constructor(host: string, path: string, account: number, reader?: JsonReader);
+
+  /**
+   * Reads it from its JSON.
+   *
+   * @param value The JSON, with exactly the fields `toJson` writes.
+   * @param path The JSON's path, `$` by default.
+   * @returns The pick.
+   * @throws {JsonException} When the value isn't an object, or a field is missing or of the wrong type; it comes from `@noldova/context.json`.
+   * @throws {HostingFieldException} When the value holds an unknown field, or a field is out of its range.
+   * @example
+   * ```ts
+   * import { AccountPick } from "@noldova/git.hosting.protocol";
+   *
+   * const pick = AccountPick.fromJson({ host: "github.com", path: "octocat/hello-world", account: 2 });
+   * ```
+   */
+  public static fromJson(value: unknown, path?: string): AccountPick;
+
+  /**
+   * Writes it as JSON: `host`, `path` and `account`.
+   *
+   * @returns The JSON.
+   * @example
+   * ```ts
+   * import { AccountPick } from "@noldova/git.hosting.protocol";
+   *
+   * console.log(AccountPick.fromJson({ host: "github.com", path: "octocat/hello-world", account: 2 }).toJson());
+   * ```
+   */
+  public toJson(): JsonObject;
+}
+
+/**
+ * The account a module reads a repository with, or none when no account kept is signed in.
+ *
+ * @example
+ * ```ts
+ * import { RepositoryAccount } from "@noldova/git.hosting.protocol";
+ *
+ * const none = new RepositoryAccount(null);
+ * ```
+ */
+export declare class RepositoryAccount {
+  /**
+   * The account's id, or null when no account kept is signed in.
+   */
+  public readonly account: number | null;
+
+  /**
+   * Makes the answer from its parts.
+   *
+   * @param account The account's id, a positive whole number, or null.
+   * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
+   * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `account`.
+   * @throws {HostingFieldException} With a reader, when a part is out of its range, naming the field by its path, such as `$.account`.
+   * @example
+   * ```ts
+   * import { RepositoryAccount } from "@noldova/git.hosting.protocol";
+   *
+   * const answer = new RepositoryAccount(2);
+   * ```
+   */
+  public constructor(account: number | null, reader?: JsonReader);
+
+  /**
+   * Reads it from its JSON.
+   *
+   * @param value The JSON, with exactly the fields `toJson` writes.
+   * @param path The JSON's path, `$` by default.
+   * @returns The answer.
+   * @throws {JsonException} When the value isn't an object, or a field is missing or of the wrong type; it comes from `@noldova/context.json`.
+   * @throws {HostingFieldException} When the value holds an unknown field, or a field is out of its range.
+   * @example
+   * ```ts
+   * import { RepositoryAccount } from "@noldova/git.hosting.protocol";
+   *
+   * const answer = RepositoryAccount.fromJson({ account: 1 });
+   * ```
+   */
+  public static fromJson(value: unknown, path?: string): RepositoryAccount;
+
+  /**
+   * Writes it as JSON: `account`.
+   *
+   * @returns The JSON.
+   * @example
+   * ```ts
+   * import { RepositoryAccount } from "@noldova/git.hosting.protocol";
+   *
+   * console.log(RepositoryAccount.fromJson({ account: 1 }).toJson());
    * ```
    */
   public toJson(): JsonObject;

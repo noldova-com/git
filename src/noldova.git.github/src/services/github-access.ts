@@ -12,24 +12,38 @@ import { GitHubAccessGrant, GitHubAccessRefusal, type IGitHubAccess } from "@nol
 import { Resources } from "../resources.ts";
 import type { GitHubSignIn } from "./github-sign-in.ts";
 
-export class GitHubAccess implements IGitHubAccess {
-  private readonly signIn: Pick<GitHubSignIn, "current" | "token" | "keptUnreadable">;
+type AccessSignIn = Pick<GitHubSignIn, "current" | "token" | "keptUnreadable">;
 
-  public constructor(signIn: Pick<GitHubSignIn, "current" | "token" | "keptUnreadable">) {
-    this.signIn = signIn;
+interface IAccessAccounts {
+  readonly first: AccessSignIn;
+  accountForAsync(host: string, path: string, signal: AbortSignal): Promise<number | null>;
+  signInOf(id: number): AccessSignIn;
+}
+
+export class GitHubAccess implements IGitHubAccess {
+  private readonly accounts: IAccessAccounts;
+
+  public constructor(accounts: IAccessAccounts) {
+    this.accounts = accounts;
   }
 
   public accessAsync(signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal> {
-    return signal.aborted ? Promise.reject(signal.reason) : Promise.resolve(this.answer());
+    return signal.aborted ? Promise.reject(signal.reason) : Promise.resolve(GitHubAccess.answerOf(this.accounts.first));
   }
 
-  private answer(): GitHubAccessGrant | GitHubAccessRefusal {
-    const current = this.signIn.current;
-    const token = this.signIn.token;
+  public async accessForAsync(repository: { readonly host: string; readonly path: string }, signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal> {
+    signal.throwIfAborted();
+    const id: number | null = await this.accounts.accountForAsync(repository.host, repository.path, signal);
+    return GitHubAccess.answerOf(id === null ? this.accounts.first : this.accounts.signInOf(id));
+  }
+
+  private static answerOf(signIn: AccessSignIn): GitHubAccessGrant | GitHubAccessRefusal {
+    const current = signIn.current;
+    const token = signIn.token;
     if (current.account !== null && token !== null)
-      return new GitHubAccessGrant(token, current.account.login);
+      return new GitHubAccessGrant(token, current.account.login, Resources.host);
     if (current.state === SignInState.Waiting)
       return new GitHubAccessRefusal(Resources.accessWaitingReason);
-    return new GitHubAccessRefusal(this.signIn.keptUnreadable ? Resources.accessUnreadableReason : Resources.accessSignedOutReason);
+    return new GitHubAccessRefusal(signIn.keptUnreadable ? Resources.accessUnreadableReason : Resources.accessSignedOutReason);
   }
 }

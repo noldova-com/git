@@ -12,6 +12,7 @@ import { FailureCode } from "@noldova/desktop.protocol";
 import { MethodFailureException } from "@noldova/desktop.runtime";
 import { afterEach, beforeEach, describe, it, vi } from "vitest";
 
+import { GitHubUnreachableException } from "../../src/exceptions/github-unreachable.exception.ts";
 import { GitHubApi } from "../../src/services/github-api.ts";
 import { FakeGitHub } from "../fixtures/fake-github.fixture.ts";
 
@@ -83,42 +84,40 @@ describe("GitHubApi", () => {
     assert.deepEqual([github.requests.map(t => t.header("If-None-Match")), unkept], [[null, null, null], FailureCode.Unavailable]);
   });
 
-  it("drops the kept answers when the token changes, so one account never sees another's", async () => {
+  it("keeps each token's answers apart, so one account never sees another's, and each keeps its tags while reads alternate between them", async () => {
     const github = new FakeGitHub();
-    github.answer(tagged(issue, "\"a\""), FakeGitHub.json(issue, 404));
+    github.answer(tagged(issue, "\"a\""), FakeGitHub.json(issue, 404), new Response(null, { status: 304 }), tagged(issue, "\"b\""));
     const api = new GitHubApi(github.fetch);
 
     await api.getAsync("/repos/octocat/hello-world/issues/1", "gho_token", signal);
     const other = await api.getAsync("/repos/octocat/hello-world/issues/1", "gho_other", signal);
+    vi.advanceTimersByTime(61_000);
+    const again = await api.getAsync("/repos/octocat/hello-world/issues/1", "gho_token", signal);
+    const otherAgain = await api.getAsync("/repos/octocat/hello-world/issues/1", "gho_other", signal);
 
-    assert.deepEqual([other, github.requests.map(t => [t.header("Authorization"), t.header("If-None-Match")])],
-      [null, [["Bearer gho_token", null], ["Bearer gho_other", null]]]);
+    assert.deepEqual([other, again?.readString("title"), otherAgain?.readString("title")], [null, "Found a bug", "Found a bug"]);
+    assert.deepEqual(github.requests.map(t => [t.header("Authorization"), t.header("If-None-Match")]),
+      [["Bearer gho_token", null], ["Bearer gho_other", null], ["Bearer gho_token", "\"a\""], ["Bearer gho_other", null]]);
   });
 
-  it("keeps no answer that lands after the token changed or the cache was cleared, and keeps nothing once cleared", async () => {
+  it("lets go of the answers of a token no account holds, keeping no answer that lands after, and keeps the others'", async () => {
     const github = new FakeGitHub();
-    const releaseSwitched = github.hold();
-    github.answer(FakeGitHub.json(issue, 404));
-    const releaseCleared = github.hold();
-    github.answer(tagged(issue, "\"a\""), tagged(issue, "\"b\""), tagged(issue, "\"c\""));
+    github.answer(tagged(issue, "\"k\""));
+    const release = github.hold();
+    github.answer(tagged(issue, "\"c\""));
     const api = new GitHubApi(github.fetch);
 
-    const switched = api.getAsync("/repos/octocat/private/issues/1", "gho_first", signal);
-    await api.getAsync("/repos/octocat/other/issues/1", "gho_second", signal);
-    releaseSwitched(tagged({ ...issue, title: "Private" }, "\"p\""));
-    await switched;
-    const cleared = api.getAsync("/repos/octocat/private/issues/2", "gho_second", signal);
-    api.clear();
-    releaseCleared(tagged({ ...issue, title: "Private" }, "\"q\""));
-    await cleared;
-    await api.getAsync("/repos/octocat/private/issues/1", "gho_second", signal);
-    await api.getAsync("/repos/octocat/private/issues/2", "gho_second", signal);
-    api.clear();
-    await api.getAsync("/repos/octocat/private/issues/1", "gho_second", signal);
+    await api.getAsync("/repos/octocat/kept/issues/1", "gho_kept", signal);
+    const dropped = api.getAsync("/repos/octocat/private/issues/1", "gho_gone", signal);
+    api.keepOnly(t => t === "gho_kept");
+    release(tagged({ ...issue, title: "Private" }, "\"p\""));
+    await dropped;
+    await api.getAsync("/repos/octocat/kept/issues/1", "gho_kept", signal);
+    vi.advanceTimersByTime(61_000);
+    await api.getAsync("/repos/octocat/private/issues/1", "gho_gone", signal);
 
     assert.deepEqual(github.requests.map(t => [t.url.slice("https://api.github.com/repos/octocat/".length), t.header("If-None-Match")]), [
-      ["private/issues/1", null], ["other/issues/1", null], ["private/issues/2", null], ["private/issues/1", null], ["private/issues/2", null],
-      ["private/issues/1", null]
+      ["kept/issues/1", null], ["private/issues/1", null], ["private/issues/1", null]
     ]);
   });
 
@@ -268,7 +267,15 @@ describe("GitHubApi", () => {
 
     assert.deepEqual([codeOf(terminated), codeOf(timedOut), codeOf(posted)], [FailureCode.Unavailable, FailureCode.DeadlineExceeded, FailureCode.Unavailable]);
     assert.equal(terminated instanceof MethodFailureException ? terminated.failure.message : "", "GitHub couldn't be reached.");
+    assert.deepEqual([terminated, timedOut, posted].map(t => t instanceof GitHubUnreachableException), [true, true, true]);
     assert.equal(failed, unexpected);
+  });
+
+  it("tells a failure GitHub answered from one that never reached it by its type, not its text", () => {
+    const sameText = GitHubApi.failure(FailureCode.Unavailable, "GitHub couldn't be reached.");
+
+    assert.deepEqual([GitHubApi.isAnswered(sameText), GitHubApi.isAnswered(new GitHubUnreachableException(FailureCode.Unavailable)), GitHubApi.isAnswered(new RangeError("Unexpected."))],
+      [true, false, false]);
   });
 
   it("reads an answer of 8 MiB, and fails one past it as Unavailable, letting go of the rest of its body", async () => {

@@ -25,6 +25,10 @@ export class GitHubRepository {
     return new GitHubRepository(trimmed.slice(0, slash), trimmed.slice(slash + 1));
   }
 
+  public get path(): string {
+    return Resources.formatRepositoryReadPath(encodeURIComponent(this.owner), encodeURIComponent(this.name));
+  }
+
   public pathOf(rest: string): string {
     return Resources.formatRepositoryPath(encodeURIComponent(this.owner), encodeURIComponent(this.name), rest);
   }

@@ -11,4 +11,5 @@ import type { GitHubAccessRefusal } from "../models/github-access-refusal.ts";
 
 export interface IGitHubAccess {
   accessAsync(signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal>;
+  accessForAsync(repository: { readonly host: string; readonly path: string }, signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal>;
 }

@@ -15,6 +15,8 @@ import { AuthorQuery, BranchPullRequest, BranchQuery, CheckState, CommitQuery, H
   HostReviewRequest, HostReviewRequestList, PullRequestDraft, ReferenceKind, ReferenceState, RepositoryQuery, ReviewDecision } from "@noldova/git.hosting.protocol";
 import { afterEach, describe, it, vi } from "vitest";
 
+import type { IGitHubTokens } from "../../src/interfaces/i-github-tokens.ts";
+import { SignedInAccount } from "../../src/models/signed-in-account.ts";
 import { GitHubApi } from "../../src/services/github-api.ts";
 import { GitHubAvatars } from "../../src/services/github-avatars.ts";
 import { GitHubReads } from "../../src/services/github-reads.ts";
@@ -46,6 +48,26 @@ const reviewSearchUrl = "https://api.github.com/search/issues?q=is%3Apr+is%3Aope
 function reviewItem(repository: string, number: number, title: string, createdAt: string, draft: boolean = false): Readonly<Record<string, unknown>> {
   return { number, title, html_url: `https://github.com/${repository}/pull/${number}`, draft, created_at: createdAt, user,
     repository_url: `https://api.github.com/repos/${repository}`, pull_request: { url: `https://api.github.com/repos/${repository}/pulls/${number}` } };
+}
+
+class TwoAccounts implements IGitHubTokens {
+  public held: readonly string[] = ["gho_octocat", "gho_hubot"];
+
+  public get signedIn(): readonly SignedInAccount[] {
+    return [new SignedInAccount(1, "octocat", "gho_octocat"), new SignedInAccount(2, "hubot", "gho_hubot")].filter(t => this.held.includes(t.token));
+  }
+
+  public tokenForAsync(): Promise<string | null> {
+    return Promise.resolve("gho_octocat");
+  }
+
+  public holds(token: string): boolean {
+    return this.held.includes(token);
+  }
+
+  public refusedAsync(): Promise<void> {
+    return Promise.resolve();
+  }
 }
 
 function reviewSearch(items: readonly Readonly<Record<string, unknown>>[], total: number = items.length, incomplete: boolean = false): Response {
@@ -541,6 +563,108 @@ describe("GitHubReads", () => {
     }
 
     assert.deepEqual(answers, [[null, new BranchPullRequest(null, []), 5], [null, new BranchPullRequest(null, []), 5]]);
+  });
+
+  it("merges every signed-in account's review requests for the repository, each naming its account, and drops an account that signs out meanwhile", async () => {
+    const github = new FakeGitHub();
+    const tokens = new TwoAccounts();
+    const reads = new GitHubReads(new GitHubApi(github.fetch), tokens, new GitHubAvatars(github.fetch, new FakeModuleLog()));
+    github.answer(reviewSearch([reviewItem("octocat/hello-world", 7, "Tidy the README", "2026-11-18T08:00:00Z")]),
+      reviewSearch([reviewItem("octocat/hello-world", 9, "Speed up the build", "2026-11-21T10:00:00Z"), reviewItem("octocat/spoon-knife", 3, "Fork", created)], 3));
+    const query = new RepositoryQuery("github.com", "octocat/hello-world");
+
+    const merged = await reads.readReviewRequestsAsync(query, signal);
+    const later = new GitHubReads(new GitHubApi(github.fetch), tokens, new GitHubAvatars(github.fetch, new FakeModuleLog()));
+    github.answer(reviewSearch([reviewItem("octocat/hello-world", 7, "Tidy the README", "2026-11-18T08:00:00Z")]));
+    const release = github.hold();
+    const reading = later.readReviewRequestsAsync(query, signal);
+    await github.askedAsync(4);
+    tokens.held = ["gho_octocat"];
+    release(reviewSearch([reviewItem("octocat/hello-world", 9, "Speed up the build", "2026-11-21T10:00:00Z")]));
+    const afterSignOut = await reading;
+    const oneLeft = await later.readReviewRequestsAsync(query, signal);
+    tokens.held = [];
+    const noneLeft = await later.readReviewRequestsAsync(query, signal);
+
+    assert.deepEqual(merged, new HostReviewRequestList([
+      new HostReviewRequest(new HostReference("git-github", "octocat", "hello-world", 9), "Speed up the build", "https://github.com/octocat/hello-world/pull/9", false,
+        Date.parse("2026-11-21T10:00:00Z"), "hubot"),
+      new HostReviewRequest(new HostReference("git-github", "octocat", "hello-world", 7), "Tidy the README", "https://github.com/octocat/hello-world/pull/7", false,
+        Date.parse("2026-11-18T08:00:00Z"), "octocat")], true));
+    assert.deepEqual([afterSignOut.rows.map(t => [t.reference.number, t.account]), afterSignOut.hasMore, oneLeft.rows.map(t => [t.reference.number, t.account]), noneLeft],
+      [[[7, "octocat"]], false, [[7, null]], HostReviewRequestList.signedOut()]);
+    assert.deepEqual(github.requests.map(t => t.header("Authorization")), ["Bearer gho_octocat", "Bearer gho_hubot", "Bearer gho_octocat", "Bearer gho_hubot"]);
+  });
+
+  it("keeps the newest rows up to the list's limit when the accounts' review requests together pass it", async () => {
+    const github = new FakeGitHub();
+    const reads = new GitHubReads(new GitHubApi(github.fetch), new TwoAccounts(), new GitHubAvatars(github.fetch, new FakeModuleLog()));
+    const half = HostReviewRequestList.maximumRows;
+    const items = (from: number): Readonly<Record<string, unknown>>[] => Array.from({ length: half }, (_, index) =>
+      reviewItem("octocat/hello-world", from + index, `Change ${from + index}`, new Date(Date.parse(created) + (from + index) * 60_000).toISOString()));
+    github.answer(reviewSearch(items(1)), reviewSearch(items(1 + half)));
+
+    const list = await reads.readReviewRequestsAsync(new RepositoryQuery("github.com", "octocat/hello-world"), signal);
+
+    assert.deepEqual([list.rows.length, list.rows[0]?.reference.number, list.rows.at(-1)?.reference.number, list.hasMore], [half, 2 * half, half + 1, true]);
+  });
+
+  it("merges the searches that answered, saying there may be more, when another account's search fails, and fails only when every search fails", async () => {
+    const github = new FakeGitHub();
+    const query = new RepositoryQuery("github.com", "octocat/hello-world");
+    const readsOf = (): GitHubReads => new GitHubReads(new GitHubApi(github.fetch), new TwoAccounts(), new GitHubAvatars(github.fetch, new FakeModuleLog()));
+    github.answer(FakeGitHub.json({ message: "Server Error" }, 500), reviewSearch([reviewItem("octocat/hello-world", 9, "Speed up the build", created)]),
+      FakeGitHub.json({ message: "Server Error" }, 500), FakeGitHub.json({ message: "Server Error" }, 502));
+
+    const partial = await readsOf().readReviewRequestsAsync(query, signal);
+    const failed = await readsOf().readReviewRequestsAsync(query, signal).catch((error: unknown) => error);
+
+    assert.deepEqual([partial.rows.map(t => [t.reference.number, t.account]), partial.hasMore], [[[9, "hubot"]], true]);
+    assert.ok(failed instanceof MethodFailureException);
+    assert.deepEqual([failed.failure.code, failed.failure.message], [FailureCode.Unavailable, "GitHub refused the request (500)."]);
+  });
+
+  it("passes on a search failure that isn't GitHub's, even when another account's search answered", async () => {
+    const github = new FakeGitHub();
+    const unexpected = new RangeError("Unexpected.");
+    github.fail(unexpected);
+    github.answer(reviewSearch([]));
+    const reads = new GitHubReads(new GitHubApi(github.fetch), new TwoAccounts(), new GitHubAvatars(github.fetch, new FakeModuleLog()));
+
+    await assert.rejects(reads.readReviewRequestsAsync(new RepositoryQuery("github.com", "octocat/hello-world"), signal), unexpected);
+  });
+
+  it("reads each repository with the token chosen for it, naming the repository by its host and path", async () => {
+    const rig = new Rig();
+    rig.signIn.choose("github.com", "octocat/hello-world", new SignedInAccount(2, "hubot", "gho_hubot"));
+    rig.github.answer(...Array.from({ length: 12 }, () => FakeGitHub.json({ message: "Not Found" }, 404)));
+    const repository = new RepositoryQuery("github.com", "octocat/hello-world");
+
+    await rig.reads.readPullRequestsAsync(repository, signal);
+    await rig.reads.readBranchPullRequestAsync(new BranchQuery("github.com", "octocat/hello-world", "fix-bug", head), signal);
+    await rig.reads.readCommitPullRequestAsync(commitQuery, signal);
+    await rig.reads.readCommitCommentsAsync(commitQuery, signal);
+    await rig.reads.readReferenceAsync(issueReference, signal);
+    await rig.reads.readPullRequestAsync(pullReference, signal);
+    await rig.reads.readPullRequestThreadsAsync(pullReference, signal);
+    await rig.reads.readAuthorAvatarAsync(new AuthorQuery("github.com", "octocat/hello-world", "mona@example.com", head), signal);
+    const created = await rig.reads.createPullRequestAsync(new PullRequestDraft("github.com", "octocat/hello-world", "fix-bug", "main", "Fix the bug", "", false), signal)
+      .catch((error: unknown) => error);
+
+    assert.ok(created instanceof MethodFailureException);
+    assert.deepEqual([...new Set(rig.signIn.asked)], ["github.com octocat/hello-world"]);
+    assert.deepEqual([...new Set(rig.github.requests.map(t => t.header("Authorization")))], ["Bearer gho_hubot"]);
+    assert.ok(rig.github.requests.length >= 9);
+  });
+
+  it("opens a pull request with the token it is given, and fails as signed out when no account holds it any more", async () => {
+    const rig = new Rig();
+    const draftOf = new PullRequestDraft("github.com", "octocat/hello-world", "fix-bug", "main", "Fix the bug", "", false);
+
+    const failed = await rig.reads.createPullRequestAsync(draftOf, signal, "gho_gone").catch((error: unknown) => error);
+
+    assert.ok(failed instanceof MethodFailureException);
+    assert.deepEqual([failed.failure.code, rig.github.requests.length], [FailureCode.Unauthorized, 0]);
   });
 
   it("searches the account's review requests once and shares them out by repository, ignoring case, the newest first", async () => {
