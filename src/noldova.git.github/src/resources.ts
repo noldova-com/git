@@ -351,10 +351,6 @@ export class Resources {
     return `commits/${commit}/comments?per_page=${Resources.commentsPageSize}`;
   }
 
-  public static formatCommitPullsPath(commit: string): string {
-    return `commits/${commit}/${Resources.pullsPath}?per_page=1`;
-  }
-
   public static formatCommitPullRequestsPath(commit: string): string {
     return `commits/${commit}/${Resources.pullsPath}?per_page=${Resources.commitPullsPageSize}`;
   }

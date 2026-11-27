@@ -106,8 +106,9 @@ export declare class GitHubNames {
 
   /**
    * `git-github.readCommitComments`: takes a `CommitQuery` as JSON and answers the review comments on that commit as `HostCommitComments` JSON: the
-   * commit's own comments and, in the pull request that brought it in, the review comments made on it, one page of 100 of each, and the page that
-   * shows them, kept only when it is an https page on `github.com`. Signed out, for a repository not on `github.com`, or with no comments, none.
+   * commit's own comments and, in the pull request that brought it in, chosen as `readCommitPullRequest` chooses it, the review comments made on it,
+   * one page of 100 of each, and the page that shows them, kept only when it is an https page on `github.com`. Signed out, for a repository not on
+   * `github.com`, or with no comments, none.
    */
   public static readonly readCommitCommentsMethod: string;
 

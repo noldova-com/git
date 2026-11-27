@@ -116,11 +116,10 @@ export class GitHubReads {
       return none;
     const answer: HostCommitComments = await this.askAsync(token, async () => {
       const [own, pulls] = await Promise.all([this.api.getAsync(repository.pathOf(Resources.formatCommitCommentsPath(query.commit)), token, signal),
-        this.api.getAsync(repository.pathOf(Resources.formatCommitPullsPath(query.commit)), token, signal)]);
+        this.api.getAsync(repository.pathOf(Resources.formatCommitPullRequestsPath(query.commit)), token, signal)]);
       const commitComments: readonly JsonReader[] = own === null ? [] : GitHubApi.read(() => own.readObjectArray(Resources.itemsField));
-      const pull: JsonReader | undefined = pulls === null ? undefined : GitHubApi.read(() => pulls.readObjectArray(Resources.itemsField))[0];
-      const reviews: JsonReader | null = pull === undefined ? null
-        : await this.api.getAsync(repository.pathOf(Resources.formatPullCommentsPath(GitHubApi.read(() => pull.readInteger(Resources.numberField)))), token, signal);
+      const number: number | null = pulls === null ? null : GitHubApi.read(() => GitHubReads.bringerOf(pulls.readObjectArray(Resources.itemsField)));
+      const reviews: JsonReader | null = number === null ? null : await this.api.getAsync(repository.pathOf(Resources.formatPullCommentsPath(number)), token, signal);
       const reviewComments: readonly JsonReader[] = reviews === null ? [] : GitHubApi.read(() => reviews.readObjectArray(Resources.itemsField));
       return GitHubApi.read(() => GitHubReads.commitCommentsOf(query.commit, commitComments, reviewComments));
     });
