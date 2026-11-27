@@ -9,7 +9,7 @@
 import { JsonException, JsonReader } from "@noldova/context.json";
 import { Failure, FailureCode } from "@noldova/desktop.protocol";
 import { MethodFailureException } from "@noldova/desktop.runtime";
-import { HostingProtocolException } from "@noldova/git.hosting.protocol";
+import { HostingNames, HostingProtocolException } from "@noldova/git.hosting.protocol";
 
 import { GitHubUnreachableException } from "../exceptions/github-unreachable.exception.ts";
 import { CachedAnswer } from "../models/cached-answer.ts";
@@ -166,7 +166,7 @@ export class GitHubApi {
   private static async bodyOf(response: Response, signal: AbortSignal): Promise<string> {
     if (GitHubApi.isRateLimited(response)) {
       await GitHubApi.dropBodyAsync(response);
-      throw GitHubApi.failure(FailureCode.Unavailable, GitHubApi.rateLimitedMessage(response.headers.get(Resources.rateLimitResetHeader)));
+      throw GitHubApi.rateLimited(response.headers.get(Resources.rateLimitResetHeader));
     }
     if (Resources.redirectStatuses.includes(response.status)) {
       await GitHubApi.dropBodyAsync(response);
@@ -208,10 +208,13 @@ export class GitHubApi {
       || response.status === Resources.forbiddenStatus && response.headers.get(Resources.rateLimitRemainingHeader) === Resources.noneRemaining;
   }
 
-  private static rateLimitedMessage(reset: string | null): string {
+  private static rateLimited(reset: string | null): MethodFailureException {
     const seconds: number = Number(reset ?? "");
-    return Number.isSafeInteger(seconds) && seconds > 0 ? Resources.formatRateLimited(new Date(seconds * Resources.millisecondsPerSecond).toISOString())
-      : Resources.rateLimitedMessage;
+    if (!Number.isSafeInteger(seconds) || seconds <= 0)
+      return GitHubApi.failure(FailureCode.Unavailable, Resources.rateLimitedMessage);
+    const until: number = seconds * Resources.millisecondsPerSecond;
+    return new MethodFailureException(new Failure(FailureCode.Unavailable, Resources.formatRateLimited(new Date(until).toISOString()),
+      { [HostingNames.rateLimitedUntilDetail]: until }));
   }
 
   private static readerOf(body: string): JsonReader {

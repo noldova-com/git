@@ -245,6 +245,22 @@ describe("GitPullRequestThreadsComponent", () => {
     expect([threads.element.querySelector("[role=alert]"), threads.texts(".comment").length]).toEqual([null, 1]);
   });
 
+  it("writes when a used-up rate limit resets by the date and time format setting, and again when it changes", async () => {
+    const until: number = 1_800_003_600_000;
+    const threads = new Threads();
+    threads.requests.fail(TestPullRequestHost.threadsMethod, new RuntimeRequestException(FailureCode.Unavailable, "used up until 2027-01-15T09:00:00.000Z.",
+      { rateLimitedUntil: until }));
+    await threads.openAsync();
+    const twelve: string = threads.text;
+    TimeFormatsFixture.use24Hour();
+    await threads.settleAsync();
+
+    expect([twelve, threads.text]).toEqual([
+      `Comments error Example's rate limit for this account is used up until ${DatePattern.format(new Date(until), TimeFormatsFixture.dateTime)}. Try again`,
+      `Comments error Example's rate limit for this account is used up until ${DatePattern.format(new Date(until), TimeFormatsFixture.dateTime24)}. Try again`
+    ]);
+  });
+
   it("rethrows a failure that isn't the window's, and an answer it can't read", async () => {
     const first = new Threads();
     const unexpected = new RangeError("Unexpected.");
@@ -408,6 +424,24 @@ describe("GitPullRequestThreadsComponent", () => {
 
     expect(held).toEqual([true, true, true, "true"]);
     expect([threads.draft().disabled, threads.button(".change").disabled, threads.button(".send").disabled, threads.draft().value]).toEqual([false, false, false, "Fixed."]);
+  });
+
+  it("writes when a used-up rate limit resets under the thread a write failed on, by the date and time format setting, and again when it changes", async () => {
+    const until: number = 1_800_003_600_000;
+    const threads = await new Threads().answer(onLine).openAsync();
+    threads.requests.fail(TestPullRequestHost.replyMethod, new RuntimeRequestException(FailureCode.Unavailable, "used up until 2027-01-15T09:00:00.000Z.",
+      { rateLimitedUntil: until }));
+    await threads.typeAsync("Local times apply.");
+    threads.button(".send").click();
+    await threads.settleAsync();
+    const twelve: string[] = threads.texts(".answer-failure");
+    TimeFormatsFixture.use24Hour();
+    await threads.settleAsync();
+
+    expect([twelve, threads.texts(".answer-failure")]).toEqual([
+      [`error Example's rate limit for this account is used up until ${DatePattern.format(new Date(until), TimeFormatsFixture.dateTime)}.`],
+      [`error Example's rate limit for this account is used up until ${DatePattern.format(new Date(until), TimeFormatsFixture.dateTime24)}.`]
+    ]);
   });
 
   it("shows a write's failure under its thread, the runtime's message or that the host didn't answer, keeps the draft, sends nothing again and logs no text", async () => {

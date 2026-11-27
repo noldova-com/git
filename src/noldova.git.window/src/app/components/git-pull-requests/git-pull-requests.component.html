@@ -21,7 +21,7 @@ LICENSE file in the root directory of this source tree.
       }
       @case (states.Failed) {
         <div class="row failure" role="alert">
-          <span class="grow note" [title]="list()?.failure ?? ''">{{ list()?.failure }}</span>
+          <span class="grow note" [title]="failureOf(provider.hostName, list())">{{ failureOf(provider.hostName, list()) }}</span>
           <button type="button" class="retry" (click)="refresh()">{{ resources.tryAgainLabel }}</button>
         </div>
       }

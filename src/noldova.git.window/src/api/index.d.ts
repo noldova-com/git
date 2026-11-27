@@ -484,6 +484,11 @@ export declare class GitPullRequestList {
   public readonly failure: string | null;
   /** Whether the host's answer was cut, so there may be more past the rows; review requests set it when the account's search was cut. */
   public readonly hasMore: boolean;
+  /**
+   * When the host's rate limit for the account resets, as milliseconds since the epoch, on a read that failed because that limit is used up, or `null`.
+   * The section then writes the time by the person's time and date format settings, in place of the time in `failure`.
+   */
+  public readonly limitedUntil: number | null;
 
   /**
    * A read that runs.
@@ -507,6 +512,15 @@ export declare class GitPullRequestList {
    * @param rows The rows the last read gave, which review requests keep showing after a failed read; none by default.
    */
   public static failed(failure: string, rows?: readonly GitPullRequestRow[]): GitPullRequestList;
+
+  /**
+   * A read that failed with an error: a runtime failure's message, or the fallback for any other error, and, when the runtime part's failure says
+   * the host's rate limit is used up, when it resets, from the `details` field `HostingNames.rateLimitedUntilDetail` of `@noldova/git.hosting.protocol`.
+   * @param error What the read threw.
+   * @param fallback What the section shows for an error that isn't a runtime failure.
+   * @param rows The rows the last read gave, which review requests keep showing after a failed read; none by default.
+   */
+  public static failedBy(error: unknown, fallback: string, rows?: readonly GitPullRequestRow[]): GitPullRequestList;
 }
 
 /** Where a branch's pull request stands on its host. */

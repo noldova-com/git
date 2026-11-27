@@ -7,6 +7,7 @@
  */
 
 import { GitPullRequestsState } from "../enums/git-pull-requests-state.ts";
+import { GitHostFailure } from "./git-host-failure.ts";
 import type { GitPullRequestRow } from "./git-pull-request-row.ts";
 
 export class GitPullRequestList {
@@ -14,12 +15,14 @@ export class GitPullRequestList {
   public readonly rows: readonly GitPullRequestRow[];
   public readonly failure: string | null;
   public readonly hasMore: boolean;
+  public readonly limitedUntil: number | null;
 
-  private constructor(state: GitPullRequestsState, rows: readonly GitPullRequestRow[], failure: string | null, hasMore: boolean) {
+  private constructor(state: GitPullRequestsState, rows: readonly GitPullRequestRow[], failure: string | null, hasMore: boolean, limitedUntil: number | null = null) {
     this.state = state;
     this.rows = rows;
     this.failure = failure;
     this.hasMore = hasMore;
+    this.limitedUntil = limitedUntil;
   }
 
   public static reading(rows: readonly GitPullRequestRow[] = []): GitPullRequestList {
@@ -36,5 +39,10 @@ export class GitPullRequestList {
 
   public static failed(failure: string, rows: readonly GitPullRequestRow[] = []): GitPullRequestList {
     return new GitPullRequestList(GitPullRequestsState.Failed, rows, failure, false);
+  }
+
+  public static failedBy(error: unknown, fallback: string, rows: readonly GitPullRequestRow[] = []): GitPullRequestList {
+    const failure: GitHostFailure = GitHostFailure.of(error, fallback);
+    return new GitPullRequestList(GitPullRequestsState.Failed, rows, failure.message, false, failure.limitedUntil);
   }
 }

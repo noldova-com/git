@@ -9,13 +9,14 @@
 import { afterNextRender, Component, computed, effect, ElementRef, inject, Injector, input, type InputSignal, output, type OutputEmitterRef, PendingTasks, type Signal,
   signal, untracked, viewChildren, type WritableSignal } from "@angular/core";
 import type { JsonValue } from "@noldova/context.json";
-import { type IWindowPartContext, RuntimeRequestException, TimeFormatService, WindowException, WindowPartTokens } from "@noldova/desktop.window";
+import { type IWindowPartContext, TimeFormatService, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { HostComment, HostPullRequestThreads, type HostReference, HostThread, ThreadStatus } from "@noldova/git.hosting.protocol";
 import { AvatarSize, ButtonComponent, ButtonSize, ButtonVariant, type ILinkReferenceSource, type LinkOpenEvent, SpinnerComponent, TextFieldComponent }
   from "@noldova/ui.components.angular";
 import { MarkdownViewComponent } from "@noldova/ui.components.angular/markdown";
 
 import type { IGitPullRequestHost } from "../../interfaces/i-git-pull-request-host.ts";
+import { GitHostFailure } from "../../models/git-host-failure.ts";
 import { ThreadLine } from "../../models/thread-line.ts";
 import { Resources } from "../../../resources.ts";
 import { GitPersonAvatarComponent } from "../git-person-avatar/git-person-avatar.component.ts";
@@ -43,12 +44,12 @@ export class GitPullRequestThreadsComponent {
   protected readonly threads: WritableSignal<readonly HostThread[]> = signal<readonly HostThread[]>([]);
   protected readonly hasMore: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly isRead: WritableSignal<boolean> = signal<boolean>(false);
-  protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
+  protected readonly failure: WritableSignal<GitHostFailure | null> = signal<GitHostFailure | null>(null);
   protected readonly unfolded: WritableSignal<ReadonlySet<number>> = signal<ReadonlySet<number>>(new Set());
   protected readonly drafts: WritableSignal<ReadonlyMap<number, string>> = signal<ReadonlyMap<number, string>>(new Map());
   protected readonly replying: WritableSignal<ReadonlySet<number>> = signal<ReadonlySet<number>>(new Set());
   protected readonly busy: WritableSignal<ReadonlySet<number>> = signal<ReadonlySet<number>>(new Set());
-  protected readonly writeFailures: WritableSignal<ReadonlyMap<number, string>> = signal<ReadonlyMap<number, string>>(new Map());
+  protected readonly writeFailures: WritableSignal<ReadonlyMap<number, GitHostFailure>> = signal<ReadonlyMap<number, GitHostFailure>>(new Map());
   protected readonly confirming: WritableSignal<number | null> = signal<number | null>(null);
   protected readonly openCount: Signal<number> = computed(() => this.threads().filter(t => Resources.openThreadStates.includes(t.state)).length);
 
@@ -87,6 +88,10 @@ export class GitPullRequestThreadsComponent {
         void this.readAsync(reference, () => isCurrent);
       });
     });
+  }
+
+  protected textOf(failure: GitHostFailure): string {
+    return failure.textOf(this.host().name, this.dates);
   }
 
   protected retry(): void {
@@ -193,8 +198,7 @@ export class GitPullRequestThreadsComponent {
         throw error;
       this.context.log(Resources.formatHostRequestFailed(this.host().name, method, String(error)));
       if (generation === this.generation)
-        this.writeFailures.update(t => new Map([...t, [thread.id, error instanceof RuntimeRequestException ? error.message
-          : Resources.formatThreadWriteUnanswered(this.host().name)]]));
+        this.writeFailures.update(t => new Map([...t, [thread.id, GitHostFailure.of(error, Resources.formatThreadWriteUnanswered(this.host().name))]]));
     }
     finally {
       if (generation === this.generation)
@@ -219,7 +223,7 @@ export class GitPullRequestThreadsComponent {
         throw error;
       this.context.log(Resources.formatHostRequestFailed(host.name, host.readThreadsMethod, String(error)));
       if (isCurrent())
-        this.failure.set(error instanceof RuntimeRequestException ? error.message : Resources.formatThreadsUnanswered(host.name));
+        this.failure.set(GitHostFailure.of(error, Resources.formatThreadsUnanswered(host.name)));
     }
     finally {
       done();

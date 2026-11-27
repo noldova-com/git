@@ -32,6 +32,7 @@ import { AzureDevOpsPullRequestDetailComponent }
 import { PullRequestPages } from "../../../../src/app/services/pull-request-pages.ts";
 import { PullRequestSelection } from "../../../../src/app/services/pull-request-selection.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
+import { TimeFormatsFixture } from "../../../fixtures/time-formats.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
@@ -797,6 +798,19 @@ describe("AzureDevOpsPullRequestComponent", () => {
     await page.settleAsync();
 
     expect([page.query("[role=alert]"), page.texts(".title")]).toEqual([null, ["Export notes as Markdown from the shared notes list"]]);
+  });
+
+  it("shows the opened date by the date and time format setting, and again when it changes", async () => {
+    const page = new Page();
+    page.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson());
+    await page.openAsync();
+    const before: string = page.texts(".meta")[0] ?? "";
+    onTestFinished(() => TimeFormatsFixture.reset());
+    TimeFormatsFixture.use24Hour();
+    const after: string = DatePattern.format(new Date(CREATED), "d MMM");
+    await page.untilAsync(() => (page.texts(".meta")[0] ?? "").includes(`opened ${after}`));
+
+    expect([before.includes(`opened ${DatePattern.format(new Date(CREATED), "MMM d")}`), page.texts(".meta")[0]?.includes(`opened ${after}`)]).toEqual([true, true]);
   });
 
   it("opens a link in the description through the window, with the gesture that opened it", async () => {

@@ -269,6 +269,10 @@ export class Resources {
     return failing > 0 ? `${count}, ${failing} with failing checks` : count;
   }
 
+  public static formatRateLimited(hostName: string, until: string): string {
+    return `${hostName}'s rate limit for this account is used up until ${until}.`;
+  }
+
   public static formatPullRequestsHost(hostName: string, count: number): string {
     return count > Resources.shownPullRequests ? `${hostName} · ${Resources.shownPullRequests}+` : hostName;
   }

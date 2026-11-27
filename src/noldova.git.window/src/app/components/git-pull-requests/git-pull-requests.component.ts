@@ -8,7 +8,7 @@
 
 import { Component, computed, effect, ErrorHandler, inject, input, type InputSignal, output, type OutputEmitterRef, signal, type Signal, untracked, type WritableSignal } from "@angular/core";
 import "@noldova/context.core";
-import { type IWindowPartContext, LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
+import { type IWindowPartContext, LinkPlace, TimeFormatService, WindowPartTokens } from "@noldova/desktop.window";
 import type { GitRemote } from "@noldova/git.protocol";
 import { ContextMenuTriggerDirective, MenuComponent, MenuItemComponent, MenuSeparatorComponent } from "@noldova/ui.components.angular";
 
@@ -29,6 +29,7 @@ import { Resources } from "../../../resources.ts";
 export class GitPullRequestsComponent {
   private readonly context: IWindowPartContext = inject(WindowPartTokens.context);
   private readonly errors: ErrorHandler = inject(ErrorHandler);
+  private readonly dates: TimeFormatService = inject(TimeFormatService);
 
   public readonly folder: InputSignal<string> = input.required<string>();
   public readonly remote: InputSignal<GitRemote> = input.required<GitRemote>();
@@ -54,6 +55,11 @@ export class GitPullRequestsComponent {
       this.shown();
       untracked(() => this.refresh());
     });
+  }
+
+  protected failureOf(hostName: string, list: GitPullRequestList | null): string {
+    const until: number | null = list?.limitedUntil ?? null;
+    return Object.isNull(until) ? list?.failure ?? "" : Resources.formatRateLimited(hostName, this.dates.dateTime(until));
   }
 
   protected refresh(): void {

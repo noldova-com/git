@@ -19,6 +19,7 @@ import { GitPullRequestCommitsComponent } from "../../../../src/app/components/g
 import { GitFolder } from "../../../../src/app/services/git-folder.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { TestPullRequestHost } from "../../../fixtures/test-pull-request-host.fixture.ts";
+import { TimeFormatsFixture } from "../../../fixtures/time-formats.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
@@ -117,6 +118,20 @@ describe("GitPullRequestCommitsComponent", () => {
     expect([tab.requests.methods, tab.requests.payloads]).toEqual([[TestPullRequestHost.commitsMethod], [reference.toJson()]]);
     expect(tab.texts(".row")).toEqual(["9fceb02 Fix the sign-in Mona Lisa · 5 min", `0123456 Hubot · ${old}`]);
     expect([tab.texts(".cap"), tab.counts]).toEqual([[], ["2"]]);
+  });
+
+  it("shows an older commit's date by the date and time format setting, and again when it changes", async () => {
+    pinNow();
+    const tab = new Tab();
+    tab.requests.answer(TestPullRequestHost.commitsMethod, new HostPullRequestCommits([new HostPullRequestCommit(SECOND, "", "Hubot", OLD)], false).toJson());
+    await tab.openAsync();
+    const before: string[] = tab.texts(".row");
+    onTestFinished(() => TimeFormatsFixture.reset());
+    TimeFormatsFixture.use24Hour();
+    await tab.settleAsync();
+
+    expect([before, tab.texts(".row")]).toEqual([[`0123456 Hubot · ${DatePattern.format(new Date(OLD), "MMM d")}`],
+      [`0123456 Hubot · ${DatePattern.format(new Date(OLD), "d MMM")}`]]);
   });
 
   it("says when the host has more than the 250 it shows, and when there are none", async () => {

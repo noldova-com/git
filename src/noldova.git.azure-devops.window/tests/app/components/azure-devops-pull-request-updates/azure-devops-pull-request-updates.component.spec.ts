@@ -20,6 +20,7 @@ import { describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { AzureDevOpsPullRequestUpdatesComponent } from "../../../../src/app/components/azure-devops-pull-request-updates/azure-devops-pull-request-updates.component.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
+import { TimeFormatsFixture } from "../../../fixtures/time-formats.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
@@ -120,6 +121,20 @@ describe("AzureDevOpsPullRequestUpdatesComponent", () => {
     expect([tab.requests.methods, tab.requests.payloads]).toEqual([[AzureDevOpsNames.readPullRequestUpdatesMethod], [reference.toJson()]]);
     expect(tab.texts(".row")).toEqual(["Update 2 monalisa@fabrikam.test 2 h 9fceb02", `Update 1 Someone ${old} 0123456`]);
     expect([tab.element.querySelectorAll("button.row").length, tab.texts(".cap"), tab.counts]).toEqual([0, [], ["2"]]);
+  });
+
+  it("shows an older push's date by the date and time format setting, and again when it changes", async () => {
+    pinNow();
+    const tab = new Tab();
+    tab.requests.answer(AzureDevOpsNames.readPullRequestUpdatesMethod, new HostPullRequestUpdates([new HostPullRequestUpdate(1, null, OLD, COMMON, null)], false).toJson());
+    await tab.openAsync();
+    const before: string[] = tab.texts(".row");
+    onTestFinished(() => TimeFormatsFixture.reset());
+    TimeFormatsFixture.use24Hour();
+    await tab.settleAsync();
+
+    expect([before, tab.texts(".row")]).toEqual([[`Update 1 Someone ${DatePattern.format(new Date(OLD), "MMM d")} 0123456`],
+      [`Update 1 Someone ${DatePattern.format(new Date(OLD), "d MMM")} 0123456`]]);
   });
 
   it("says when Azure DevOps has more than the 100 it shows, and when there are none", async () => {
