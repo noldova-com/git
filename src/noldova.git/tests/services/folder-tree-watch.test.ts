@@ -13,7 +13,6 @@ import path from "node:path";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test, vi } from "vitest";
 
-import { FolderUnreadableException } from "../../src/exceptions/folder-unreadable.exception.ts";
 import { Resources } from "../../src/resources.ts";
 import { FolderTreeWatch } from "../../src/services/folder-tree-watch.ts";
 import { IgnoredPaths } from "../../src/services/ignored-paths.ts";
@@ -375,13 +374,33 @@ describe("FolderTreeWatch", () => {
     assert.deepEqual([live(), names.filter(t => t?.includes(full)), failures], [["", "src"], [], []]);
   });
 
-  test("ends the whole watch when the worktree's own watch names its full path while the worktree is still there", async () => {
+  test("watches again a folder removed and made again before it is looked at, whose own watch names its full path", async () => {
     await tree.startAsync();
-    openedOf("").watcher.emit("change", "rename", repository.folder);
-    await new Promise<void>(resolve => setImmediate(resolve));
+    const deep = openedOf("src/deep");
+    deep.watcher.emit("change", "rename", path.join(repository.folder, "src", "deep"));
+    await untilAsync(() => openedOf("src/deep") !== deep && live().includes("src/deep"));
     await checkedAsync();
 
-    assert.deepEqual([live(), names.filter(t => t?.includes(repository.folder)), failures.map(t => t instanceof FolderUnreadableException && t.folder)],
-      [[], [], [repository.folder]]);
+    assert.deepEqual([deep.isClosed, live(), failures], [true, ["", "src", "src/deep"], []]);
+  });
+
+  test("walks the whole tree again when the worktree's own watch names its full path while the worktree is still there", async () => {
+    await tree.startAsync();
+    const top = openedOf("");
+    top.watcher.emit("change", "rename", repository.folder);
+    await untilAsync(() => openedOf("") !== top && live().length === 3);
+    await checkedAsync();
+
+    assert.deepEqual([top.isClosed, live(), names.filter(t => t?.includes(repository.folder)), failures], [true, ["", "src", "src/deep"], [], []]);
+  });
+
+  test("forgets every folder it watched once the worktree itself is gone", async () => {
+    await tree.startAsync();
+    vi.mocked(stat).mockRejectedValueOnce(failure("ENOENT"));
+    openedOf("").watcher.emit("change", "rename", repository.folder);
+    await untilAsync(() => live().length === 0);
+    await checkedAsync();
+
+    assert.deepEqual([live(), failures], [[], []]);
   });
 });

@@ -10,7 +10,6 @@ import { type FSWatcher, watch } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
-import { FolderUnreadableException } from "../exceptions/folder-unreadable.exception.ts";
 import { Resources } from "../resources.ts";
 import type { IgnoredPaths } from "./ignored-paths.ts";
 
@@ -100,8 +99,10 @@ export class FolderTreeWatch {
     if (this.stop.signal.aborted)
       return;
     if (name !== null && path.isAbsolute(name)) {
-      if (this.watchers.get(folder) === watcher)
-        this.follow(this.loseAsync(folder, watcher, new FolderUnreadableException(path.join(this.worktree, folder), null)));
+      if (this.watchers.get(folder) === watcher) {
+        this.forget(folder);
+        this.follow(this.serially(() => this.settleAsync(folder)));
+      }
       return;
     }
     if (name === null) {
@@ -128,7 +129,7 @@ export class FolderTreeWatch {
     }
     if (this.watchers.has(changed))
       return;
-    if ((await this.ignored.ignoredFoldersAsync(this.top, [changed], this.stop.signal)).has(changed))
+    if (changed !== "" && (await this.ignored.ignoredFoldersAsync(this.top, [changed], this.stop.signal)).has(changed))
       this.skipped.add(changed);
     else
       await this.addTreeAsync(changed);
@@ -188,7 +189,7 @@ export class FolderTreeWatch {
   }
 
   private static isIn(folder: string, outer: string): boolean {
-    return folder === outer || folder.startsWith(`${outer}/`);
+    return outer === "" || folder === outer || folder.startsWith(`${outer}/`);
   }
 
   private static join(folder: string, name: string): string {
