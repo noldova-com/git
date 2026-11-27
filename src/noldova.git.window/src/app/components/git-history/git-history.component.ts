@@ -170,7 +170,7 @@ export class GitHistoryComponent {
     const chosen: Signal<GitCommitView | null> = computed(() => GitViewing.commitOf(this.instance()));
     const settled: Signal<boolean> = computed(() => {
       const view: GitBranchView | null = GitViewing.branchOf(this.instance());
-      return !this.isLoading() && (Object.isNull(view) || view === this.jumped() || !Object.isNull(this.failure()));
+      return !this.isLoading() && (Object.isNull(view) || view === this.jumped());
     });
     details.follow(chosen, active, inject(Injector), settled);
     afterNextRender(() => {
