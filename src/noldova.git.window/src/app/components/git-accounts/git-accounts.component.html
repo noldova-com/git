@@ -26,7 +26,13 @@ LICENSE file in the root directory of this source tree.
       <div class="host" [attr.data-setting]="rowOf(provided)">
         @for (card of provided.account.cards(); track $index) {
           <div class="card">
-            <span class="mark" [style.background-color]="provided.account.markColor" aria-hidden="true">{{ provided.account.mark }}</span>
+            @if (card.person; as person) {
+              <span class="mark person" aria-hidden="true">
+                <nol-avatar [name]="person.login" [image]="person.avatar" [initials]="initialOf(person)" [colorKey]="person.login" [decorative]="true" />
+              </span>
+            } @else {
+              <span class="mark" [style.background-color]="provided.account.markColor" aria-hidden="true">{{ provided.account.mark }}</span>
+            }
             <span class="text">
               <span class="card-title">{{ card.title }}</span>
               <span class="detail">{{ card.detail }}</span>

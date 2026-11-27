@@ -61,10 +61,6 @@ export class GitHubAccountsComponent implements OnInit {
     void this.readAsync();
   }
 
-  protected titleOf(position: number): string {
-    return this.shown().length === 1 ? Resources.accountTitle : Resources.formatAccountNumber(position + 1);
-  }
-
   protected async addAsync(): Promise<void> {
     const done = this.tasks.add();
     this.isBusy.set(true);

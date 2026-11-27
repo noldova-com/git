@@ -45,7 +45,6 @@ export class GitHubSignInComponent implements OnInit {
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
 
   public readonly account: InputSignal<number> = input<number>(Resources.firstAccount);
-  public readonly title: InputSignal<string> = input<string>(Resources.accountTitle);
   public readonly opensCode: InputSignal<boolean> = input<boolean>(false);
 
   public constructor() {
@@ -88,8 +87,12 @@ export class GitHubSignInComponent implements OnInit {
     return account.login.charAt(0).toUpperCase();
   }
 
-  protected accessOf(account: HostAccount): string {
-    return Resources.formatAccess(account.scopes);
+  protected nameOf(account: HostAccount): string {
+    return account.name ?? account.login;
+  }
+
+  protected detailOf(account: HostAccount): string {
+    return Resources.formatAccountDetail(account);
   }
 
   protected remainingOf(code: DeviceCode): string {

@@ -9,7 +9,7 @@
 import type { InjectionToken, Injector, InputSignal, OutputEmitterRef, Signal, Type, WritableSignal, ɵɵComponentDeclaration, ɵɵFactoryDeclaration } from "@angular/core";
 import { Exception, type ExceptionOptions } from "@noldova/context.exceptions";
 import type { IWindowPart, IWindowPartContext } from "@noldova/desktop.window";
-import type { HostChanges, HostPullRequestFiles, HostReference } from "@noldova/git.hosting.protocol";
+import type { HostAccount, HostChanges, HostPullRequestFiles, HostReference } from "@noldova/git.hosting.protocol";
 import type { DiffScope, GitRemote } from "@noldova/git.protocol";
 import type { ILinkReferenceSource, LinkOpenEvent } from "@noldova/ui.components.angular";
 
@@ -647,7 +647,7 @@ export declare enum GitHostCardState {
  * ```ts
  * import { GitHostCard, GitHostCardState } from "@noldova/git.window";
  *
- * export const signedIn: GitHostCard = new GitHostCard("GitHub · kim", "Device sign-in", GitHostCardState.SignedIn, "Signed in");
+ * export const signedIn: GitHostCard = new GitHostCard("kim", "Device sign-in", GitHostCardState.SignedIn, "Signed in");
  * ```
  */
 export declare class GitHostCard {
@@ -670,14 +670,21 @@ export declare class GitHostCard {
   public readonly account: string | null;
 
   /**
+   * The signed-in account the card shows, drawn in place of the host's mark as its picture, or its initial when it has none; `null` for a card
+   * without one, which shows the host's mark.
+   */
+  public readonly person: HostAccount | null;
+
+  /**
    * Creates a card.
    * @param title The card's title.
    * @param detail The line under the title.
    * @param state The card's state.
    * @param label The chip's text, or the button's while it asks to sign in.
    * @param account The host's id for the card's account, or `null`, the default, for a host with one account.
+   * @param person The signed-in account the card shows, or `null`, the default, for the host's mark.
    */
-  public constructor(title: string, detail: string, state: GitHostCardState, label: string, account?: string | null);
+  public constructor(title: string, detail: string, state: GitHostCardState, label: string, account?: string | null, person?: HostAccount | null);
 
   /** Whether the card ends with a button that opens the host's sign-in rather than a chip: while it is signed out or its sign-in failed. */
   public get asksToSignIn(): boolean;

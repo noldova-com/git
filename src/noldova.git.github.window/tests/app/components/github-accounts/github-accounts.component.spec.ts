@@ -80,25 +80,23 @@ class Page {
 }
 
 describe("GitHubAccountsComponent", () => {
-  it("shows each account's sign-in, numbered, and offers another account once one is signed in", async () => {
+  it("shows each account's sign-in, titled by its login, and offers another account once one is signed in", async () => {
     const page = new Page();
     page.requests.answer(GitHubNames.readAccountsMethod, listOf(kim, lee).toJson());
     page.requests.answer(GitHubNames.readSignInMethod, kim.toJson(), lee.toJson());
     await page.openAsync();
 
-    expect([page.texts("h3"), page.texts(".nol-git-github-account-text .nol-git-github-strong"), page.readsOf()])
-      .toEqual([["Account 1", "Account 2"], ["kim", "lee"], [null, new AccountQuery(2).toJson()]]);
+    expect([page.texts("h3"), page.readsOf()]).toEqual([["kim", "lee"], [null, new AccountQuery(2).toJson()]]);
     expect(page.button("Add another GitHub account").disabled).toBe(false);
   });
 
-  it("shows only the account its card opened it on, titled as the one account, and adds none from there while there are others", async () => {
+  it("shows only the account its card opened it on, and adds none from there while there are others", async () => {
     const page = new Page();
     page.requests.answer(GitHubNames.readAccountsMethod, listOf(kim, lee).toJson());
     page.requests.answer(GitHubNames.readSignInMethod, lee.toJson());
     await page.openAsync("2");
 
-    expect([page.texts("h3"), page.texts(".nol-git-github-account-text .nol-git-github-strong"), page.readsOf(), page.texts("button").includes("Add another GitHub account")])
-      .toEqual([["Account"], ["lee"], [new AccountQuery(2).toJson()], false]);
+    expect([page.texts("h3"), page.readsOf(), page.texts("button").includes("Add another GitHub account")]).toEqual([["lee"], [new AccountQuery(2).toJson()], false]);
   });
 
   it("offers another account from the only account's card", async () => {
@@ -107,7 +105,7 @@ describe("GitHubAccountsComponent", () => {
     page.requests.answer(GitHubNames.readSignInMethod, kim.toJson());
     await page.openAsync("1");
 
-    expect([page.texts("h3"), page.texts("button").some(t => t.includes("Add another GitHub account"))]).toEqual([["Account"], true]);
+    expect([page.texts("h3"), page.texts("button").some(t => t.includes("Add another GitHub account"))]).toEqual([["kim"], true]);
   });
 
   it.each([["7"], ["x"], ["0"]])("shows every account when the account it was opened on, %s, isn't in the list", async chosen => {
@@ -116,7 +114,7 @@ describe("GitHubAccountsComponent", () => {
     page.requests.answer(GitHubNames.readSignInMethod, kim.toJson(), lee.toJson());
     await page.openAsync(chosen);
 
-    expect(page.texts("h3")).toEqual(["Account 1", "Account 2"]);
+    expect(page.texts("h3")).toEqual(["kim", "lee"]);
   });
 
   it("offers no other account while none is signed in, or while one waits for its code", async () => {
@@ -156,7 +154,7 @@ describe("GitHubAccountsComponent", () => {
       TestBed.resetTestingModule();
     }
 
-    const expected = [["Account 1", "Account 2"], ["WDJB-MJHT"], ["https://github.com/login/device"], [null, new AccountQuery(2).toJson()]];
+    const expected = [["kim", "Account"], ["WDJB-MJHT"], ["https://github.com/login/device"], [null, new AccountQuery(2).toJson()]];
     expect(shown).toEqual([expected, expected]);
   });
 
@@ -170,7 +168,7 @@ describe("GitHubAccountsComponent", () => {
     await page.clickAsync("Add another GitHub account");
 
     expect([page.texts("[role=alert] .nol-git-github-banner-text > span"), page.texts("h3"), page.logs]).toEqual([["GitHub didn't add the account.",
-      "Try again; the app's log has the details."], ["Account"], [`The GitHub module's ${GitHubNames.addAccountMethod} request failed: WindowFailure: Not connected.`]]);
+      "Try again; the app's log has the details."], ["kim"], [`The GitHub module's ${GitHubNames.addAccountMethod} request failed: WindowFailure: Not connected.`]]);
   });
 
   it("passes on a failure to add an account that isn't the window's, rather than saying GitHub didn't add it", async () => {
@@ -194,7 +192,7 @@ describe("GitHubAccountsComponent", () => {
     page.requests.answer(GitHubNames.readSignInMethod, kim.toJson());
     await page.openAsync();
 
-    expect([page.texts("h3"), page.readsOf(), page.texts("button").some(t => t.includes("Add another")), page.logs]).toEqual([["Account"], [null], false,
+    expect([page.texts("h3"), page.readsOf(), page.texts("button").some(t => t.includes("Add another")), page.logs]).toEqual([["kim"], [null], false,
       [`The GitHub module's ${GitHubNames.readAccountsMethod} request failed: WindowFailure: Not connected.`]]);
   });
 
@@ -209,7 +207,7 @@ describe("GitHubAccountsComponent", () => {
     release(listOf(kim, lee).toJson());
     await opening;
 
-    expect([before, page.texts("h3")]).toEqual([[[], [], []], ["Account"]]);
+    expect([before, page.texts("h3")]).toEqual([[[], [], []], ["lee"]]);
   });
 
   it("passes on a failure of the accounts' read that isn't the window's", async () => {
@@ -238,6 +236,6 @@ describe("GitHubAccountsComponent", () => {
     const shown = page.texts("h3");
     page.fixture?.destroy();
 
-    expect([shown, page.context.activeCallsOf("onEvent").filter(t => t[0] === GitHubNames.accountsChangedEvent)]).toEqual([["Account 1", "Account 2"], []]);
+    expect([shown, page.context.activeCallsOf("onEvent").filter(t => t[0] === GitHubNames.accountsChangedEvent)]).toEqual([["kim", "lee"], []]);
   });
 });

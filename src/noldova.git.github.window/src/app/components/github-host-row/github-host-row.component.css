@@ -50,6 +50,26 @@
   color: var(--nol-text-muted);
 }
 
+.switch {
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--nol-link);
+  font: inherit;
+  font-size: var(--nol-text-label);
+  cursor: pointer;
+}
+
+.switch:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.switch:disabled {
+  color: var(--nol-text-muted);
+  cursor: default;
+}
+
 .pr {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

@@ -65,11 +65,11 @@ describe("GitHubAccountsComponent in the kit's look", () => {
     const fixture = await openAsync(mode);
     const root: HTMLElement = fixture.nativeElement;
     const sections = all(root, ".nol-git-github-setting");
-    const start: number = all(root, ".nol-git-github-setting-title")[0]?.getBoundingClientRect().left ?? Number.NaN;
+    const start: number = all(root, ".nol-git-github-account")[0]?.getBoundingClientRect().left ?? Number.NaN;
     const boxes = sections.map(t => t.getBoundingClientRect());
 
     expect([all(root, ".nol-git-github-setting-title").map(t => t.textContent?.trim()), all(root, "button .nol-button-label").map(t => t.textContent?.trim())])
-      .toEqual([["Account 1", "Account 2"], ["Sign out", "Manage access on GitHub", "Sign out", "Manage access on GitHub", "Add another GitHub account"]]);
+      .toEqual([["kim", "lee"], ["Sign out", "Manage access on GitHub", "Sign out", "Manage access on GitHub", "Add another GitHub account"]]);
     for (const section of sections) {
       AppearanceFixture.expectPixels(section.querySelector("button")?.getBoundingClientRect().left ?? Number.NaN, start);
       AppearanceFixture.expectPixels(start - section.getBoundingClientRect().left, AppearanceFixture.toPixels(0.875));

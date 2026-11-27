@@ -79,7 +79,7 @@ LICENSE file in the root directory of this source tree.
     <div class="account">
       <span class="notice-mark" aria-hidden="true" [style.--nol-git-github-icon]="mark"></span>
       <span class="notice-text">{{ resources.formatRepositoryAccount(current.login) }}</span>
-      <button type="button" nol-button [variant]="secondary" [disabled]="isBusy()" [nolMenuTriggerFor]="readerMenu">{{ resources.switchAccount }}</button>
+      <button type="button" class="switch" [disabled]="isBusy()" [nolMenuTriggerFor]="readerMenu">{{ resources.switchAccount }}</button>
       <ng-template #readerMenu>
         <nol-menu>
           @for (option of readers(); track option.id) {

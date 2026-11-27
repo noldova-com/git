@@ -28,12 +28,13 @@ import { WindowFailure } from "../../fixtures/window-failure.fixture.ts";
 
 const signedOutNote: string = "Sign in to see pull requests, their checks, and issue and pull request links in replies. Git works without it.";
 const signedOutCards: GitHostCard[] = [new GitHostCard("GitHub", signedOutNote, GitHostCardState.SignedOut, "Sign in", "1")];
-const signedInCards: GitHostCard[] = [new GitHostCard("GitHub · example-user", "Signed in on this computer · access to your repositories", GitHostCardState.SignedIn, "Signed in", "1")];
+const user: HostAccount = new HostAccount("example-user", null, null, ["repo"]);
+const signedInCards: GitHostCard[] = [new GitHostCard("example-user", "Signed in on this computer · access to your repositories", GitHostCardState.SignedIn, "Signed in", "1", user)];
 const unreadCards: GitHostCard[] = [
   new GitHostCard("GitHub", "GitHub's sign-in couldn't be read; the app's log has the details.", GitHostCardState.Failed, "Sign in", "1")
 ];
 const waitingCards: GitHostCard[] = [new GitHostCard("GitHub", "Enter this code at github.com/login/device.", GitHostCardState.Waiting, "Waiting for the code", "1")];
-const signedIn: HostSignIn = HostSignIn.signedIn(new HostAccount("example-user", null, null, ["repo"]));
+const signedIn: HostSignIn = HostSignIn.signedIn(user);
 const waiting: HostSignIn = HostSignIn.waiting(new DeviceCode("WDJB-MJHT", "https://github.com/login/device", 1_800_000_000_000));
 
 function listOf(...signIns: HostSignIn[]): JsonObject {
@@ -350,20 +351,20 @@ describe("GitHubWindowPart", () => {
     expect(afterStaleFailure).toEqual(signedOutCards);
   });
 
-  it("shows a card for each account, in the list's order, each naming its account for the dialog", async () => {
+  it("shows a card for each account, in the list's order, each naming its account for the dialog, titled by the account's name or else its login", async () => {
     const part: GitHubWindowPart = new GitHubWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    new RequestAnswers(context).answer(GitHubNames.readAccountsMethod, listOf(signedIn, waiting, HostSignIn.signedIn(new HostAccount("example-bot", null, null, []))));
+    new RequestAnswers(context).answer(GitHubNames.readAccountsMethod, listOf(signedIn, waiting, HostSignIn.signedIn(new HostAccount("example-bot", "Example Bot", null, []))));
 
     await part.activateAsync(context);
     await Wait.until(() => expect(cardsOf()).toHaveLength(3));
-    const cards = cardsOf()?.map(t => [t.title, t.detail, t.state, t.account]);
+    const cards = cardsOf()?.map(t => [t.title, t.detail, t.state, t.account, t.person?.login ?? null]);
     await part.deactivateAsync();
 
     expect(cards).toEqual([
-      ["GitHub · example-user", "Signed in on this computer · access to your repositories", GitHostCardState.SignedIn, "1"],
-      ["GitHub", "Enter this code at github.com/login/device.", GitHostCardState.Waiting, "2"],
-      ["GitHub · example-bot", "Signed in on this computer · no access to your repositories", GitHostCardState.SignedIn, "3"]
+      ["example-user", "Signed in on this computer · access to your repositories", GitHostCardState.SignedIn, "1", "example-user"],
+      ["GitHub", "Enter this code at github.com/login/device.", GitHostCardState.Waiting, "2", null],
+      ["Example Bot", "example-bot · Signed in on this computer · no access to your repositories", GitHostCardState.SignedIn, "3", "example-bot"]
     ]);
   });
 });

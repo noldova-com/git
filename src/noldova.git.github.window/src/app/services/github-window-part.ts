@@ -108,7 +108,7 @@ export class GitHubWindowPart implements IWindowPart {
   private static cardOf(id: number, signIn: HostSignIn | null): GitHostCard {
     const account = signIn?.account ?? null;
     if (!Object.isNull(account))
-      return new GitHostCard(Resources.formatAccountTitle(account.login), Resources.formatAccess(account.scopes), GitHostCardState.SignedIn, Resources.signedIn, String(id));
+      return new GitHostCard(account.name ?? account.login, Resources.formatAccountDetail(account), GitHostCardState.SignedIn, Resources.signedIn, String(id), account);
     const code = signIn?.deviceCode ?? null;
     if (!Object.isNull(code))
       return new GitHostCard(Resources.hostName, Resources.formatCodeNote(code.verificationUri, code.userCode, false), GitHostCardState.Waiting, Resources.waiting, String(id));

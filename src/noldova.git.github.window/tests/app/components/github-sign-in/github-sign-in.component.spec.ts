@@ -285,7 +285,7 @@ describe("GitHubSignInComponent", () => {
   it("shows the account and its access, signs out, and opens GitHub's page for the app's access in the system's browser while the in-app browser takes other links", async () => {
     const page = await new Page().openAsync(HostSignIn.signedIn(account));
     page.registerInAppBrowser();
-    const shown = [...page.texts(".nol-git-github-account-text > span"), page.element.querySelector("nol-avatar")?.textContent?.trim()];
+    const shown = [...page.texts(".nol-git-github-account-text > *"), page.element.querySelector("nol-avatar")?.textContent?.trim()];
     page.requests.answer(GitHubNames.signOutMethod, HostSignIn.signedOut().toJson());
     page.context.answer("openLinkAsync", async () => undefined);
 
@@ -316,6 +316,12 @@ describe("GitHubSignInComponent", () => {
 
     expect(first).not.toBe("");
     expect([otherLogin === first, otherPicture]).toEqual([false, first]);
+  });
+
+  it("titles a named account by its name, with its login before its access", async () => {
+    const page = await new Page().openAsync(HostSignIn.signedIn(new HostAccount("example-user", "Example User", null, ["repo"])));
+
+    expect([page.texts("h3"), page.texts(".nol-git-github-label")]).toEqual([["Example User"], ["example-user · Signed in on this computer · access to your repositories"]]);
   });
 
   it("says when the account gave no access to the repositories", async () => {
@@ -350,13 +356,14 @@ describe("GitHubSignInComponent", () => {
     expect([shown, following, page.context.activeCallsOf("onEvent").filter(t => t[0] === GitHubNames.signInChangedEvent).length]).toEqual([["example-user"], 1, 0]);
   });
 
-  it("acts on the account it is given, under the title it is given, naming the account in each request", async () => {
-    const page = await new Page().openAsync(HostSignIn.signedIn(account), { account: 2, title: "Account 2" });
+  it("acts on the account it is given, titled by its login while signed in, naming the account in each request", async () => {
+    const page = await new Page().openAsync(HostSignIn.signedIn(account), { account: 2 });
     page.requests.answer(GitHubNames.signOutMethod, HostSignIn.signedOut().toJson());
+    const titled = page.texts("h3");
 
     await page.clickAsync("Sign out");
 
-    expect([page.texts("h3"), page.requests.methods, page.requests.payloads]).toEqual([["Account 2"], [GitHubNames.readSignInMethod, GitHubNames.signOutMethod],
+    expect([titled, page.texts("h3"), page.requests.methods, page.requests.payloads]).toEqual([["example-user"], ["Account"], [GitHubNames.readSignInMethod, GitHubNames.signOutMethod],
       [new AccountQuery(2).toJson(), new AccountQuery(2).toJson()]]);
   });
 

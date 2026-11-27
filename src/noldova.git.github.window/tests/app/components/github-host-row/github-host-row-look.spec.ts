@@ -167,7 +167,7 @@ describe("GitHubHostRowComponent in the kit's look", () => {
     expect(shown).toEqual([null, `#1234 ${title}`, longCheck]);
   });
 
-  it.each(AppearanceFixture.modes)("sets the account line under the card, its mark on the card's icons, its button's end on the card's, in %s mode", async mode => {
+  it.each(AppearanceFixture.modes)("sets the account line under the card, its mark on the card's icons, its quiet switch's end on the card's, in %s mode", async mode => {
     const fixture = await openAsync(mode, HostSignIn.signedIn(account), answer, (context, requests) => {
       GitHubAccountList.show(context, new HostAccountList([new HostAccountEntry(1, HostSignIn.signedIn(account)),
         new HostAccountEntry(2, HostSignIn.signedIn(new HostAccount("example-bot", null, null, ["repo"])))]));
@@ -182,14 +182,21 @@ describe("GitHubHostRowComponent in the kit's look", () => {
     const line = find(root, ".account").getBoundingClientRect();
     const mark = find(root, ".account .notice-mark").getBoundingClientRect();
     const text = find(root, ".account .notice-text");
-    const button = find(root, ".account button").getBoundingClientRect();
+    const switcher = find(root, ".account button");
+    const button = switcher.getBoundingClientRect();
+    const quiet = getComputedStyle(switcher);
+    const words = getComputedStyle(text);
+    const link = resolve("var(--nol-link)");
 
     AppearanceFixture.expectPixels(line.top - card.bottom, px(0.5));
     AppearanceFixture.expectPixels(mark.left, state.left);
     AppearanceFixture.expectPixels(button.right, open.right);
     AppearanceFixture.expectPixels(mark.top + mark.height / 2, line.top + line.height / 2);
     AppearanceFixture.expectPixels(text.getBoundingClientRect().left - mark.right, px(0.5));
-    expect([text.textContent?.trim(), getComputedStyle(text).color]).toEqual(["Account: example-bot", getComputedStyle(find(root, ".account")).color]);
+    AppearanceFixture.expectPixels(button.top + button.height / 2, text.getBoundingClientRect().top + text.getBoundingClientRect().height / 2);
+    expect([text.textContent?.trim(), words.color]).toEqual(["Account: example-bot", getComputedStyle(find(root, ".account")).color]);
+    expect([switcher.textContent?.trim(), quiet.color, quiet.borderTopWidth, quiet.backgroundColor, quiet.paddingLeft, quiet.fontSize, quiet.fontWeight])
+      .toEqual(["Switch account", link, "0px", "rgba(0, 0, 0, 0)", "0px", words.fontSize, words.fontWeight]);
     await page.screenshot({ path: `${screenshots}/host-row-account-${mode}.png`, element: find(root, ".dock") });
   });
 

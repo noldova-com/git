@@ -170,7 +170,7 @@ describe("GitHubSignInComponent in the kit's look", () => {
     const column = find(root, ".column").getBoundingClientRect();
     const heading = find(root, "h2").getBoundingClientRect();
     const section = find(root, "section").getBoundingClientRect();
-    const title = find(root, "h3").getBoundingClientRect();
+    const title = find(root, "section > :first-child").getBoundingClientRect();
     const sectionStyle = getComputedStyle(find(root, "section"));
 
     AppearanceFixture.expectPixels(heading.left - column.left, px(1.5));

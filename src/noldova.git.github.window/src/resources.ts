@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { CheckState, type ReferenceKind, type ReferenceState, SignInFailure } from "@noldova/git.hosting.protocol";
+import { CheckState, type HostAccount, type ReferenceKind, type ReferenceState, SignInFailure } from "@noldova/git.hosting.protocol";
 import type { IconName } from "@noldova/ui.components.angular";
 
 export class Resources {
@@ -184,16 +184,13 @@ export class Resources {
     return `color-mix(in srgb, ${color} ${percent}%, transparent)`;
   }
 
-  public static formatAccountTitle(login: string): string {
-    return `${Resources.hostName} · ${login}`;
-  }
-
   public static formatRepositoryAccount(login: string): string {
     return `Account: ${login}`;
   }
 
-  public static formatAccountNumber(position: number): string {
-    return `Account ${position}`;
+  public static formatAccountDetail(account: HostAccount): string {
+    const access: string = Resources.formatAccess(account.scopes);
+    return Object.isNull(account.name) ? access : `${account.login} · ${access}`;
   }
 
   public static formatAccess(scopes: readonly string[]): string {
