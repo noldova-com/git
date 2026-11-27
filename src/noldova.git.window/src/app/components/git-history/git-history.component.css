@@ -424,3 +424,34 @@
     display: none;
   }
 }
+
+.field.gone {
+  display: none;
+}
+
+.empty {
+  display: grid;
+  gap: var(--nol-space-2);
+  justify-items: start;
+  padding: 0.5rem 0.75rem;
+}
+
+.empty-icon {
+  width: var(--nol-empty-icon);
+  height: var(--nol-empty-icon);
+  color: var(--nol-text-muted);
+  font-size: var(--nol-empty-icon);
+}
+
+.heading {
+  margin: 0;
+  color: var(--nol-text-strong);
+  font-size: inherit;
+  font-weight: var(--nol-weight-emphasis);
+  line-height: inherit;
+}
+
+.text {
+  margin: 0;
+  color: var(--nol-text-muted);
+}

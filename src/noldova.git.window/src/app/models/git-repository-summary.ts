@@ -29,9 +29,10 @@ export class GitRepositorySummary {
   public readonly fetchedAt: string | null;
   public readonly isFetching: boolean;
   public readonly failure: string | null;
+  public readonly isRepository: boolean;
   private readonly status: GitStatus | null;
 
-  public constructor(folder: string, status: GitStatus | null, isFetching: boolean, failure: string | null) {
+  public constructor(folder: string, status: GitStatus | null, isFetching: boolean, failure: string | null, isRepository: boolean = true) {
     const groups: readonly GitFileGroup[] = GitFileGroup.groupsOf(status?.entries ?? []);
     const countOf = (kind: GitFileGroupKind): number => groups.find(t => t.kind === kind)?.rows.length ?? 0;
     this.folder = folder;
@@ -51,6 +52,7 @@ export class GitRepositorySummary {
     this.fetchedAt = status?.fetchedAt ?? null;
     this.isFetching = isFetching;
     this.failure = failure;
+    this.isRepository = isRepository;
   }
 
   public get isUnread(): boolean {

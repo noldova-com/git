@@ -7,8 +7,8 @@
  */
 
 import {
-  ConflictKind, FailureCode, FileState, GitBranches, GitCode, GitCommitSigning, GitJournalEntry, GitOperation, GitRemote, LineCounts, LineKind, OperationKind, RemoteTransport, SigningFormat, StatusUpstream,
-  UndoMode
+  ConflictKind, FailureCode, FileState, GitBranches, GitCode, GitCommitSigning, GitJournalEntry, GitOperation, GitRemote, GitRepositoryScan, LineCounts, LineKind, OperationKind, RemoteTransport,
+  ScanEnd, SigningFormat, StatusUpstream, UndoMode
 } from "@noldova/git.protocol";
 import { computed } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
@@ -390,7 +390,8 @@ describe("GitViewComponent in the kit's look", () => {
 
   it.each(emptyStates.flatMap(([name, failure, heading]) => AppearanceFixture.modes.map(mode => [name, mode, failure, heading] as const)))("draws the %s state's icon, heading and text on one edge in %s mode", async (name, mode, failure, heading) => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
-    const view: GitViewFixture = await GitViewFixture.renderAsync({ ...GitFixtures.watching, "git.status": failure }, ".empty");
+    const view: GitViewFixture = await GitViewFixture.renderAsync({ ...GitFixtures.watching, "git.status": failure, "git.scanRepositories": new GitRepositoryScan(ScanEnd.Complete, []).toJson() },
+      ".empty");
     view.element.style.width = "25rem";
     view.element.style.height = "40rem";
     await view.fixture.whenStable();
