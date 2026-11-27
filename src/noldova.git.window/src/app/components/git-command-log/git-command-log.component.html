@@ -7,19 +7,12 @@ LICENSE file in the root directory of this source tree.
 -->
 
 <main class="panel" [attr.aria-label]="resources.commandLogLabel">
-  <header class="head">
-    <div class="title-row">
-      <span class="title-icon material-symbols-rounded" aria-hidden="true">{{ resources.commandLogIcon }}</span>
-      <h1 class="title strong">{{ resources.commandLogLabel }}</h1>
-    </div>
-    <p class="hint muted">{{ resources.commandLogHint }}</p>
-  </header>
   @if (readFailure(); as failure) {
     <p class="note failure" role="alert">{{ failure }}</p>
   } @else if (log() !== null && commands().length === 0) {
     <p class="note muted" role="note">{{ resources.commandLogEmpty }}</p>
   } @else {
-    <ol class="commands">
+    <ol #list class="commands">
       @for (command of commands(); track command.id) {
         <li class="command">
           <span class="time muted">{{ timeOf(command) }}</span>
