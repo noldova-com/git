@@ -13,6 +13,7 @@ import path from "node:path";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test, vi } from "vitest";
 
+import { FolderUnreadableException } from "../../src/exceptions/folder-unreadable.exception.ts";
 import { Resources } from "../../src/resources.ts";
 import { FolderTreeWatch } from "../../src/services/folder-tree-watch.ts";
 import { IgnoredPaths } from "../../src/services/ignored-paths.ts";
@@ -300,7 +301,7 @@ describe("FolderTreeWatch", () => {
     await repository.runGitAsync(["add", "--force", "bin/keep.dll"]);
     paths.forgetIndex(repository.folder);
     tree.recheck();
-    await untilAsync(() => live().includes("bin"));
+    await untilAsync(() => live().includes("bin") && asked.folders.some(t => t.includes("bin/obj")));
     const added = live();
     await heardAsync("bin/keep.dll");
     await removedAsync("bin");
@@ -349,5 +350,28 @@ describe("FolderTreeWatch", () => {
     await untilAsync(() => failures.length > 0 && live().length === 0);
 
     assert.deepEqual(failures.map(String), ["Error: EACCES"]);
+  });
+
+  test("drops the watch of a folder removed whose own watch names its full path, as Windows does, hearing no such name", async () => {
+    await tree.startAsync();
+    const deep = openedOf("src/deep");
+    const full = path.join(repository.folder, "src", "deep");
+    await rm(full, { recursive: true });
+    deep.watcher.emit("change", "rename", full);
+    deep.watcher.emit("change", "rename", full);
+    await untilAsync(() => deep.isClosed);
+    await checkedAsync();
+
+    assert.deepEqual([live(), names.filter(t => t?.includes(full)), failures], [["", "src"], [], []]);
+  });
+
+  test("ends the whole watch when the worktree's own watch names its full path while the worktree is still there", async () => {
+    await tree.startAsync();
+    openedOf("").watcher.emit("change", "rename", repository.folder);
+    await new Promise<void>(resolve => setImmediate(resolve));
+    await checkedAsync();
+
+    assert.deepEqual([live(), names.filter(t => t?.includes(repository.folder)), failures.map(t => t instanceof FolderUnreadableException && t.folder)],
+      [[], [], [repository.folder]]);
   });
 });
