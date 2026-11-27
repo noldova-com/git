@@ -143,11 +143,25 @@ describe("RepositoryScanReader", () => {
     for (let index = 0; index < 120; index++)
       await mkdir(path.join(work, `f${String(index).padStart(3, "0")}`));
     const { readdir: realReaddir } = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
-    vi.mocked(readdir).mockImplementation(async (_folder, options) => await realReaddir(work, options));
+    let listing: ReturnType<typeof realReaddir> | null = null;
+    vi.mocked(readdir).mockImplementation(async (_folder, options) => await (listing ??= realReaddir(work, options)));
 
     const scan = await scans.readAsync(work, signal);
 
     assert.deepEqual([scan, vi.mocked(readdir).mock.calls.length], [new GitRepositoryScan(ScanEnd.FolderLimit, []), 10_001]);
+  });
+
+  test("walks the subfolders in name order and keeps the repositories in it, whatever order the system lists them in", async () => {
+    await repositoryAt("a");
+    await mkdir(path.join(work, "b"));
+    await repositoryAt("c");
+    const { readdir: realReaddir } = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
+    vi.mocked(readdir).mockImplementation(async (folder, options) => (await realReaddir(folder, options)).toReversed());
+
+    const scan = await scans.readAsync(work, signal);
+    const read = vi.mocked(readdir).mock.calls.map(t => path.relative(work, String(t[0])));
+
+    assert.deepEqual([scan, read], [new GitRepositoryScan(ScanEnd.Complete, [path.join(work, "a"), path.join(work, "c")]), ["", "a", "b", "c"]]);
   });
 
   test("stops when asked, and fails on a folder that isn't absolute", async () => {

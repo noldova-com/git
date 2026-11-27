@@ -494,6 +494,27 @@ describe("GitWorkspaceComponent", () => {
       .toEqual([[["Looking for repositories in b…"], "true"], [1, 1], [], null]);
   });
 
+  it("holds the empty page's Add repository while a scan runs, so a second click starts none", async () => {
+    const workspace: GitWorkspace = fresh();
+    let open: () => void = () => undefined;
+    const gate: Promise<void> = new Promise(resolve => {
+      open = resolve;
+    });
+    const screen: Screen = Screen.render(workspace.id, {}, gate, { "git.scanRepositories /work/b": new GitRepositoryScan(ScanEnd.Repository, []).toJson() });
+    screen.context.answer("chooseFolderAsync", async () => "/work/b");
+    const scans = (): number => screen.context.callsOf("requestAsync").filter(t => t[0] === "git.scanRepositories").length;
+    const held = (): boolean | null => screen.element.querySelector<HTMLButtonElement>(".empty button")?.disabled ?? null;
+
+    screen.click(".empty button");
+    await screen.untilAsync(() => scans() === 1 && held() === true);
+    screen.click(".empty button");
+    const second: readonly number[] = [scans(), screen.context.callsOf("chooseFolderAsync").length];
+    open();
+    await screen.untilAsync(() => screen.rows().length === 1);
+
+    expect([second, screen.texts(".result p")]).toEqual([[1, 1], []]);
+  });
+
   it("moves the selected repositories up and down, and removes them from the workspace", async () => {
     const workspace: GitWorkspace = fresh("/work/a", "/work/b", "/work/c");
     const screen: Screen = Screen.render(workspace.id);

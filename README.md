@@ -127,9 +127,9 @@ The time is the highest of the latest runs on Linux, both macOS machines and Win
 | `src/noldova.git/tests/services/lfs-pointer.reader.test.ts` | 2.2 s | 5 tests read real LFS pointers and attributes against the files in the worktree and the index. |
 | `src/noldova.git/tests/services/graph.reader.test.ts` | 1.9 s | 5 tests read every branch's real commits with their labels, a page at a time. |
 | `src/noldova.git/tests/services/repository-items.reader.test.ts` | 1.9 s | 5 tests read the real tags, stashes and submodules of repositories, cut at their limits. |
+| `src/noldova.git/tests/services/repository-scan.reader.test.ts` | 1.9 s | 10 tests make real folder trees, a thousand repositories in one, and ask real git whether a folder is in a repository. |
 | `src/noldova.git/tests/services/git-version.reader.test.ts` | 1.8 s | 4 tests start real git for its version. |
 | `src/noldova.git/tests/services/branch-at.writer.test.ts` | 1.7 s | 2 tests make real branches at a commit without switching, and read git's refusals. |
-| `src/noldova.git/tests/services/repository-scan.reader.test.ts` | 1.7 s | 8 tests make real folder trees, a thousand repositories in one, and ask real git whether a folder is in a repository. |
 | `src/noldova.git/tests/tools/git-read-tool.test.ts` | 1.6 s | 2 tests run a read tool through Noldova Desktop's tool registry and real git. |
 | `src/noldova.git/tests/tools/tool-text.test.ts` | 1.5 s | 3 tests cut long reads to the agent's limit, item by item. |
 | `src/noldova.git.window/tests/app/components/git-branch-card/git-branch-card.component.spec.ts` | 1.4 s | 19 specs render the branch card in a browser, open its menu and run its writes against the fake context. |
