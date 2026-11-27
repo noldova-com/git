@@ -34,9 +34,9 @@
     "@angular/core": "22.3.0",
     "@angular/forms": "22.3.0",
     "@angular/platform-browser": "22.3.0",
-    "@noldova/ui.components.angular": "0.0.35",
-    "@noldova/desktop.protocol": "0.0.17",
-    "@noldova/desktop.window": "0.0.17",
+    "@noldova/ui.components.angular": "0.0.36",
+    "@noldova/desktop.protocol": "0.0.18",
+    "@noldova/desktop.window": "0.0.18",
     "rxjs": "7.8.2",
     "tslib": "2.8.1"
   },
@@ -45,9 +45,9 @@
     "@noldova/code.editor.angular": ">=0.0.2 <0.1.0",
     "@noldova/code.editor.merge.angular": ">=0.0.2 <0.1.0",
     "@noldova/code.editor.textmate": ">=0.0.2 <0.1.0",
-    "@noldova/context.core": ">=0.0.12 <0.1.0",
-    "@noldova/context.exceptions": ">=0.0.12 <0.1.0",
-    "@noldova/context.json": ">=0.0.12 <0.1.0"
+    "@noldova/context.core": ">=0.0.18 <0.1.0",
+    "@noldova/context.exceptions": ">=0.0.18 <0.1.0",
+    "@noldova/context.json": ">=0.0.18 <0.1.0"
   },
   "peerDependenciesMeta": {
     "@noldova/code.editor": {
