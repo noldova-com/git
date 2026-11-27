@@ -526,10 +526,10 @@ export class Resources {
   public static readonly repositoryViewTitle: string = "Repository";
   public static readonly repositoryViewIcon: IconName = "folder";
   public static readonly repositoryViewDefaultGroup: number = 0;
-  public static readonly repositoryViewDefaultOrder: number = 10;
+  public static readonly repositoryViewDefaultOrder: number = 20;
   public static readonly workspacesViewName: string = "git.workspaces";
   public static readonly workspacesViewDefaultGroup: number = 0;
-  public static readonly workspacesViewDefaultOrder: number = 20;
+  public static readonly workspacesViewDefaultOrder: number = 10;
   public static readonly repositoryLabel: string = "Repository";
   public static readonly fetchAllLabel: string = "Fetch all";
   public static readonly fetchAllRemotesTitle: string = "Fetch all: every remote of this repository";

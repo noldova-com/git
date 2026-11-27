@@ -149,7 +149,7 @@ describe("GitWindowPart", () => {
     expect(context.callsOf("registerView")).toEqual([[view], [views[1]], [views[2]], [views[3]], [views[4]], [views[5]], [views[6]], [views[7]]]);
   });
 
-  it("registers the repository view in the left dock's first group at order 10, shown by default, with no padding, loading its component", async () => {
+  it("registers the repository view in the left dock's first group at order 20, after the Workspaces view, shown by default, with no padding, loading its component", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     context.allow("provideUndo");
     const views: ViewContribution[] = [];
@@ -171,11 +171,11 @@ describe("GitWindowPart", () => {
     const view: ViewContribution | undefined = views[1];
 
     expect([view?.name, view?.title, view?.icon, view?.defaultSide, view?.isShownByDefault, view?.padding, view?.defaultGroup, view?.defaultOrder])
-      .toEqual(["git.repository", "Repository", "folder", DockSide.Left, true, ContentPadding.None, 0, 10]);
+      .toEqual(["git.repository", "Repository", "folder", DockSide.Left, true, ContentPadding.None, 0, 20]);
     expect(await view?.loadComponent()).toBe(GitRepositoryComponent);
   });
 
-  it("registers the Workspaces view in the left dock's first group at order 20, after the repository view, shown by default, with no padding, loading its component", async () => {
+  it("registers the Workspaces view in the left dock's first group at order 10, first, shown by default, with no padding, loading its component", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     context.allow("provideUndo");
     const views: ViewContribution[] = [];
@@ -197,7 +197,7 @@ describe("GitWindowPart", () => {
     const view: ViewContribution | undefined = views[2];
 
     expect([view?.name, view?.title, view?.icon, view?.defaultSide, view?.isShownByDefault, view?.padding, view?.defaultGroup, view?.defaultOrder])
-      .toEqual(["git.workspaces", "Workspaces", "dashboard", DockSide.Left, true, ContentPadding.None, 0, 20]);
+      .toEqual(["git.workspaces", "Workspaces", "dashboard", DockSide.Left, true, ContentPadding.None, 0, 10]);
     expect(await view?.loadComponent()).toBe(GitWorkspacesComponent);
   });
 
