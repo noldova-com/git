@@ -60,7 +60,7 @@ export class FolderTreeWatch {
       if (this.watchers.size + level.length > Resources.treeFoldersLimit)
         throw new RangeError(Resources.formatTreeTooLarge(this.worktree, Resources.treeFoldersLimit));
       for (const folder of level)
-        this.add(folder);
+        await this.addAsync(folder);
       const children = (await Promise.all(level.map(t => this.childrenAsync(t)))).flat();
       const ignored = await this.ignored.ignoredFoldersAsync(this.top, children, this.stop.signal);
       for (const folder of children.filter(t => ignored.has(t)))
@@ -80,14 +80,14 @@ export class FolderTreeWatch {
     }
   }
 
-  private add(folder: string): void {
+  private async addAsync(folder: string): Promise<void> {
     this.stop.signal.throwIfAborted();
     this.skipped.delete(folder);
     let watcher: FSWatcher;
     try {
       watcher = watch(path.join(this.worktree, folder), { persistent: false }, (event, name) => this.note(folder, watcher, event, name));
     } catch (error) {
-      if (FolderTreeWatch.isGone(error))
+      if (FolderTreeWatch.isGone(error) || !await this.isThereAsync(folder))
         return;
       throw error;
     }
@@ -157,10 +157,13 @@ export class FolderTreeWatch {
     watcher.close();
     if (this.watchers.get(folder) === watcher)
       this.watchers.delete(folder);
-    const isThere = await stat(path.join(this.worktree, folder)).then(() => true, () => false);
-    if (isThere)
+    if (await this.isThereAsync(folder))
       throw error;
     this.forget(folder);
+  }
+
+  private async isThereAsync(folder: string): Promise<boolean> {
+    return await stat(path.join(this.worktree, folder)).then(() => true, () => false);
   }
 
   private forget(gone: string): void {

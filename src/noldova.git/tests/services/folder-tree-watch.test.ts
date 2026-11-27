@@ -329,6 +329,18 @@ describe("FolderTreeWatch", () => {
     assert.deepEqual([gone, failures], [["", "src"], []]);
   });
 
+  test("skips a folder Windows refuses to watch while it is being removed, and fails the start when the refused folder is still there", async () => {
+    refusing = folder => (folder === "src/deep" ? "EPERM" : null);
+    vi.mocked(stat).mockRejectedValueOnce(failure("EPERM"));
+    await tree.startAsync();
+    const pending = live();
+    tree.close();
+    await untilAsync(() => live().length === 0);
+
+    await assert.rejects(create().startAsync(), (error: unknown) => error instanceof Error && error.message === "EPERM");
+    assert.deepEqual([pending, failures], [["", "src"], []]);
+  });
+
   test("skips a folder gone before it is read, and fails the start on any other error reading one", async () => {
     vi.mocked(readdir).mockRejectedValueOnce(failure("ENOENT"));
     await tree.startAsync();
