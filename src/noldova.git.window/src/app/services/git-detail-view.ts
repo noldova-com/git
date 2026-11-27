@@ -16,7 +16,7 @@ import { GitDetailPage } from "../models/git-detail-page.ts";
 export class GitDetailView<T> {
   private readonly context: IWindowPartContext;
   private readonly view: string;
-  private readonly instance: string;
+  private readonly instance: string | null;
   private readonly titleOf: (choice: T) => string;
   private readonly isBroughtForward: boolean;
   private readonly pages: WritableSignal<readonly GitDetailPage<T>[]> = signal([]);
@@ -36,7 +36,7 @@ export class GitDetailView<T> {
 
   public readonly isOpen: Signal<boolean> = this.opened.asReadonly();
 
-  public constructor(context: IWindowPartContext, view: string, instance: string, titleOf: (choice: T) => string, isBroughtForward: boolean = true) {
+  public constructor(context: IWindowPartContext, view: string, instance: string | null, titleOf: (choice: T) => string, isBroughtForward: boolean = true) {
     this.context = context;
     this.view = view;
     this.instance = instance;
@@ -59,7 +59,7 @@ export class GitDetailView<T> {
           this.lastOpened = null;
         if (isShowing && !wasShowing && !Object.isNull(chosen) && chosen !== this.lastOpened && this.isBroughtForward)
           this.open(chosen);
-        else if (wasActive && !isActive && this.opened() && Object.isUndefined(this.front()))
+        else if (wasActive && !isActive && this.opened() && Object.isUndefined(this.front()) && !Object.isNull(this.instance))
           this.context.returnView(this.view, this.instance);
       });
       wasShowing = isShowing;
@@ -78,6 +78,8 @@ export class GitDetailView<T> {
   }
 
   public listen(): () => void {
+    if (Object.isNull(this.instance))
+      return () => undefined;
     return this.context.onViewClosed(this.view, instance => {
       if (instance === this.instance)
         this.opened.set(false);
@@ -87,6 +89,9 @@ export class GitDetailView<T> {
   private open(choice: T): void {
     this.lastOpened = choice;
     this.opened.set(true);
-    this.context.openView(this.view, this.instance, this.titleOf(choice));
+    if (Object.isNull(this.instance))
+      this.context.showView(this.view);
+    else
+      this.context.openView(this.view, this.instance, this.titleOf(choice));
   }
 }

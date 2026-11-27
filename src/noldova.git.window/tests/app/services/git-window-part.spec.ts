@@ -249,9 +249,9 @@ describe("GitWindowPart", () => {
     const view: ViewContribution | undefined = views[4];
 
     expect([view?.name, view?.title, view?.icon, view?.defaultSide, view?.isShownByDefault, view?.padding, view?.hasInstances, view?.defaultGroup, view?.defaultOrder])
-      .toEqual(["git.commitView", "Commit", "commit", DockSide.Right, false, ContentPadding.None, true, 0, 45]);
+      .toEqual(["git.commitView", "Commit", "commit", DockSide.Right, true, ContentPadding.None, false, 0, 45]);
     expect(await view?.loadComponent()).toBe(GitCommitDetailViewComponent);
-    expect(context.callsOf("onViewClosed").map(t => t[0])).toContain("git.commitView");
+    expect(context.callsOf("onViewClosed").map(t => t[0])).not.toContain("git.commitView");
   });
 
   it("registers the Conflict view with one instance, in the right dock's first group at order 50, hidden by default, with no padding, loading its component, and follows its closing", async () => {

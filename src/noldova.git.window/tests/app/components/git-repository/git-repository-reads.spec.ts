@@ -155,7 +155,7 @@ describe("GitRepositoryComponent reads and writes", () => {
       const { element, history } = mountWithHistory(context);
       await until(() => history.querySelectorAll("[role=option]").length >= 2 && !Object.isNull(element.querySelector("button[title=feature]")));
       const before: boolean = historyRow(element).classList.contains("sel");
-      const opened: number = context.callsOf("openView").length;
+      const opened: number = context.callsOf("showView").filter(t => t[0] === "git.commitView").length;
 
       historyRow(element).click();
       await until(() => historyRow(element).classList.contains("sel"));
@@ -163,7 +163,7 @@ describe("GitRepositoryComponent reads and writes", () => {
       expect([before, GitViewing.commitOf(GitFixtures.folder)?.folder, GitViewing.commitOf(GitFixtures.folder)?.commit.commit.id, historyRow(element).getAttribute("aria-current"), selectedIn(history)?.includes("Second")])
         .toEqual([false, GitFixtures.folder, head, "true", true]);
       expect([GitViewing.branch()?.branch, find(element, "button[title=main]").classList.contains("sel"), context.callsOf("openDocument"), opened,
-      context.callsOf("openView")]).toEqual(["", false, [["git.history", GitFixtures.folder, "project"]], 0, [["git.commitView", "selected", "Commit"]]]);
+      context.callsOf("showView").filter(t => t[0] === "git.commitView"), context.callsOf("openView")]).toEqual(["", false, [["git.history", GitFixtures.folder, "project"]], 0, [["git.commitView"]], []]);
     });
 
     it("selects the viewed branch's newest commit at a click on History after Changes showed the changes, rather than the current branch's, and brings the open Commit view forward again", async () => {
@@ -175,13 +175,13 @@ describe("GitRepositoryComponent reads and writes", () => {
       await until(() => GitViewing.commitOf(GitFixtures.folder)?.commit.commit.id === feature);
       find(element, "button.row.changes").click();
       await until(() => !historyRow(element).classList.contains("sel"));
-      const opened: number = context.callsOf("openView").length;
+      const opened: number = context.callsOf("showView").filter(t => t[0] === "git.commitView").length;
 
       historyRow(element).click();
       await until(() => historyRow(element).classList.contains("sel"));
 
       expect([GitViewing.commitOf(GitFixtures.folder)?.commit.commit.id, GitViewing.branch()?.branch, selectedIn(history)?.includes("First"), opened,
-        context.callsOf("openView").length]).toEqual([feature, "feature", true, 1, 2]);
+        context.callsOf("showView").filter(t => t[0] === "git.commitView").length]).toEqual([feature, "feature", true, 1, 2]);
     });
 
     it("selects HEAD's newest commit at a click on History after the Git panel picked another commit, such as a parent", async () => {

@@ -218,7 +218,7 @@ describe("GitHistoryComponent", () => {
     expect([shown, context.callsOf("requestAsync").filter(t => t[0] === "git.graph").length, GitViewing.branch()]).toEqual(["Commit 4", 2, null]);
   });
 
-  it("brings the Commit view to the front, through openView only, once for each commit the person clicks, and shows its choice there until it closes",
+  it("brings the Commit view to the front, through showView only, once for each commit the person clicks, and shows its choice there until it closes",
     async () => {
     onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
     const context: FakeWindowPartContext = new FakeWindowPartContext();
@@ -242,7 +242,7 @@ describe("GitHistoryComponent", () => {
     fixture.destroy();
 
     expect([opened, context.callsOf("openView"), context.callsOf("showView"), first, second, details.shown()])
-      .toEqual([0, [["git.commitView", "selected", "Commit"], ["git.commitView", "selected", "Commit"]], [["git.repository"]],
+      .toEqual([0, [], [["git.repository"], ["git.commitView"], ["git.commitView"]],
         "First", "Second", null]);
   });
 

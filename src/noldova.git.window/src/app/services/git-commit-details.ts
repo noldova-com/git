@@ -20,7 +20,7 @@ export class GitCommitDetails {
     const known: GitDetailView<GitCommitView> | undefined = GitCommitDetails.windows.get(context);
     if (!Object.isUndefined(known))
       return known;
-    const view: GitDetailView<GitCommitView> = new GitDetailView<GitCommitView>(context, Resources.commitDetailViewName, Resources.commitDetailViewInstance,
+    const view: GitDetailView<GitCommitView> = new GitDetailView<GitCommitView>(context, Resources.commitDetailViewName, null,
       () => Resources.commitDetailLabel);
     GitCommitDetails.windows.set(context, view);
     return view;

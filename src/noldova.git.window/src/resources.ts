@@ -878,11 +878,10 @@ export class Resources {
   public static readonly cleanFileIcon: IconName = "description";
   public static readonly commitDetailLabel: string = "Commit";
   public static readonly commitDetailViewName: string = "git.commitView";
-  public static readonly commitDetailViewInstance: string = "selected";
   public static readonly commitDetailIcon: IconName = "commit";
   public static readonly commitDetailDefaultGroup: number = 0;
   public static readonly commitDetailDefaultOrder: number = 45;
-  public static readonly commitDetailEmpty: string = "Choose a commit in History to see it here";
+  public static readonly commitDetailEmpty: string = "Choose a commit to see its details";
   public static readonly conflictDetailLabel: string = "Conflict";
   public static readonly conflictDetailViewName: string = "git.conflictDetail";
   public static readonly conflictDetailViewInstance: string = "selected";

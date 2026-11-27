@@ -69,7 +69,7 @@ describe("GitCommitDetailComponent", () => {
     GitViewing.showChanges(GitFixtures.folder);
     await view.waitForAsync(".empty-view");
     expect([view.all(".detail").length, view.texts(".empty-view"), view.panel.querySelectorAll(".body").length])
-      .toEqual([0, ["Choose a commit in History to see it here"], 1]);
+      .toEqual([0, ["Choose a commit to see its details"], 1]);
   });
 
   it("shows a parent in the history from its link, by its whole id", async () => {
