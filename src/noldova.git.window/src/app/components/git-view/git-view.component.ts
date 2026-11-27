@@ -59,13 +59,14 @@ export class GitViewComponent {
   protected readonly offersGit: Signal<boolean> = computed(() => this.state.phase() === GitViewPhase.GitMissing || this.state.phase() === GitViewPhase.GitTooOld);
 
   private readonly look: WritableSignal<GitFolderLook | null> = signal<GitFolderLook | null>(null);
+  private readonly lookFolder: Signal<string | null> = computed(() => this.state.phase() === GitViewPhase.NotRepository ? this.state.readFolder() : null);
   private readonly offer = (scan: GitRepositoryScan): void => GitRepositoryScans.offerToDashboard(this.dialogs, this.context, this.state.readFolder(), scan);
 
   public constructor() {
     const destroyed: DestroyRef = inject(DestroyRef);
     destroyed.onDestroy(FocusKeeper.keep(inject<ElementRef<HTMLElement>>(ElementRef).nativeElement));
     effect(() => {
-      const folder: string | null = this.state.phase() === GitViewPhase.NotRepository ? this.state.readFolder() : null;
+      const folder: string | null = this.lookFolder();
       untracked(() => this.lookUnder(folder));
     });
     destroyed.onDestroy(() => this.lookUnder(null));
@@ -129,8 +130,6 @@ export class GitViewComponent {
 
   private lookUnder(folder: string | null): void {
     const look: GitFolderLook | null = this.look();
-    if (look?.folder === folder)
-      return;
     if (!Object.isNull(look))
       GitFolderLooks.leave(look, this.offer);
     this.look.set(Object.isNull(folder) ? null : GitFolderLooks.join(folder, new GitRuntimeClient(this.context), this.offer, error => {

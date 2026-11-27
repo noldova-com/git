@@ -94,6 +94,21 @@ describe("GitViewComponent", () => {
         [Resources.workspaceDocumentName]]);
   });
 
+  it.each([
+    ["a runtime failure, unreported", GitFixtures.failure(FailureCode.Git, null, "It broke."), []],
+    ["any other failure, reported", new TypeError("broken"), ["TypeError: broken"]]
+  ])("says how to open a repository when the look under a folder that isn't one fails with %s", async (_name, failure, reported) => {
+    let status: JsonValue | Error = GitFixtures.status().toJson();
+    const view: GitViewFixture = await GitViewFixture.renderAsync({ ...GitFixtures.watching, "git.status": () => status, "git.scanRepositories": () => failure });
+    const handled: string[] = [];
+    vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.push(String(error)));
+    status = GitFixtures.failure(FailureCode.NotRepository);
+    await view.state.refreshAsync();
+    await view.untilAsync(() => view.texts(".text")[0] === Resources.formatScanFailedBelow(GitFixtures.folder));
+
+    expect([view.texts(".heading"), handled]).toEqual([["Not a Git repository"], reported]);
+  });
+
   it("says the folder can't be read, naming it, and offers no Git", async () => {
     const view: GitViewFixture = await GitViewFixture.renderAsync({ ...GitFixtures.watching, "git.status": GitFixtures.failure(FailureCode.Unavailable, GitCode.FolderUnreadable) }, ".empty");
 
