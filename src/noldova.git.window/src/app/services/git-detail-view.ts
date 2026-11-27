@@ -17,7 +17,7 @@ export class GitDetailView<T> {
   private readonly context: IWindowPartContext;
   private readonly view: string;
   private readonly instance: string | null;
-  private readonly titleOf: (choice: T) => string;
+  private readonly titleOf: ((choice: T) => string) | null;
   private readonly isBroughtForward: boolean;
   private readonly pages: WritableSignal<readonly GitDetailPage<T>[]> = signal([]);
   private readonly opened: WritableSignal<boolean> = signal<boolean>(false);
@@ -36,7 +36,10 @@ export class GitDetailView<T> {
 
   public readonly isOpen: Signal<boolean> = this.opened.asReadonly();
 
-  public constructor(context: IWindowPartContext, view: string, instance: string | null, titleOf: (choice: T) => string, isBroughtForward: boolean = true) {
+  public constructor(context: IWindowPartContext, view: string, instance: string, titleOf: (choice: T) => string, isBroughtForward?: boolean);
+  public constructor(context: IWindowPartContext, view: string, instance: null, titleOf: null, isBroughtForward?: boolean);
+  public constructor(context: IWindowPartContext, view: string, instance: string | null, titleOf: ((choice: T) => string) | null,
+    isBroughtForward: boolean = true) {
     this.context = context;
     this.view = view;
     this.instance = instance;
@@ -89,7 +92,7 @@ export class GitDetailView<T> {
   private open(choice: T): void {
     this.lastOpened = choice;
     this.opened.set(true);
-    if (Object.isNull(this.instance))
+    if (Object.isNull(this.instance) || Object.isNull(this.titleOf))
       this.context.showView(this.view);
     else
       this.context.openView(this.view, this.instance, this.titleOf(choice));
