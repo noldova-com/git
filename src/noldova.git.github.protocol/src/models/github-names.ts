@@ -26,6 +26,7 @@ export class GitHubNames {
   public static readonly readCommitCommentsMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.readCommitCommentsMethod);
   public static readonly readPullRequestMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.readPullRequestMethod);
   public static readonly readPullRequestThreadsMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.readPullRequestThreadsMethod);
+  public static readonly readCommitPullRequestMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.readCommitPullRequestMethod);
   public static readonly readAccountsMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.readAccountsMethod);
   public static readonly addAccountMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.addAccountMethod);
   public static readonly readRepositoryAccountMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.readRepositoryAccountMethod);

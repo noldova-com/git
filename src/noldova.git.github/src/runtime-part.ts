@@ -84,6 +84,9 @@ export class RuntimePart implements IRuntimePart {
     context.registerMethod(GitHubNames.readPullRequestThreadsMethod, {
       handleAsync: async request => (await reads.readPullRequestThreadsAsync(RuntimePart.read(request, HostReference.fromJson), request.signal)).toJson()
     });
+    context.registerMethod(GitHubNames.readCommitPullRequestMethod, {
+      handleAsync: async request => (await reads.readCommitPullRequestAsync(RuntimePart.read(request, CommitQuery.fromJson), request.signal)).toJson()
+    });
     context.registerMethod(GitHubNames.createPullRequestMethod, {
       handleAsync: async request => (await reads.createPullRequestAsync(RuntimePart.read(RuntimePart.fromWindow(request), PullRequestDraft.fromJson),
         request.signal)).toJson()

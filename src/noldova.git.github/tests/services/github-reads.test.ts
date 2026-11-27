@@ -75,9 +75,14 @@ function reviewSearch(items: readonly Readonly<Record<string, unknown>>[], total
 }
 
 const commitCommentsUrl = `https://api.github.com/repos/octocat/hello-world/commits/${head}/comments?per_page=100`;
-const commitPullsUrl = `https://api.github.com/repos/octocat/hello-world/commits/${head}/pulls?per_page=1`;
 const pullCommentsUrl = "https://api.github.com/repos/octocat/hello-world/pulls/2/comments?per_page=100";
 const commitQuery: CommitQuery = new CommitQuery("github.com", "octocat/hello-world", head);
+const commitPullRequestsUrl = `https://api.github.com/repos/octocat/hello-world/commits/${head}/pulls?per_page=100`;
+const mergedPull = { ...pull, state: "closed", closed_at: closed, merged_at: merged };
+
+function associated(number: number, mergedAt: string | null, base: string): Readonly<Record<string, unknown>> {
+  return { number, merged_at: mergedAt, base: { ref: base, repo: { default_branch: "main" } } };
+}
 
 function commitComment(id: number): Readonly<Record<string, unknown>> {
   return { id, html_url: `https://github.com/octocat/hello-world/commit/${head}#commitcomment-${id}`, commit_id: head, user };
@@ -704,37 +709,48 @@ describe("GitHubReads", () => {
 
   it("counts the commit's own comments and the review comments made on it in the pull request that brought it in, opening the first one", async () => {
     const rig = new Rig();
-    rig.github.answer(FakeGitHub.json([commitComment(1), commitComment(2)]), FakeGitHub.json([{ number: 2 }]),
+    rig.github.answer(FakeGitHub.json([commitComment(1), commitComment(2)]), FakeGitHub.json([associated(2, null, "main")]),
       FakeGitHub.json([reviewComment(10, head), reviewComment(11, local, head), reviewComment(12, local), { ...reviewComment(13, head), commit_id: null }]));
     const reviewsOnly = new Rig();
-    reviewsOnly.github.answer(FakeGitHub.json([]), FakeGitHub.json([{ number: 2 }]), FakeGitHub.json([reviewComment(12, local), reviewComment(10, head)]));
+    reviewsOnly.github.answer(FakeGitHub.json([]), FakeGitHub.json([associated(2, null, "main")]), FakeGitHub.json([reviewComment(12, local), reviewComment(10, head)]));
 
     const answers = [await rig.reads.readCommitCommentsAsync(commitQuery, signal), await reviewsOnly.reads.readCommitCommentsAsync(commitQuery, signal)];
 
     assert.deepEqual(answers, [new HostCommitComments(5, false, `https://github.com/octocat/hello-world/commit/${head}#commitcomment-1`),
       new HostCommitComments(1, false, "https://github.com/octocat/hello-world/pull/2#discussion_r10")]);
-    assert.deepEqual(rig.github.urls(), [commitCommentsUrl, commitPullsUrl, pullCommentsUrl]);
+    assert.deepEqual(rig.github.urls(), [commitCommentsUrl, commitPullRequestsUrl, pullCommentsUrl]);
+  });
+
+  it("counts the review comments in the pull request the card shows, merged into the default branch, not one merged elsewhere and listed first", async () => {
+    const rig = new Rig();
+    rig.github.answer(FakeGitHub.json([]), FakeGitHub.json([associated(8, merged, "release"), associated(7, null, "main"), associated(2, merged, "main")]),
+      FakeGitHub.json([reviewComment(10, head)]));
+
+    const answer = await rig.reads.readCommitCommentsAsync(commitQuery, signal);
+
+    assert.deepEqual([answer, rig.github.urls()], [new HostCommitComments(1, false, "https://github.com/octocat/hello-world/pull/2#discussion_r10"),
+      [commitCommentsUrl, commitPullRequestsUrl, pullCommentsUrl]]);
   });
 
   it("caps the count past 100 or when a page was full, reads the commit's own alone with no pull request, and answers none with nothing to count", async () => {
     const full = new Rig();
-    full.github.answer(FakeGitHub.json(Array.from({ length: 100 }, (_t, i) => commitComment(i + 1))), FakeGitHub.json([{ number: 2 }]),
+    full.github.answer(FakeGitHub.json(Array.from({ length: 100 }, (_t, i) => commitComment(i + 1))), FakeGitHub.json([associated(2, null, "main")]),
       FakeGitHub.json([reviewComment(500, head)]));
     const fullReviews = new Rig();
-    fullReviews.github.answer(FakeGitHub.json([]), FakeGitHub.json([{ number: 2 }]),
+    fullReviews.github.answer(FakeGitHub.json([]), FakeGitHub.json([associated(2, null, "main")]),
       FakeGitHub.json(Array.from({ length: 100 }, (_t, i) => reviewComment(i + 1, i < 2 ? head : local))));
     const over = new Rig();
-    over.github.answer(FakeGitHub.json(Array.from({ length: 60 }, (_t, i) => commitComment(i + 1))), FakeGitHub.json([{ number: 2 }]),
+    over.github.answer(FakeGitHub.json(Array.from({ length: 60 }, (_t, i) => commitComment(i + 1))), FakeGitHub.json([associated(2, null, "main")]),
       FakeGitHub.json(Array.from({ length: 60 }, (_t, i) => reviewComment(i + 101, head))));
     const exact = new Rig();
-    exact.github.answer(FakeGitHub.json(Array.from({ length: 50 }, (_t, i) => commitComment(i + 1))), FakeGitHub.json([{ number: 2 }]),
+    exact.github.answer(FakeGitHub.json(Array.from({ length: 50 }, (_t, i) => commitComment(i + 1))), FakeGitHub.json([associated(2, null, "main")]),
       FakeGitHub.json(Array.from({ length: 50 }, (_t, i) => reviewComment(i + 101, head))));
     const unpulled = new Rig();
     unpulled.github.answer(FakeGitHub.json([commitComment(1)]), FakeGitHub.json([]));
     const missing = new Rig();
     missing.github.answer(FakeGitHub.json({}, 404), FakeGitHub.json({}, 404));
     const gone = new Rig();
-    gone.github.answer(FakeGitHub.json([]), FakeGitHub.json([{ number: 2 }]), FakeGitHub.json({}, 404));
+    gone.github.answer(FakeGitHub.json([]), FakeGitHub.json([associated(2, null, "main")]), FakeGitHub.json({}, 404));
 
     const answers = [await full.reads.readCommitCommentsAsync(commitQuery, signal), await fullReviews.reads.readCommitCommentsAsync(commitQuery, signal),
       await over.reads.readCommitCommentsAsync(commitQuery, signal), await exact.reads.readCommitCommentsAsync(commitQuery, signal),
@@ -742,7 +758,7 @@ describe("GitHubReads", () => {
       await gone.reads.readCommitCommentsAsync(commitQuery, signal)];
 
     assert.deepEqual(answers.map(t => [t.count, t.isCapped]), [[100, true], [2, true], [100, true], [100, false], [1, false], [0, false], [0, false]]);
-    assert.deepEqual([unpulled.github.urls(), missing.github.urls()], [[commitCommentsUrl, commitPullsUrl], [commitCommentsUrl, commitPullsUrl]]);
+    assert.deepEqual([unpulled.github.urls(), missing.github.urls()], [[commitCommentsUrl, commitPullRequestsUrl], [commitCommentsUrl, commitPullRequestsUrl]]);
   });
 
   it("keeps the comment's page only when it is an https page on github.com with no user name or password, and answers none otherwise", async () => {
@@ -775,7 +791,7 @@ describe("GitHubReads", () => {
       await rig.reads.readCommitCommentsAsync(new CommitQuery("github.com", "octocat", head), signal), await reading];
 
     assert.deepEqual(answers, Array.from({ length: 4 }, () => HostCommitComments.none()));
-    assert.deepEqual([signedOut.github.requests.length, rig.github.urls()], [0, [commitCommentsUrl, commitPullsUrl]]);
+    assert.deepEqual([signedOut.github.requests.length, rig.github.urls()], [0, [commitCommentsUrl, commitPullRequestsUrl]]);
   });
 
   it("tells the sign-in when GitHub refuses its token for the comments, and fails a comment it can't read as Unavailable", async () => {
@@ -786,6 +802,67 @@ describe("GitHubReads", () => {
 
     const failures = [await refused.reads.readCommitCommentsAsync(commitQuery, signal).then(() => null, codeOf),
       await unreadable.reads.readCommitCommentsAsync(commitQuery, signal).then(() => null, codeOf)];
+
+    assert.deepEqual([failures, refused.signIn.refused], [[FailureCode.Unauthorized, FailureCode.Unavailable], ["gho_token"]]);
+  });
+
+  it("reads the pull request merged into the default branch that brought the commit in, ahead of an open one and one merged elsewhere", async () => {
+    const rig = new Rig();
+    const runs = [{ name: "passed", status: "completed", conclusion: "success", html_url: null }];
+    rig.github.answer(FakeGitHub.json([associated(7, null, "main"), associated(8, merged, "release"), associated(2, merged, "main")]), FakeGitHub.json(mergedPull),
+      FakeGitHub.json({ total_count: 1, check_runs: runs }), FakeGitHub.json([]));
+
+    const answer = await rig.reads.readCommitPullRequestAsync(commitQuery, signal);
+
+    assert.deepEqual(answer, new BranchPullRequest(pullRequest(ReferenceState.Merged), [new HostCheck("passed", CheckState.Succeeded, null)]));
+    assert.deepEqual(rig.github.urls(), [commitPullRequestsUrl, "https://api.github.com/repos/octocat/hello-world/pulls/2",
+      `https://api.github.com/repos/octocat/hello-world/commits/${head}/check-runs?per_page=100`, "https://api.github.com/repos/octocat/hello-world/pulls/2/reviews?per_page=100"]);
+  });
+
+  it("reads the first pull request GitHub lists for the commit when none merged into the default branch, and none when no pull request holds it", async () => {
+    const listed = new Rig();
+    listed.github.answer(FakeGitHub.json([associated(2, null, "main"), associated(8, merged, "release")]), FakeGitHub.json(pull),
+      FakeGitHub.json({ total_count: 0, check_runs: [] }), FakeGitHub.json([]));
+    const empty = new Rig();
+    empty.github.answer(FakeGitHub.json([]));
+    const missing = new Rig();
+    missing.github.answer(FakeGitHub.json({}, 404));
+    const gone = new Rig();
+    gone.github.answer(FakeGitHub.json([associated(2, merged, "main")]), FakeGitHub.json({}, 404));
+
+    const answers = [await listed.reads.readCommitPullRequestAsync(commitQuery, signal), await empty.reads.readCommitPullRequestAsync(commitQuery, signal),
+      await missing.reads.readCommitPullRequestAsync(commitQuery, signal), await gone.reads.readCommitPullRequestAsync(commitQuery, signal)];
+
+    assert.deepEqual(answers, [new BranchPullRequest(pullRequest(ReferenceState.Open), []), ...Array.from({ length: 3 }, () => new BranchPullRequest(null, []))]);
+    assert.deepEqual([listed.github.urls().slice(0, 2), empty.github.urls(), missing.github.urls()],
+      [[commitPullRequestsUrl, "https://api.github.com/repos/octocat/hello-world/pulls/2"], [commitPullRequestsUrl], [commitPullRequestsUrl]]);
+  });
+
+  it("answers no commit pull request without asking GitHub when signed out, for another host or a path outside GitHub's names, and once the account changed",
+    async () => {
+      const signedOut = new Rig(null);
+      const rig = new Rig();
+      const release = rig.github.hold();
+
+      const reading = rig.reads.readCommitPullRequestAsync(commitQuery, signal);
+      rig.signIn.answer("token", "gho_other");
+      release(FakeGitHub.json([]));
+      const answers = [await signedOut.reads.readCommitPullRequestAsync(commitQuery, signal),
+        await rig.reads.readCommitPullRequestAsync(new CommitQuery("gitlab.com", "octocat/hello-world", head), signal),
+        await rig.reads.readCommitPullRequestAsync(new CommitQuery("github.com", "octocat", head), signal), await reading];
+
+      assert.deepEqual(answers, Array.from({ length: 4 }, () => new BranchPullRequest(null, [])));
+      assert.deepEqual([signedOut.github.requests.length, rig.github.urls()], [0, [commitPullRequestsUrl]]);
+    });
+
+  it("tells the sign-in when GitHub refuses its token for the commit's pull request, and fails one it can't read as Unavailable", async () => {
+    const refused = new Rig();
+    refused.github.answer(FakeGitHub.json({ message: "Bad credentials" }, 401));
+    const unreadable = new Rig();
+    unreadable.github.answer(FakeGitHub.json([{ number: 2, merged_at: merged, base: { ref: "main" } }]));
+
+    const failures = [await refused.reads.readCommitPullRequestAsync(commitQuery, signal).then(() => null, codeOf),
+      await unreadable.reads.readCommitPullRequestAsync(commitQuery, signal).then(() => null, codeOf)];
 
     assert.deepEqual([failures, refused.signIn.refused], [[FailureCode.Unauthorized, FailureCode.Unavailable], ["gho_token"]]);
   });
