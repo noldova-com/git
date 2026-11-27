@@ -695,7 +695,7 @@ describe("GitHubHostRowComponent", () => {
     page.fixture?.componentRef.setInput("remote", other);
     while (page.requests.methods.filter(t => t === GitHubNames.readRepositoryAccountMethod).length < 2)
       await page.requests.askedAsync(page.requests.answered.length + 1);
-    await page.settleAsync();
+    await page.requests.answered[page.requests.methods.lastIndexOf(GitHubNames.readRepositoryAccountMethod)];
     fail?.(new WindowFailure("Not connected."));
     release?.(new RepositoryAccount(1).toJson());
     await Promise.allSettled(page.requests.answered);
