@@ -187,7 +187,7 @@ export class ChangeMonitor {
   private startFolderTree(watched: WatchedWorktree): void {
     const tree: FolderTreeWatch = new FolderTreeWatch(watched.worktree, watched.folders.top, this.ignored, name => this.noteTreeChange(watched, name),
       error => this.loseFolderTree(watched, tree, Resources.formatWatchFailed(watched.worktree, String(error))),
-      (folder, error) => this.log.write(Resources.formatWatchRefused(folder, String(error))));
+      folder => this.log.write(Resources.formatWatchRefused(folder)));
     watched.folderTree = tree;
     this.track(tree.startAsync().then(() => {
       watched.isTreeWatched ||= watched.folderTree === tree;

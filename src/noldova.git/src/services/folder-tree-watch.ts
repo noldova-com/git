@@ -19,13 +19,14 @@ export class FolderTreeWatch {
   private readonly ignored: IgnoredPaths;
   private readonly onChange: (name: string | null) => void;
   private readonly onFailed: (error: unknown) => void;
-  private readonly onRefused: (folder: string, error: unknown) => void;
+  private readonly onRefused: (folder: string) => void;
   private readonly watchers: Map<string, FSWatcher> = new Map();
   private readonly skipped: Set<string> = new Set();
+  private readonly refused: Set<string> = new Set();
   private readonly stop: AbortController = new AbortController();
   private walks: Promise<void> = Promise.resolve();
 
-  public constructor(worktree: string, top: string, ignored: IgnoredPaths, onChange: (name: string | null) => void, onFailed: (error: unknown) => void, onRefused: (folder: string, error: unknown) => void) {
+  public constructor(worktree: string, top: string, ignored: IgnoredPaths, onChange: (name: string | null) => void, onFailed: (error: unknown) => void, onRefused: (folder: string) => void) {
     this.worktree = worktree;
     this.top = top;
     this.ignored = ignored;
@@ -54,6 +55,7 @@ export class FolderTreeWatch {
       watcher.close();
     this.watchers.clear();
     this.skipped.clear();
+    this.refused.clear();
   }
 
   private async addTreeAsync(start: string): Promise<void> {
@@ -94,11 +96,15 @@ export class FolderTreeWatch {
       if (folder === "" || !FolderTreeWatch.isRefused(error))
         throw error;
       this.skipped.add(folder);
-      this.onRefused(path.join(this.worktree, folder), error);
+      if (!this.refused.has(folder)) {
+        this.refused.add(folder);
+        this.onRefused(path.join(this.worktree, folder));
+      }
       return;
     }
     watcher.on("error", (error: Error) => this.follow(this.loseAsync(folder, watcher, error)));
     this.watchers.set(folder, watcher);
+    this.refused.delete(folder);
   }
 
   private note(folder: string, watcher: FSWatcher, event: string, name: string | null): void {
@@ -180,6 +186,8 @@ export class FolderTreeWatch {
       }
     for (const folder of [...this.skipped].filter(t => FolderTreeWatch.isIn(t, gone)))
       this.skipped.delete(folder);
+    for (const folder of [...this.refused].filter(t => FolderTreeWatch.isIn(t, gone)))
+      this.refused.delete(folder);
   }
 
   private serially(walk: () => Promise<void>): Promise<void> {

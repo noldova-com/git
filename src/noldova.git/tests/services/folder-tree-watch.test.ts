@@ -96,8 +96,8 @@ describe("FolderTreeWatch", () => {
       }, error => {
         failures.push(error);
         hear();
-      }, (folder, error) => {
-        refusals.push(`${path.relative(repository.folder, folder).replaceAll("\\", "/")} ${String(error)}`);
+      }, folder => {
+        refusals.push(path.relative(repository.folder, folder).replaceAll("\\", "/"));
         hear();
       });
       cleanUps.add(() => created.close());
@@ -347,21 +347,31 @@ describe("FolderTreeWatch", () => {
     tree.recheck();
     await untilAsync(() => asked.folders.length > removed);
 
-    assert.deepEqual([pending, asked.folders[removed], live(), refusals, failures], [[["", "src"], true, false], ["bin"], ["", "src"], ["src/deep Error: EPERM"], []]);
+    assert.deepEqual([pending, asked.folders[removed], live(), refusals, failures], [[["", "src"], true, false], ["bin"], ["", "src"], ["src/deep"], []]);
   });
 
-  test("watches a folder Windows refused once a recheck or the folder above finds it no longer refused, and fails the start when the top folder is refused", async () => {
+  test("logs a folder whose watch is refused once until it is watched again, watches it once a recheck or the folder above finds it no longer refused, and fails the start when the top folder is refused", async () => {
     let code: string | null = "EPERM";
-    refusing = folder => (folder === "src/deep" ? code : null);
+    let attempts = 0;
+    refusing = folder => {
+      if (folder !== "src/deep" || code === null)
+        return null;
+      attempts++;
+      hear();
+      return code;
+    };
     await tree.startAsync();
     const refused = live();
     tree.recheck();
-    await untilAsync(() => refusals.length === 2);
-    const stillRefused = [live(), failures.length];
+    await untilAsync(() => attempts === 2);
+    const stillRefused = [live(), refusals.length, failures.length];
     code = null;
     tree.recheck();
     await untilAsync(() => live().includes("src/deep"));
     const rechecked = live();
+    code = "EPERM";
+    openedOf("src/deep").watcher.emit("change", "rename", path.join(repository.folder, "src", "deep"));
+    await untilAsync(() => refusals.length === 2);
     tree.close();
     await untilAsync(() => live().length === 0);
     code = "EPERM";
@@ -376,7 +386,7 @@ describe("FolderTreeWatch", () => {
     refusing = folder => (folder === "" ? "EPERM" : null);
 
     await assert.rejects(create().startAsync(), (error: unknown) => error instanceof Error && error.message === "EPERM");
-    assert.deepEqual([refused, stillRefused, rechecked, settled, refusals.length, failures], [["", "src"], [["", "src"], 0], ["", "src", "src/deep"], ["", "src", "src/deep"], 3, []]);
+    assert.deepEqual([refused, stillRefused, rechecked, settled, refusals.length, failures], [["", "src"], [["", "src"], 1, 0], ["", "src", "src/deep"], ["", "src", "src/deep"], 3, []]);
   });
 
   test("skips a folder gone before it is read, and fails the start on any other error reading one", async () => {
