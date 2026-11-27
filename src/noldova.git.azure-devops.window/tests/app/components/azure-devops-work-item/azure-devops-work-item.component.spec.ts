@@ -308,25 +308,28 @@ describe("AzureDevOpsWorkItemComponent", () => {
       "Work item 7402"]);
   });
 
-  it("clears the work items and the view's work item once the person signs out, says so with Sign in, and reads them anew once they sign in", async () => {
-    const page = new Page().answerMine();
-    page.context.answer("runCommandAsync", async () => null);
-    await page.openAsync();
-    await Wait.until(() => page.find(".detail"));
-    const before: readonly unknown[] = [page.ids.length, page.find(".detail").getAttribute("aria-label")];
+  it("keeps the work items through a sign-in that waits, clears them and the view's work item once the person signs out, saying so with Sign in, and reads them anew once they sign in",
+    async () => {
+      const page = new Page().answerMine();
+      page.context.answer("runCommandAsync", async () => null);
+      await page.openAsync();
+      await Wait.until(() => page.find(".detail"));
+      page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.waitingInBrowser("https://login.microsoftonline.com/example").toJson());
+      await page.settleAsync();
+      const before: readonly unknown[] = [page.ids.length, page.find(".detail").getAttribute("aria-label"), page.requests.methods.length];
 
-    page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
-    await Wait.until(() => page.find(".signed-out"));
-    await page.settleAsync();
-    const signedOut: readonly unknown[] = [page.text, page.ids, page.texts(".detail"), page.texts(".empty-view")];
-    await page.clickAsync(".signed-out button");
-    page.answerMine();
-    page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("monalisa@fabrikam.test", "Mona Lisa", null, [])).toJson());
-    await Wait.until(() => page.find(".detail"));
+      page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+      await Wait.until(() => page.find(".signed-out"));
+      await page.settleAsync();
+      const signedOut: readonly unknown[] = [page.text, page.ids, page.texts(".detail"), page.texts(".empty-view")];
+      await page.clickAsync(".signed-out button");
+      page.answerMine();
+      page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("monalisa@fabrikam.test", "Mona Lisa", null, [])).toJson());
+      await Wait.until(() => page.find(".detail"));
 
-    expect([before, signedOut, page.context.callsOf("runCommandAsync"), page.ids.length,
-      page.requests.payloads.filter(t => JSON.stringify(t) === JSON.stringify(mineQuery().toJson())).length]).toEqual([[6, "Work item 7402"],
-      ["key You signed out of Azure DevOps, so your work items aren't shown. Sign in to read them again. Sign in", [], [], ["Select a work item to see it here."]],
-      [["desktop.openSettings", { page: "git.accounts" }]], 6, 2]);
-  });
+      expect([before, signedOut, page.context.callsOf("runCommandAsync"), page.ids.length,
+        page.requests.payloads.filter(t => JSON.stringify(t) === JSON.stringify(mineQuery().toJson())).length]).toEqual([[6, "Work item 7402", 1],
+        ["key You signed out of Azure DevOps, so your work items aren't shown. Sign in to read them again. Sign in", [], [], ["Select a work item to see it here."]],
+        [["desktop.openSettings", { page: "git.accounts" }]], 6, 2]);
+    });
 });
