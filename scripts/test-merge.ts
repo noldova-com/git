@@ -65,12 +65,9 @@ class TestMerge {
   }
 
   private static moved(text: string, source: string, target: string): string {
-    const forms: readonly (readonly [string, string])[] = [
-      [TestMerge.fileUrl(source), TestMerge.fileUrl(target)],
-      [source, target],
-      [source.replaceAll(Resources.pathSeparator, Resources.escapedWindowsPathSeparator), target]
-    ];
-    return forms.reduce((t, [from, to]) => from === to ? t : t.replaceAll(from, to), text);
+    return text.replaceAll(TestMerge.fileUrl(source), TestMerge.fileUrl(target))
+      .replaceAll(source, target)
+      .replaceAll(source.replaceAll(Resources.pathSeparator, Resources.escapedWindowsPathSeparator), target);
   }
 
   private static fileUrl(root: string): string {
