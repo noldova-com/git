@@ -22,6 +22,7 @@ export class GitDetailView<T> {
   private readonly pages: WritableSignal<readonly GitDetailPage<T>[]> = signal([]);
   private readonly opened: WritableSignal<boolean> = signal<boolean>(false);
   private lastOpened: T | null = null;
+  private isAwaitingChoice: boolean = false;
 
   public readonly front: Signal<T | null | undefined> = computed(() => this.pages().find(t => t.active())?.choice());
 
@@ -60,7 +61,7 @@ export class GitDetailView<T> {
       untracked(() => {
         if (wasActive && !isActive)
           this.lastOpened = null;
-        if (isShowing && !wasShowing && !Object.isNull(chosen) && chosen !== this.lastOpened && this.isBroughtForward)
+        if (isShowing && !wasShowing && !Object.isNull(chosen) && chosen !== this.lastOpened && (this.isBroughtForward || this.isAwaitingChoice))
           this.open(chosen);
         else if (wasActive && !isActive && this.opened() && Object.isUndefined(this.front()) && !Object.isNull(this.instance))
           this.context.returnView(this.view, this.instance);
@@ -76,7 +77,9 @@ export class GitDetailView<T> {
 
   public bringForward(): void {
     const front: T | null | undefined = this.front();
-    if (!Object.isNullOrUndefined(front))
+    if (Object.isNullOrUndefined(front))
+      this.isAwaitingChoice = true;
+    else
       this.open(front);
   }
 
@@ -90,6 +93,7 @@ export class GitDetailView<T> {
   }
 
   private open(choice: T): void {
+    this.isAwaitingChoice = false;
     this.lastOpened = choice;
     this.opened.set(true);
     if (Object.isNull(this.instance) || Object.isNull(this.titleOf))

@@ -39,7 +39,7 @@ describe("GitCommitDetails", () => {
       .toEqual([[["git.commitView"]], [], [], true]);
   });
 
-  it("leaves the Commit view in its place when the page in front goes, rather than returning a view it never opened as an instance", () => {
+  it("leaves the Commit view where it is as the page in front chooses a commit and as it goes, since the view is shown by default", () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const details: GitDetailView<GitCommitView> = GitCommitDetails.of(context);
     const active: WritableSignal<boolean> = signal(true);
@@ -49,6 +49,6 @@ describe("GitCommitDetails", () => {
     active.set(false);
     TestBed.tick();
 
-    expect([context.callsOf("showView"), context.callsOf("returnView")]).toEqual([[["git.commitView"]], []]);
+    expect([details.shown(), context.callsOf("showView"), context.callsOf("returnView")]).toEqual([view, [], []]);
   });
 });

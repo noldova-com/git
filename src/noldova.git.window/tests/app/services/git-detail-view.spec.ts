@@ -147,6 +147,24 @@ describe("GitDetailView", () => {
     expect([detail.shown(), context.callsOf("openView")]).toEqual([7402, [["notes.detail", "selected", "Note 7490"]]]);
   });
 
+  it("brings a view made not to come forward with its documents forward for the next choice once the person asked with none, and only that once", () => {
+    const context = new FakeWindowPartContext();
+    const detail = new GitDetailView<number>(context, "notes.detail", "selected", t => `Note ${t}`, false);
+    const choice: WritableSignal<number | null> = signal(null);
+    detail.follow(choice, signal(true), documentInjector());
+    TestBed.tick();
+    detail.bringForward();
+    const waiting: number = context.callsOf("openView").length;
+    choice.set(7521);
+    TestBed.tick();
+    choice.set(null);
+    TestBed.tick();
+    choice.set(7530);
+    TestBed.tick();
+
+    expect([waiting, detail.shown(), context.callsOf("openView")]).toEqual([0, 7530, [["notes.detail", "selected", "Note 7521"]]]);
+  });
+
   it("gives the group's front back when the person leaves the followed documents, and brings the view forward when they come back", () => {
     const context = new FakeWindowPartContext();
     const detail = viewOf(context);
