@@ -90,6 +90,15 @@ describe("GitUndoMenuComponent", () => {
     expect(menu.rows()).toEqual([[`git.example|${time}`, true], [`Push on main|${time}`, true], [`Stage on main|${time}|Undo`, false]]);
   });
 
+  it("names a fetch and a rebase", async () => {
+    const menu: Menu = new Menu();
+    menu.recentActions.set([entryOf("9", "git.fetch", "main", UndoMode.None), entryOf("8", "git.rebase", "main", UndoMode.None)]);
+
+    await menu.openAsync();
+
+    expect(menu.rows()).toEqual([[`Fetch on main|${time}`, true], [`Rebase on main|${time}`, true]]);
+  });
+
   it("holds every Undo while Git is busy", async () => {
     const menu: Menu = new Menu();
     menu.recentActions.set([entryOf("6", "git.stage", "main", UndoMode.Index)]);
