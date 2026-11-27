@@ -11,6 +11,7 @@ Each version's section is written by the pull request that changes the version, 
 - A sign-in or sign-out with GitHub or Azure DevOps reads every view's pull requests again at once, the Pull requests section, the commit detail's card and Azure DevOps' Your vote included, rather than when the window next takes the focus (#66).
 - A folder that isn't in a repository shows one calm empty state, "Not a Git repository", in the Git view, the History page and the Repository panel, and the window looks in its subfolders and offers the repositories it finds, adding the ticked ones to the Dashboard and never the folder itself; the Dashboard shows a listed folder that is no longer a repository in one muted cell with Remove, and a history keeps its folder among the recent repositories only once it reads one (#67).
 - A GitHub commit's detail shows the pull request that brought it in, with its checks and review decision, through the GitHub runtime's new `git-github.readCommitPullRequest` method and `GitHubNames.readCommitPullRequestMethod` in `@noldova/git.github.protocol` (#80).
+- The Command log lists its commands oldest first, with no heading, help text or lines between rows, and keeps the newest in sight as commands arrive and as the tab resizes, unless the person has scrolled up (#78).
 
 ## 0.0.8
 
