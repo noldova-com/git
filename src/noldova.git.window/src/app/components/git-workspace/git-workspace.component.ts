@@ -189,8 +189,6 @@ export class GitWorkspaceComponent {
   }
 
   protected async addRepositoryAsync(): Promise<void> {
-    if (this.isScanning())
-      return;
     const folder: string | null = await this.context.chooseFolderAsync();
     if (Object.isNull(folder))
       return;

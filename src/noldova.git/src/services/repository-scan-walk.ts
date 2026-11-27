@@ -26,7 +26,7 @@ export class RepositoryScanWalk {
 
   public static async readFolderAsync(folder: string): Promise<readonly Dirent[]> {
     const entries = await readdir(folder, { withFileTypes: true });
-    return entries.toSorted((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    return entries.toSorted((a, b) => (a.name < b.name ? -1 : 1));
   }
 
   public async walkAsync(folder: string, entries: readonly Dirent[], depth: number): Promise<ScanEnd> {
