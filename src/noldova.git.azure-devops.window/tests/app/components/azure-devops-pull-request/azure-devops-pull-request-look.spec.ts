@@ -324,6 +324,54 @@ describe("AzureDevOpsPullRequestComponent in the kit's look", () => {
     await browser.screenshot({ element: find(root, ".view"), path: `${screenshots}/pull-request-view-${mode}.png` });
   });
 
+  it.each(AppearanceFixture.modes)("says the person signed out in a notice at the page's inset, its key and words inside its padding before Sign in, on one centre line, in %s mode",
+    async mode => {
+      AppearanceFixture.apply(DefaultTheme.theme, mode);
+      const context = new FakeWindowPartContext();
+      const requests = new RequestAnswers(context).ignore(AzureDevOpsNames.readPersonAvatarMethod);
+      requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson());
+      requests.answer(AzureDevOpsNames.readPullRequestThreadsMethod, new HostPullRequestThreads([], false).toJson());
+      requests.answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedIn(new HostAccount("monalisa@fabrikam.test", "Mona Lisa", null, [])).toJson());
+      requests.otherwise(AzureDevOpsNames.readPullRequestChangesMethod, new HostPullRequestFiles(null, null, [], false).toJson())
+        .otherwise(AzureDevOpsNames.readPullRequestUpdatesMethod, new HostPullRequestUpdates([], false).toJson());
+      TestBed.configureTestingModule({
+        providers: [{ provide: WindowPartTokens.context, useValue: context }, { provide: WindowPartTokens.activeDocument, useValue: signal(true) }, provideMarkdown()]
+      });
+      const fixture = TestBed.createComponent(AzureDevOpsPullRequestComponent);
+      fixture.componentRef.setInput("instance", "fabrikam/site/752");
+      fixture.autoDetectChanges();
+      const page: HTMLElement = fixture.nativeElement;
+      page.style.display = "block";
+      page.style.width = "40rem";
+      await untilAsync(() => !Object.isNull(page.querySelector("article")));
+
+      context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+      await untilAsync(() => !Object.isNull(page.querySelector(".signed-out")));
+      await fixture.whenStable();
+      const probe: HTMLElement = page.appendChild(document.createElement("div"));
+      probe.style.cssText = "width: var(--nol-space-3); height: calc(var(--nol-border-width) + var(--nol-view-padding-inline))";
+      const margin: number = probe.getBoundingClientRect().width;
+      const padding: number = probe.getBoundingClientRect().height;
+      probe.remove();
+      const frame: DOMRect = page.getBoundingClientRect();
+      const notice: DOMRect = boxOf(page, ".signed-out");
+      const mark: DOMRect = boxOf(page, ".signed-out .notice-mark");
+      const text: DOMRect = boxOf(page, ".signed-out .notice-text");
+      const button: DOMRect = boxOf(page, ".signed-out button");
+      const middle = (box: DOMRect): number => box.top + box.height / 2;
+
+      AppearanceFixture.expectPixels(notice.left - frame.left, margin);
+      AppearanceFixture.expectPixels(notice.top - frame.top, margin);
+      AppearanceFixture.expectPixels(frame.right - notice.right, margin);
+      AppearanceFixture.expectPixels(mark.left - notice.left, padding);
+      AppearanceFixture.expectPixels(notice.right - button.right, padding);
+      AppearanceFixture.expectPixels(middle(mark) - middle(button), 0);
+      AppearanceFixture.expectPixels(middle(text) - middle(button), 0);
+      expect([text.left > mark.right, button.left > text.right, requests.methods.filter(t => t === AzureDevOpsNames.readPullRequestMethod).length])
+        .toEqual([true, true, 1]);
+      await browser.screenshot({ element: page, path: `${screenshots}/pull-request-signed-out-${mode}.png` });
+    });
+
   it.each(AppearanceFixture.modes)("says to open a pull request inside the view's insets once no pull request is shown, in %s mode", async mode => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
     TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: new FakeWindowPartContext() }] });

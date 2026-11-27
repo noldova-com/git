@@ -11,7 +11,7 @@ import { Component, computed, DestroyRef, effect, inject, Injector, input, type 
 import "@noldova/context.core";
 import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
-import { type HostWorkItemDetail, HostWorkItemList, WorkItemScope, WorkItemsQuery } from "@noldova/git.hosting.protocol";
+import { type HostWorkItemDetail, HostWorkItemList, SignInState, WorkItemScope, WorkItemsQuery } from "@noldova/git.hosting.protocol";
 import { GitFolderParams, GitNames, GitStatus } from "@noldova/git.protocol";
 import { type GitDetailView, GitFolder } from "@noldova/git.window";
 import { ButtonComponent, ButtonVariant, MenuComponent, MenuItemComponent, MenuTriggerDirective, SpinnerComponent } from "@noldova/ui.components.angular";
@@ -23,6 +23,8 @@ import { WorkItemFilter } from "../../models/work-item-filter.ts";
 import { WorkItemRow } from "../../models/work-item-row.ts";
 import { WorkItemsPlace } from "../../models/work-items-place.ts";
 import { Resources } from "../../../resources.ts";
+import { AccountSettings } from "../../services/account-settings.ts";
+import { SignInEvents } from "../../services/sign-in-events.ts";
 import { WorkItemSelection } from "../../services/work-item-selection.ts";
 import { WorkItemsPages } from "../../services/work-items-pages.ts";
 
@@ -60,6 +62,7 @@ export class AzureDevOpsWorkItemComponent {
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly isReading: WritableSignal<boolean> = signal<boolean>(true);
   protected readonly isTruncated: WritableSignal<boolean> = signal<boolean>(false);
+  protected readonly isSignedOut: WritableSignal<boolean> = signal<boolean>(false);
 
   public readonly instance: InputSignal<string> = input.required<string>();
 
@@ -67,10 +70,17 @@ export class AzureDevOpsWorkItemComponent {
     const active: Signal<boolean> = inject(WindowPartTokens.activeDocument);
     this.selection.follow(this.choice, active, inject(Injector));
     inject(DestroyRef).onDestroy(WorkItemsPages.follow(this.place, active));
+    inject(DestroyRef).onDestroy(SignInEvents.follow(this.context, signIn => {
+      if (signIn.state === SignInState.Waiting)
+        return;
+      this.isSignedOut.set(signIn.state === SignInState.SignedOut);
+      this.retry();
+    }));
     effect(onCleanup => {
       this.attempt();
       const instance: string = this.instance();
       const folder: string | null = this.folder();
+      const isSignedOut: boolean = this.isSignedOut();
       let isCurrent = true;
       onCleanup(() => {
         isCurrent = false;
@@ -81,14 +91,19 @@ export class AzureDevOpsWorkItemComponent {
         this.filter.set(WorkItemFilter.none);
         this.failure.set(null);
         this.isMissing.set(false);
-        this.isReading.set(true);
-        void this.readAsync(instance, folder, () => isCurrent);
+        this.isReading.set(!isSignedOut);
+        if (!isSignedOut)
+          void this.readAsync(instance, folder, () => isCurrent);
       });
     });
   }
 
   protected retry(): void {
     this.attempt.update(t => t + 1);
+  }
+
+  protected signIn(): void {
+    AccountSettings.open(this.context);
   }
 
   protected choose(place: WorkItemsPlace, detail: HostWorkItemDetail): void {
