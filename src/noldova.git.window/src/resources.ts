@@ -649,6 +649,7 @@ export class Resources {
   public static readonly statusBarItemName: string = "git.branch";
   public static readonly statusBarBranchIcon: IconName = "call_split";
   public static readonly fetchedItemName: string = "git.fetched";
+  public static readonly timeSettings: readonly string[] = ["desktop.timeFormat", "desktop.dateTimeFormat"];
   public static readonly commandItemName: string = "git.lastCommand";
   public static readonly commandLogViewName: string = "git.commands";
   public static readonly commandLogDefaultGroup: number = 0;
