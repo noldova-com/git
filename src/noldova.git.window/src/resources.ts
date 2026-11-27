@@ -1021,7 +1021,7 @@ export class Resources {
     "git.createBranchAt": "Create a branch at a commit", "git.renameBranch": "Rename a branch", "git.deleteBranch": "Delete a branch", "git.createTag": "Tag",
     "git.deleteTag": "Delete a tag", "git.stageLines": "Stage lines", "git.unstageLines": "Unstage lines", "git.undo": "Undo", "git.reset": "Reset",
     "git.undoCommit": "Undo the last commit", "git.forcePush": "Force push", "git.resolveConflict": "Resolve a conflict", "git.continueOperation": "Continue",
-    "git.abortOperation": "Abort", "git.merge": "Merge", "git.stash": "Stash"
+    "git.abortOperation": "Abort", "git.merge": "Merge", "git.stash": "Stash", "git.fetch": "Fetch", "git.rebase": "Rebase"
   };
 
   public static readonly fetchOfferLabel: string = "Fetch";
