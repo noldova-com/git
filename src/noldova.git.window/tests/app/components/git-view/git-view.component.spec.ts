@@ -73,10 +73,10 @@ describe("GitViewComponent", () => {
     expect([element.querySelectorAll(".actions").length, context.callsOf("requestAsync")]).toEqual([0, []]);
   });
 
-  it("says the folder isn't a repository, naming it", async () => {
+  it("says the folder isn't a repository in its heading alone, the History page saying the rest", async () => {
     const view: GitViewFixture = await GitViewFixture.renderAsync({ ...GitFixtures.watching, "git.status": GitFixtures.failure(FailureCode.NotRepository) }, ".empty");
 
-    expect(view.texts(".heading, .text")).toEqual(["Not a Git repository", "This folder, /work/project, isn't inside a Git repository."]);
+    expect(view.texts(".heading, .text")).toEqual(["Not a Git repository"]);
   });
 
   it("says the folder can't be read, naming it, and offers no Git", async () => {

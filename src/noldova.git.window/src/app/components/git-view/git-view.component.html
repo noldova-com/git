@@ -10,7 +10,9 @@ LICENSE file in the root directory of this source tree.
   <div class="empty">
     <span class="empty-icon material-symbols-rounded" aria-hidden="true">{{ empty.icon }}</span>
     <h2 class="heading">{{ empty.heading }}</h2>
-    <p class="text">{{ empty.text }}</p>
+    @if (empty.text !== null) {
+      <p class="text">{{ empty.text }}</p>
+    }
     @if (offersGit()) {
       <span class="actions">
         <button nol-button type="button" (click)="getGitAsync()"><span nolButtonIcon class="material-symbols-rounded" aria-hidden="true">{{ resources.openLinkIcon }}</span>{{ resources.getGitLabel }}</button>

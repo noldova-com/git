@@ -28,6 +28,7 @@ export class GitWorkspaceRow {
   public readonly changes: Signal<string>;
   public readonly fetched: Signal<string>;
   public readonly failure: Signal<string | null>;
+  public readonly isRepository: Signal<boolean>;
   public readonly conflicts: Signal<number>;
   public readonly hasConflicts: Signal<boolean>;
   public readonly pullRequest: Signal<GitPullRequestRow | null>;
@@ -49,6 +50,7 @@ export class GitWorkspaceRow {
     this.name = Resources.formatHistoryTitle(folder);
     this.summary = summary;
     this.failure = computed(() => summary()?.failure ?? null);
+    this.isRepository = computed(() => summary()?.isRepository ?? true);
     this.conflicts = computed(() => summary()?.conflicts ?? 0);
     this.hasConflicts = computed(() => this.conflicts() > 0);
     this.branch = computed(() => GitWorkspaceRow.branchOf(summary()));

@@ -146,6 +146,7 @@ export class Resources {
   public static readonly noFolderHeading: string = "No folder";
   public static readonly noFolderText: string = "Open a folder to see its Git state.";
   public static readonly notRepositoryHeading: string = "Not a Git repository";
+  public static readonly removeLabel: string = "Remove";
   public static readonly folderUnreadableHeading: string = "Can't read this folder";
   public static readonly gitMissingHeading: string = "Git isn't installed";
   public static readonly gitMissingText: string = "The Git view uses the Git on your computer. Install Git 2.39 or newer, then select Check again.";
@@ -315,6 +316,26 @@ export class Resources {
 
   public static formatNotRepositoryText(folder: string): string {
     return `This folder, ${folder}, isn't inside a Git repository.`;
+  }
+
+  public static formatLookingBelow(folder: string): string {
+    return `This folder, ${folder}, isn't inside a Git repository. Looking for repositories under it…`;
+  }
+
+  public static formatChooseBelow(folder: string): string {
+    return `This folder, ${folder}, isn't inside a Git repository. Choose from the repositories under it.`;
+  }
+
+  public static formatNoneBelow(folder: string): string {
+    return `This folder, ${folder}, isn't inside a Git repository, and no folder under it holds one.`;
+  }
+
+  public static formatNoneInFirstBelow(folder: string): string {
+    return `This folder, ${folder}, isn't inside a Git repository, and none of the first 10,000 folders under it holds one.`;
+  }
+
+  public static formatUnreadableBelow(folder: string): string {
+    return `This folder, ${folder}, isn't inside a Git repository, and Git can't read the folders under it.`;
   }
 
   public static formatPush(ahead: number): string {

@@ -171,6 +171,25 @@ describe("GitRepositoryComponent", () => {
     expect(rem(path.left - (head?.getBoundingClientRect().left ?? 0))).toBe(1.875);
   });
 
+  it.each(AppearanceFixture.modes)("keeps only the folder's row for a folder that isn't a repository, with no section, action or red line, the path still under the name, in %s mode",
+    async mode => {
+      AppearanceFixture.apply(DefaultTheme.theme, mode);
+      onTestFinished(() => AppearanceFixture.reset());
+      const refusal = GitFixtures.failure(FailureCode.NotRepository, null, "This folder isn't inside a git repository with a working tree.");
+      const context: FakeWindowPartContext = new FakeWindowPartContext();
+      new GitHeldRequests(context, [], { ...answers, "git.status": refusal, "git.branches": refusal, "git.worktrees": refusal, "git.repositoryItems": refusal });
+      GitFixtures.setUp(context);
+      const fixture: ComponentFixture<GitRepositoryComponent> = TestBed.createComponent(GitRepositoryComponent);
+      fixture.autoDetectChanges();
+      const element: HTMLElement = fixture.nativeElement;
+      await domAsync(() => !Object.isNull(element.querySelector(".row.head")) && Object.isNull(element.querySelector(".row.changes")));
+      const rem = (pixels: number): number => pixels / parseFloat(getComputedStyle(document.documentElement).fontSize);
+      const boxOf = (selector: string): DOMRect => element.querySelector(selector)?.getBoundingClientRect() ?? new DOMRect();
+
+      expect([[...element.querySelectorAll(".panel > *")].map(t => t.className), element.querySelectorAll("button, .note").length, rem(boxOf(".path").left - boxOf(".name").left),
+        rem(boxOf(".path").top - boxOf(".name").bottom) >= 0]).toEqual([["row head"], 0, 0, true]);
+    });
+
   it("counts the tags, stashes and submodules, and lists each one when its section opens", async () => {
     const id: string = "0123456789abcdef0123456789abcdef01234567";
     const context: FakeWindowPartContext = new FakeWindowPartContext();

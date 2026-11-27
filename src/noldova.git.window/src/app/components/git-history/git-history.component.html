@@ -27,7 +27,7 @@ LICENSE file in the root directory of this source tree.
     }
   </div>
   <div class="spacer"></div>
-  <label #field class="field">
+  <label #field class="field" [class.gone]="notRepository() !== null">
     <span class="ms placeholder">filter_list</span>
     <input #search type="search" [placeholder]="resources.filterPlaceholder" [value]="filter()" (input)="filter.set(search.value)" />
   </label>
@@ -45,77 +45,85 @@ LICENSE file in the root directory of this source tree.
     }
   </nol-menu>
 </ng-template>
-@if (actionFailure(); as message) {
-  <p class="note error" role="alert">{{ message }}</p>
-}
-@if (notLoaded(); as message) {
-  <p class="note not-loaded" role="status">{{ message }}</p>
-}
-<div class="grow-row header">
-  <span class="cell">{{ resources.columnRefs }}</span><span class="cell">{{ resources.columnGraph }}</span><span class="cell">{{ resources.columnMessage }}</span>
-  <span class="cell">{{ resources.columnAuthor }}</span><span class="cell">{{ resources.columnDate }}</span>
-</div>
-@if (isLoading()) {
-  <p class="note">{{ resources.historyLoading }}</p>
-} @else if (failure(); as message) {
-  <p class="note error" role="alert">{{ message }}</p>
-} @else if (rows().length === 0) {
-  <p class="note">{{ resources.historyEmpty }}</p>
+@if (notRepository(); as text) {
+  <div class="empty">
+    <span class="empty-icon material-symbols-rounded" aria-hidden="true">{{ resources.noFolderIcon }}</span>
+    <h2 class="heading">{{ resources.notRepositoryHeading }}</h2>
+    <p class="text">{{ text }}</p>
+  </div>
 } @else {
-  <cdk-virtual-scroll-viewport class="list" [itemSize]="resources.graphRowPixels" [minBufferPx]="resources.graphBufferPixels"
-    [maxBufferPx]="resources.graphBufferPixels * 2" role="listbox" tabindex="0" [attr.aria-label]="resources.historyListLabel" [attr.aria-activedescendant]="activeOption()"
-    (keydown)="move($event)" (scrolledIndexChange)="scrolled($event)">
-    <div *cdkVirtualFor="let row of rows(); let index = index; let count = count; trackBy: trackRow" class="grow-row" role="option"
-      [id]="resources.formatHistoryOptionId(list, index)" [attr.aria-posinset]="index + 1" [attr.aria-setsize]="hasMore() ? -1 : count"
-      [class.sel]="row.id === selectedId()" [class.dim]="!row.matches" [attr.aria-selected]="row.id === selectedId()" (click)="select(row)">
-      <div class="cell">
-        @let split = row.chipsWithin(chipLimit());
-        @for (chip of split.shown; track chip.title + chip.icon) {
-          <span class="chip" [class]="chip.isTag ? 'chip ltag' : 'chip l' + row.graph.color" [class.current]="chip.isCurrent" [title]="chip.title"
-            [attr.draggable]="chip.branch !== null" (dragstart)="dragBranch(chip, row)" (dragover)="overBranch($event, chip)" (drop)="dropBranch($event, chip, row)"
-            (dragend)="endDrag()">
-            <span class="ms chip-icon">{{ chip.icon }}</span><span class="ellipsis">{{ chip.name }}</span>
-          </span>
-        }
-        @if (split.hidden.length > 0) {
-          <span class="chip ltag more" [title]="moreTitle(split.hidden)">{{ resources.formatMoreChips(split.hidden.length) }}</span>
-        }
-      </div>
-      <svg class="graph" aria-hidden="true" [attr.width]="graphPixels()" [attr.height]="resources.graphRowPixels"
-        [attr.viewBox]="'0 0 ' + graphPixels() + ' ' + resources.graphRowPixels">
-        @for (line of row.graph.lines; track $index) {
-          <path [attr.d]="path(line)" [attr.class]="'line lane-' + line.color" />
-        }
-        @if (row.isChanges) {
-          <circle class="changes" [attr.cx]="x(row.graph.lane)" [attr.cy]="resources.graphRowPixels / 2" [attr.r]="resources.graphDotPixels"
-            [attr.class]="'changes lane-' + row.graph.color" />
-        } @else if (row.isHead) {
-          <circle class="ring" [attr.cx]="x(row.graph.lane)" [attr.cy]="resources.graphRowPixels / 2" [attr.r]="resources.graphHeadRingPixels"
-            [attr.class]="'ring lane-' + row.graph.color" />
-          <circle [attr.cx]="x(row.graph.lane)" [attr.cy]="resources.graphRowPixels / 2" [attr.r]="resources.graphHeadDotPixels"
-            [attr.class]="'fill lane-' + row.graph.color" />
-        } @else {
-          <circle [attr.cx]="x(row.graph.lane)" [attr.cy]="resources.graphRowPixels / 2" [attr.r]="resources.graphDotPixels"
-            [attr.class]="'dot lane-' + row.graph.color" />
-        }
-      </svg>
-      <div class="cell"><span class="message" [class.italic]="row.isChanges"><nol-git-reference-text class="line" [text]="row.message" [folder]="instance()" [chipTabIndex]="-1" /></span></div>
-      <div class="cell">
-        @if (!row.isChanges) {
-          @let picture = imageOf(row);
-          @if (picture !== null) {
-            <img class="av" [src]="picture" alt="" />
-          } @else {
-            <span class="av" [class]="'av av-' + row.avatar">{{ row.initials }}</span>
+  @if (actionFailure(); as message) {
+    <p class="note error" role="alert">{{ message }}</p>
+  }
+  @if (notLoaded(); as message) {
+    <p class="note not-loaded" role="status">{{ message }}</p>
+  }
+  <div class="grow-row header">
+    <span class="cell">{{ resources.columnRefs }}</span><span class="cell">{{ resources.columnGraph }}</span><span class="cell">{{ resources.columnMessage }}</span>
+    <span class="cell">{{ resources.columnAuthor }}</span><span class="cell">{{ resources.columnDate }}</span>
+  </div>
+  @if (isLoading()) {
+    <p class="note">{{ resources.historyLoading }}</p>
+  } @else if (failure(); as message) {
+    <p class="note error" role="alert">{{ message }}</p>
+  } @else if (rows().length === 0) {
+    <p class="note">{{ resources.historyEmpty }}</p>
+  } @else {
+    <cdk-virtual-scroll-viewport class="list" [itemSize]="resources.graphRowPixels" [minBufferPx]="resources.graphBufferPixels"
+      [maxBufferPx]="resources.graphBufferPixels * 2" role="listbox" tabindex="0" [attr.aria-label]="resources.historyListLabel" [attr.aria-activedescendant]="activeOption()"
+      (keydown)="move($event)" (scrolledIndexChange)="scrolled($event)">
+      <div *cdkVirtualFor="let row of rows(); let index = index; let count = count; trackBy: trackRow" class="grow-row" role="option"
+        [id]="resources.formatHistoryOptionId(list, index)" [attr.aria-posinset]="index + 1" [attr.aria-setsize]="hasMore() ? -1 : count"
+        [class.sel]="row.id === selectedId()" [class.dim]="!row.matches" [attr.aria-selected]="row.id === selectedId()" (click)="select(row)">
+        <div class="cell">
+          @let split = row.chipsWithin(chipLimit());
+          @for (chip of split.shown; track chip.title + chip.icon) {
+            <span class="chip" [class]="chip.isTag ? 'chip ltag' : 'chip l' + row.graph.color" [class.current]="chip.isCurrent" [title]="chip.title"
+              [attr.draggable]="chip.branch !== null" (dragstart)="dragBranch(chip, row)" (dragover)="overBranch($event, chip)" (drop)="dropBranch($event, chip, row)"
+              (dragend)="endDrag()">
+              <span class="ms chip-icon">{{ chip.icon }}</span><span class="ellipsis">{{ chip.name }}</span>
+            </span>
           }
-          <span class="ellipsis">{{ row.author }}</span>
-        }
+          @if (split.hidden.length > 0) {
+            <span class="chip ltag more" [title]="moreTitle(split.hidden)">{{ resources.formatMoreChips(split.hidden.length) }}</span>
+          }
+        </div>
+        <svg class="graph" aria-hidden="true" [attr.width]="graphPixels()" [attr.height]="resources.graphRowPixels"
+          [attr.viewBox]="'0 0 ' + graphPixels() + ' ' + resources.graphRowPixels">
+          @for (line of row.graph.lines; track $index) {
+            <path [attr.d]="path(line)" [attr.class]="'line lane-' + line.color" />
+          }
+          @if (row.isChanges) {
+            <circle class="changes" [attr.cx]="x(row.graph.lane)" [attr.cy]="resources.graphRowPixels / 2" [attr.r]="resources.graphDotPixels"
+              [attr.class]="'changes lane-' + row.graph.color" />
+          } @else if (row.isHead) {
+            <circle class="ring" [attr.cx]="x(row.graph.lane)" [attr.cy]="resources.graphRowPixels / 2" [attr.r]="resources.graphHeadRingPixels"
+              [attr.class]="'ring lane-' + row.graph.color" />
+            <circle [attr.cx]="x(row.graph.lane)" [attr.cy]="resources.graphRowPixels / 2" [attr.r]="resources.graphHeadDotPixels"
+              [attr.class]="'fill lane-' + row.graph.color" />
+          } @else {
+            <circle [attr.cx]="x(row.graph.lane)" [attr.cy]="resources.graphRowPixels / 2" [attr.r]="resources.graphDotPixels"
+              [attr.class]="'dot lane-' + row.graph.color" />
+          }
+        </svg>
+        <div class="cell"><span class="message" [class.italic]="row.isChanges"><nol-git-reference-text class="line" [text]="row.message" [folder]="instance()" [chipTabIndex]="-1" /></span></div>
+        <div class="cell">
+          @if (!row.isChanges) {
+            @let picture = imageOf(row);
+            @if (picture !== null) {
+              <img class="av" [src]="picture" alt="" />
+            } @else {
+              <span class="av" [class]="'av av-' + row.avatar">{{ row.initials }}</span>
+            }
+            <span class="ellipsis">{{ row.author }}</span>
+          }
+        </div>
+        <div class="cell muted">{{ row.age }}</div>
       </div>
-      <div class="cell muted">{{ row.age }}</div>
-    </div>
-  </cdk-virtual-scroll-viewport>
-  @if (dropped(); as shown) {
-    <nol-git-branch-drop [drop]="shown.drop" [prediction]="shown.prediction" [checking]="shown.checking" [busy]="writable() === null" [request]="shown.request"
-      [left]="shown.left" [top]="shown.top" (requested)="requestDropped($event)" (merged)="mergeDropped(shown.drop)" (switchMerged)="switchMergeDropped(shown.drop)" (rebased)="rebaseDropped(shown.drop)" (closed)="dropped.set(null)" />
+    </cdk-virtual-scroll-viewport>
+    @if (dropped(); as shown) {
+      <nol-git-branch-drop [drop]="shown.drop" [prediction]="shown.prediction" [checking]="shown.checking" [busy]="writable() === null" [request]="shown.request"
+        [left]="shown.left" [top]="shown.top" (requested)="requestDropped($event)" (merged)="mergeDropped(shown.drop)" (switchMerged)="switchMergeDropped(shown.drop)" (rebased)="rebaseDropped(shown.drop)" (closed)="dropped.set(null)" />
+    }
   }
 }

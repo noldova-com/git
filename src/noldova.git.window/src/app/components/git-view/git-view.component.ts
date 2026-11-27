@@ -119,7 +119,7 @@ export class GitViewComponent {
       case GitViewPhase.NoFolder:
         return new GitEmptyState(Resources.noFolderIcon, Resources.noFolderHeading, Resources.noFolderText);
       case GitViewPhase.NotRepository:
-        return new GitEmptyState(Resources.noFolderIcon, Resources.notRepositoryHeading, Resources.formatNotRepositoryText(this.state.readFolder()));
+        return new GitEmptyState(Resources.noFolderIcon, Resources.notRepositoryHeading, null);
       case GitViewPhase.FolderUnreadable:
         return new GitEmptyState(Resources.folderUnreadableIcon, Resources.folderUnreadableHeading, Resources.formatFolderUnreadableText(this.state.readFolder()));
       case GitViewPhase.GitMissing:

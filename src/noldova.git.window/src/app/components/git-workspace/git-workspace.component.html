@@ -78,7 +78,13 @@ LICENSE file in the root directory of this source tree.
             <span class="material-symbols-rounded" aria-hidden="true">{{ resources.folderIcon }}</span>
             <button type="button" class="link name-cell" [title]="row.name" (click)="open(row.folder)">{{ row.name }}</button>
           </span>
-          @if (row.failure(); as failure) {
+          @if (!row.isRepository()) {
+            <span role="cell" class="not-repository small">
+              <span class="muted">{{ resources.notRepositoryHeading }}</span>
+              <button type="button" class="link remove-one" (click)="remove(only(row.folder))">{{ resources.removeLabel }}</button>
+            </span>
+          }
+          @else if (row.failure(); as failure) {
             <span role="cell" class="failure small" [title]="failure">{{ failure }}</span>
           }
           @else {

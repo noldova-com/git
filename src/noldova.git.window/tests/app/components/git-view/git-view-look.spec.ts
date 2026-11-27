@@ -382,13 +382,13 @@ describe("GitViewComponent in the kit's look", () => {
   });
 
   const emptyStates = [
-    ["not-repository", GitFixtures.failure(FailureCode.NotRepository), "Not a Git repository"],
-    ["folder-unreadable", GitFixtures.failure(FailureCode.Unavailable, GitCode.FolderUnreadable), "Can't read this folder"],
-    ["git-missing", GitFixtures.failure(FailureCode.Unavailable, GitCode.GitMissing), "Git isn't installed"],
-    ["too-old", GitFixtures.failure(FailureCode.Unavailable, GitCode.GitTooOld, "Git is too old.", "2.34.1"), "Git 2.34.1 is too old"]
+    ["not-repository", GitFixtures.failure(FailureCode.NotRepository), "Not a Git repository", []],
+    ["folder-unreadable", GitFixtures.failure(FailureCode.Unavailable, GitCode.FolderUnreadable), "Can't read this folder", ["13px"]],
+    ["git-missing", GitFixtures.failure(FailureCode.Unavailable, GitCode.GitMissing), "Git isn't installed", ["13px"]],
+    ["too-old", GitFixtures.failure(FailureCode.Unavailable, GitCode.GitTooOld, "Git is too old.", "2.34.1"), "Git 2.34.1 is too old", ["13px"]]
   ] as const;
 
-  it.each(emptyStates.flatMap(([name, failure, heading]) => AppearanceFixture.modes.map(mode => [name, mode, failure, heading] as const)))("draws the %s state's icon, heading and text on one edge in %s mode", async (name, mode, failure, heading) => {
+  it.each(emptyStates.flatMap(([name, failure, heading, texts]) => AppearanceFixture.modes.map(mode => [name, mode, failure, heading, texts] as const)))("draws the %s state's icon, heading and text on one edge in %s mode", async (name, mode, failure, heading, texts) => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
     const view: GitViewFixture = await GitViewFixture.renderAsync({ ...GitFixtures.watching, "git.status": failure }, ".empty");
     view.element.style.width = "25rem";
@@ -397,8 +397,8 @@ describe("GitViewComponent in the kit's look", () => {
 
     const edges: readonly number[] = view.all(".empty-icon, .heading, .text").map(t => rem(box(t).left));
     expect(view.texts(".heading")).toEqual([heading]);
-    expect([rem(box(view.find(".empty-icon")).width), new Set(edges).size, getComputedStyle(view.find(".heading")).fontSize, getComputedStyle(view.find(".text")).fontSize])
-      .toEqual([1.25, 1, "13px", "13px"]);
+    expect([rem(box(view.find(".empty-icon")).width), new Set(edges).size, getComputedStyle(view.find(".heading")).fontSize, view.all(".text").map(t => getComputedStyle(t).fontSize)])
+      .toEqual([1.25, 1, "13px", texts]);
 
     await page.screenshot({ element: view.element, path: `${screenshots}/git-view-${name}-${mode}.png` });
   });
