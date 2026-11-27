@@ -351,6 +351,52 @@ describe("AzureDevOpsPullRequestComponent", () => {
       ["git-azure-devops.pullRequestDetail", "selected", { title: "Pull request" }]]);
   });
 
+  it("clears the pull request, its description, comments and the view's reviewers once the person signs out, says so with Sign in, and reads it anew once they sign in",
+    async () => {
+      const page = new Page([new HostThread(3, ThreadStatus.Active, null, null,
+        [new HostComment(1, null, new HostPerson("octocat@fabrikam.test", null, null), CREATED, "See the spec.")])]);
+      page.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson(), pullRequest.toJson());
+      page.context.answer("runCommandAsync", async () => null);
+      await page.openAsync();
+      await page.untilAsync(() => !Object.isNull(page.query(".comment")) && !Object.isNull(page.query(".description strong")));
+      const before: number[] = [page.queryAll(".comment").length, page.queryAll(".reviewer").length];
+
+      page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+      await page.untilAsync(() => !Object.isNull(page.query(".signed-out")) && page.queryAll(".reviewer").length === 0);
+      const signedOut: unknown[] = [page.text, wordsOf(page.detail), page.queryAll(".comment, .description, .reviewer").length];
+      page.find(".signed-out button").click();
+      await page.settleAsync();
+      page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("monalisa@fabrikam.test", "Mona Lisa", null, [])).toJson());
+      await page.untilAsync(() => !Object.isNull(page.query(".comment")) && !Object.isNull(page.query(".description strong")) && page.queryAll(".reviewer").length > 0);
+
+      expect([before, signedOut, page.context.callsOf("runCommandAsync"), page.payloadsOf(AzureDevOpsNames.readPullRequestMethod).length,
+        page.payloadsOf(AzureDevOpsNames.readPullRequestThreadsMethod).length]).toEqual([[1, 4],
+        ["key You signed out of Azure DevOps, so this pull request isn't shown. Sign in to read it again. Sign in", "Open a pull request to see its details here.", 0],
+        [["desktop.openSettings", { page: "git.accounts" }]], 2, 2]);
+    });
+
+  it("hides the pull request the view kept while another kind of document is in front once the person signs out, and after they sign in until the document is in front",
+    async () => {
+      const page = new Page();
+      page.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson(), pullRequest.toJson());
+      await page.openAsync();
+      page.active.set(false);
+      await page.settleAsync();
+      const kept: number = page.queryAll(".reviewer").length;
+
+      page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+      await page.untilAsync(() => page.queryAll(".reviewer").length === 0);
+      const signedOut: string = wordsOf(page.detail);
+      page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("monalisa@fabrikam.test", "Mona Lisa", null, [])).toJson());
+      await page.untilAsync(() => !Object.isNull(page.element.querySelector("article")));
+      await page.settleAsync();
+      const signedIn: number = page.queryAll(".reviewer").length;
+      page.active.set(true);
+      await page.untilAsync(() => page.queryAll(".reviewer").length > 0);
+
+      expect([kept, signedOut, signedIn, page.queryAll(".reviewer").length]).toEqual([4, "Open a pull request to see its details here.", 0, 4]);
+    });
+
   it.each([["squash", "schedule Auto-complete set: squash commit when policies pass"], ["rebaseMerge", "schedule Auto-complete set: semi-linear merge when policies pass"],
     ["fastForwardOnly", "schedule Completes by itself once its policies pass"], [null, "schedule Completes by itself once its policies pass"]])(
     "names the merge type %s auto-complete completes with, and says only that it completes by itself without one it knows", async (mergeType, line) => {
@@ -815,10 +861,11 @@ describe("AzureDevOpsPullRequestComponent", () => {
     expect(page.texts(".vote-note")).toEqual(["Votes and comments go to Azure DevOps as you."]);
   });
 
-  it("shows the person's vote once they sign in anywhere, and leaves it out once they sign out, with no reload", async () => {
+  it("shows the person's vote once they sign in anywhere, reading the pull request anew, and the signed-out notice once they sign out", async () => {
     const page = new Page([], HostSignIn.signedOut());
     const reviewers = [new HostReviewer(new HostPerson("hubot@fabrikam.test", null, null), 0, "No vote", false)];
-    page.requests.answer(AzureDevOpsNames.readPullRequestMethod, new HostPullRequest(item, reviewers, [], [], false, "", 5, []).toJson());
+    const read: JsonValue = new HostPullRequest(item, reviewers, [], [], false, "", 5, []).toJson();
+    page.requests.answer(AzureDevOpsNames.readPullRequestMethod, read, read);
     await page.openAsync();
     const before: string[] = page.texts(".vote-note");
 
@@ -826,20 +873,21 @@ describe("AzureDevOpsPullRequestComponent", () => {
     await page.settleAsync();
     const whileWaiting: string[] = page.texts(".vote-note");
     page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("Hubot@Fabrikam.test", null, null, [])).toJson());
-    await page.untilAsync(() => page.texts(".vote-note")[0] !== before[0]);
+    await page.untilAsync(() => page.texts(".vote-note")[0] === "Your vote: none yet. Votes and comments go to Azure DevOps as you.");
     const signedIn: string[] = page.texts(".vote-note");
     page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
-    await page.untilAsync(() => page.texts(".vote-note")[0] === before[0]);
+    await page.untilAsync(() => !Object.isNull(page.query(".signed-out")));
 
-    expect([before, whileWaiting, signedIn, page.texts(".vote-note")]).toEqual([["Votes and comments go to Azure DevOps as you."],
-      ["Votes and comments go to Azure DevOps as you."], ["Your vote: none yet. Votes and comments go to Azure DevOps as you."],
-      ["Votes and comments go to Azure DevOps as you."]]);
+    expect([before, whileWaiting, signedIn, page.texts(".vote-note"), page.payloadsOf(AzureDevOpsNames.readPullRequestMethod).length]).toEqual([
+      ["Votes and comments go to Azure DevOps as you."], ["Votes and comments go to Azure DevOps as you."],
+      ["Your vote: none yet. Votes and comments go to Azure DevOps as you."], [], 2]);
   });
 
   it("drops a sign-in read that answers after a sign-in change arrived, so the newer account stays", async () => {
     const page = new Page([], HostSignIn.signedOut());
     const reviewers = [new HostReviewer(new HostPerson("hubot@fabrikam.test", null, null), 0, "No vote", false)];
-    page.requests.answer(AzureDevOpsNames.readPullRequestMethod, new HostPullRequest(item, reviewers, [], [], false, "", 5, []).toJson());
+    const read: JsonValue = new HostPullRequest(item, reviewers, [], [], false, "", 5, []).toJson();
+    page.requests.answer(AzureDevOpsNames.readPullRequestMethod, read, read);
 
     page.create();
     page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("Hubot@Fabrikam.test", null, null, [])).toJson());

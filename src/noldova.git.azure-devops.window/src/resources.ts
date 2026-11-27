@@ -17,6 +17,8 @@ import { VoteChoice } from "./app/models/vote-choice.ts";
 
 export class Resources {
   public static readonly accountsPage: string = "git.accounts";
+  public static readonly openSettingsCommand: string = "desktop.openSettings";
+  public static readonly settingsPageArgument: string = "page";
   public static readonly pullRequestsUnanswered: string = "Azure DevOps didn't answer. Try again to read this repository's pull requests.";
   public static readonly branchPullRequestUnanswered: string = "Azure DevOps didn't answer. Its pull request reads again when the window takes the focus.";
   public static readonly commitPullRequestUnanswered: string = "Azure DevOps didn't answer. Its pull request reads again when the commit opens again.";
@@ -29,6 +31,7 @@ export class Resources {
   public static readonly pullRequestUnanswered: string = "Azure DevOps didn't answer. Try again to read this pull request.";
   public static readonly pullRequestMissing: string = "This pull request can't be shown. Sign in to its organization in Settings → Accounts and hosts, or check that it still exists.";
   public static readonly pullRequestReading: string = "Reading the pull request on Azure DevOps.";
+  public static readonly pullRequestSignedOut: string = "You signed out of Azure DevOps, so this pull request isn't shown. Sign in to read it again.";
   public static readonly pullRequestTabs: string = "Pull request";
   public static readonly overviewTab: string = "Overview";
   public static readonly filesTab: string = "Files";
@@ -826,6 +829,7 @@ export class Resources {
   public static readonly workItemsCapped: string = "Azure DevOps answered its first 200 work items, so the list and its filters cover only those.";
   public static readonly workItemsReading: string = "Reading your work items on Azure DevOps.";
   public static readonly workItemsUnanswered: string = "Azure DevOps didn't answer, so your work items couldn't be read.";
+  public static readonly workItemsSignedOut: string = "You signed out of Azure DevOps, so your work items aren't shown. Sign in to read them again.";
   public static readonly noWorkItemsPlace: string = "Open a repository with an Azure DevOps remote to see its project's work items.";
   public static readonly noMyWorkItems: string = "No open work items are assigned to you here. If you aren't signed in, sign in in Settings → Accounts and hosts.";
 

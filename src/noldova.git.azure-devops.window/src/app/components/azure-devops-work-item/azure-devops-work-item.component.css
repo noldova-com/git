@@ -39,6 +39,10 @@
   color: var(--nol-status-failed);
 }
 
+.notice-mark {
+  flex: none;
+}
+
 .page {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

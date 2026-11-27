@@ -9,7 +9,7 @@
 import { signal } from "@angular/core";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
-import { HostPolicy, HostPullRequest, HostWorkItem, HostWorkItemDetail, HostWorkItemType, PolicyState, WorkItemCategory, WorkItemScope, WorkItemsQuery } from "@noldova/git.hosting.protocol";
+import { HostAccount, HostPolicy, HostPullRequest, HostSignIn, HostWorkItem, HostWorkItemDetail, HostWorkItemType, PolicyState, WorkItemCategory, WorkItemScope, WorkItemsQuery } from "@noldova/git.hosting.protocol";
 import { GitCommit, GitGraph, GitGraphCommit, GitGraphParams, GitNames } from "@noldova/git.protocol";
 import { GitFolder } from "@noldova/git.window";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
@@ -261,6 +261,31 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
         ["Guard bug_report AB#7699 behind workspace_premium #7402 ddddddd · Mona Lisa · Jan 5"], ["rgb(204, 41, 61)", "rgb(255, 123, 0)"],
         new WorkItemsQuery(HOST, "fabrikam", PROJECT, WorkItemScope.Ids, [7699]).toJson(), 2]);
     });
+
+  it("reads a chip's work item anew once the person signs out and in again, showing none the earlier sign-in read", async () => {
+    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/garden-web")));
+    const page = new Page().answerMine();
+    const chip = listOf([new HostWorkItemDetail(itemOf(7699, bug, "Times drift past midnight", "Active", WorkItemCategory.InProgress, null), null, null, null, null,
+      null, [], [], 0, [])]);
+    page.requests.answer(GitNames.statusMethod, azureStatus.toJson());
+    page.requests.answer(GitNames.graphMethod, new GitGraph([new GitGraphCommit(new GitCommit("d".repeat(40), [], "Mona Lisa", "2025-01-05T12:00:00Z",
+      "Guard AB#7699 behind #7402"), "kim@fabrikam.test", [])], false).toJson());
+    page.requests.answer(GitNames.messageReferencesMethod, noMessages);
+    page.requests.answer(AzureDevOpsNames.readWorkItemsMethod, chip);
+    await page.openAsync();
+    await Wait.until(() => expect(page.texts(".history .chip.ref")).toEqual(["bug_report AB#7699", "workspace_premium #7402"]));
+
+    page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+    await Wait.until(() => expect(page.element.querySelector(".detail")).toBeNull());
+    page.answerMine();
+    const release = page.requests.hold(AzureDevOpsNames.readWorkItemsMethod);
+    page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("monalisa@fabrikam.test", "Mona Lisa", null, [])).toJson());
+    await Wait.until(() => expect(page.texts(".history .commit")).toEqual(["Guard description AB#7699 behind workspace_premium #7402 ddddddd · Mona Lisa · Jan 5"]));
+    release(chip);
+    await Wait.until(() => expect(page.texts(".history .chip.ref")).toEqual(["bug_report AB#7699", "workspace_premium #7402"]));
+
+    expect(page.requests.methods.filter(t => t === AzureDevOpsNames.readWorkItemsMethod).length).toBe(4);
+  });
 
   it("shows a commit in the Git module's history at a click, and logs a history the window can't open", async () => {
     onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/garden-web")));

@@ -9,6 +9,7 @@
 import { signal } from "@angular/core";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
+import { HostAccount, HostSignIn } from "@noldova/git.hosting.protocol";
 import { GitFolderParams, GitGraph, GitNames, GitStatus } from "@noldova/git.protocol";
 import { GitFolder } from "@noldova/git.window";
 import { describe, expect, it, onTestFinished } from "vitest";
@@ -305,5 +306,27 @@ describe("AzureDevOpsWorkItemComponent", () => {
 
     expect([before, page.context.callsOf("openView").length, page.find(".detail").getAttribute("aria-label")]).toEqual([[0, ["Select a work item to see it here."]], 1,
       "Work item 7402"]);
+  });
+
+  it("clears the work items and the view's work item once the person signs out, says so with Sign in, and reads them anew once they sign in", async () => {
+    const page = new Page().answerMine();
+    page.context.answer("runCommandAsync", async () => null);
+    await page.openAsync();
+    await Wait.until(() => page.find(".detail"));
+    const before: readonly unknown[] = [page.ids.length, page.find(".detail").getAttribute("aria-label")];
+
+    page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+    await Wait.until(() => page.find(".signed-out"));
+    await page.settleAsync();
+    const signedOut: readonly unknown[] = [page.text, page.ids, page.texts(".detail"), page.texts(".empty-view")];
+    await page.clickAsync(".signed-out button");
+    page.answerMine();
+    page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("monalisa@fabrikam.test", "Mona Lisa", null, [])).toJson());
+    await Wait.until(() => page.find(".detail"));
+
+    expect([before, signedOut, page.context.callsOf("runCommandAsync"), page.ids.length,
+      page.requests.payloads.filter(t => JSON.stringify(t) === JSON.stringify(mineQuery().toJson())).length]).toEqual([[6, "Work item 7402"],
+      ["key You signed out of Azure DevOps, so your work items aren't shown. Sign in to read them again. Sign in", [], [], ["Select a work item to see it here."]],
+      [["desktop.openSettings", { page: "git.accounts" }]], 6, 2]);
   });
 });
