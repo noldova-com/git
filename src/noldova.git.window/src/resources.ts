@@ -27,6 +27,7 @@ export class Resources {
   public static readonly maximumPathLength: number = 4_096;
   public static readonly absolutePathPattern: RegExp = /^(?:\/|[A-Za-z]:[\\/]|\\\\)/u;
   public static readonly folderProvided: string = "This window already has a Git folder provider; unregister it before providing another.";
+  public static readonly windowInactive: string = "Git's window part isn't active in this window, so the Dashboard has no Git to show.";
   public static readonly blankFolder: string = "the folder is blank";
   public static readonly relativeFolder: string = "the folder isn't an absolute path";
 
