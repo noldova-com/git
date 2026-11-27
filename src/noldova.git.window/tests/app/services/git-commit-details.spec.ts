@@ -45,10 +45,11 @@ describe("GitCommitDetails", () => {
     const active: WritableSignal<boolean> = signal(true);
     TestBed.runInInjectionContext(() => details.follow(signal(view), active, TestBed.inject(Injector)));
     TestBed.tick();
+    const shown: GitCommitView | null = details.shown();
 
     active.set(false);
     TestBed.tick();
 
-    expect([details.shown(), context.callsOf("showView"), context.callsOf("returnView")]).toEqual([view, [], []]);
+    expect([shown, context.callsOf("showView"), context.callsOf("returnView")]).toEqual([view, [], []]);
   });
 });
