@@ -119,13 +119,13 @@ export class LineCountsReader {
   }
 
   private static async readCappedAsync(file: string, limit: number): Promise<Buffer | null> {
-    const handle = await open(file, "r");
+    const handle = await open(file, Resources.unwaitingReadFlags);
     try {
-      const { size } = await handle.stat();
-      if (size > limit)
+      const stats = await handle.stat();
+      if (!stats.isFile() || stats.size > limit)
         return null;
-      const buffer = Buffer.alloc(size);
-      const { bytesRead } = await handle.read(buffer, 0, size, 0);
+      const buffer = Buffer.alloc(stats.size);
+      const { bytesRead } = await handle.read(buffer, 0, stats.size, 0);
       return buffer.subarray(0, bytesRead);
     } finally {
       await handle.close();

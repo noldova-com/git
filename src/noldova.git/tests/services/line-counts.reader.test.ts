@@ -6,10 +6,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 import assert from "node:assert/strict";
-import { chmod, rm } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { chmod, lstat, rm, symlink } from "node:fs/promises";
 import path from "node:path";
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, test, vi } from "vitest";
 
 import { FailureCode, FileState, GitCode, StatusEntry, UntrustedSource } from "@noldova/git.protocol";
 
@@ -19,6 +20,8 @@ import { CleanUps } from "../fixtures/clean-ups.fixture.ts";
 import { DesktopFixture } from "../fixtures/desktop.fixture.ts";
 import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 import { ScriptedRunnerFixture } from "../fixtures/scripted-runner.fixture.ts";
+
+vi.mock(import("node:fs/promises"), { spy: true });
 
 describe("LineCountsReader", () => {
   let template: RepositoryFixture;
@@ -127,6 +130,22 @@ describe("LineCountsReader", () => {
 
     assert.deepEqual(counts(entries), [[null, null], [null, null], [null, null], [null, null]]);
     assert.deepEqual(commands, []);
+  });
+
+  test("counts none for a path swapped for a FIFO or a link to one after it was looked at, rather than waiting for a writer", async context => {
+    context.skip(process.platform === "win32", "Windows has no FIFO in its file system, so no open there waits for a writer.");
+    await repository.writeAsync("plain.txt", "a\n");
+    const fileStats = await lstat(path.join(repository.folder, "plain.txt"));
+    execFileSync("mkfifo", [path.join(repository.folder, "pipe")]);
+    await symlink(path.join(repository.folder, "pipe"), path.join(repository.folder, "link"));
+    vi.mocked(lstat).mockResolvedValueOnce(fileStats).mockResolvedValueOnce(fileStats);
+    cleanUps.add(() => {
+      vi.mocked(lstat).mockReset();
+    });
+
+    const entries = await reader.countAsync(repository.folder, [entry("pipe", FileState.Untracked, FileState.Untracked), entry("link", FileState.Untracked, FileState.Untracked)], []);
+
+    assert.deepEqual(counts(entries), [[null, null], [null, null]]);
   });
 
   test("fails on an untracked path it can't even ask the file system about, rather than counting none", async () => {
