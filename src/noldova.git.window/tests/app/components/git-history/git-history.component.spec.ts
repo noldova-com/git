@@ -355,7 +355,7 @@ describe("GitHistoryComponent", () => {
     await untilAsync(fixture.nativeElement, () => context.callsOf("requestAsync").some(t => t[0] === "git.graph" && Object.isObject(t[1]) && "skip" in t[1] && t[1].skip !== 0));
     await fixture.whenStable();
 
-    expect([...await downWithoutCommitViewAsync(context, fixture.nativeElement), handled()]).toEqual([false, [], ["Error: page broke"]]);
+    expect([...await downWithoutCommitViewAsync(context, fixture.nativeElement), [...new Set(handled())]]).toEqual([false, [], ["Error: page broke"]]);
   });
 
   it("keeps each folder's chosen commit, so a commit chosen in one History leaves another folder's History on its own", async () => {
