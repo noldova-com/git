@@ -80,8 +80,6 @@ export class GitWindowPart implements IWindowPart {
     context.registerView(new ViewContribution(Resources.rebasePreviewViewName, Resources.rebasePreviewLabel, Resources.rebasePreviewIcon, DockSide.Right, false,
       () => import("../components/git-rebase-preview/git-rebase-preview.component.ts").then(t => t.GitRebasePreviewComponent), ContentPadding.None,
       { hasInstances: true, defaultGroup: Resources.rebasePreviewDefaultGroup, defaultOrder: Resources.rebasePreviewDefaultOrder }));
-    context.registerDocument(new DocumentContribution(Resources.workspaceAcrossDocumentName,
-      () => import("../components/git-workspace-across-view/git-workspace-across-view.component.ts").then(t => t.GitWorkspaceAcrossViewComponent), ContentPadding.None));
     const withdrawCommitDetail: () => void = GitCommitDetails.of(context).listen();
     const withdrawConflictDetail: () => void = GitConflictDetails.of(context).listen();
     const withdrawRebasePreview: () => void = GitRebasePreviews.of(context).listen();
@@ -112,6 +110,8 @@ export class GitWindowPart implements IWindowPart {
     GitRebasing.restore();
     context.registerDocument(new DocumentContribution(Resources.workspaceDocumentName,
       () => import("../components/git-workspace/git-workspace.component.ts").then(t => t.GitWorkspaceComponent), ContentPadding.None));
+    context.registerDocument(new DocumentContribution(Resources.workspaceAcrossDocumentName,
+      () => import("../components/git-workspace-across-view/git-workspace-across-view.component.ts").then(t => t.GitWorkspaceAcrossViewComponent), ContentPadding.None));
     context.registerCommand(new CommandContribution(Resources.openWorkspaceCommand, Resources.openDashboardTitle, Resources.dashboardIcon, null,
       async (commandArguments: JsonValue) => {
         GitWorkspacePages.open(context, Object.isNull(commandArguments) ? null : JsonReader.fromValue(commandArguments).readNullableString("id"));

@@ -72,8 +72,8 @@ describe("GitWindowPart", () => {
     expect(answers).toEqual([false, true, true, false, false]);
     expect(GitAvatars.imageOf("/repository", "kim@example.com", "a1")).toBeNull();
     expect(context.calls.map(t => t.member)).toEqual(["registerView", "registerView", "registerView", "registerDocument", "registerDocument", "registerDocument", "registerView",
-      "registerView", "registerView", "registerView", "registerView", "onViewClosed", "onViewClosed", "onViewClosed", "onViewClosed", "registerCommand", "registerCommand", "registerCommand", "onViewClosed",
-      "registerDocument", "registerCommand", "registerSettingsPage", "setSettingsRows", "registerStatusBarItem",
+      "registerView", "registerView", "registerView", "onViewClosed", "onViewClosed", "onViewClosed", "registerCommand", "registerCommand", "registerCommand", "onViewClosed",
+      "registerDocument", "registerDocument", "registerCommand", "registerCommand", "registerSettingsPage", "setSettingsRows", "registerStatusBarItem",
       "registerStatusBarItem", "registerStatusBarItem", "onEvent", "provideUndo", "onEvent"]);
     expect([context.activeCallsOf("onEvent").length, context.activeCallsOf("provideUndo").length]).toEqual([0, 0]);
   });
@@ -147,7 +147,7 @@ describe("GitWindowPart", () => {
     expect([view?.name, view?.title, view?.icon, view?.defaultSide, view?.isShownByDefault, view?.padding, view?.defaultGroup, view?.defaultOrder])
       .toEqual(["git.view", "Git", "account_tree", DockSide.Right, true, ContentPadding.None, 0, 20]);
     expect(await view?.loadComponent()).toBe(GitViewComponent);
-    expect(context.callsOf("registerView")).toEqual([[view], [views[1]], [views[2]], [views[3]], [views[4]], [views[5]], [views[6]], [views[7]]]);
+    expect(context.callsOf("registerView")).toEqual([[view], [views[1]], [views[2]], [views[3]], [views[4]], [views[5]], [views[6]]]);
   });
 
   it("registers the repository view in the left dock's first group at order 20, after the Workspaces view, shown by default, with no padding, loading its component", async () => {
