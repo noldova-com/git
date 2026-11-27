@@ -28,7 +28,6 @@ export class GitCommandLogComponent {
   private readonly injector: Injector = inject(Injector);
   private readonly list: Signal<ElementRef<HTMLElement> | undefined> = viewChild<ElementRef<HTMLElement>>("list");
   private reads = 0;
-  private atEnd = true;
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly log: WritableSignal<GitCommandLog | null> = signal<GitCommandLog | null>(null);
@@ -48,16 +47,29 @@ export class GitCommandLogComponent {
     });
     effect(() => {
       this.commands();
-      untracked(() => afterNextRender(() => this.keepEnd(), { injector: this.injector }));
+      untracked(() => {
+        const list: HTMLElement | undefined = this.list()?.nativeElement;
+        const atEnd: boolean = Object.isUndefined(list) || GitCommandLogComponent.endsIn(list, list.clientHeight);
+        afterNextRender(() => this.keepEnd(atEnd), { injector: this.injector });
+      });
+    });
+    effect(onCleanup => {
+      const list: HTMLElement | undefined = this.list()?.nativeElement;
+      if (Object.isUndefined(list))
+        return;
+      let height: number = list.clientHeight;
+      const observer: ResizeObserver = new ResizeObserver(() => {
+        const atEnd: boolean = GitCommandLogComponent.endsIn(list, height);
+        height = list.clientHeight;
+        this.keepEnd(atEnd);
+      });
+      observer.observe(list);
+      onCleanup(() => observer.disconnect());
     });
     inject(DestroyRef).onDestroy(this.client.onChanged(t => {
       if (t === this.instance())
         void this.readAsync(t);
     }));
-  }
-
-  protected follow(list: HTMLElement): void {
-    this.atEnd = list.scrollTop + list.clientHeight >= list.scrollHeight - Resources.commandLogEndSlack;
   }
 
   protected timeOf(command: GitCommand): string {
@@ -72,9 +84,13 @@ export class GitCommandLogComponent {
     return Object.isNull(command.exitCode) ? "muted" : command.exitCode === 0 ? "ok" : "failure";
   }
 
-  private keepEnd(): void {
+  private static endsIn(list: HTMLElement, height: number): boolean {
+    return list.scrollTop + height >= list.scrollHeight - Resources.commandLogEndSlack;
+  }
+
+  private keepEnd(atEnd: boolean): void {
     const list: HTMLElement | undefined = this.list()?.nativeElement;
-    if (this.atEnd && !Object.isUndefined(list))
+    if (atEnd && !Object.isUndefined(list))
       list.scrollTop = list.scrollHeight;
   }
 

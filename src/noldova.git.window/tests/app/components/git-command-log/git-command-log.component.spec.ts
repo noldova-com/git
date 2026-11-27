@@ -89,7 +89,7 @@ describe("GitCommandLogComponent", () => {
     expect([element.querySelectorAll("h1, h2, header, .hint, hr").length, top, leftOf(".command .time"), new Set(lines)]).toEqual([0, 0, 0, new Set(["0px"])]);
   });
 
-  it("keeps the newest row in sight as commands arrive, and leaves the list where it is once the person has scrolled up", async () => {
+  it("keeps the newest row in sight as commands arrive, and leaves the list where it is once the person has scrolled up, before any scroll event", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     let count: number = 30;
     const logOf = (): GitCommandLog => new GitCommandLog(Array.from({ length: count }, (_, index) => new GitCommand(String(index), at, `git add -- f${index}.txt`, 0, 40)));
@@ -110,10 +110,38 @@ describe("GitCommandLogComponent", () => {
     await arriveAsync(5);
     const followed: number = gapUnderLast();
     list().scrollTop = 0;
-    list().dispatchEvent(new Event("scroll"));
     await arriveAsync(5);
 
     expect([opened, followed, list().scrollTop, rem((element.querySelector(".command")?.getBoundingClientRect().top ?? -1) - list().getBoundingClientRect().top)]).toEqual([0, 0, 0, 0]);
+  });
+
+  it("keeps the newest row in sight when the list shrinks at its end, and leaves a list scrolled up where it is", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    const log: GitCommandLog = new GitCommandLog(Array.from({ length: 30 }, (_, index) => new GitCommand(String(index), at, `git add -- f${index}.txt`, 0, 40)));
+    GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.commandLog": log.toJson() });
+    const { element } = mount(context);
+    element.style.height = "10rem";
+    const list = (): HTMLElement => element.querySelector<HTMLElement>(".commands") ?? element;
+    const gapUnderLast = (): number => rem(list().getBoundingClientRect().bottom - (element.querySelector(".command:last-child")?.getBoundingClientRect().bottom ?? 0));
+    const resizeAsync = async (height: string): Promise<void> => {
+      const before: number = list().clientHeight;
+      let seen: boolean = false;
+      const observer: ResizeObserver = new ResizeObserver(() => {
+        seen = list().clientHeight !== before;
+      });
+      observer.observe(list());
+      element.style.height = height;
+      await until(() => seen);
+      observer.disconnect();
+    };
+    await until(() => element.querySelectorAll(".command").length === 30);
+    await Wait.drainedAsync();
+    await resizeAsync("6rem");
+    const shrunk: number = gapUnderLast();
+    list().scrollTop = 0;
+    await resizeAsync("5rem");
+
+    expect([shrunk, list().scrollTop]).toEqual([0, 0]);
   });
 
   it("says no command ran yet, and reads the log again each time the repository changes", async () => {
