@@ -17,6 +17,7 @@ export class Resources {
   public static readonly picksCap: number = 200;
   public static readonly unknownAccountMessage: string = "This GitHub account isn't kept on this computer any more.";
   public static readonly keptAccountsUnreadable: string = "The GitHub accounts kept on this computer couldn't be read; only the first account was restored.";
+  public static readonly accountAlreadyKept: string = "An added GitHub account signed in as an account already kept here, so its token was forgotten and it ended signed out as already kept.";
   public static readonly accountsNotKept: string = "The GitHub accounts couldn't be kept on this computer; added accounts and chosen accounts last until the app closes.";
   public static readonly accessSignedOutReason: string = "Sign in to GitHub in Settings, GitHub.";
   public static readonly accessUnreadableReason: string = "The GitHub sign-in kept on this computer couldn't be read; sign in again in Settings, GitHub.";
@@ -180,6 +181,7 @@ export class Resources {
   public static readonly createToolDeadline: number = 60_000;
   public static readonly createToolMaximumDeadline: number = 120_000;
   public static readonly branchLabel: string = "Branch";
+  public static readonly accountLabel: string = "GitHub account";
   public static readonly titleLabel: string = "Title";
   public static readonly draftLabel: string = "Draft";
   public static readonly bodyLabel: string = "Body";

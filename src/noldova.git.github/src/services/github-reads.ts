@@ -8,6 +8,7 @@
 
 import type { JsonReader } from "@noldova/context.json";
 import { FailureCode } from "@noldova/desktop.protocol";
+import { MethodFailureException } from "@noldova/desktop.runtime";
 import { type AuthorQuery, BranchPullRequest, type BranchQuery, CheckState, type CommitQuery, HostBuild, HostChanges, HostCheck, HostComment, HostCommitComments, HostItem,
   HostPerson, HostPullRequest, HostPullRequestList, HostPullRequestRow, HostPullRequestThreads, HostReference, HostReviewer, HostReviewRequest, HostReviewRequestList, HostThread,
   type PullRequestDraft, ReferenceKind, ReferenceState, type RepositoryQuery, ReviewDecision, ThreadStatus } from "@noldova/git.hosting.protocol";
@@ -101,8 +102,14 @@ export class GitHubReads {
       return HostReviewRequestList.signedOut();
     if (query.host !== Resources.host || repository === null)
       return new HostReviewRequestList([], false);
-    const searches: readonly AccountSearch[] = await Promise.all(accounts.map(async t => new AccountSearch(t, await this.searchReviewRequestsAsync(t.token))));
+    const settled: readonly PromiseSettledResult<AccountSearch>[] = await Promise.allSettled(accounts.map(async t =>
+      new AccountSearch(t, await this.searchReviewRequestsAsync(t.token))));
     signal.throwIfAborted();
+    const searches: readonly AccountSearch[] = settled.flatMap(t => t.status === "fulfilled" ? [t.value] : []);
+    const failures: readonly unknown[] = settled.flatMap((t): unknown[] => t.status === "rejected" ? [t.reason] : []);
+    const unexpected: readonly unknown[] = failures.filter(t => !(t instanceof MethodFailureException));
+    if (unexpected.length > 0 || searches.length === 0)
+      throw unexpected[0] ?? failures[0];
     const held: readonly AccountSearch[] = searches.filter(t => this.tokens.holds(t.account.token));
     if (held.length === 0)
       return HostReviewRequestList.signedOut();
@@ -112,7 +119,7 @@ export class GitHubReads {
       .map(t => accounts.length === 1 ? t : new HostReviewRequest(t.reference, t.title, t.url, t.isDraft, t.createdAt, account.login)))
       .toSorted((a, b) => b.createdAt - a.createdAt);
     return new HostReviewRequestList(rows.slice(0, HostReviewRequestList.maximumRows),
-      rows.length > HostReviewRequestList.maximumRows || held.some(t => t.answer.isCut));
+      rows.length > HostReviewRequestList.maximumRows || held.some(t => t.answer.isCut) || failures.length > 0);
   }
 
   public async readCommitCommentsAsync(query: CommitQuery, signal: AbortSignal): Promise<HostCommitComments> {
@@ -192,9 +199,9 @@ export class GitHubReads {
     return this.tokens.holds(token) ? threads : none;
   }
 
-  public async createPullRequestAsync(draft: PullRequestDraft, signal: AbortSignal): Promise<HostItem> {
-    const token: string | null = await this.tokens.tokenForAsync(draft.host, draft.path, signal);
-    if (token === null)
+  public async createPullRequestAsync(draft: PullRequestDraft, signal: AbortSignal, chosen: string | null = null): Promise<HostItem> {
+    const token: string | null = chosen ?? await this.tokens.tokenForAsync(draft.host, draft.path, signal);
+    if (token === null || !this.tokens.holds(token))
       throw GitHubApi.failure(FailureCode.Unauthorized, Resources.signedOutMessage);
     const repository: GitHubRepository | null = GitHubRepository.parse(draft.path);
     if (draft.host !== Resources.host || repository === null)

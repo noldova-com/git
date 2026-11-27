@@ -20,6 +20,7 @@ import { GitHubApi } from "../../src/services/github-api.ts";
 import { GitHubAvatars } from "../../src/services/github-avatars.ts";
 import { GitHubDeviceFlow } from "../../src/services/github-device-flow.ts";
 import { FakeGitHub, KeptSecrets, linesOf } from "../fixtures/fake-github.fixture.ts";
+import { MockClock } from "../fixtures/mock-clock.fixture.ts";
 
 const REPOSITORY: string = "octocat/hello-world";
 const grant = { device_code: "3584d83530557fdd1f46af8289938c8ef79f9dc5", user_code: "WDJB-MJHT", verification_uri: "https://github.com/login/device", expires_in: 900, interval: 5 };
@@ -60,6 +61,10 @@ class Rig {
     });
   }
 
+  public untilAsync(change: string): Promise<void> {
+    return this.changes.includes(change) ? Promise.resolve() : this.changedAsync(this.changes.length + 1).then(() => this.untilAsync(change));
+  }
+
   public index(): unknown {
     const value = this.store.values.get("git-github.accounts");
     return value === undefined ? undefined : JSON.parse(value);
@@ -86,6 +91,7 @@ class Rig {
 
 describe("GitHubAccounts", () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -228,6 +234,70 @@ describe("GitHubAccounts", () => {
     assert.deepEqual(rig.index(), { accounts: [], picks: [] });
   });
 
+  it("ends an added account kept with the first account's login, whatever its case, as already kept, and lets it go once signed out", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat", "OctoCat"]);
+    rig.github.answer(userOf("octocat"), userOf("octocat"));
+
+    await rig.accounts.restoreAsync();
+    await rig.untilAsync("2 SignedOut");
+    await rig.savedAsync();
+    const kept = [rig.accounts.list.accounts.map(t => [t.id, t.signIn.failure]), rig.store.values.has("git-github.account2"), rig.store.values.has("git-github.signIn"), rig.index()];
+    await rig.accounts.signOutAsync(2);
+
+    assert.deepEqual(kept, [[[1, null], [2, SignInFailure.AlreadyKept]], false, true, { accounts: [], picks: [] }]);
+    assert.deepEqual(rig.accounts.list.accounts.map(t => t.id), [1]);
+    assert.ok(linesOf(rig.log).includes("An added GitHub account signed in as an account already kept here, so its token was forgotten and it ended signed out as already kept."));
+  });
+
+  it("ends an added account that signs in as an account already kept as already kept, and never answers it signed in", async () => {
+    MockClock.use(1_800_000_000_000);
+    const rig = new Rig();
+    rig.keep(["octocat"]);
+    await rig.restoreAsync(["octocat"]);
+    rig.github.answer(FakeGitHub.json(grant), FakeGitHub.json({ access_token: "gho_again", token_type: "bearer", scope: "repo" }), userOf("octocat"));
+
+    await rig.accounts.addAsync();
+    await vi.advanceTimersByTimeAsync(5_000);
+    await rig.untilAsync("2 SignedOut");
+
+    assert.deepEqual([rig.logins(), rig.accounts.list.accounts.map(t => t.signIn.failure), rig.accounts.holds("gho_again"), rig.store.values.has("git-github.account2")],
+      [["octocat", null], [null, SignInFailure.AlreadyKept], false, false]);
+    assert.ok(!rig.changes.includes("2 SignedIn"));
+  });
+
+  it("keeps the first account when it signs in as an added account's login, and ends the added one as already kept", async () => {
+    MockClock.use(1_800_000_000_000);
+    const rig = new Rig();
+    rig.store.values.set("git-github.account2", keptOf("octocat"));
+    rig.store.values.set("git-github.accounts", JSON.stringify({ accounts: [{ id: 2, host: "github.com", login: "octocat" }], picks: [] }));
+    rig.github.answer(userOf("octocat"), FakeGitHub.json(grant), FakeGitHub.json({ access_token: "gho_first", token_type: "bearer", scope: "repo" }), userOf("octocat"));
+    await rig.accounts.restoreAsync();
+    await rig.untilAsync("2 SignedIn");
+    await rig.github.askedAsync(1);
+
+    await rig.accounts.first.startAsync();
+    await vi.advanceTimersByTimeAsync(5_000);
+    await rig.untilAsync("2 SignedOut");
+
+    assert.deepEqual([rig.logins(), rig.accounts.signedIn.map(t => [t.id, t.token]), rig.store.values.has("git-github.account2")], [["octocat", null], [[1, "gho_first"]], false]);
+    assert.ok(rig.changes.includes("1 SignedIn"));
+  });
+
+  it("logs a duplicate account whose secret removal breaks, and still ends it as already kept", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat", "octocat"]);
+    rig.store.removeFailure = new RangeError("Unexpected.");
+    rig.github.answer(userOf("octocat"), userOf("octocat"));
+
+    await rig.accounts.restoreAsync();
+    await rig.untilAsync("2 SignedOut");
+    await rig.savedAsync();
+
+    assert.deepEqual(rig.accounts.list.accounts.map(t => [t.id, t.signIn.failure]), [[1, null], [2, SignInFailure.AlreadyKept]]);
+    assert.ok(linesOf(rig.log).includes("The GitHub sign-in stopped on an unexpected failure: RangeError: Unexpected."));
+  });
+
   it("keeps a first account that signs out in the list, signed out, while an added one stays signed in", async () => {
     const rig = new Rig();
     rig.keep(["octocat", "hubot"]);
@@ -342,17 +412,47 @@ describe("GitHubAccounts", () => {
     assert.deepEqual([answers, rig.github.requests.length], [[1, 1, 1], 2]);
   });
 
-  it("takes the first signed-in account without keeping the answer when GitHub fails the check, and asks again next time", async () => {
+  it("takes the first signed-in account without keeping the answer when GitHub can't be reached during the check, and asks again next time", async () => {
     const rig = new Rig();
     rig.keep(["octocat", "hubot"]);
     await rig.restoreAsync(["octocat", "hubot"]);
-    rig.github.answer(FakeGitHub.json({ message: "Server Error" }, 500), missing(), repository());
+    rig.github.fail(new TypeError("fetch failed"));
+    rig.github.answer(missing(), repository());
     const signal = new AbortController().signal;
 
     const failed = await rig.accounts.accountForAsync("github.com", REPOSITORY, signal);
     const next = await rig.accounts.accountForAsync("github.com", REPOSITORY, signal);
 
     assert.deepEqual([failed, next, rig.github.requests.length], [1, 2, 3]);
+  });
+
+  it.each([[403, "Resource protected by organization SAML enforcement"], [500, "Server Error"]])(
+    "goes on to the next account when GitHub answers the first account's check with %i, and asks again next time when none could read it", async (status, message) => {
+      const rig = new Rig();
+      rig.keep(["octocat", "hubot"]);
+      await rig.restoreAsync(["octocat", "hubot"]);
+      rig.github.answer(FakeGitHub.json({ message }, status), repository(), FakeGitHub.json({ message }, status), missing(), missing(), missing());
+      const signal = new AbortController().signal;
+
+      const reached = await rig.accounts.accountForAsync("github.com", "octocat/other", signal);
+      const fallback = await rig.accounts.accountForAsync("github.com", REPOSITORY, signal);
+      const again = await rig.accounts.accountForAsync("github.com", REPOSITORY, signal);
+
+      assert.deepEqual([reached, fallback, again, rig.github.requests.length], [2, 1, 1, 6]);
+    });
+
+  it("matches a pick with the repository's host and path whatever their case, as GitHub does, and replaces it whatever case picked it", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat", "hubot"], [new AccountPick("github.com", "Octocat/Hello-World", 2)]);
+    await rig.restoreAsync(["octocat", "hubot"]);
+    const signal = new AbortController().signal;
+
+    const kept = await rig.accounts.accountForAsync("GitHub.com", REPOSITORY, signal);
+    await rig.accounts.pickAsync(new AccountPick("github.com", "OCTOCAT/hello-world", 1), signal);
+    await rig.savedAsync();
+
+    assert.deepEqual([kept, await rig.accounts.accountForAsync("github.com", REPOSITORY, signal), rig.github.requests.length], [2, 1, 0]);
+    assert.deepEqual((rig.index() as { picks: unknown[] }).picks, [{ host: "github.com", path: "OCTOCAT/hello-world", account: 1 }]);
   });
 
   it("reports a token GitHub refuses during the check to its account, and goes on to the next", async () => {

@@ -14,6 +14,7 @@ import { GitHubNames } from "@noldova/git.github.protocol";
 import { GitNames, type GitRepositories } from "@noldova/git.protocol";
 
 import type { IGitHubTokens } from "../interfaces/i-github-tokens.ts";
+import type { SignedInAccount } from "../models/signed-in-account.ts";
 import { Resources } from "../resources.ts";
 import type { GitHubReads } from "../services/github-reads.ts";
 import { BoundRepository } from "./bound-repository.ts";
@@ -58,23 +59,27 @@ export class GitHubPrCreateTool implements IToolHandler {
   public async handleAsync(call: ToolCall): Promise<ToolResult> {
     const repository: BoundRepository = await BoundRepository.readAsync(call, this.repositories);
     const draft: PullRequestDraft = GitHubPrCreateTool.draftOf(call, repository);
-    if (this.tokens.signedIn.length === 0)
+    const token: string | null = await this.tokens.tokenForAsync(draft.host, draft.path, call.signal);
+    const account: SignedInAccount | undefined = this.tokens.signedIn.find(t => t.token === token);
+    if (account === undefined)
       throw GitHubToolFailures.signedOut();
     const request: IPermissionRequest = {
       action: GitHubNames.createPullRequestMethod,
       subject: Resources.formatDraftSubject(draft.host, draft.path),
       title: Resources.formatCreateRequestTitle(draft.path, draft.isDraft),
-      details: GitHubPrCreateTool.detailsOf(draft),
+      details: GitHubPrCreateTool.detailsOf(draft, account.login),
       risk: ToolRisk.High,
       options: [PermissionOption.AllowOnce, PermissionOption.Deny]
     };
     const outcome: PermissionOutcome = await call.requestPermissionAsync(request);
     if (!outcome.isAllowed)
       throw GitHubToolFailures.notGranted(outcome.decision);
+    if (!this.tokens.holds(account.token))
+      throw GitHubToolFailures.signedOut();
     call.markSending();
     let created: HostItem;
     try {
-      created = await this.reads.createPullRequestAsync(draft, call.signal);
+      created = await this.reads.createPullRequestAsync(draft, call.signal, account.token);
     } catch (error) {
       throw GitHubToolFailures.fromGitHub(error);
     }
@@ -94,8 +99,9 @@ export class GitHubPrCreateTool implements IToolHandler {
     }
   }
 
-  private static detailsOf(draft: PullRequestDraft): readonly IPermissionDetail[] {
+  private static detailsOf(draft: PullRequestDraft, login: string): readonly IPermissionDetail[] {
     const details: IPermissionDetail[] = [
+      { label: Resources.accountLabel, kind: PermissionDetailKind.Text, value: login },
       { label: Resources.branchLabel, kind: PermissionDetailKind.Code, value: Resources.formatBranches(draft.headBranch, draft.baseBranch) },
       { label: Resources.titleLabel, kind: PermissionDetailKind.AgentText, value: draft.title },
       { label: Resources.draftLabel, kind: PermissionDetailKind.Text, value: draft.isDraft ? Resources.yes : Resources.no }

@@ -274,7 +274,8 @@ export class Resources {
     [SignInFailure.Unreachable]: "Azure DevOps couldn't be reached.",
     [SignInFailure.Refused]: "Azure DevOps didn't accept the sign-in.",
     [SignInFailure.Unkept]: "This computer couldn't keep the sign-in.",
-    [SignInFailure.Unforgotten]: "This computer couldn't remove the sign-in."
+    [SignInFailure.Unforgotten]: "This computer couldn't remove the sign-in.",
+    [SignInFailure.AlreadyKept]: "This account is already signed in."
   };
   public static readonly failureHints: Readonly<Record<SignInFailure, string>> = {
     [SignInFailure.Expired]: "Sign in again.",
@@ -283,7 +284,8 @@ export class Resources {
     [SignInFailure.Unreachable]: "Check the connection, then sign in again.",
     [SignInFailure.Refused]: "Check that the account belongs to this organization, or that the token was copied whole and hasn't expired, then sign in again.",
     [SignInFailure.Unkept]: "Sign in again; the app's log has the details.",
-    [SignInFailure.Unforgotten]: "The app may sign in with it when it next starts; the app's log has the details."
+    [SignInFailure.Unforgotten]: "The app may sign in with it when it next starts; the app's log has the details.",
+    [SignInFailure.AlreadyKept]: "Sign this entry out, or sign in again as another account."
   };
 
   public static formatYourVote(label: string): string {

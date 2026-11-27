@@ -186,17 +186,31 @@ export class FakeToken extends Fake<IHeldToken> implements IHeldToken {
     return this.propertyOf("token", this.answers.token);
   }
 
+  private readonly chosen: Map<string, SignedInAccount> = new Map();
+  private readonly gone: Set<string> = new Set();
+
+  public readonly asked: string[] = [];
+
   public get signedIn(): readonly SignedInAccount[] {
     const token: string | null = this.token;
-    return token === null ? [] : [new SignedInAccount(1, "octocat", token)];
+    return [...token === null ? [] : [new SignedInAccount(1, "octocat", token)], ...new Set(this.chosen.values())].filter(t => !this.gone.has(t.token));
   }
 
-  public tokenForAsync(): Promise<string | null> {
-    return Promise.resolve(this.token);
+  public choose(host: string, path: string, account: SignedInAccount): void {
+    this.chosen.set(`${host} ${path}`, account);
+  }
+
+  public signOut(token: string): void {
+    this.gone.add(token);
+  }
+
+  public tokenForAsync(host: string, path: string): Promise<string | null> {
+    this.asked.push(`${host} ${path}`);
+    return Promise.resolve(this.chosen.get(`${host} ${path}`)?.token ?? this.token);
   }
 
   public holds(token: string): boolean {
-    return this.token === token;
+    return this.signedIn.some(t => t.token === token);
   }
 
   public get refused(): readonly string[] {

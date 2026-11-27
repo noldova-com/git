@@ -86,7 +86,8 @@ describe("The hosting protocol package's API", () => {
     ]);
     assert.equal("ArgumentException" in api, false);
     assert.deepEqual(api.SignInState, { SignedOut: "SignedOut", Waiting: "Waiting", SignedIn: "SignedIn" });
-    assert.deepEqual(api.SignInFailure, { Expired: "Expired", Denied: "Denied", Revoked: "Revoked", Unreachable: "Unreachable", Refused: "Refused", Unkept: "Unkept", Unforgotten: "Unforgotten" });
+    assert.deepEqual(api.SignInFailure, { Expired: "Expired", Denied: "Denied", Revoked: "Revoked", Unreachable: "Unreachable", Refused: "Refused", Unkept: "Unkept",
+      Unforgotten: "Unforgotten", AlreadyKept: "AlreadyKept" });
     assert.deepEqual(api.ReferenceKind, { PullRequest: "PullRequest", Issue: "Issue" });
     assert.deepEqual(api.ReferenceState, { Open: "Open", Draft: "Draft", Merged: "Merged", Closed: "Closed", ClosedDone: "ClosedDone", ClosedNotPlanned: "ClosedNotPlanned" });
     assert.deepEqual(api.CheckState, { Queued: "Queued", Running: "Running", Succeeded: "Succeeded", Failed: "Failed", Neutral: "Neutral" });

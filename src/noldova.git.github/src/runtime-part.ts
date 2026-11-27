@@ -10,7 +10,7 @@ import { JsonException } from "@noldova/context.json";
 import { Failure, FailureCode, ShellClients } from "@noldova/desktop.protocol";
 import { type EventChannel, type IRuntimePart, type IRuntimePartContext, MethodFailureException, type RequestContext } from "@noldova/desktop.runtime";
 import { AccountPick, AccountQuery, AuthorQuery, BranchQuery, CommitQuery, HostAvatar, HostingProtocolException, HostReference, PullRequestDraft,
-  RepositoryAccount, RepositoryQuery, SignInState } from "@noldova/git.hosting.protocol";
+  RepositoryAccount, RepositoryQuery } from "@noldova/git.hosting.protocol";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { GitNames, GitRepositories } from "@noldova/git.protocol";
 
@@ -42,8 +42,7 @@ export class RuntimePart implements IRuntimePart {
     const api = new GitHubApi(fetcher);
     const avatars = new GitHubAvatars(fetcher, context.log);
     const accounts: GitHubAccounts = new GitHubAccounts(new GitHubDeviceFlow(fetcher, avatars), context.secrets, context.appWindows, context.log, api, (id, t) => {
-      if (t.state !== SignInState.SignedIn)
-        api.clear();
+      api.keepOnly(u => accounts.holds(u));
       if (id === RuntimePart.firstAccount)
         changed.publish(t.toJson());
       accountsChanged.publish(accounts.list.toJson());

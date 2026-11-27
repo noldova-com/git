@@ -137,6 +137,11 @@ export class GitHubSignIn {
     return this.signIn;
   }
 
+  public async alreadyKeptAsync(): Promise<void> {
+    if (this.signIn.state === SignInState.SignedIn)
+      await this.forgetAsync(SignInFailure.AlreadyKept);
+  }
+
   public async refusedAsync(token: string): Promise<void> {
     if (this.heldToken === token)
       await this.forgetAsync(SignInFailure.Revoked);

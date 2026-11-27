@@ -88,6 +88,11 @@ export declare const SignInFailure: {
    * The person signed out, but the token couldn't be removed from the module's secrets on this computer, so a later start may restore it.
    */
   readonly Unforgotten: "Unforgotten";
+
+  /**
+   * An added account signed in as an account the module already keeps, so its token was forgotten and the account isn't added twice.
+   */
+  readonly AlreadyKept: "AlreadyKept";
 };
 
 /**

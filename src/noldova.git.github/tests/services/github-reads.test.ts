@@ -609,6 +609,64 @@ describe("GitHubReads", () => {
     assert.deepEqual([list.rows.length, list.rows[0]?.reference.number, list.rows.at(-1)?.reference.number, list.hasMore], [half, 2 * half, half + 1, true]);
   });
 
+  it("merges the searches that answered, saying there may be more, when another account's search fails, and fails only when every search fails", async () => {
+    const github = new FakeGitHub();
+    const query = new RepositoryQuery("github.com", "octocat/hello-world");
+    const readsOf = (): GitHubReads => new GitHubReads(new GitHubApi(github.fetch), new TwoAccounts(), new GitHubAvatars(github.fetch, new FakeModuleLog()));
+    github.answer(FakeGitHub.json({ message: "Server Error" }, 500), reviewSearch([reviewItem("octocat/hello-world", 9, "Speed up the build", created)]),
+      FakeGitHub.json({ message: "Server Error" }, 500), FakeGitHub.json({ message: "Server Error" }, 502));
+
+    const partial = await readsOf().readReviewRequestsAsync(query, signal);
+    const failed = await readsOf().readReviewRequestsAsync(query, signal).catch((error: unknown) => error);
+
+    assert.deepEqual([partial.rows.map(t => [t.reference.number, t.account]), partial.hasMore], [[[9, "hubot"]], true]);
+    assert.ok(failed instanceof MethodFailureException);
+    assert.deepEqual([failed.failure.code, failed.failure.message], [FailureCode.Unavailable, "GitHub refused the request (500)."]);
+  });
+
+  it("passes on a search failure that isn't GitHub's, even when another account's search answered", async () => {
+    const github = new FakeGitHub();
+    const unexpected = new RangeError("Unexpected.");
+    github.fail(unexpected);
+    github.answer(reviewSearch([]));
+    const reads = new GitHubReads(new GitHubApi(github.fetch), new TwoAccounts(), new GitHubAvatars(github.fetch, new FakeModuleLog()));
+
+    await assert.rejects(reads.readReviewRequestsAsync(new RepositoryQuery("github.com", "octocat/hello-world"), signal), unexpected);
+  });
+
+  it("reads each repository with the token chosen for it, naming the repository by its host and path", async () => {
+    const rig = new Rig();
+    rig.signIn.choose("github.com", "octocat/hello-world", new SignedInAccount(2, "hubot", "gho_hubot"));
+    rig.github.answer(...Array.from({ length: 12 }, () => FakeGitHub.json({ message: "Not Found" }, 404)));
+    const repository = new RepositoryQuery("github.com", "octocat/hello-world");
+
+    await rig.reads.readPullRequestsAsync(repository, signal);
+    await rig.reads.readBranchPullRequestAsync(new BranchQuery("github.com", "octocat/hello-world", "fix-bug", head), signal);
+    await rig.reads.readCommitPullRequestAsync(commitQuery, signal);
+    await rig.reads.readCommitCommentsAsync(commitQuery, signal);
+    await rig.reads.readReferenceAsync(issueReference, signal);
+    await rig.reads.readPullRequestAsync(pullReference, signal);
+    await rig.reads.readPullRequestThreadsAsync(pullReference, signal);
+    await rig.reads.readAuthorAvatarAsync(new AuthorQuery("github.com", "octocat/hello-world", "mona@example.com", head), signal);
+    const created = await rig.reads.createPullRequestAsync(new PullRequestDraft("github.com", "octocat/hello-world", "fix-bug", "main", "Fix the bug", "", false), signal)
+      .catch((error: unknown) => error);
+
+    assert.ok(created instanceof MethodFailureException);
+    assert.deepEqual([...new Set(rig.signIn.asked)], ["github.com octocat/hello-world"]);
+    assert.deepEqual([...new Set(rig.github.requests.map(t => t.header("Authorization")))], ["Bearer gho_hubot"]);
+    assert.ok(rig.github.requests.length >= 9);
+  });
+
+  it("opens a pull request with the token it is given, and fails as signed out when no account holds it any more", async () => {
+    const rig = new Rig();
+    const draftOf = new PullRequestDraft("github.com", "octocat/hello-world", "fix-bug", "main", "Fix the bug", "", false);
+
+    const failed = await rig.reads.createPullRequestAsync(draftOf, signal, "gho_gone").catch((error: unknown) => error);
+
+    assert.ok(failed instanceof MethodFailureException);
+    assert.deepEqual([failed.failure.code, rig.github.requests.length], [FailureCode.Unauthorized, 0]);
+  });
+
   it("searches the account's review requests once and shares them out by repository, ignoring case, the newest first", async () => {
     const rig = new Rig();
     rig.github.answer(reviewSearch([reviewItem("octocat/hello-world", 7, "Tidy the README", "2026-11-18T08:00:00Z"),

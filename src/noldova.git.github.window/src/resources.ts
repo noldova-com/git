@@ -116,7 +116,8 @@ export class Resources {
     [SignInFailure.Unreachable]: "GitHub couldn't be reached.",
     [SignInFailure.Refused]: "GitHub's answer couldn't be used.",
     [SignInFailure.Unkept]: "This computer couldn't keep the sign-in.",
-    [SignInFailure.Unforgotten]: "This computer couldn't remove the sign-in."
+    [SignInFailure.Unforgotten]: "This computer couldn't remove the sign-in.",
+    [SignInFailure.AlreadyKept]: "This GitHub account is already in the list."
   };
   public static readonly failureHints: Readonly<Record<SignInFailure, string>> = {
     [SignInFailure.Expired]: "Sign in again for a new code.",
@@ -125,7 +126,8 @@ export class Resources {
     [SignInFailure.Unreachable]: "Check the connection, then sign in again.",
     [SignInFailure.Refused]: "Sign in again; the app's log has the details.",
     [SignInFailure.Unkept]: "Sign in again; the app's log has the details.",
-    [SignInFailure.Unforgotten]: "The app may sign in with it when it next starts; the app's log has the details."
+    [SignInFailure.Unforgotten]: "The app may sign in with it when it next starts; the app's log has the details.",
+    [SignInFailure.AlreadyKept]: "Sign this entry out, or sign in again as another account."
   };
 
   public static formatAvatarKey(home: string, email: string): string {

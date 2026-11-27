@@ -81,7 +81,7 @@ export class GitHubAccounts implements IGitHubTokens {
     this.picks = kept?.picks ?? [];
     await Promise.all([...this.entries.values()].map(t => t.restoreAsync()));
     for (const [id, signIn] of this.entries) {
-      if (id !== GitHubAccounts.firstId && signIn.current.state === SignInState.SignedOut && !signIn.keptUnreadable)
+      if (id !== GitHubAccounts.firstId && signIn.current.state === SignInState.SignedOut && signIn.current.failure === null && !signIn.keptUnreadable)
         this.leave(id);
     }
     this.save();
@@ -113,7 +113,7 @@ export class GitHubAccounts implements IGitHubTokens {
 
   public async pickAsync(pick: AccountPick, signal: AbortSignal): Promise<number | null> {
     this.signInOf(pick.account);
-    const others: readonly AccountPick[] = this.picks.filter(t => t.host !== pick.host || t.path !== pick.path);
+    const others: readonly AccountPick[] = this.picks.filter(t => !GitHubAccounts.isSameRepository(t, pick.host, pick.path));
     this.picks = [...others, pick].slice(-Resources.picksCap);
     this.found.delete(GitHubAccounts.keyOf(pick.host, pick.path));
     this.save();
@@ -125,7 +125,7 @@ export class GitHubAccounts implements IGitHubTokens {
     const first: SignedInAccount | undefined = signedIn[0];
     if (first === undefined)
       return null;
-    const pick: number | undefined = this.picks.find(t => t.host === host && t.path === path)?.account;
+    const pick: number | undefined = this.picks.find(t => GitHubAccounts.isSameRepository(t, host, path))?.account;
     if (pick !== undefined && signedIn.some(t => t.id === pick))
       return pick;
     if (signedIn.length === 1 || host !== Resources.host)
@@ -169,6 +169,12 @@ export class GitHubAccounts implements IGitHubTokens {
   }
 
   private onChanged(id: number, signIn: HostSignIn): void {
+    const twin: number | undefined = this.twinOf(id, signIn);
+    if (twin !== undefined) {
+      this.drop(twin);
+      if (twin === id)
+        return;
+    }
     if (id !== GitHubAccounts.firstId && signIn.state === SignInState.SignedOut && signIn.failure === null)
       this.leave(id);
     this.publish(id, signIn);
@@ -178,6 +184,20 @@ export class GitHubAccounts implements IGitHubTokens {
     this.found.clear();
     this.save();
     this.changed(id, signIn);
+  }
+
+  private twinOf(id: number, signIn: HostSignIn): number | undefined {
+    const login: string | null = GitHubAccounts.loginOf(signIn);
+    const other: number | undefined = login === null ? undefined : [...this.entries.keys()].find(t => t !== id && GitHubAccounts.loginOf(this.signInOf(t).current) === login);
+    if (other === undefined)
+      return undefined;
+    return id === GitHubAccounts.firstId ? other : id;
+  }
+
+  private drop(id: number): void {
+    const signIn: GitHubSignIn = this.signInOf(id);
+    this.log.write(Resources.accountAlreadyKept);
+    Promise.resolve().then(() => signIn.alreadyKeptAsync()).catch((error: unknown) => this.log.write(Resources.formatSignInBroken(String(error))));
   }
 
   private leave(id: number): void {
@@ -190,19 +210,24 @@ export class GitHubAccounts implements IGitHubTokens {
     const repository: GitHubRepository | null = GitHubRepository.parse(path);
     if (repository === null)
       return first;
+    let isSure: boolean = true;
     for (const account of signedIn) {
       try {
         if (await this.api.getAsync(repository.path, account.token, new AbortController().signal) !== null)
           return account.id;
       }
       catch (error) {
-        if (!GitHubApi.isUnauthorized(error)) {
+        if (!GitHubApi.isAnswered(error)) {
           this.found.delete(key);
           return first;
         }
-        await this.refusedAsync(account.token);
+        isSure = false;
+        if (GitHubApi.isUnauthorized(error))
+          await this.refusedAsync(account.token);
       }
     }
+    if (!isSure)
+      this.found.delete(key);
     return first;
   }
 
@@ -255,7 +280,15 @@ export class GitHubAccounts implements IGitHubTokens {
       this.log.write(error instanceof MethodFailureException ? Resources.accountsNotKept : Resources.formatSignInBroken(String(error))));
   }
 
+  private static loginOf(signIn: HostSignIn): string | null {
+    return signIn.account === null ? null : signIn.account.login.toLowerCase();
+  }
+
   private static keyOf(host: string, path: string): string {
-    return Resources.formatDraftSubject(host, path);
+    return Resources.formatDraftSubject(host, path).toLowerCase();
+  }
+
+  private static isSameRepository(pick: AccountPick, host: string, path: string): boolean {
+    return pick.host.toLowerCase() === host.toLowerCase() && pick.path.toLowerCase() === path.toLowerCase();
   }
 }
