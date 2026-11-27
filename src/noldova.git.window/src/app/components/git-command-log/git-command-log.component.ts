@@ -28,6 +28,7 @@ export class GitCommandLogComponent {
   private readonly injector: Injector = inject(Injector);
   private readonly list: Signal<ElementRef<HTMLElement> | undefined> = viewChild<ElementRef<HTMLElement>>("list");
   private reads = 0;
+  private height = 0;
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly log: WritableSignal<GitCommandLog | null> = signal<GitCommandLog | null>(null);
@@ -57,12 +58,8 @@ export class GitCommandLogComponent {
       const list: HTMLElement | undefined = this.list()?.nativeElement;
       if (Object.isUndefined(list))
         return;
-      let height: number = list.clientHeight;
-      const observer: ResizeObserver = new ResizeObserver(() => {
-        const atEnd: boolean = GitCommandLogComponent.endsIn(list, height);
-        height = list.clientHeight;
-        this.keepEnd(atEnd);
-      });
+      this.height = list.clientHeight;
+      const observer: ResizeObserver = new ResizeObserver(() => this.keepEnd(GitCommandLogComponent.endsIn(list, this.height)));
       observer.observe(list);
       onCleanup(() => observer.disconnect());
     });
@@ -90,8 +87,11 @@ export class GitCommandLogComponent {
 
   private keepEnd(atEnd: boolean): void {
     const list: HTMLElement | undefined = this.list()?.nativeElement;
-    if (atEnd && !Object.isUndefined(list))
+    if (Object.isUndefined(list))
+      return;
+    if (atEnd)
       list.scrollTop = list.scrollHeight;
+    this.height = list.clientHeight;
   }
 
   private async watchAsync(folder: string): Promise<void> {
