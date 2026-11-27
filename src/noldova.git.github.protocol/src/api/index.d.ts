@@ -127,6 +127,14 @@ export declare class GitHubNames {
   public static readonly readPullRequestThreadsMethod: string;
 
   /**
+   * `git-github.readCommitPullRequest`: takes a `CommitQuery` as JSON and answers the pull request that brought the commit in as `BranchPullRequest`
+   * JSON, as the branch read does: of the pull requests GitHub associates with the commit, one page of 100, the one merged into the repository's
+   * default branch, else the first GitHub lists, with the check runs on its head and its review decision. Signed out, for a repository not on
+   * `github.com`, or when no pull request holds the commit, no pull request.
+   */
+  public static readonly readCommitPullRequestMethod: string;
+
+  /**
    * `git-github.access`: the service the GitHub runtime part publishes as an `IGitHubAccess`, through which another module's runtime part,
    * such as an app's for GitHub's own MCP server, reads the signed-in token.
    */

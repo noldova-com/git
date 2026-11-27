@@ -28,10 +28,11 @@ describe("GitHubNames", () => {
       [GitHubNames.readSignInMethod, GitHubNames.startSignInMethod, GitHubNames.cancelSignInMethod, GitHubNames.signOutMethod,
         GitHubNames.readReferenceMethod, GitHubNames.readBranchPullRequestMethod, GitHubNames.createPullRequestMethod,
         GitHubNames.readAuthorAvatarMethod, GitHubNames.readPullRequestsMethod, GitHubNames.readReviewRequestsMethod, GitHubNames.readCommitCommentsMethod,
-        GitHubNames.readPullRequestMethod, GitHubNames.readPullRequestThreadsMethod]);
+        GitHubNames.readPullRequestMethod, GitHubNames.readPullRequestThreadsMethod, GitHubNames.readCommitPullRequestMethod]);
     assert.deepEqual([GitHubNames.readPullRequestsMethod, GitHubNames.readReviewRequestsMethod, GitHubNames.readCommitCommentsMethod],
       ["git-github.readPullRequests", "git-github.readReviewRequests", "git-github.readCommitComments"]);
-    assert.deepEqual([GitHubNames.readPullRequestMethod, GitHubNames.readPullRequestThreadsMethod], ["git-github.readPullRequest", "git-github.readPullRequestThreads"]);
+    assert.deepEqual([GitHubNames.readPullRequestMethod, GitHubNames.readPullRequestThreadsMethod, GitHubNames.readCommitPullRequestMethod],
+      ["git-github.readPullRequest", "git-github.readPullRequestThreads", "git-github.readCommitPullRequest"]);
     assert.deepEqual(contributes.readStringArray("events"), [GitHubNames.signInChangedEvent]);
     assert.deepEqual(contributes.readStringArray("tools"), [GitHubNames.readTool, GitHubNames.prChecksTool, GitHubNames.prCreateTool]);
     assert.equal(GitHubNames.accessService, "git-github.access");

@@ -56,6 +56,12 @@ const commitCommentsUrl = `https://api.github.com/repos/octocat/hello-world/comm
 const commitPullsUrl = `https://api.github.com/repos/octocat/hello-world/commits/${head}/pulls?per_page=1`;
 const pullCommentsUrl = "https://api.github.com/repos/octocat/hello-world/pulls/2/comments?per_page=100";
 const commitQuery: CommitQuery = new CommitQuery("github.com", "octocat/hello-world", head);
+const commitPullRequestsUrl = `https://api.github.com/repos/octocat/hello-world/commits/${head}/pulls?per_page=100`;
+const mergedPull = { ...pull, state: "closed", closed_at: closed, merged_at: merged };
+
+function associated(number: number, mergedAt: string | null, base: string): Readonly<Record<string, unknown>> {
+  return { number, merged_at: mergedAt, base: { ref: base, repo: { default_branch: "main" } } };
+}
 
 function commitComment(id: number): Readonly<Record<string, unknown>> {
   return { id, html_url: `https://github.com/octocat/hello-world/commit/${head}#commitcomment-${id}`, commit_id: head, user };
@@ -720,6 +726,67 @@ describe("GitHubReads", () => {
 
     const failures = [await refused.reads.readCommitCommentsAsync(commitQuery, signal).then(() => null, codeOf),
       await unreadable.reads.readCommitCommentsAsync(commitQuery, signal).then(() => null, codeOf)];
+
+    assert.deepEqual([failures, refused.signIn.refused], [[FailureCode.Unauthorized, FailureCode.Unavailable], ["gho_token"]]);
+  });
+
+  it("reads the pull request merged into the default branch that brought the commit in, ahead of an open one and one merged elsewhere", async () => {
+    const rig = new Rig();
+    const runs = [{ name: "passed", status: "completed", conclusion: "success", html_url: null }];
+    rig.github.answer(FakeGitHub.json([associated(7, null, "main"), associated(8, merged, "release"), associated(2, merged, "main")]), FakeGitHub.json(mergedPull),
+      FakeGitHub.json({ total_count: 1, check_runs: runs }), FakeGitHub.json([]));
+
+    const answer = await rig.reads.readCommitPullRequestAsync(commitQuery, signal);
+
+    assert.deepEqual(answer, new BranchPullRequest(pullRequest(ReferenceState.Merged), [new HostCheck("passed", CheckState.Succeeded, null)]));
+    assert.deepEqual(rig.github.urls(), [commitPullRequestsUrl, "https://api.github.com/repos/octocat/hello-world/pulls/2",
+      `https://api.github.com/repos/octocat/hello-world/commits/${head}/check-runs?per_page=100`, "https://api.github.com/repos/octocat/hello-world/pulls/2/reviews?per_page=100"]);
+  });
+
+  it("reads the first pull request GitHub lists for the commit when none merged into the default branch, and none when no pull request holds it", async () => {
+    const listed = new Rig();
+    listed.github.answer(FakeGitHub.json([associated(2, null, "main"), associated(8, merged, "release")]), FakeGitHub.json(pull),
+      FakeGitHub.json({ total_count: 0, check_runs: [] }), FakeGitHub.json([]));
+    const empty = new Rig();
+    empty.github.answer(FakeGitHub.json([]));
+    const missing = new Rig();
+    missing.github.answer(FakeGitHub.json({}, 404));
+    const gone = new Rig();
+    gone.github.answer(FakeGitHub.json([associated(2, merged, "main")]), FakeGitHub.json({}, 404));
+
+    const answers = [await listed.reads.readCommitPullRequestAsync(commitQuery, signal), await empty.reads.readCommitPullRequestAsync(commitQuery, signal),
+      await missing.reads.readCommitPullRequestAsync(commitQuery, signal), await gone.reads.readCommitPullRequestAsync(commitQuery, signal)];
+
+    assert.deepEqual(answers, [new BranchPullRequest(pullRequest(ReferenceState.Open), []), ...Array.from({ length: 3 }, () => new BranchPullRequest(null, []))]);
+    assert.deepEqual([listed.github.urls().slice(0, 2), empty.github.urls(), missing.github.urls()],
+      [[commitPullRequestsUrl, "https://api.github.com/repos/octocat/hello-world/pulls/2"], [commitPullRequestsUrl], [commitPullRequestsUrl]]);
+  });
+
+  it("answers no commit pull request without asking GitHub when signed out, for another host or a path outside GitHub's names, and once the account changed",
+    async () => {
+      const signedOut = new Rig(null);
+      const rig = new Rig();
+      const release = rig.github.hold();
+
+      const reading = rig.reads.readCommitPullRequestAsync(commitQuery, signal);
+      rig.signIn.answer("token", "gho_other");
+      release(FakeGitHub.json([]));
+      const answers = [await signedOut.reads.readCommitPullRequestAsync(commitQuery, signal),
+        await rig.reads.readCommitPullRequestAsync(new CommitQuery("gitlab.com", "octocat/hello-world", head), signal),
+        await rig.reads.readCommitPullRequestAsync(new CommitQuery("github.com", "octocat", head), signal), await reading];
+
+      assert.deepEqual(answers, Array.from({ length: 4 }, () => new BranchPullRequest(null, [])));
+      assert.deepEqual([signedOut.github.requests.length, rig.github.urls()], [0, [commitPullRequestsUrl]]);
+    });
+
+  it("tells the sign-in when GitHub refuses its token for the commit's pull request, and fails one it can't read as Unavailable", async () => {
+    const refused = new Rig();
+    refused.github.answer(FakeGitHub.json({ message: "Bad credentials" }, 401));
+    const unreadable = new Rig();
+    unreadable.github.answer(FakeGitHub.json([{ number: 2, merged_at: merged, base: { ref: "main" } }]));
+
+    const failures = [await refused.reads.readCommitPullRequestAsync(commitQuery, signal).then(() => null, codeOf),
+      await unreadable.reads.readCommitPullRequestAsync(commitQuery, signal).then(() => null, codeOf)];
 
     assert.deepEqual([failures, refused.signIn.refused], [[FailureCode.Unauthorized, FailureCode.Unavailable], ["gho_token"]]);
   });

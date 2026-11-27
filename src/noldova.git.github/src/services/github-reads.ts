@@ -55,14 +55,22 @@ export class GitHubReads {
       const first: JsonReader | undefined = list === null ? undefined : GitHubApi.read(() => list.readObjectArray(Resources.itemsField))[0];
       if (first === undefined)
         return none;
-      const number: number = GitHubApi.read(() => first.readInteger(Resources.numberField));
-      const pull: JsonReader | null = await this.api.getAsync(repository.pathOf(Resources.formatPullPath(number)), token, signal);
-      if (pull === null)
-        return none;
-      const pullRequest: HostItem = GitHubApi.read(() => GitHubReads.pullRequestOf(new HostReference(GitHubNames.moduleId, repository.owner, repository.name, number), pull, null));
-      const commit: string = query.headCommit ?? GitHubApi.read(() => pull.readObject(Resources.headField).readString(Resources.shaField));
-      const checks: HostCheck[] = await this.readChecksAsync(repository, commit, token, signal);
-      return new BranchPullRequest(pullRequest, checks, await this.readReviewDecisionAsync(repository, number, token, signal));
+      return await this.readPullAnswerAsync(repository, GitHubApi.read(() => first.readInteger(Resources.numberField)), query.headCommit, token, signal);
+    });
+    return this.signIn.token === token ? answer : none;
+  }
+
+  public async readCommitPullRequestAsync(query: CommitQuery, signal: AbortSignal): Promise<BranchPullRequest> {
+    const none: BranchPullRequest = new BranchPullRequest(null, []);
+    const token: string | null = this.signIn.token;
+    const repository: GitHubRepository | null = GitHubRepository.parse(query.path);
+    if (query.host !== Resources.host || token === null || repository === null)
+      return none;
+    const answer: BranchPullRequest = await this.askAsync(token, async () => {
+      const list: JsonReader | null = await this.api.getAsync(repository.pathOf(Resources.formatCommitPullRequestsPath(query.commit)), token, signal);
+      const pulls: readonly JsonReader[] = list === null ? [] : GitHubApi.read(() => list.readObjectArray(Resources.itemsField));
+      const chosen: number | null = GitHubApi.read(() => GitHubReads.bringerOf(pulls));
+      return chosen === null ? none : await this.readPullAnswerAsync(repository, chosen, null, token, signal);
     });
     return this.signIn.token === token ? answer : none;
   }
@@ -214,6 +222,17 @@ export class GitHubReads {
     return this.signIn.token === token ? item : null;
   }
 
+  private async readPullAnswerAsync(repository: GitHubRepository, number: number, headCommit: string | null, token: string,
+    signal: AbortSignal): Promise<BranchPullRequest> {
+    const pull: JsonReader | null = await this.api.getAsync(repository.pathOf(Resources.formatPullPath(number)), token, signal);
+    if (pull === null)
+      return new BranchPullRequest(null, []);
+    const pullRequest: HostItem = GitHubApi.read(() => GitHubReads.pullRequestOf(new HostReference(GitHubNames.moduleId, repository.owner, repository.name, number), pull, null));
+    const commit: string = headCommit ?? GitHubApi.read(() => pull.readObject(Resources.headField).readString(Resources.shaField));
+    const checks: HostCheck[] = await this.readChecksAsync(repository, commit, token, signal);
+    return new BranchPullRequest(pullRequest, checks, await this.readReviewDecisionAsync(repository, number, token, signal));
+  }
+
   private async readChecksAsync(repository: GitHubRepository, commit: string, token: string, signal: AbortSignal): Promise<HostCheck[]> {
     const runs: readonly JsonReader[] = await this.readCheckRunsAsync(repository, commit, token, signal);
     return GitHubApi.read(() => runs.map(GitHubReads.checkOf));
@@ -330,6 +349,17 @@ export class GitHubReads {
           Date.parse(item.readString(Resources.createdAtField))));
     }
     return new ReviewSearchAnswer(rows, found.readInteger(Resources.totalCountField) > items.length || found.readBoolean(Resources.incompleteResultsField));
+  }
+
+  private static bringerOf(pulls: readonly JsonReader[]): number | null {
+    const merged: JsonReader | undefined = pulls.find(t => t.readNullableString(Resources.mergedAtField) !== null && GitHubReads.isIntoDefault(t));
+    const chosen: JsonReader | undefined = merged ?? pulls[0];
+    return chosen === undefined ? null : chosen.readInteger(Resources.numberField);
+  }
+
+  private static isIntoDefault(pull: JsonReader): boolean {
+    const base: JsonReader = pull.readObject(Resources.baseField);
+    return base.readString(Resources.refField) === base.readObject(Resources.repoField).readString(Resources.defaultBranchField);
   }
 
   private static commitCommentsOf(commit: string, commitComments: readonly JsonReader[], reviewComments: readonly JsonReader[]): HostCommitComments {

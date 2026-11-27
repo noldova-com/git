@@ -103,7 +103,8 @@ describe("RuntimePart", () => {
     const waiting = HostSignIn.waiting(new DeviceCode("WDJB-MJHT", "https://github.com/login/device", 1_800_000_900_000)).toJson();
     assert.deepEqual([...context.methods.keys()], ["git-github.readSignIn", "git-github.startSignIn", "git-github.cancelSignIn", "git-github.signOut",
       "git-github.readReference", "git-github.readBranchPullRequest", "git-github.readAuthorAvatar", "git-github.readPullRequests", "git-github.readReviewRequests",
-      "git-github.readCommitComments", "git-github.readPullRequest", "git-github.readPullRequestThreads", "git-github.createPullRequest"]);
+      "git-github.readCommitComments", "git-github.readPullRequest", "git-github.readPullRequestThreads", "git-github.readCommitPullRequest",
+      "git-github.createPullRequest"]);
     assert.deepEqual(answers, [HostSignIn.signedOut().toJson(), waiting, HostSignIn.signedOut().toJson(), HostSignIn.signedOut().toJson()]);
     assert.deepEqual([context.events.get("git-github.signInChanged"), github.urls()], [[waiting, HostSignIn.signedOut().toJson()], ["https://github.com/login/device/code"]]);
   });
@@ -170,7 +171,8 @@ describe("RuntimePart", () => {
       await callAsync(context, "git-github.readReviewRequests", new RepositoryQuery("github.com", "octocat/hello-world").toJson()),
       await callAsync(context, "git-github.readCommitComments", new CommitQuery("github.com", "octocat/hello-world", "6dcb09b5b57875f334f61aebed695e2e4193db5e").toJson()),
       await callAsync(context, "git-github.readPullRequest", new HostReference("git-github", "octocat", "hello-world", 1).toJson()),
-      await callAsync(context, "git-github.readPullRequestThreads", new HostReference("git-github", "octocat", "hello-world", 1).toJson())];
+      await callAsync(context, "git-github.readPullRequestThreads", new HostReference("git-github", "octocat", "hello-world", 1).toJson()),
+      await callAsync(context, "git-github.readCommitPullRequest", new CommitQuery("github.com", "octocat/hello-world", "6dcb09b5b57875f334f61aebed695e2e4193db5e").toJson())];
     const refusals = [await callAsync(context, "git-github.readReference", null).then(() => null, failureOf),
       await callAsync(context, "git-github.readBranchPullRequest", { host: "github.com" }).then(() => null, failureOf),
       await callAsync(context, "git-github.readAuthorAvatar", { host: "github.com" }).then(() => null, failureOf),
@@ -179,14 +181,14 @@ describe("RuntimePart", () => {
       await callAsync(context, "git-github.readCommitComments", { host: "github.com" }).then(() => null, failureOf),
       await callAsync(context, "git-github.readPullRequest", null).then(() => null, failureOf),
       await callAsync(context, "git-github.readPullRequestThreads", { number: 1 }).then(() => null, failureOf),
+      await callAsync(context, "git-github.readCommitPullRequest", { host: "github.com" }).then(() => null, failureOf),
       await callAsync(context, "git-github.readReference", { ...new HostReference("git-github", "octocat", "hello-world", 1).toJson(), title: "x" })
         .then(() => null, failureOf)];
     await part.deactivateAsync();
 
     assert.deepEqual([answers, github.requests.length], [[null, new BranchPullRequest(null, []).toJson(), { avatar: null },
-      HostPullRequestList.signedOut().toJson(), HostReviewRequestList.signedOut().toJson(), HostCommitComments.none().toJson(), null, new HostPullRequestThreads([], false).toJson()], 0]);
-    assert.deepEqual(refusals.map(t => t?.[0]), [FailureCode.InvalidParams, FailureCode.InvalidParams, FailureCode.InvalidParams, FailureCode.InvalidParams,
-      FailureCode.InvalidParams, FailureCode.InvalidParams, FailureCode.InvalidParams, FailureCode.InvalidParams, FailureCode.InvalidParams]);
+      HostPullRequestList.signedOut().toJson(), HostReviewRequestList.signedOut().toJson(), HostCommitComments.none().toJson(), null, new HostPullRequestThreads([], false).toJson(), new BranchPullRequest(null, []).toJson()], 0]);
+    assert.deepEqual(refusals.map(t => t?.[0]), Array.from({ length: 10 }, () => FailureCode.InvalidParams));
   });
 
   it("rethrows an error other than a malformed payload while it reads a request, rather than refusing it as InvalidParams", async () => {
