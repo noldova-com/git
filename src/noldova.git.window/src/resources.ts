@@ -895,11 +895,10 @@ export class Resources {
   public static readonly rebasePreviewDefaultGroup: number = 0;
   public static readonly rebasePreviewDefaultOrder: number = 60;
   public static readonly rebasePreviewEmpty: string = "Open an interactive rebase to preview it.";
-  public static readonly workspaceAcrossViewName: string = "git.workspaceAcross";
-  public static readonly workspaceAcrossViewInstance: string = "selected";
+  public static readonly workspaceAcrossDocumentName: string = "git.workspaceAcross";
+  public static readonly workspaceAcrossInstance: string = "selected";
   public static readonly workspaceAcrossIcon: IconName = "hub";
-  public static readonly workspaceAcrossDefaultGroup: number = 0;
-  public static readonly workspaceAcrossDefaultOrder: number = 70;
+  public static readonly openAcrossCommand: string = "git.openAcross";
   public static readonly workspaceAcrossEmpty: string = "Open a workspace to see its repositories together here.";
   public static readonly beforeCommitTitle: string = "Before you commit";
   public static readonly baseTitle: string = "Base";

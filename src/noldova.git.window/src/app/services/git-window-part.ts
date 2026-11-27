@@ -77,18 +77,15 @@ export class GitWindowPart implements IWindowPart {
     context.registerView(new ViewContribution(Resources.rebasePreviewViewName, Resources.rebasePreviewLabel, Resources.rebasePreviewIcon, DockSide.Right, false,
       () => import("../components/git-rebase-preview/git-rebase-preview.component.ts").then(t => t.GitRebasePreviewComponent), ContentPadding.None,
       { hasInstances: true, defaultGroup: Resources.rebasePreviewDefaultGroup, defaultOrder: Resources.rebasePreviewDefaultOrder }));
-    context.registerView(new ViewContribution(Resources.workspaceAcrossViewName, Resources.acrossHeading, Resources.workspaceAcrossIcon, DockSide.Right, false,
-      () => import("../components/git-workspace-across-view/git-workspace-across-view.component.ts").then(t => t.GitWorkspaceAcrossViewComponent), ContentPadding.None,
-      { hasInstances: true, defaultGroup: Resources.workspaceAcrossDefaultGroup, defaultOrder: Resources.workspaceAcrossDefaultOrder }));
+    context.registerDocument(new DocumentContribution(Resources.workspaceAcrossDocumentName,
+      () => import("../components/git-workspace-across-view/git-workspace-across-view.component.ts").then(t => t.GitWorkspaceAcrossViewComponent), ContentPadding.None));
     const withdrawCommitDetail: () => void = GitCommitDetails.of(context).listen();
     const withdrawConflictDetail: () => void = GitConflictDetails.of(context).listen();
     const withdrawRebasePreview: () => void = GitRebasePreviews.of(context).listen();
-    const withdrawWorkspaceAcross: () => void = GitWorkspaceAcrossViews.of(context).listen();
     this.withdrawDetailViews = () => {
       withdrawCommitDetail();
       withdrawConflictDetail();
       withdrawRebasePreview();
-      withdrawWorkspaceAcross();
     };
     context.registerCommand(new CommandContribution(Resources.openHistoryCommand, Resources.openHistoryTitle, Resources.historyIcon, null,
       async (commandArguments: JsonValue) => {
@@ -117,6 +114,10 @@ export class GitWindowPart implements IWindowPart {
         GitWorkspacePages.open(context, Object.isNull(commandArguments) ? null : JsonReader.fromValue(commandArguments).readNullableString("id"));
         return null;
       }));
+    context.registerCommand(new CommandContribution(Resources.openAcrossCommand, Resources.acrossHeading, Resources.workspaceAcrossIcon, null, async () => {
+      GitWorkspaceAcrossViews.open(context);
+      return null;
+    }));
     context.registerSettingsPage(new SettingsPageContribution(Resources.accountsPage,
       () => import("../components/git-accounts/git-accounts.component.ts").then(t => t.GitAccountsComponent)));
     this.unfollowAccounts = GitHostAccounts.follow(accounts => {

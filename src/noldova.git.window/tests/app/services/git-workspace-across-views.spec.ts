@@ -9,8 +9,6 @@
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { describe, expect, it } from "vitest";
 
-import { GitWorkspaceAcross } from "../../../src/app/models/git-workspace-across.ts";
-import { GitWorkspaceReviews } from "../../../src/app/models/git-workspace-reviews.ts";
 import { GitWorkspaceAcrossViews } from "../../../src/app/services/git-workspace-across-views.ts";
 
 describe("GitWorkspaceAcrossViews", () => {
@@ -21,12 +19,15 @@ describe("GitWorkspaceAcrossViews", () => {
       GitWorkspaceAcrossViews.of(context) === GitWorkspaceAcrossViews.of(new FakeWindowPartContext())]).toEqual([true, false]);
   });
 
-  it("opens the view by its name and instance, titled Across repositories", () => {
+  it("opens its one document in the middle, titled Across repositories, and never a dock view", () => {
     const context = new FakeWindowPartContext();
-    const page = { open: (): void => undefined, openPullRequest: (): void => undefined, openReview: (): void => undefined, readWritten: (): void => undefined };
+    context.allow("openDocument");
 
-    GitWorkspaceAcrossViews.of(context).showInFront(new GitWorkspaceAcross("workspace-1", [], [], new GitWorkspaceReviews([], false), page));
+    GitWorkspaceAcrossViews.open(context);
+    GitWorkspaceAcrossViews.open(context);
 
-    expect(context.callsOf("openView")).toEqual([["git.workspaceAcross", "selected", "Across repositories"]]);
+    expect([context.callsOf("openDocument"), context.callsOf("openView")]).toEqual([
+      [["git.workspaceAcross", "selected", "Across repositories"], ["git.workspaceAcross", "selected", "Across repositories"]], []
+    ]);
   });
 });

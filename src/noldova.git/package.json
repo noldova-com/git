@@ -20,6 +20,7 @@
   },
   "files": [
     "module.json",
+    "menus.json",
     "settings.json",
     "src/**/*.js",
     "src/**/*.d.ts"

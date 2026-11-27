@@ -260,6 +260,10 @@ export class GitWorkspaceComponent {
     GitWorkspacePages.openRepository(this.context, folder);
   }
 
+  protected openAcross(): void {
+    GitWorkspaceAcrossViews.open(this.context);
+  }
+
   protected openPullRequest(row: GitWorkspaceRow, pullRequest: GitPullRequestRow): void {
     if (this.pullRequests.open(row.folder, row.summary(), pullRequest))
       return;

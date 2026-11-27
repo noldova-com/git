@@ -38,6 +38,8 @@ LICENSE file in the root directory of this source tree.
         <button type="button" nol-toolbar-button class="remove" [icon]="resources.removeIcon" [label]="resources.formatRemoveRepositories(chosen().size)" [isShowingLabel]="true"
           (click)="removeChosen()"></button>
       }
+      <button type="button" nol-toolbar-button class="open-across" [icon]="resources.workspaceAcrossIcon" [label]="resources.acrossHeading" [isShowingLabel]="true"
+        (click)="openAcross()"></button>
       <span class="grow"></span>
       @if (workspace(); as current) {
         <button nol-icon-button type="button" class="rename" [icon]="resources.renameIcon" [label]="resources.renameWorkspaceTitle" (click)="renaming.set(current.name)"></button>

@@ -20,9 +20,13 @@ export class GitWorkspaceAcrossViews {
     const known: GitDetailView<GitWorkspaceAcross> | undefined = GitWorkspaceAcrossViews.windows.get(context);
     if (!Object.isUndefined(known))
       return known;
-    const view: GitDetailView<GitWorkspaceAcross> = new GitDetailView<GitWorkspaceAcross>(context, Resources.workspaceAcrossViewName,
-      Resources.workspaceAcrossViewInstance, () => Resources.acrossHeading);
+    const view: GitDetailView<GitWorkspaceAcross> = new GitDetailView<GitWorkspaceAcross>(context, Resources.workspaceAcrossDocumentName,
+      Resources.workspaceAcrossInstance, () => Resources.acrossHeading, false);
     GitWorkspaceAcrossViews.windows.set(context, view);
     return view;
+  }
+
+  public static open(context: IWindowPartContext): void {
+    context.openDocument(Resources.workspaceAcrossDocumentName, Resources.workspaceAcrossInstance, Resources.acrossHeading);
   }
 }

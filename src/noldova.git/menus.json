@@ -1,0 +1,14 @@
+{
+  "places": [],
+  "groups": [
+    {
+      "name": "git.viewAcross",
+      "place": "desktop.view",
+      "items": [
+        {
+          "command": "git.openAcross"
+        }
+      ]
+    }
+  ]
+}
