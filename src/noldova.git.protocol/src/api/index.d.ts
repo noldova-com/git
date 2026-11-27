@@ -1410,62 +1410,104 @@ export declare class GitHooks {
 }
 
 /**
- * What a folder the person chose holds: whether it's in a repository, and otherwise the repositories found in its subfolders.
+ * How a look for repositories under a folder ended.
  * @example
  * ```ts
- * import type { GitRepositoryScan } from "@noldova/git.protocol";
- * export function count(scan: GitRepositoryScan): number {
- *   return scan.inRepository ? 1 : scan.repositories.length;
+ * import { ScanEnd } from "@noldova/git.protocol";
+ * export function isWhole(end: ScanEnd): boolean {
+ *   return end === ScanEnd.Complete;
+ * }
+ * ```
+ */
+export declare const ScanEnd: {
+  /**
+   * The folder is in a repository itself, so no subfolder was looked at.
+   */
+  readonly Repository: "Repository";
+
+  /**
+   * Every subfolder within the depth was looked at.
+   */
+  readonly Complete: "Complete";
+
+  /**
+   * The look stopped at 1000 repositories, the first by name; a folder further down finds the rest.
+   */
+  readonly RepositoryLimit: "RepositoryLimit";
+
+  /**
+   * The look stopped after reading 10,000 folders; a folder further down finds the rest.
+   */
+  readonly FolderLimit: "FolderLimit";
+
+  /**
+   * The folder itself can't be read, or is gone.
+   */
+  readonly Unreadable: "Unreadable";
+};
+
+/**
+ * One of {@link ScanEnd}'s wire values.
+ */
+export type ScanEnd = (typeof ScanEnd)[keyof typeof ScanEnd];
+
+/**
+ * What a folder the person chose holds: whether it's in a repository or can't be read, and otherwise the repositories found in its subfolders and whether the look stopped early.
+ * @example
+ * ```ts
+ * import { ScanEnd, type GitRepositoryScan } from "@noldova/git.protocol";
+ * export function isCut(scan: GitRepositoryScan): boolean {
+ *   return scan.end === ScanEnd.RepositoryLimit || scan.end === ScanEnd.FolderLimit;
  * }
  * ```
  */
 export declare class GitRepositoryScan {
   /**
-   * Whether the folder is in a repository itself, in which case no subfolder is looked at.
+   * How the look ended.
    */
-  public readonly inRepository: boolean;
+  public readonly end: ScanEnd;
 
   /**
-   * The absolute folders of the repositories found in the subfolders, sorted; empty when the folder is in a repository or none was found.
+   * The absolute folders of the repositories found in the subfolders, sorted; empty when the folder is in a repository, can't be read, or none was found.
    */
   public readonly repositories: readonly string[];
 
   /**
    * Creates the scan's result.
-   * @param inRepository Whether the folder is in a repository itself.
-   * @param repositories The repositories' absolute folders; at most 1000.
+   * @param end How the look ended.
+   * @param repositories The repositories' absolute folders; at most 1000, and none when the folder is in a repository or can't be read.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
-   * @throws {ProtocolFieldException} When there are more than 1000 repositories, or one isn't an absolute path of at most 4096 characters.
+   * @throws {ProtocolFieldException} When there are more than 1000 repositories, any for {@link ScanEnd.Repository} or {@link ScanEnd.Unreadable}, or one isn't an absolute path of at most 4096 characters.
    * @example
    * ```ts
-   * import { GitRepositoryScan } from "@noldova/git.protocol";
-   * export const scan: GitRepositoryScan = new GitRepositoryScan(false, ["/work/site"]);
+   * import { GitRepositoryScan, ScanEnd } from "@noldova/git.protocol";
+   * export const scan: GitRepositoryScan = new GitRepositoryScan(ScanEnd.Complete, ["/work/site"]);
    * ```
    */
-  public constructor(inRepository: boolean, repositories: readonly string[], reader?: JsonReader);
+  public constructor(end: ScanEnd, repositories: readonly string[], reader?: JsonReader);
 
   /**
    * Reads the scan's result from its JSON form.
    * @param value The parsed JSON value, untrusted.
    * @param path The result's path in error messages; `$` by default.
    * @returns The scan's result.
-   * @throws {JsonException} When the value isn't an object, `inRepository` isn't a boolean, or `repositories` isn't an array of texts; it comes from `@noldova/context.json`.
-   * @throws {ProtocolFieldException} When the value holds an unknown field, or `repositories` holds more than 1000 folders or one that isn't an absolute path.
+   * @throws {JsonException} When the value isn't an object, `end` isn't one of {@link ScanEnd}'s values, or `repositories` isn't an array of texts; it comes from `@noldova/context.json`.
+   * @throws {ProtocolFieldException} When the value holds an unknown field, or `repositories` breaks the constructor's rules.
    * @example
    * ```ts
    * import { GitRepositoryScan } from "@noldova/git.protocol";
-   * export const scan: GitRepositoryScan = GitRepositoryScan.fromJson({ inRepository: true, repositories: [] });
+   * export const scan: GitRepositoryScan = GitRepositoryScan.fromJson({ end: "Repository", repositories: [] });
    * ```
    */
   public static fromJson(value: unknown, path?: string): GitRepositoryScan;
 
   /**
-   * Writes the scan's JSON form, with the fields `inRepository` and `repositories`.
+   * Writes the scan's JSON form, with the fields `end` and `repositories`.
    * @returns The JSON object.
    * @example
    * ```ts
-   * import { GitRepositoryScan, type JsonObject } from "@noldova/git.protocol";
-   * export const json: JsonObject = new GitRepositoryScan(true, []).toJson();
+   * import { GitRepositoryScan, ScanEnd, type JsonObject } from "@noldova/git.protocol";
+   * export const json: JsonObject = new GitRepositoryScan(ScanEnd.Repository, []).toJson();
    * ```
    */
   public toJson(): JsonObject;

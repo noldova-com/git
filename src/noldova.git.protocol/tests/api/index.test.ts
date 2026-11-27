@@ -119,6 +119,7 @@ describe("The protocol package's API", () => {
       "RemoteTransport",
       "ResetMode",
       "RiskLevel",
+      "ScanEnd",
       "SignatureState",
       "SigningFormat",
       "StatusEntry",
@@ -137,6 +138,7 @@ describe("The protocol package's API", () => {
     assert.deepEqual(api.LineKind, { Context: "Context", Added: "Added", Removed: "Removed", NoNewlineAtEnd: "NoNewlineAtEnd" });
     assert.deepEqual(api.OperationKind, { Merge: "Merge", Rebase: "Rebase", CherryPick: "CherryPick", Revert: "Revert" });
     assert.deepEqual(api.RemoteTransport, { Ssh: "Ssh", Https: "Https", File: "File", Other: "Other" });
+    assert.deepEqual(api.ScanEnd, { Repository: "Repository", Complete: "Complete", RepositoryLimit: "RepositoryLimit", FolderLimit: "FolderLimit", Unreadable: "Unreadable" });
     assert.deepEqual(api.RefKind, { Head: "Head", Branch: "Branch", RemoteBranch: "RemoteBranch", Tag: "Tag" });
     assert.deepEqual(api.UndoMode, { None: "None", Index: "Index", Refs: "Refs", Mixed: "Mixed", Keep: "Keep", Switch: "Switch", Checkpoint: "Checkpoint", Stash: "Stash" });
     assert.deepEqual(api.ResetMode, { Soft: "Soft", Mixed: "Mixed", Keep: "Keep" });

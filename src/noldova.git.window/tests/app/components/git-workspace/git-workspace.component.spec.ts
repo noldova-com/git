@@ -13,7 +13,7 @@ import "@noldova/context.core";
 import { JsonReader, type JsonValue } from "@noldova/context.json";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
-import { ConflictKind, FailureCode, FileState, GitBranches, GitRemote, GitRepositoryScan, RemoteTransport, StatusUpstream } from "@noldova/git.protocol";
+import { ConflictKind, FailureCode, FileState, GitBranches, GitRemote, GitRepositoryScan, RemoteTransport, ScanEnd, StatusUpstream } from "@noldova/git.protocol";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { GitVisibleDirective } from "../../../../src/app/components/git-workspace/git-visible.directive.ts";
@@ -75,6 +75,8 @@ describe("GitWorkspaceComponent", () => {
       context.answer("requestAsync", async (method, params) => {
         queueMicrotask(() => Screen.checks.forEach(check => check()));
         const folder: string = JsonReader.fromValue(params).readString("folder");
+        if (method === "git.scanRepositories")
+          await gate;
         const named: JsonValue | Error | undefined = answers[`${method} ${folder}`];
         if (named instanceof Error)
           throw named;
@@ -413,7 +415,7 @@ describe("GitWorkspaceComponent", () => {
 
   it("offers the repositories found under a chosen folder that isn't one, adds the ticked ones, and nothing when the person cancels", async () => {
     const workspace: GitWorkspace = fresh("/work/a");
-    const found: JsonValue = new GitRepositoryScan(false, ["/work/group/api", "/work/group/site", "/work/group/site/kit"]).toJson();
+    const found: JsonValue = new GitRepositoryScan(ScanEnd.Complete, ["/work/group/api", "/work/group/site", "/work/group/site/kit"]).toJson();
     const screen: Screen = Screen.render(workspace.id, {}, Promise.resolve(), { "git.scanRepositories /work/group": found });
     screen.context.answer("chooseFolderAsync", async () => "/work/group");
     const dialogs = (): HTMLElement[] => [...document.querySelectorAll<HTMLElement>("nol-git-repository-scan-dialog")];
@@ -441,25 +443,55 @@ describe("GitWorkspaceComponent", () => {
       ["/work/a"], ["/work/a", "/work/group/api", "/work/group/site/kit"]]);
   });
 
-  it("says so when a chosen folder has no repository under it, and reports a scan that fails, adding nothing", async () => {
+  it("says so when a chosen folder has no repository under it, or none in the folders it read before stopping, or can't be read, and clears the line for a scan that fails, adding nothing", async () => {
     const workspace: GitWorkspace = fresh("/work/a");
     const screen: Screen = Screen.render(workspace.id, {}, Promise.resolve(), {
-      "git.scanRepositories /work/notes": new GitRepositoryScan(false, []).toJson(),
-      "git.scanRepositories /work/locked": GitFixtures.failure(FailureCode.Git, null, "It broke.")
+      "git.scanRepositories /work/notes": new GitRepositoryScan(ScanEnd.Complete, []).toJson(),
+      "git.scanRepositories /work/home": new GitRepositoryScan(ScanEnd.FolderLimit, []).toJson(),
+      "git.scanRepositories /work/locked": new GitRepositoryScan(ScanEnd.Unreadable, []).toJson(),
+      "git.scanRepositories /work/broken": GitFixtures.failure(FailureCode.Git, null, "It broke.")
     });
-    const chosen: string[] = ["/work/notes", "/work/locked"];
+    const chosen: string[] = ["/work/notes", "/work/home", "/work/locked", "/work/broken"];
     screen.context.answer("chooseFolderAsync", async () => chosen.shift() ?? null);
     const handled: Promise<unknown> = new Promise(resolve => {
       vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(resolve);
     });
+    const lines: string[][] = [];
+    for (const name of ["notes", "home", "locked"]) {
+      screen.click(".toolbar .add");
+      await screen.untilAsync(() => screen.texts(".result p").some(t => t.includes(name) && !t.startsWith("Looking")) && Object.isNull(screen.element.querySelector(".toolbar .add[aria-disabled]")));
+      lines.push([...screen.texts(".result p")]);
+    }
 
-    screen.click(".toolbar .add");
-    await screen.untilAsync(() => screen.texts(".result p").length === 1);
     screen.click(".toolbar .add");
     const failure: unknown = await handled;
+    await screen.untilAsync(() => screen.texts(".result p").length === 0);
 
-    expect([screen.texts(".result p"), failure instanceof Error, GitWorkspaces.find(workspace.id)?.folders])
-      .toEqual([["No repository in notes or the folders under it."], true, ["/work/a"]]);
+    expect(lines).toEqual([["No repository in notes or the folders under it."], ["No repository in the first 10,000 folders under home. Choose a folder further down."],
+      ["Git can't read locked."]]);
+    expect([failure instanceof Error, GitWorkspaces.find(workspace.id)?.folders]).toEqual([true, ["/work/a"]]);
+  });
+
+  it("holds Add repository and says it is looking while a scan runs, so a second click starts none", async () => {
+    const workspace: GitWorkspace = fresh("/work/a");
+    let open: () => void = () => undefined;
+    const gate: Promise<void> = new Promise(resolve => {
+      open = resolve;
+    });
+    const screen: Screen = Screen.render(workspace.id, {}, gate, { "git.scanRepositories /work/b": new GitRepositoryScan(ScanEnd.Repository, []).toJson() });
+    screen.context.answer("chooseFolderAsync", async () => "/work/b");
+    const scans = (): number => screen.context.callsOf("requestAsync").filter(t => t[0] === "git.scanRepositories").length;
+
+    screen.click(".toolbar .add");
+    await screen.untilAsync(() => scans() === 1 && screen.texts(".result p").length === 1);
+    const looking: readonly unknown[] = [screen.texts(".result p"), screen.element.querySelector(".toolbar .add")?.getAttribute("aria-disabled")];
+    screen.click(".toolbar .add");
+    const second: readonly number[] = [scans(), screen.context.callsOf("chooseFolderAsync").length];
+    open();
+    await screen.untilAsync(() => screen.rows().length === 2);
+
+    expect([looking, second, screen.texts(".result p"), screen.element.querySelector(".toolbar .add")?.getAttribute("aria-disabled") ?? null])
+      .toEqual([[["Looking for repositories in b…"], "true"], [1, 1], [], null]);
   });
 
   it("moves the selected repositories up and down, and removes them from the workspace", async () => {

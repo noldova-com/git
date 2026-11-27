@@ -18,6 +18,7 @@ export { GitMessageReferenceKind } from "../enums/git-message-reference-kind.ts"
 export { LineKind } from "../enums/line-kind.ts";
 export { OperationKind } from "../enums/operation-kind.ts";
 export { RemoteTransport } from "../enums/remote-transport.ts";
+export { ScanEnd } from "../enums/scan-end.ts";
 export { RiskLevel } from "../enums/risk-level.ts";
 export { UntrustedSource } from "../enums/untrusted-source.ts";
 export { RefKind } from "../enums/ref-kind.ts";

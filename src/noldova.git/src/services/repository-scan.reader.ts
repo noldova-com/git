@@ -7,15 +7,15 @@
  */
 
 import type { Dirent } from "node:fs";
-import { readdir } from "node:fs/promises";
-import path from "node:path";
 
-import { GitRepositoryScan } from "@noldova/git.protocol";
+import { GitRepositoryScan, ScanEnd } from "@noldova/git.protocol";
 
+import { FolderUnreadableException } from "../exceptions/folder-unreadable.exception.ts";
 import { NotARepositoryException } from "../exceptions/not-a-repository.exception.ts";
 import { Resources } from "../resources.ts";
 import { FilePresence } from "./file-presence.ts";
 import type { RepositoryReader } from "./repository.reader.ts";
+import { RepositoryScanWalk } from "./repository-scan-walk.ts";
 
 export class RepositoryScanReader {
   private readonly repositories: RepositoryReader;
@@ -27,39 +27,23 @@ export class RepositoryScanReader {
   public async readAsync(folder: string, signal: AbortSignal): Promise<GitRepositoryScan> {
     try {
       await this.repositories.readAsync(folder);
-      return new GitRepositoryScan(true, []);
+      return new GitRepositoryScan(ScanEnd.Repository, []);
     } catch (error) {
+      if (error instanceof FolderUnreadableException)
+        return new GitRepositoryScan(ScanEnd.Unreadable, []);
       if (!(error instanceof NotARepositoryException))
         throw error;
     }
-    const found: string[] = [];
-    await RepositoryScanReader.walkAsync(folder, await RepositoryScanReader.readFolderAsync(folder), Resources.scanDepth, found, signal);
-    return new GitRepositoryScan(false, found.sort());
-  }
-
-  private static async walkAsync(folder: string, entries: readonly Dirent[], depth: number, found: string[], signal: AbortSignal): Promise<void> {
-    for (const entry of entries) {
-      signal.throwIfAborted();
-      if (found.length === Resources.scanRepositoriesLimit)
-        return;
-      if (!entry.isDirectory() || Resources.scanSkippedFolders.has(entry.name))
-        continue;
-      const child = path.join(folder, entry.name);
-      const inside = await RepositoryScanReader.readFolderAsync(child);
-      if (inside.some(t => t.name === Resources.gitEntry))
-        found.push(child);
-      if (depth > 1)
-        await RepositoryScanReader.walkAsync(child, inside, depth - 1, found, signal);
-    }
-  }
-
-  private static async readFolderAsync(folder: string): Promise<readonly Dirent[]> {
+    let entries: readonly Dirent[];
     try {
-      return await readdir(folder, { withFileTypes: true });
+      entries = await RepositoryScanWalk.readFolderAsync(folder);
     } catch (error) {
       if (FilePresence.isGone(error) || FilePresence.isDenied(error))
-        return [];
+        return new GitRepositoryScan(ScanEnd.Unreadable, []);
       throw error;
     }
+    const walk = new RepositoryScanWalk(signal);
+    const end = await walk.walkAsync(folder, entries, Resources.scanDepth);
+    return new GitRepositoryScan(end, walk.found.toSorted());
   }
 }

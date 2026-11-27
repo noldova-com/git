@@ -9,7 +9,7 @@
 import type { JsonValue } from "@noldova/context.json";
 import {
   ConflictKind, ConflictResolution, DiffScope, DiffScopeKind, FailureCode, GitAvatar, GitBranches, GitBranchTrack, GitCommitSigning, GitConflict, GitDiff, GitFailure, GitHooks, GitJournal, GitMarkerCheck, GitPrediction, GitRebaseCheck, GitRebaseCommit, GitRebasePlan, GitRebaseStepCheck, GitRemoteTracks, GitRepositoryScan, GitStatus, OperationKind,
-  PredictionAction, PredictionOutcome, RebaseAction, RebaseCheckOutcome, RebaseStep, SigningFormat
+  PredictionAction, PredictionOutcome, RebaseAction, RebaseCheckOutcome, RebaseStep, ScanEnd, SigningFormat
 } from "@noldova/git.protocol";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { describe, expect, it } from "vitest";
@@ -78,9 +78,9 @@ describe("GitRuntimeClient", () => {
 
   it("looks for the repositories in a chosen folder's subfolders, and parses the answer", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    GitFixtures.answerWith(context, { "git.scanRepositories": { inRepository: false, repositories: ["/work/site"] } });
+    GitFixtures.answerWith(context, { "git.scanRepositories": { end: "Complete", repositories: ["/work/site"] } });
 
-    expect(await new GitRuntimeClient(context).scanRepositoriesAsync("/work")).toEqual(new GitRepositoryScan(false, ["/work/site"]));
+    expect(await new GitRuntimeClient(context).scanRepositoriesAsync("/work")).toEqual(new GitRepositoryScan(ScanEnd.Complete, ["/work/site"]));
     expect(context.callsOf("requestAsync")).toEqual([["git.scanRepositories", { folder: "/work" }]]);
   });
 

@@ -7,6 +7,7 @@
  */
 
 import { Component, computed, input, type InputSignal, output, type OutputEmitterRef, signal, type Signal, type WritableSignal } from "@angular/core";
+import { ScanEnd } from "@noldova/git.protocol";
 import { ButtonComponent, ButtonVariant, CheckboxComponent, DialogComponent } from "@noldova/ui.components.angular";
 
 import { Resources } from "../../../resources.ts";
@@ -20,6 +21,7 @@ import { Resources } from "../../../resources.ts";
 export class GitRepositoryScanDialogComponent {
   public readonly folder: InputSignal<string> = input.required<string>();
   public readonly repositories: InputSignal<readonly string[]> = input.required<readonly string[]>();
+  public readonly end: InputSignal<ScanEnd> = input<ScanEnd>(ScanEnd.Complete);
   public readonly answered: OutputEmitterRef<readonly string[] | null> = output<readonly string[] | null>();
 
   protected readonly resources: typeof Resources = Resources;
@@ -28,6 +30,8 @@ export class GitRepositoryScanDialogComponent {
   protected readonly unticked: WritableSignal<ReadonlySet<string>> = signal(new Set());
   protected readonly ticked: Signal<readonly string[]> = computed(() => this.repositories().filter(t => !this.unticked().has(t)));
 
+  protected readonly cut: Signal<string | null> = computed(() => this.end() === ScanEnd.RepositoryLimit ? Resources.scanRepositoryLimitText
+    : this.end() === ScanEnd.FolderLimit ? Resources.scanFolderLimitText : null);
   protected readonly isAllTicked: Signal<boolean> = computed(() => this.unticked().size === 0);
 
   protected pathOf(repository: string): string {

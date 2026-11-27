@@ -11,7 +11,7 @@ import { Component, computed, DestroyRef, effect, ElementRef, ErrorHandler, inje
 import { FormsModule } from "@angular/forms";
 import "@noldova/context.core";
 import { type IWindowPartContext, LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
-import type { GitRepositoryScan } from "@noldova/git.protocol";
+import { type GitRepositoryScan, ScanEnd } from "@noldova/git.protocol";
 import { ButtonComponent, CheckboxComponent, DialogService, IconButtonComponent, TextFieldComponent, ToolbarButtonComponent } from "@noldova/ui.components.angular";
 
 import { Resources } from "../../../resources.ts";
@@ -67,6 +67,7 @@ export class GitWorkspaceComponent {
   protected readonly selected: WritableSignal<ReadonlySet<string>> = signal<ReadonlySet<string>>(new Set());
   protected readonly isFetching: WritableSignal<boolean> = signal(false);
   protected readonly isWriting: WritableSignal<boolean> = signal(false);
+  protected readonly isScanning: WritableSignal<boolean> = signal(false);
   protected readonly result: WritableSignal<readonly string[]> = signal<readonly string[]>([]);
   protected readonly renaming: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly workspace: Signal<GitWorkspace | null> = computed(() => GitWorkspaces.find(this.instance()));
@@ -188,29 +189,37 @@ export class GitWorkspaceComponent {
   }
 
   protected async addRepositoryAsync(): Promise<void> {
+    if (this.isScanning())
+      return;
     const folder: string | null = await this.context.chooseFolderAsync();
     if (Object.isNull(folder))
       return;
+    this.isScanning.set(true);
+    this.result.set([Resources.formatScanning(folder)]);
     let scan: GitRepositoryScan;
     try {
       scan = await this.client.scanRepositoriesAsync(folder);
     }
     catch (error) {
+      this.result.set([]);
       this.errors.handleError(error);
       return;
     }
-    if (scan.inRepository)
+    finally {
+      this.isScanning.set(false);
+    }
+    this.result.set(GitWorkspaceOverview.scanLinesOf(folder, scan));
+    if (scan.end === ScanEnd.Repository)
       this.addFolders([folder]);
-    else if (scan.repositories.length === 0)
-      this.result.set([Resources.formatNoRepositoryFound(folder)]);
-    else
-      this.chooseFound(folder, scan.repositories);
+    else if (scan.repositories.length > 0)
+      this.chooseFound(folder, scan);
   }
 
-  private chooseFound(folder: string, repositories: readonly string[]): void {
+  private chooseFound(folder: string, scan: GitRepositoryScan): void {
     const dialog = this.dialogs.open(GitRepositoryScanDialogComponent, ".open");
     dialog.componentRef?.setInput("folder", folder);
-    dialog.componentRef?.setInput("repositories", repositories);
+    dialog.componentRef?.setInput("repositories", scan.repositories);
+    dialog.componentRef?.setInput("end", scan.end);
     dialog.componentInstance?.answered.subscribe(chosen => {
       dialog.close();
       if (!Object.isNull(chosen))

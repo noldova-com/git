@@ -370,8 +370,8 @@ describe("RuntimePart", () => {
     const parent = path.join(repository.root, "scanned");
     await mkdir(path.join(parent, "site", ".git"), { recursive: true });
 
-    assert.deepEqual(await callAsync(GitNames.scanRepositoriesMethod, { folder: repository.folder }), { inRepository: true, repositories: [] });
-    assert.deepEqual(await callAsync(GitNames.scanRepositoriesMethod, { folder: parent }), { inRepository: false, repositories: [path.join(parent, "site")] });
+    assert.deepEqual(await callAsync(GitNames.scanRepositoriesMethod, { folder: repository.folder }), { end: "Repository", repositories: [] });
+    assert.deepEqual(await callAsync(GitNames.scanRepositoriesMethod, { folder: parent }), { end: "Complete", repositories: [path.join(parent, "site")] });
     await assert.rejects(callAsync(GitNames.scanRepositoriesMethod, {}), { name: "JsonException", path: "$.folder" });
   });
 

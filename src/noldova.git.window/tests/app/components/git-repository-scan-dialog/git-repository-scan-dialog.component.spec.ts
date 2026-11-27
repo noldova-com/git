@@ -9,6 +9,7 @@
 import type { DialogRef } from "@angular/cdk/dialog";
 import { ApplicationRef } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
+import { ScanEnd } from "@noldova/git.protocol";
 import { DefaultTheme, DialogService } from "@noldova/ui.components.angular";
 import { AppearanceFixture } from "@noldova/ui.components.angular/testing";
 import type {} from "@vitest/browser-playwright";
@@ -23,11 +24,12 @@ class Dialog {
   public readonly answers: (readonly string[] | null)[] = [];
   public readonly host: HTMLElement;
 
-  public constructor(folder: string, repositories: readonly string[]) {
+  public constructor(folder: string, repositories: readonly string[], end: ScanEnd = ScanEnd.Complete) {
     const dialog = TestBed.inject(DialogService).open(GitRepositoryScanDialogComponent, ".open");
     opened.push(dialog);
     dialog.componentRef?.setInput("folder", folder);
     dialog.componentRef?.setInput("repositories", repositories);
+    dialog.componentRef?.setInput("end", end);
     dialog.componentInstance?.answered.subscribe(t => this.answers.push(t));
     const host: unknown = dialog.componentRef?.location.nativeElement;
     if (!(host instanceof HTMLElement))
@@ -105,6 +107,16 @@ describe("GitRepositoryScanDialogComponent", () => {
     dialog.open.click();
 
     expect([one, all, none, dialog.answers]).toEqual([[[false, true], false], [[true, true], true], [[false, false], false, true], [["/work/site"], ["/work/api"]]]);
+  });
+
+  it("says the list stops at the first 1000 repositories, or that the look stopped after 10,000 folders, and nothing more for a whole look", () => {
+    const whole: Dialog = new Dialog("/work", ["/work/site"]);
+    const most: Dialog = new Dialog("/work", ["/work/site"], ScanEnd.RepositoryLimit);
+    const early: Dialog = new Dialog("/work", ["/work/site"], ScanEnd.FolderLimit);
+
+    expect([whole.texts(".cut"), most.texts(".cut"), early.texts(".cut")]).toEqual([[],
+      ["The list stops at the first 1000 repositories by name. Choose a folder further down to find the rest."],
+      ["The look stopped after 10,000 folders. Choose a folder further down to find the rest."]]);
   });
 
   it("answers null for Cancel and for Close", () => {

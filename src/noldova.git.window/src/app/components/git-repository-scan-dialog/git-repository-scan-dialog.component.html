@@ -7,6 +7,9 @@ LICENSE file in the root directory of this source tree.
 -->
 
 <nol-dialog [title]="title()" (dismissed)="answered.emit(null)">
+  @if (cut(); as text) {
+    <p class="cut">{{ text }}</p>
+  }
   <p class="text">{{ resources.scanText }}</p>
   <div class="all-row"><nol-checkbox class="all" [checked]="isAllTicked()" (checkedChange)="tickAll($event)">{{ resources.tickAllLabel }}</nol-checkbox></div>
   <ul class="repositories">
