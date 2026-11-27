@@ -94,7 +94,7 @@ describe("GitCommitDetailViewComponent in the kit's look", () => {
     const text: DOMRect = box(empty);
 
     expect([view.texts(".empty-view"), rem(text.left - host.left), rem(text.top - host.top), rem(host.right - text.right)])
-      .toEqual([["Choose a commit in History to see it here"], 0.75, 0.75, 0.75]);
+      .toEqual([["Choose a commit to see its details"], 0.75, 0.75, 0.75]);
     expect([getComputedStyle(empty).color, getComputedStyle(view.element).backgroundColor, view.element.scrollWidth <= view.element.clientWidth, GitLayout.problemsOf(view.element)])
       .toEqual([resolve("var(--nol-text-muted)"), "rgba(0, 0, 0, 0)", true, []]);
     await page.screenshot({ element: view.element, path: `${screenshots}/git-commit-detail-view-empty-${mode}.png` });

@@ -14,6 +14,7 @@ import { GitPullRequestState } from "../../src/app/enums/git-pull-request-state.
 import { GitPullRequestsState } from "../../src/app/enums/git-pull-requests-state.ts";
 import { GitFolderProvidedException } from "../../src/app/exceptions/git-folder-provided.exception.ts";
 import { GitWindowException } from "../../src/app/exceptions/git-window.exception.ts";
+import { GitDashboardComponent } from "../../src/app/components/git-dashboard/git-dashboard.component.ts";
 import { GitDiffFilesComponent } from "../../src/app/components/git-diff-files/git-diff-files.component.ts";
 import { GitPullRequestCommitsComponent } from "../../src/app/components/git-pull-request-commits/git-pull-request-commits.component.ts";
 import { GitPullRequestConflictsComponent } from "../../src/app/components/git-pull-request-conflicts/git-pull-request-conflicts.component.ts";
@@ -54,9 +55,9 @@ describe("api", () => {
     expect(api.windowPart.moduleId).toBe("git");
   });
 
-  it("exports the folder provider, the host rows and accounts, the agent runs, the commit prefixes, the counts' words, the focus keeper, the pull request lists, branch pull requests and commit comments, the repository panel's host rows, the workspaces, the repositories opened lately, the history selection, the detail view, the diff's files view, the pull request page's Commits, Files and Conflicts tabs and the file line its Files tab reveals, its comment threads and the thread line they go to, the provider's exception and the exceptions' base, and nothing else", () => {
+  it("exports the folder provider, the host rows and accounts, the agent runs, the commit prefixes, the counts' words, the focus keeper, the pull request lists, branch pull requests and commit comments, the repository panel's host rows, the workspaces, the repositories opened lately, the history selection, the detail view, the Dashboard for a host's placeholder, the diff's files view, the pull request page's Commits, Files and Conflicts tabs and the file line its Files tab reveals, its comment threads and the thread line they go to, the provider's exception and the exceptions' base, and nothing else", () => {
     expect(Object.fromEntries(Object.entries(api))).toEqual({
-      FocusKeeper, GitAgentRow, GitAgentState, GitAgents, GitAvatars, GitBranchPullRequest, GitCommitComments, GitCommitPrefixes, GitCounts, GitDetailView, GitDiffFilesComponent, GitFileLine, GitFolder, GitFolderProvidedException, GitHistorySelection, GitHostAccounts, GitHostCard,
+      FocusKeeper, GitAgentRow, GitAgentState, GitAgents, GitAvatars, GitBranchPullRequest, GitCommitComments, GitCommitPrefixes, GitCounts, GitDashboardComponent, GitDetailView, GitDiffFilesComponent, GitFileLine, GitFolder, GitFolderProvidedException, GitHistorySelection, GitHostAccounts, GitHostCard,
       GitHostCardState, GitHostFeature, GitHostRows, GitLinkReferences, GitPullRequestCommitsComponent, GitPullRequestConflictsComponent, GitPullRequestFilesComponent,
       GitPullRequestList, GitPullRequestRow, GitPullRequestState, GitPullRequests, GitPullRequestsState, GitRecentRepositories,
       GitPullRequestThreadsComponent, GitRepositoryLink, GitRepositoryLinks, GitViewOptions, GitWindowException, GitWorkspaces, ThreadLine, windowPart

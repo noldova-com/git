@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Component, inject, input, type InputSignal, type Signal } from "@angular/core";
+import { Component, inject, type Signal } from "@angular/core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 
 import type { GitCommitView } from "../../models/git-commit-view.ts";
@@ -25,6 +25,4 @@ import { GitCommitDetailComponent } from "../git-commit-detail/git-commit-detail
 export class GitCommitDetailViewComponent {
   protected readonly resources: typeof Resources = Resources;
   protected readonly shown: Signal<GitCommitView | null> = GitCommitDetails.of(inject(WindowPartTokens.context)).shown;
-
-  public readonly instance: InputSignal<string> = input.required<string>();
 }

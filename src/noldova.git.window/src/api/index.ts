@@ -48,6 +48,7 @@ export type { GitWorkspace } from "../app/models/git-workspace.ts";
 export { GitRecentRepositories } from "../app/services/git-recent-repositories.ts";
 export { GitHistorySelection } from "../app/services/git-history-selection.ts";
 export { GitDetailView } from "../app/services/git-detail-view.ts";
+export { GitDashboardComponent } from "../app/components/git-dashboard/git-dashboard.component.ts";
 export { GitDiffFilesComponent } from "../app/components/git-diff-files/git-diff-files.component.ts";
 export { GitPullRequestCommitsComponent } from "../app/components/git-pull-request-commits/git-pull-request-commits.component.ts";
 export { GitPullRequestConflictsComponent } from "../app/components/git-pull-request-conflicts/git-pull-request-conflicts.component.ts";
