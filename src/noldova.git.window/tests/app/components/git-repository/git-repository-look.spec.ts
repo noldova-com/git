@@ -118,6 +118,20 @@ describe("GitRepositoryComponent in the kit's look", () => {
       rem(spinner.top + spinner.height / 2 - reading.top - reading.height / 2)]).toEqual([0, 0, 0, 0, 0]);
   });
 
+  it.each(AppearanceFixture.modes)("ends New branch's glyph where the Pull requests header's host label ends, and Fetch all's at the same edge, in %s mode", async mode => {
+    AppearanceFixture.apply(DefaultTheme.theme, mode);
+    const element: HTMLElement = await renderAsync();
+    const glyph = (selector: string): DOMRect => box(element.querySelector(`${selector} .nol-icon-button-glyph`));
+    const host: DOMRect = box(element.querySelector("nol-git-pull-requests .host"));
+    const probe: HTMLElement = document.body.appendChild(document.createElement("div"));
+    probe.style.width = "var(--nol-icon)";
+    const icon: number = rem(box(probe).width);
+    probe.remove();
+
+    expect([rem(glyph(".new-branch").width), rem(glyph(".fetch-all").width)]).toEqual([icon, icon]);
+    expect([rem(glyph(".new-branch").right - host.right), rem(glyph(".fetch-all").right - host.right)]).toEqual([0, 0]);
+  });
+
   it.each(AppearanceFixture.modes)("draws Fetch all and New branch as the kit's icon buttons, ending at one edge, and leaves a section's title unlit under the pointer, in %s mode",
     async mode => {
       AppearanceFixture.apply(DefaultTheme.theme, mode);
