@@ -1352,6 +1352,8 @@ export class Resources {
   public static readonly newBranchText: string = "Each repository gets the branch at its current commit and switches to it:";
   public static readonly branchNameRefused: string = "Git doesn't take this as a branch name.";
   public static readonly scanText: string = "The ticked ones open:";
+  public static readonly scanSuffixPattern: RegExp = /[\\/]+$/u;
+  public static readonly tickAllLabel: string = "All";
   public static readonly scanPrefixPattern: RegExp = /^[\\/]+/u;
 
   private static readonly countWords: readonly string[] = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];

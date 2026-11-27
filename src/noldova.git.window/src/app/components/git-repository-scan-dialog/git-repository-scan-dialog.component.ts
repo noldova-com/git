@@ -28,8 +28,23 @@ export class GitRepositoryScanDialogComponent {
   protected readonly unticked: WritableSignal<ReadonlySet<string>> = signal(new Set());
   protected readonly ticked: Signal<readonly string[]> = computed(() => this.repositories().filter(t => !this.unticked().has(t)));
 
-  protected labelOf(repository: string): string {
+  protected readonly isAllTicked: Signal<boolean> = computed(() => this.unticked().size === 0);
+
+  protected pathOf(repository: string): string {
     return repository.slice(this.folder().length).replace(Resources.scanPrefixPattern, "");
+  }
+
+  protected nameOf(repository: string): string {
+    return Resources.formatHistoryTitle(repository);
+  }
+
+  protected placeOf(repository: string): string {
+    const relative: string = this.pathOf(repository);
+    return relative.slice(0, Math.max(0, relative.length - this.nameOf(repository).length)).replace(Resources.scanSuffixPattern, "");
+  }
+
+  protected tickAll(isTicked: boolean): void {
+    this.unticked.set(isTicked ? new Set() : new Set(this.repositories()));
   }
 
   protected tick(repository: string, isTicked: boolean): void {

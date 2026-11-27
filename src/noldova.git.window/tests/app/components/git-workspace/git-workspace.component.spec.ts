@@ -425,7 +425,7 @@ describe("GitWorkspaceComponent", () => {
     };
 
     await openAsync(1);
-    const asked: readonly string[] = [...dialog()?.querySelectorAll(".nol-dialog-title, li") ?? []].map(t => (t.textContent ?? "").trim());
+    const asked: readonly string[] = [...dialog()?.querySelectorAll(".nol-dialog-title, li .name, li .place") ?? []].map(t => (t.textContent ?? "").trim());
     dialog()?.querySelector<HTMLButtonElement>(".cancel")?.click();
     await screen.untilAsync(() => dialogs().length === 0);
     const cancelled: readonly string[] | undefined = GitWorkspaces.find(workspace.id)?.folders;
@@ -437,7 +437,7 @@ describe("GitWorkspaceComponent", () => {
     await screen.untilAsync(() => screen.rows().length === 3 && dialogs().length === 0);
 
     expect(ticks).toEqual([true, false, true]);
-    expect([asked, cancelled, GitWorkspaces.find(workspace.id)?.folders]).toEqual([["Three repositories in group", "api", "site", "site/kit"],
+    expect([asked, cancelled, GitWorkspaces.find(workspace.id)?.folders]).toEqual([["Three repositories in group", "api", "site", "kit", "site"],
       ["/work/a"], ["/work/a", "/work/group/api", "/work/group/site/kit"]]);
   });
 

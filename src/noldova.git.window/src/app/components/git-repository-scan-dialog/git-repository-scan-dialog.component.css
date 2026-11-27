@@ -10,12 +10,41 @@
   margin: 0;
 }
 
+.all-row {
+  display: flex;
+  margin-top: 0.5rem;
+}
+
 .repositories {
+  --rows: 12;
   display: grid;
   gap: 0.25rem;
-  max-height: 20rem;
-  margin: 0.5rem 0 0;
+  max-height: calc(var(--rows) * (1lh + 0.25rem) - 0.25rem);
+  margin: 0.25rem 0 0;
   padding: 0;
   overflow-y: auto;
   list-style: none;
+  container-type: inline-size;
+}
+
+.repositories li {
+  display: flex;
+  min-width: 0;
+}
+
+.repository {
+  max-width: 100%;
+}
+
+.label {
+  display: block;
+  max-width: calc(100cqi - var(--nol-checkbox-size) - var(--nol-space-2));
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.place {
+  margin-inline-start: 0.5rem;
+  color: var(--nol-text-muted);
 }
