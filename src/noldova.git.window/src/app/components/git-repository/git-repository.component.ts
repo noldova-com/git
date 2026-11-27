@@ -143,11 +143,13 @@ export class GitRepositoryComponent {
 
   protected viewTag(folder: string, tag: GitTag): void {
     GitViewing.branch.set(new GitBranchView(folder, "", false, tag.id));
+    GitCommitDetails.of(this.context).bringForward();
     this.history(folder);
   }
 
   protected view(folder: string, branch: string, isRemote: boolean): void {
     GitViewing.branch.set(new GitBranchView(folder, branch, isRemote));
+    GitCommitDetails.of(this.context).bringForward();
     this.history(folder);
   }
 

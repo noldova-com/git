@@ -9,11 +9,11 @@
 import { signal } from "@angular/core";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
+import { HostAccount, HostSignIn } from "@noldova/git.hosting.protocol";
 import { GitFolderParams, GitGraph, GitNames, GitStatus } from "@noldova/git.protocol";
 import { GitFolder } from "@noldova/git.window";
 import { describe, expect, it, onTestFinished } from "vitest";
 
-import { WorkItemSelection } from "../../../../src/app/services/work-item-selection.ts";
 import { WorkItemsPages } from "../../../../src/app/services/work-items-pages.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { Wait } from "../../../fixtures/wait.fixture.ts";
@@ -162,6 +162,20 @@ describe("AzureDevOpsWorkItemComponent", () => {
     expect(page.texts(".empty")).toHaveLength(1);
   });
 
+  it("drops the work items a read brings back after the person signed out while it was on its way", async () => {
+    const page = new Page();
+    const release = page.requests.hold(AzureDevOpsNames.readWorkItemsMethod);
+    page.open();
+    await page.requests.askedAsync(1);
+
+    page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+    await Wait.until(() => page.find(".signed-out"));
+    release(listOf(mine));
+    await page.settleAsync();
+
+    expect([page.ids, page.texts(".signed-out").length, page.requests.methods.length]).toEqual([[], 1, 1]);
+  });
+
   it("logs a read the window fails, offers to try again, and lists what the retry reads", async () => {
     const page = new Page();
     page.requests.fail(AzureDevOpsNames.readWorkItemsMethod, new WindowFailure("The runtime stopped."));
@@ -269,7 +283,6 @@ describe("AzureDevOpsWorkItemComponent", () => {
     page.requests.answer(AzureDevOpsNames.readWorkItemsMethod, listOf([]));
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, null);
     await page.openAsync();
-    WorkItemSelection.of(page.context).listen();
     page.context.raiseViewClosed("git-azure-devops.workItemDetail", "selected");
     page.element.querySelectorAll<HTMLElement>(".item")[4]?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
     await page.settleAsync();
@@ -306,4 +319,29 @@ describe("AzureDevOpsWorkItemComponent", () => {
     expect([before, page.context.callsOf("openView").length, page.find(".detail").getAttribute("aria-label")]).toEqual([[0, ["Select a work item to see it here."]], 1,
       "Work item 7402"]);
   });
+
+  it("keeps the work items through a sign-in that waits, clears them and the view's work item once the person signs out, saying so with Sign in, and reads them anew once they sign in",
+    async () => {
+      const page = new Page().answerMine();
+      page.context.answer("runCommandAsync", async () => null);
+      await page.openAsync();
+      await Wait.until(() => page.find(".detail"));
+      page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.waitingInBrowser("https://login.microsoftonline.com/example").toJson());
+      await page.settleAsync();
+      const before: readonly unknown[] = [page.ids.length, page.find(".detail").getAttribute("aria-label"), page.requests.methods.length];
+
+      page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+      await Wait.until(() => page.find(".signed-out"));
+      await page.settleAsync();
+      const signedOut: readonly unknown[] = [page.text, page.ids, page.texts(".detail"), page.texts(".empty-view")];
+      await page.clickAsync(".signed-out button");
+      page.answerMine();
+      page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("monalisa@fabrikam.test", "Mona Lisa", null, [])).toJson());
+      await Wait.until(() => page.find(".detail"));
+
+      expect([before, signedOut, page.context.callsOf("runCommandAsync"), page.ids.length,
+        page.requests.payloads.filter(t => JSON.stringify(t) === JSON.stringify(mineQuery().toJson())).length]).toEqual([[6, "Work item 7402", 1],
+        ["key You signed out of Azure DevOps, so your work items aren't shown. Sign in to read them again. Sign in", [], [], ["Select a work item to see it here."]],
+        [["desktop.openSettings", { page: "git.accounts" }]], 6, 2]);
+    });
 });

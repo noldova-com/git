@@ -1293,6 +1293,33 @@ export declare class GitRecentRepositories {
 }
 
 /**
+ * The Dashboard, the page of the repositories opened lately, for an app's placeholder to show while no document is open, as the Dashboard tab shows it:
+ * its toolbar, the repositories' table and its rows' reads, opens and writes go through Git's own window part, which must be active in the window, so a
+ * placeholder another module registers shows Git's Dashboard. It takes no inputs; its selector is `nol-git-dashboard`.
+ * @throws GitWindowException when Git's window part isn't active in the window as the component is made.
+ * @example
+ * ```ts
+ * import { ContentPadding, type IWindowPartContext, PlaceholderContribution } from "@noldova/desktop.window";
+ *
+ * export function registerStart(context: IWindowPartContext): void {
+ *   context.registerPlaceholder(new PlaceholderContribution("app.start", () => import("@noldova/git.window").then(t => t.GitDashboardComponent),
+ *     ContentPadding.None));
+ * }
+ * ```
+ */
+export declare class GitDashboardComponent {
+  /**
+   * Angular's factory for the component, as its compiler declares it.
+   */
+  public static ɵfac: ɵɵFactoryDeclaration<GitDashboardComponent, never>;
+
+  /**
+   * Angular's metadata for the standalone component: its selector and no inputs, as its compiler declares it.
+   */
+  public static ɵcmp: ɵɵComponentDeclaration<GitDashboardComponent, "nol-git-dashboard", never, Record<string, never>, Record<string, never>, never, never, true, never>;
+}
+
+/**
  * The files a diff changes in a repository, as the commit detail shows them: a header with their count and the lines added and removed, a folder tree or
  * flat list, and each file's diff under its row once opened. It reads the diff from the repository through `git.diff`, so nothing leaves the machine; a
  * failed read shows Git's message. Inside the Git view it follows the view's file layout and offers its layout button; elsewhere it shows folders.
@@ -1342,7 +1369,8 @@ export declare class GitDiffFilesComponent {
 
 /**
  * A detail view beside the documents that shows what the active document of its kind chose, such as a work item or a conflict: the documents follow it
- * with their choice, it opens the view with `openView` and never `showView`, so the focus stays in the document, and the view draws what it shows.
+ * with their choice, it opens a view with instances with `openView`, so the focus stays in the document, or shows a plain view, such as the Commit view,
+ * with `showView`, and the view draws what it shows.
  * A module keeps one for each window and view.
  * @example
  * ```ts
@@ -1387,25 +1415,39 @@ export declare class GitDetailView<T> {
   public constructor(context: IWindowPartContext, view: string, instance: string, titleOf: (choice: T) => string, isBroughtForward?: boolean);
 
   /**
+   * Makes the detail view for one window over a plain view, which a choice shows with `showView` under the title it was registered with, moving the
+   * focus into it as `showView` does; it has no instance, so `listen` hears nothing and leaving the followed documents gives its group no front back.
+   * @param context The window part's context, which shows the view.
+   * @param view The view's name, a plain view the module registered.
+   * @param instance `null`: a plain view has none.
+   * @param titleOf `null`: the view keeps its registered title.
+   * @param isBroughtForward Whether a followed document coming to the front brings the view forward. `true` when left out.
+   */
+  public constructor(context: IWindowPartContext, view: string, instance: null, titleOf: null, isBroughtForward?: boolean);
+
+  /**
    * Adds a document's choice while it is open. The document coming to the front with a choice, or showing its first choice while in front, brings the
    * view to the front of its group with `openView`; a read again that keeps a choice moves nothing. While the view is open, the person leaving the
    * followed documents for another kind gives the view's group its front back with `returnView`.
    * @param choice What the document chose, or `null` for nothing.
    * @param active Whether the document is the window's active document, such as `WindowPartTokens.activeDocument`.
    * @param injector The document's injector: the document is removed once it is destroyed, and the view reacts in its context.
+   * @param settled Whether the document is done reading, so that it has no choice coming without the person; while it is in front, settled and with no
+   * choice, `bringForward` waits for no next choice. Left out, the document is never settled, and a wait ends only at a choice.
    */
-  public follow(choice: Signal<T | null>, active: Signal<boolean>, injector: Injector): void;
+  public follow(choice: Signal<T | null>, active: Signal<boolean>, injector: Injector, settled?: Signal<boolean>): void;
 
   /**
-   * Opens the view, without moving the focus, for a choice the person made, and while it is open brings its tab to the front of its group again,
-   * retitled for the choice.
+   * Opens the view for a choice the person made, and while it is open brings its tab to the front of its group again, retitled for the choice. A view
+   * with instances leaves the focus in the document; a plain view takes it, as `showView` does.
    * @param choice The choice, which titles the tab.
    */
   public showInFront(choice: T): void;
 
   /**
-   * Brings the view to the front of its group, without moving the focus, for the choice of the followed document in front, titled for it; with none,
-   * the next followed document in front with a choice brings it.
+   * Brings the view to the front of its group for the choice of the followed document in front, titled for it; a view with instances leaves the focus
+   * in the document, and a plain view takes it, as `showView` does. With no choice, the next followed document in front with a choice brings it,
+   * unless a followed document in front is settled with none first.
    */
   public bringForward(): void;
 

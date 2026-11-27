@@ -71,7 +71,7 @@ describe("GitWindowPart", () => {
     expect(answers).toEqual([false, true, true, false, false]);
     expect(GitAvatars.imageOf("/repository", "kim@example.com", "a1")).toBeNull();
     expect(context.calls.map(t => t.member)).toEqual(["registerView", "registerView", "registerView", "registerDocument", "registerDocument", "registerDocument", "registerView",
-      "registerView", "registerView", "registerView", "registerView", "onViewClosed", "onViewClosed", "onViewClosed", "onViewClosed", "registerCommand", "registerCommand", "registerCommand", "onViewClosed",
+      "registerView", "registerView", "registerView", "registerView", "onViewClosed", "onViewClosed", "onViewClosed", "registerCommand", "registerCommand", "registerCommand", "onViewClosed",
       "registerDocument", "registerCommand", "registerSettingsPage", "setSettingsRows", "registerStatusBarItem",
       "registerStatusBarItem", "registerStatusBarItem", "onEvent", "provideUndo", "onEvent"]);
     expect([context.activeCallsOf("onEvent").length, context.activeCallsOf("provideUndo").length]).toEqual([0, 0]);
@@ -149,7 +149,7 @@ describe("GitWindowPart", () => {
     expect(context.callsOf("registerView")).toEqual([[view], [views[1]], [views[2]], [views[3]], [views[4]], [views[5]], [views[6]], [views[7]]]);
   });
 
-  it("registers the repository view in the left dock's first group at order 10, shown by default, with no padding, loading its component", async () => {
+  it("registers the repository view in the left dock's first group at order 20, after the Workspaces view, shown by default, with no padding, loading its component", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     context.allow("provideUndo");
     const views: ViewContribution[] = [];
@@ -171,11 +171,11 @@ describe("GitWindowPart", () => {
     const view: ViewContribution | undefined = views[1];
 
     expect([view?.name, view?.title, view?.icon, view?.defaultSide, view?.isShownByDefault, view?.padding, view?.defaultGroup, view?.defaultOrder])
-      .toEqual(["git.repository", "Repository", "folder", DockSide.Left, true, ContentPadding.None, 0, 10]);
+      .toEqual(["git.repository", "Repository", "folder", DockSide.Left, true, ContentPadding.None, 0, 20]);
     expect(await view?.loadComponent()).toBe(GitRepositoryComponent);
   });
 
-  it("registers the Workspaces view in the left dock's first group at order 20, after the repository view, shown by default, with no padding, loading its component", async () => {
+  it("registers the Workspaces view in the left dock's first group at order 10, first, shown by default, with no padding, loading its component", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     context.allow("provideUndo");
     const views: ViewContribution[] = [];
@@ -197,7 +197,7 @@ describe("GitWindowPart", () => {
     const view: ViewContribution | undefined = views[2];
 
     expect([view?.name, view?.title, view?.icon, view?.defaultSide, view?.isShownByDefault, view?.padding, view?.defaultGroup, view?.defaultOrder])
-      .toEqual(["git.workspaces", "Workspaces", "dashboard", DockSide.Left, true, ContentPadding.None, 0, 20]);
+      .toEqual(["git.workspaces", "Workspaces", "dashboard", DockSide.Left, true, ContentPadding.None, 0, 10]);
     expect(await view?.loadComponent()).toBe(GitWorkspacesComponent);
   });
 
@@ -249,9 +249,9 @@ describe("GitWindowPart", () => {
     const view: ViewContribution | undefined = views[4];
 
     expect([view?.name, view?.title, view?.icon, view?.defaultSide, view?.isShownByDefault, view?.padding, view?.hasInstances, view?.defaultGroup, view?.defaultOrder])
-      .toEqual(["git.commitView", "Commit", "commit", DockSide.Right, false, ContentPadding.None, true, 0, 45]);
+      .toEqual(["git.commitView", "Commit", "commit", DockSide.Right, true, ContentPadding.None, false, 0, 45]);
     expect(await view?.loadComponent()).toBe(GitCommitDetailViewComponent);
-    expect(context.callsOf("onViewClosed").map(t => t[0])).toContain("git.commitView");
+    expect(context.callsOf("onViewClosed").map(t => t[0])).not.toContain("git.commitView");
   });
 
   it("registers the Conflict view with one instance, in the right dock's first group at order 50, hidden by default, with no padding, loading its component, and follows its closing", async () => {

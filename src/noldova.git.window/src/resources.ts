@@ -27,6 +27,7 @@ export class Resources {
   public static readonly maximumPathLength: number = 4_096;
   public static readonly absolutePathPattern: RegExp = /^(?:\/|[A-Za-z]:[\\/]|\\\\)/u;
   public static readonly folderProvided: string = "This window already has a Git folder provider; unregister it before providing another.";
+  public static readonly windowInactive: string = "Git's window part isn't active in this window, so the Dashboard has no Git to show.";
   public static readonly blankFolder: string = "the folder is blank";
   public static readonly relativeFolder: string = "the folder isn't an absolute path";
 
@@ -548,10 +549,10 @@ export class Resources {
   public static readonly repositoryViewTitle: string = "Repository";
   public static readonly repositoryViewIcon: IconName = "folder";
   public static readonly repositoryViewDefaultGroup: number = 0;
-  public static readonly repositoryViewDefaultOrder: number = 10;
+  public static readonly repositoryViewDefaultOrder: number = 20;
   public static readonly workspacesViewName: string = "git.workspaces";
   public static readonly workspacesViewDefaultGroup: number = 0;
-  public static readonly workspacesViewDefaultOrder: number = 20;
+  public static readonly workspacesViewDefaultOrder: number = 10;
   public static readonly repositoryLabel: string = "Repository";
   public static readonly fetchAllLabel: string = "Fetch all";
   public static readonly fetchAllRemotesTitle: string = "Fetch all: every remote of this repository";
@@ -899,11 +900,10 @@ export class Resources {
   public static readonly cleanFileIcon: IconName = "description";
   public static readonly commitDetailLabel: string = "Commit";
   public static readonly commitDetailViewName: string = "git.commitView";
-  public static readonly commitDetailViewInstance: string = "selected";
   public static readonly commitDetailIcon: IconName = "commit";
   public static readonly commitDetailDefaultGroup: number = 0;
   public static readonly commitDetailDefaultOrder: number = 45;
-  public static readonly commitDetailEmpty: string = "Choose a commit in History to see it here";
+  public static readonly commitDetailEmpty: string = "Choose a commit to see its details";
   public static readonly conflictDetailLabel: string = "Conflict";
   public static readonly conflictDetailViewName: string = "git.conflictDetail";
   public static readonly conflictDetailViewInstance: string = "selected";

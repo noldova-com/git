@@ -36,6 +36,6 @@ describe("GitCommitDetailViewComponent", () => {
     await view.waitForAsync(".empty-view");
 
     expect([empty, first, view.all(".detail").length, view.texts(".empty-view")])
-      .toEqual([["Choose a commit in History to see it here"], ["Follow renames"], 0, ["Choose a commit in History to see it here"]]);
+      .toEqual([["Choose a commit to see its details"], ["Follow renames"], 0, ["Choose a commit to see its details"]]);
   });
 });

@@ -29,6 +29,7 @@ import { PullRequestClone } from "../../models/pull-request-clone.ts";
 import { PullRequestDocument } from "../../models/pull-request-document.ts";
 import { TabSize } from "../../models/tab-size.ts";
 import { WorkItemsPlace } from "../../models/work-items-place.ts";
+import { AccountSettings } from "../../services/account-settings.ts";
 import { AzureDevOpsPages } from "../../services/azure-devops-pages.ts";
 import { AzureDevOpsPullRequestHost } from "../../services/azure-devops-pull-request-host.ts";
 import { AzureDevOpsReferenceSource } from "../../services/azure-devops-reference-source.ts";
@@ -71,6 +72,7 @@ export class AzureDevOpsPullRequestComponent {
   protected readonly isMissing: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly isReading: WritableSignal<boolean> = signal<boolean>(true);
+  protected readonly isSignedOut: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly isVoting: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly voteFailure: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly pendingVote: WritableSignal<number | null> = signal<number | null>(null);
@@ -107,10 +109,13 @@ export class AzureDevOpsPullRequestComponent {
         return;
       this.loginChanges++;
       this.login.set(signIn.account?.login ?? null);
+      this.isSignedOut.set(signIn.state === SignInState.SignedOut);
+      this.retry();
     }));
     effect(onCleanup => {
       this.attempt();
       const reference: HostReference | null = this.reference();
+      const isSignedOut: boolean = this.isSignedOut();
       let isCurrent = true;
       onCleanup(() => {
         isCurrent = false;
@@ -132,9 +137,9 @@ export class AzureDevOpsPullRequestComponent {
         this.revealing = null;
         this.pullRequest.set(null);
         this.failure.set(null);
-        this.isMissing.set(Object.isNull(reference));
-        this.isReading.set(!Object.isNull(reference));
-        if (!Object.isNull(reference))
+        this.isMissing.set(!isSignedOut && Object.isNull(reference));
+        this.isReading.set(!isSignedOut && !Object.isNull(reference));
+        if (!isSignedOut && !Object.isNull(reference))
           void this.readAsync(reference, () => isCurrent);
       });
     });
@@ -143,6 +148,10 @@ export class AzureDevOpsPullRequestComponent {
 
   protected retry(): void {
     this.attempt.update(t => t + 1);
+  }
+
+  protected signIn(): void {
+    AccountSettings.open(this.context);
   }
 
   private changed(reference: HostReference, pull: PullAfter | null): void {
