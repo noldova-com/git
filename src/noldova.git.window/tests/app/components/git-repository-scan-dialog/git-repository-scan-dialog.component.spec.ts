@@ -11,7 +11,9 @@ import { ApplicationRef } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { DefaultTheme, DialogService } from "@noldova/ui.components.angular";
 import { AppearanceFixture } from "@noldova/ui.components.angular/testing";
+import type {} from "@vitest/browser-playwright";
 import { afterEach, describe, expect, it } from "vitest";
+import { page } from "vitest/browser";
 
 import { GitRepositoryScanDialogComponent } from "../../../../src/app/components/git-repository-scan-dialog/git-repository-scan-dialog.component.ts";
 
@@ -60,6 +62,7 @@ class Dialog {
 }
 
 describe("GitRepositoryScanDialogComponent", () => {
+  const screenshots: string = "../../../../../../_build/window/screenshots";
   const rem = (pixels: number): number => Math.round(pixels / parseFloat(getComputedStyle(document.documentElement).fontSize) * 1000) / 1000;
   const box = (element: Element | null): DOMRect => element?.getBoundingClientRect() ?? new DOMRect();
 
@@ -102,7 +105,7 @@ describe("GitRepositoryScanDialogComponent", () => {
     expect(dialog.answers).toEqual([null, null]);
   });
 
-  it.each(AppearanceFixture.modes)("lines the repositories up under the text, a quarter rem apart, and scrolls a long list within 20rem, in %s mode", mode => {
+  it.each(AppearanceFixture.modes)("lines the repositories up under the text, a quarter rem apart, and scrolls a long list within 20rem, in %s mode", async mode => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
     const dialog: Dialog = new Dialog("/work", Array.from({ length: 40 }, (_, index) => `/work/repository-${index}`));
 
@@ -116,5 +119,8 @@ describe("GitRepositoryScanDialogComponent", () => {
     expect([rem(first.left - text.left), rem(checkbox.left - text.left), rem(box(list).top - text.bottom), rem(second.top - first.bottom), rem(box(list).height)])
       .toEqual([0, 0, 0.5, 0.25, 20]);
     expect([list?.scrollHeight ?? 0].map(t => t > (list?.clientHeight ?? 0))).toEqual([true]);
+
+    const panel: Element = dialog.host.closest(".cdk-overlay-pane") ?? dialog.host;
+    await page.screenshot({ element: panel, path: `${screenshots}/git-repository-scan-dialog-${mode}.png` });
   });
 });

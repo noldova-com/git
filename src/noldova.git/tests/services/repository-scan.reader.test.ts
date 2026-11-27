@@ -7,7 +7,7 @@
  */
 
 import assert from "node:assert/strict";
-import { mkdir, readdir, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test, vi } from "vitest";
@@ -25,7 +25,6 @@ import { RepositoryFixture } from "../fixtures/repository.fixture.ts";
 vi.mock(import("node:fs/promises"), { spy: true });
 
 describe("RepositoryScanReader", () => {
-  let template: RepositoryFixture;
   let repository: RepositoryFixture;
   let work: string;
   const cleanUps: CleanUps = new CleanUps();
@@ -39,29 +38,24 @@ describe("RepositoryScanReader", () => {
   };
 
   beforeAll(async () => {
-    template = await RepositoryFixture.createAsync();
+    repository = await RepositoryFixture.createAsync();
+    const supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
+    cleanUps.add(() => repository.disposeAsync());
+    cleanUps.add(() => supervisor.disposeAsync());
+    const runner = new ProgramRunner(supervisor.context);
+    scans = new RepositoryScanReader(new RepositoryReader(runner, new GitVersionReader(runner)));
   });
 
   afterAll(async () => {
-    await template.disposeAsync();
+    await cleanUps.runAsync();
   });
 
   beforeEach(async () => {
-    repository = await RepositoryFixture.createAsync(template);
-    cleanUps.add(() => repository.disposeAsync());
-    const supervisor = await DesktopFixture.createAsync(repository.supervisorEnvironment());
-    cleanUps.add(() => supervisor.disposeAsync());
-    cleanUps.add(() => {
-      vi.mocked(readdir).mockReset();
-    });
-    const runner = new ProgramRunner(supervisor.context);
-    scans = new RepositoryScanReader(new RepositoryReader(runner, new GitVersionReader(runner)));
-    work = path.join(repository.root, "work");
-    await mkdir(work);
+    work = await mkdtemp(path.join(repository.root, "work-"));
   });
 
-  afterEach(async () => {
-    await cleanUps.runAsync();
+  afterEach(() => {
+    vi.mocked(readdir).mockReset();
   });
 
   test("answers that a folder in a repository is one, without looking at its subfolders", async () => {
