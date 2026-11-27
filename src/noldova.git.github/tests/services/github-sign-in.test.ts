@@ -307,6 +307,20 @@ describe("GitHubSignIn", () => {
     assert.deepEqual([restored.signIn.current, restored.signIn.token, restored.kept()], [HostSignIn.signedOut(SignInFailure.Revoked), null, undefined]);
   });
 
+  it("forgets the token of a sign-in already kept as another account, once, and does nothing while signed out", async () => {
+    const rig = new Rig();
+    rig.keep(JSON.stringify({ token: "gho_kept", account: account.toJson() }));
+    rig.github.answer(bareUserAnswer());
+    await rig.signIn.restoreAsync();
+    await passAsync(0);
+
+    await rig.signIn.alreadyKeptAsync();
+    const count = rig.changes.length;
+    await rig.signIn.alreadyKeptAsync();
+
+    assert.deepEqual([rig.signIn.current, rig.signIn.token, rig.kept(), rig.changes.length], [HostSignIn.signedOut(SignInFailure.AlreadyKept), null, undefined, count]);
+  });
+
   it("refuses a second start while the first one's code hasn't come, so a cancel stops the only flow", async () => {
     const rig = new Rig();
     const release = rig.github.hold();
