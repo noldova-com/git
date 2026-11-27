@@ -1,0 +1,31 @@
+<!--
+@license
+Copyright (c) Noldova.
+
+This source code is licensed under the license found in the
+LICENSE file in the root directory of this source tree.
+-->
+
+@for (account of shown(); track account; let position = $index) {
+  <nol-git-github-sign-in [account]="account" [title]="titleOf(position)" [opensCode]="account === added()" />
+}
+@if (failure(); as failure) {
+  <div class="nol-git-github-setting">
+    <div class="nol-git-github-banner" role="alert">
+      <span class="material-symbols-rounded nol-git-github-banner-icon" aria-hidden="true">{{ resources.failureIcon }}</span>
+      <span class="nol-git-github-banner-text">
+        <span class="nol-git-github-strong">{{ failure }}</span>
+        <span class="nol-git-github-muted">{{ resources.requestFailedHint }}</span>
+      </span>
+    </div>
+  </div>
+}
+@if (canAdd()) {
+  <div class="nol-git-github-setting">
+    <div class="nol-git-github-row">
+      <button type="button" nol-button [variant]="secondary" [disabled]="isBusy()" (click)="addAsync()">
+        <span class="material-symbols-rounded" nolButtonIcon aria-hidden="true">{{ resources.addAccountIcon }}</span>{{ resources.addAccount }}
+      </button>
+    </div>
+  </div>
+}

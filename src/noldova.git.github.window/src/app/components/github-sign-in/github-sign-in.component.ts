@@ -7,16 +7,19 @@
  */
 
 import { NgTemplateOutlet } from "@angular/common";
-import { Component, DestroyRef, effect, ElementRef, inject, type OnInit, PendingTasks, signal, type WritableSignal } from "@angular/core";
+import { Component, DestroyRef, effect, ElementRef, inject, input, type InputSignal, type OnInit, PendingTasks, signal, untracked,
+  type WritableSignal } from "@angular/core";
+import type { JsonValue } from "@noldova/context.json";
 import "@noldova/context.core";
 import { type IWindowPartContext, LinkPlace, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { GitHubNames } from "@noldova/git.github.protocol";
-import { type DeviceCode, type HostAccount, HostSignIn, SignInState } from "@noldova/git.hosting.protocol";
+import { AccountQuery, type DeviceCode, type HostAccount, HostSignIn, SignInState } from "@noldova/git.hosting.protocol";
 import { FocusKeeper } from "@noldova/git.window";
 import { AvatarComponent, ButtonComponent, ButtonVariant, ClipboardWriter, SpinnerComponent } from "@noldova/ui.components.angular";
 
 import { SignInNotice } from "../../models/sign-in-notice.ts";
 import { Resources } from "../../../resources.ts";
+import { AccountEvents } from "../../services/account-events.ts";
 import { SignInEvents } from "../../services/sign-in-events.ts";
 
 @Component({
@@ -32,6 +35,7 @@ export class GitHubSignInComponent implements OnInit {
   private readonly destroyRef: DestroyRef = inject(DestroyRef);
   private readonly tasks: PendingTasks = inject(PendingTasks);
   private signInEvents: number = 0;
+  private hasOpenedCode: boolean = false;
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly secondary: ButtonVariant = ButtonVariant.Secondary;
@@ -39,6 +43,10 @@ export class GitHubSignInComponent implements OnInit {
   protected readonly isBusy: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly copiedCode: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly failure: WritableSignal<string | null> = signal<string | null>(null);
+
+  public readonly account: InputSignal<number> = input<number>(Resources.firstAccount);
+  public readonly title: InputSignal<string> = input<string>(Resources.accountTitle);
+  public readonly opensCode: InputSignal<boolean> = input<boolean>(false);
 
   public constructor() {
     this.destroyRef.onDestroy(FocusKeeper.keep(inject<ElementRef<HTMLElement>>(ElementRef).nativeElement));
@@ -49,14 +57,26 @@ export class GitHubSignInComponent implements OnInit {
       const timer = setInterval(() => this.now.set(Date.now()), Resources.secondMilliseconds);
       onCleanup(() => clearInterval(timer));
     });
+    effect(() => {
+      const code = this.signIn()?.deviceCode ?? null;
+      if (!this.opensCode() || Object.isNull(code) || this.hasOpenedCode)
+        return;
+      this.hasOpenedCode = true;
+      untracked(() => void this.continueAsync(code));
+    });
   }
 
   public ngOnInit(): void {
-    const unfollow = SignInEvents.follow(this.context, signIn => {
+    const changed = (signIn: HostSignIn): void => {
       this.signInEvents++;
       this.showSignIn(signIn);
-    });
-    this.destroyRef.onDestroy(unfollow);
+    };
+    const account: number = this.account();
+    this.destroyRef.onDestroy(account === Resources.firstAccount ? SignInEvents.follow(this.context, changed) : AccountEvents.follow(this.context, list => {
+      const entry = list.accounts.find(t => t.id === account);
+      if (!Object.isUndefined(entry))
+        changed(entry.signIn);
+    }));
     void this.askAsync(GitHubNames.readSignInMethod);
   }
 
@@ -141,7 +161,7 @@ export class GitHubSignInComponent implements OnInit {
     this.isBusy.set(true);
     this.failure.set(null);
     try {
-      const answer = HostSignIn.fromJson(await this.context.requestAsync(method, null));
+      const answer = HostSignIn.fromJson(await this.context.requestAsync(method, this.payload()));
       if (this.signInEvents === events)
         this.signIn.set(answer);
       return answer;
@@ -158,6 +178,11 @@ export class GitHubSignInComponent implements OnInit {
       this.isBusy.set(false);
       done();
     }
+  }
+
+  private payload(): JsonValue {
+    const account: number = this.account();
+    return account === Resources.firstAccount ? null : new AccountQuery(account).toJson();
   }
 
   private showSignIn(next: HostSignIn): void {

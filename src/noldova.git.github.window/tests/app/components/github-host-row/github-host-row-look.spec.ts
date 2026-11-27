@@ -13,8 +13,8 @@ import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitHubNames } from "@noldova/git.github.protocol";
-import { BranchPullRequest, CheckState, DeviceCode, HostAccount, HostChanges, HostCheck, HostItem, HostReference, HostSignIn, ReferenceKind,
-  ReferenceState } from "@noldova/git.hosting.protocol";
+import { BranchPullRequest, CheckState, DeviceCode, HostAccount, HostAccountEntry, HostAccountList, HostChanges, HostCheck, HostItem, HostReference, HostSignIn,
+  ReferenceKind, ReferenceState, RepositoryAccount } from "@noldova/git.hosting.protocol";
 import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
 import { DefaultTheme, ThemeMode } from "@noldova/ui.components.angular";
 import { AppearanceFixture, PointerFixture, TooltipFixture } from "@noldova/ui.components.angular/testing";
@@ -22,6 +22,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { cdp, page } from "vitest/browser";
 
 import { GitHubHostRowComponent } from "../../../../src/app/components/github-host-row/github-host-row.component.ts";
+import { GitHubAccountList } from "../../../../src/app/services/github-account-list.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
@@ -164,6 +165,32 @@ describe("GitHubHostRowComponent in the kit's look", () => {
     }
 
     expect(shown).toEqual([null, `#1234 ${title}`, longCheck]);
+  });
+
+  it.each(AppearanceFixture.modes)("sets the account line under the card, its mark on the card's icons, its button's end on the card's, in %s mode", async mode => {
+    const fixture = await openAsync(mode, HostSignIn.signedIn(account), answer, (context, requests) => {
+      GitHubAccountList.show(context, new HostAccountList([new HostAccountEntry(1, HostSignIn.signedIn(account)),
+        new HostAccountEntry(2, HostSignIn.signedIn(new HostAccount("example-bot", null, null, ["repo"])))]));
+      requests.answer(GitHubNames.readRepositoryAccountMethod, new RepositoryAccount(2).toJson());
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root: HTMLElement = fixture.nativeElement;
+    const card = find(root, ".pr").getBoundingClientRect();
+    const state = find(root, ".state").getBoundingClientRect();
+    const open = find(root, ".open").getBoundingClientRect();
+    const line = find(root, ".account").getBoundingClientRect();
+    const mark = find(root, ".account .notice-mark").getBoundingClientRect();
+    const text = find(root, ".account .notice-text");
+    const button = find(root, ".account button").getBoundingClientRect();
+
+    AppearanceFixture.expectPixels(line.top - card.bottom, px(0.5));
+    AppearanceFixture.expectPixels(mark.left, state.left);
+    AppearanceFixture.expectPixels(button.right, open.right);
+    AppearanceFixture.expectPixels(mark.top + mark.height / 2, line.top + line.height / 2);
+    AppearanceFixture.expectPixels(text.getBoundingClientRect().left - mark.right, px(0.5));
+    expect([text.textContent?.trim(), getComputedStyle(text).color]).toEqual(["Account: example-bot", getComputedStyle(find(root, ".account")).color]);
+    await page.screenshot({ path: `${screenshots}/host-row-account-${mode}.png`, element: find(root, ".dock") });
   });
 
   it.each(AppearanceFixture.modes)("sets the pull request's line and its checks inside the card's insets, worst first, in %s mode", async mode => {

@@ -21,7 +21,12 @@ describe("GitHostCard", () => {
   ])("asks to sign in, rather than showing a chip, when it is %s: %s", (state, asks) => {
     const card: GitHostCard = new GitHostCard("GitHub", "Signed in on this computer", state, "Sign in");
 
-    expect([card.title, card.detail, card.state, card.label, card.asksToSignIn]).toEqual(["GitHub", "Signed in on this computer", state, "Sign in", asks]);
+    expect([card.title, card.detail, card.state, card.label, card.asksToSignIn, card.account]).toEqual(["GitHub", "Signed in on this computer", state, "Sign in",
+      asks, null]);
+  });
+
+  it("keeps the host's id for its account when the host has several", () => {
+    expect(new GitHostCard("GitHub · lee", "Signed in on this computer", GitHostCardState.SignedIn, "Signed in", "1").account).toBe("1");
   });
 
   it("knows each card state and host feature by its own name", () => {

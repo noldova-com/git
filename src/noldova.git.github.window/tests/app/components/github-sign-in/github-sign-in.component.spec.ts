@@ -11,7 +11,7 @@ import "@noldova/context.core";
 import { LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitHubNames } from "@noldova/git.github.protocol";
-import { DeviceCode, HostAccount, HostSignIn, SignInFailure } from "@noldova/git.hosting.protocol";
+import { AccountQuery, DeviceCode, HostAccount, HostAccountEntry, HostAccountList, HostSignIn, SignInFailure } from "@noldova/git.hosting.protocol";
 import { ClipboardWriter } from "@noldova/ui.components.angular";
 import { ClipboardWriterFixture } from "@noldova/ui.components.angular/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -69,11 +69,13 @@ class Page {
       writer.answer = (): Promise<boolean> => Promise.resolve(false);
   }
 
-  public async openAsync(first: HostSignIn | null): Promise<this> {
+  public async openAsync(first: HostSignIn | null, inputs: Readonly<Record<string, unknown>> = {}): Promise<this> {
     if (!Object.isNull(first))
       this.requests.answer(GitHubNames.readSignInMethod, first.toJson());
     TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: this.context }] });
     this.fixture = TestBed.createComponent(GitHubSignInComponent);
+    for (const [name, value] of Object.entries(inputs))
+      this.fixture.componentRef.setInput(name, value);
     await this.settleAsync();
     return this;
   }
@@ -346,6 +348,53 @@ describe("GitHubSignInComponent", () => {
     page.fixture?.destroy();
 
     expect([shown, following, page.context.activeCallsOf("onEvent").filter(t => t[0] === GitHubNames.signInChangedEvent).length]).toEqual([["example-user"], 1, 0]);
+  });
+
+  it("acts on the account it is given, under the title it is given, naming the account in each request", async () => {
+    const page = await new Page().openAsync(HostSignIn.signedIn(account), { account: 2, title: "Account 2" });
+    page.requests.answer(GitHubNames.signOutMethod, HostSignIn.signedOut().toJson());
+
+    await page.clickAsync("Sign out");
+
+    expect([page.texts("h3"), page.requests.methods, page.requests.payloads]).toEqual([["Account 2"], [GitHubNames.readSignInMethod, GitHubNames.signOutMethod],
+      [new AccountQuery(2).toJson(), new AccountQuery(2).toJson()]]);
+  });
+
+  it("follows an added account's changes in the account list, not the first account's sign-in, until it closes", async () => {
+    const page = await new Page().openAsync(HostSignIn.signedOut(), { account: 2 });
+    const list = (second: HostSignIn): HostAccountList => new HostAccountList([new HostAccountEntry(1, HostSignIn.waiting(code)), new HostAccountEntry(2, second)]);
+
+    page.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.waiting(code).toJson());
+    page.context.raiseEvent(GitHubNames.accountsChangedEvent, new HostAccountList([new HostAccountEntry(1, HostSignIn.signedIn(account))]).toJson());
+    await page.settleAsync();
+    const unchanged = page.labels();
+    page.context.raiseEvent(GitHubNames.accountsChangedEvent, list(HostSignIn.signedIn(account)).toJson());
+    await page.settleAsync();
+    const shown = page.texts(".nol-git-github-strong");
+    page.fixture?.destroy();
+
+    expect([unchanged, shown, page.context.callsOf("onEvent").map(t => t[0]), page.context.activeCallsOf("onEvent")])
+      .toEqual([["Sign in to GitHub"], ["example-user"], [GitHubNames.accountsChangedEvent], []]);
+  });
+
+  it("copies the code and opens GitHub's page once, when the list asks it to and its sign-in shows a code, however late the ask comes", async () => {
+    const page = await new Page().openAsync(HostSignIn.waiting(code), { account: 2 });
+    page.context.answer("openLinkAsync", async () => undefined);
+    const before = [page.links, [...page.clipboard]];
+
+    page.fixture?.componentRef.setInput("opensCode", true);
+    await page.settleAsync();
+    page.context.raiseEvent(GitHubNames.accountsChangedEvent, new HostAccountList([new HostAccountEntry(2, HostSignIn.waiting(code))]).toJson());
+    await page.settleAsync();
+
+    expect([before, page.links, page.clipboard, page.places]).toEqual([[[], []], ["https://github.com/login/device"], ["WDJB-MJHT"], [LinkPlace.System]]);
+    expect(page.texts("p")).toEqual(["Paste the code WDJB-MJHT on GitHub's page; it's copied."]);
+  });
+
+  it("opens nothing for an ask to open the code while its sign-in shows none", async () => {
+    const page = await new Page().openAsync(HostSignIn.signedOut(), { account: 2, opensCode: true });
+
+    expect([page.links, page.clipboard, page.labels()]).toEqual([[], [], ["Sign in to GitHub"]]);
   });
 
   it("holds its buttons while a request is out, and keeps the page as it was when the request fails, saying so", async () => {

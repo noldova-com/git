@@ -11,15 +11,19 @@ import { Component, computed, DestroyRef, effect, ElementRef, inject, input, typ
 import "@noldova/context.core";
 import { type IWindowPartContext, LinkPlace, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { GitHubNames } from "@noldova/git.github.protocol";
-import { BranchPullRequest, BranchQuery, CheckState, type HostCheck, HostSignIn, SignInState } from "@noldova/git.hosting.protocol";
+import { AccountPick, BranchPullRequest, BranchQuery, CheckState, type HostAccountList, type HostCheck, HostSignIn, RepositoryAccount, RepositoryQuery,
+  SignInState } from "@noldova/git.hosting.protocol";
 import type { GitRemote } from "@noldova/git.protocol";
 import { FocusKeeper } from "@noldova/git.window";
-import { ButtonComponent, ButtonVariant, ClipboardWriter, IconButtonComponent, SpinnerComponent, TooltipDirective } from "@noldova/ui.components.angular";
+import { ButtonComponent, ButtonVariant, ClipboardWriter, IconButtonComponent, MenuComponent, MenuItemComponent, MenuTriggerDirective, SpinnerComponent,
+  TooltipDirective } from "@noldova/ui.components.angular";
 
+import { AccountReader } from "../../models/account-reader.ts";
 import { FailedLink } from "../../models/failed-link.ts";
 import type { GitHubLook } from "../../models/github-look.ts";
 import { ShownPullRequest } from "../../models/shown-pull-request.ts";
 import { Resources } from "../../../resources.ts";
+import { GitHubAccountList } from "../../services/github-account-list.ts";
 import { GitHubLooks } from "../../services/github-looks.ts";
 import { SignInEvents } from "../../services/sign-in-events.ts";
 
@@ -27,7 +31,7 @@ import { SignInEvents } from "../../services/sign-in-events.ts";
   selector: "nol-git-github-host-row",
   templateUrl: "./github-host-row.component.html",
   styleUrl: "./github-host-row.component.css",
-  imports: [ButtonComponent, IconButtonComponent, SpinnerComponent, TooltipDirective]
+  imports: [ButtonComponent, IconButtonComponent, MenuComponent, MenuItemComponent, MenuTriggerDirective, SpinnerComponent, TooltipDirective]
 })
 export class GitHubHostRowComponent implements OnInit {
   private static readonly WORST_FIRST: readonly CheckState[] = [CheckState.Failed, CheckState.Running, CheckState.Queued, CheckState.Succeeded,
@@ -46,6 +50,7 @@ export class GitHubHostRowComponent implements OnInit {
   private readonly clipboard: ClipboardWriter = inject(ClipboardWriter);
   private readonly destroyRef: DestroyRef = inject(DestroyRef);
   private readonly tasks: PendingTasks = inject(PendingTasks);
+  private readonly accounts: Signal<HostAccountList | null> = GitHubAccountList.of(this.context);
   private readonly query: Signal<BranchQuery | null> = computed(
     () => this.isSignedIn() ? GitHubHostRowComponent.queryOf(this.remote(), this.branch(), this.head()) : null,
     { equal: GitHubHostRowComponent.isSameQuery });
@@ -61,7 +66,15 @@ export class GitHubHostRowComponent implements OnInit {
   protected readonly isBusy: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly copiedCode: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly isReading: WritableSignal<boolean> = signal<boolean>(false);
-  protected readonly isSignedIn: Signal<boolean> = computed(() => this.signIn()?.state === SignInState.SignedIn);
+  protected readonly reader: WritableSignal<number | null> = signal<number | null>(null);
+  protected readonly readers: Signal<readonly AccountReader[]> = computed(() => (this.accounts()?.accounts ?? [])
+    .flatMap(t => Object.isNull(t.signIn.account) ? [] : [new AccountReader(t.id, t.signIn.account.login)]));
+  protected readonly readerQuery: Signal<RepositoryQuery | null> = computed(() => {
+    const remote: GitRemote = this.remote();
+    return this.readers().length < 2 || Object.isNull(remote.host) || Object.isNull(remote.path) ? null : new RepositoryQuery(remote.host, remote.path);
+  }, { equal: (a, b) => a?.host === b?.host && a?.path === b?.path });
+  protected readonly shownReader: Signal<AccountReader | null> = computed(() => this.readers().find(t => t.id === this.reader()) ?? null);
+  protected readonly isSignedIn: Signal<boolean> = computed(() => this.signIn()?.state === SignInState.SignedIn || this.readers().length > 0);
   protected readonly shown: Signal<ShownPullRequest | null> = computed(() => {
     const answer: BranchPullRequest | null = this.answer();
     const pullRequest = answer?.pullRequest ?? null;
@@ -91,6 +104,20 @@ export class GitHubHostRowComponent implements OnInit {
         this.isReading.set(!Object.isNull(query));
         if (!Object.isNull(query))
           void this.readAsync(query, () => isCurrent);
+      });
+    });
+    effect(onCleanup => {
+      this.readers();
+      const query: RepositoryQuery | null = this.readerQuery();
+      let isCurrent = true;
+      onCleanup(() => {
+        isCurrent = false;
+      });
+      untracked(() => {
+        if (Object.isNull(query))
+          this.reader.set(null);
+        else
+          void this.readReaderAsync(query, () => isCurrent);
       });
     });
   }
@@ -170,6 +197,49 @@ export class GitHubHostRowComponent implements OnInit {
     finally {
       done();
     }
+  }
+
+  protected async pickAsync(query: RepositoryQuery, account: number): Promise<void> {
+    const done = this.tasks.add();
+    this.isBusy.set(true);
+    try {
+      this.showReader(RepositoryAccount.fromJson(await this.context.requestAsync(GitHubNames.pickAccountMethod,
+        new AccountPick(query.host, query.path, account).toJson())).account);
+    }
+    catch (error) {
+      if (!(error instanceof WindowException))
+        throw error;
+      this.context.log(Resources.formatRequestFailed(GitHubNames.pickAccountMethod, String(error)));
+      this.failure.set(Resources.accountNotSwitched);
+    }
+    finally {
+      this.isBusy.set(false);
+      done();
+    }
+  }
+
+  private async readReaderAsync(query: RepositoryQuery, isCurrent: () => boolean): Promise<void> {
+    const done = this.tasks.add();
+    try {
+      const answer = RepositoryAccount.fromJson(await this.context.requestAsync(GitHubNames.readRepositoryAccountMethod, query.toJson()));
+      if (isCurrent())
+        this.showReader(answer.account);
+    }
+    catch (error) {
+      if (!(error instanceof WindowException))
+        throw error;
+      this.context.log(Resources.formatRequestFailed(GitHubNames.readRepositoryAccountMethod, String(error)));
+    }
+    finally {
+      done();
+    }
+  }
+
+  private showReader(account: number | null): void {
+    const shown: number | null = this.reader();
+    this.reader.set(account);
+    if (!Object.isNull(shown) && shown !== account)
+      this.attempt.update(t => t + 1);
   }
 
   private async readAsync(query: BranchQuery, isCurrent: () => boolean): Promise<void> {

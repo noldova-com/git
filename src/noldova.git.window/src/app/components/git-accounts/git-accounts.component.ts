@@ -43,10 +43,11 @@ export class GitAccountsComponent {
     return provided.account.features.includes(feature);
   }
 
-  protected open(provided: IProvidedGitHostAccount, title: string): void {
+  protected open(provided: IProvidedGitHostAccount, title: string, chosen: string | null = null): void {
     const dialog = this.dialogs.open(GitAccountDialogComponent);
     dialog.componentRef?.setInput(Resources.accountInput, provided);
     dialog.componentRef?.setInput(Resources.dialogTitleInput, title);
+    dialog.componentRef?.setInput(Resources.chosenAccountInput, chosen);
     dialog.componentInstance?.closed.subscribe(() => {
       dialog.close();
     });

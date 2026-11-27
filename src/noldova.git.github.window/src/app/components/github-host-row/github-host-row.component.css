@@ -41,6 +41,15 @@
   margin-top: var(--nol-space-2);
 }
 
+.account {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  margin-top: var(--nol-space-2);
+  padding-inline: calc(var(--nol-view-padding-inline) + var(--nol-border-width));
+  color: var(--nol-text-muted);
+}
+
 .pr {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

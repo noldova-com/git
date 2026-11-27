@@ -13,12 +13,14 @@ export class GitHostCard {
   public readonly detail: string;
   public readonly state: GitHostCardState;
   public readonly label: string;
+  public readonly account: string | null;
 
-  public constructor(title: string, detail: string, state: GitHostCardState, label: string) {
+  public constructor(title: string, detail: string, state: GitHostCardState, label: string, account: string | null = null) {
     this.title = title;
     this.detail = detail;
     this.state = state;
     this.label = label;
+    this.account = account;
   }
 
   public get asksToSignIn(): boolean {

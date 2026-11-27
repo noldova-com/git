@@ -74,6 +74,22 @@ LICENSE file in the root directory of this source tree.
     <span class="notice-text">{{ resources.readingPullRequest }}</span>
   </div>
 }
+@if (readerQuery(); as query) {
+  @if (shownReader(); as current) {
+    <div class="account">
+      <span class="notice-mark" aria-hidden="true" [style.--nol-git-github-icon]="mark"></span>
+      <span class="notice-text">{{ resources.formatRepositoryAccount(current.login) }}</span>
+      <button type="button" nol-button [variant]="secondary" [disabled]="isBusy()" [nolMenuTriggerFor]="readerMenu">{{ resources.switchAccount }}</button>
+      <ng-template #readerMenu>
+        <nol-menu>
+          @for (option of readers(); track option.id) {
+            <button nol-menu-item [label]="option.login" [checked]="option.id === current.id" (triggered)="pickAsync(query, option.id)"></button>
+          }
+        </nol-menu>
+      </ng-template>
+    </div>
+  }
+}
 @if (failedLink(); as link) {
   <div class="notice link-failed" role="alert">
     <span class="material-symbols-rounded notice-icon" aria-hidden="true">{{ resources.failureIcon }}</span>

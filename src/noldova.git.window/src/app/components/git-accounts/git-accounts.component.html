@@ -32,13 +32,13 @@ LICENSE file in the root directory of this source tree.
               <span class="detail">{{ card.detail }}</span>
             </span>
             @if (card.asksToSignIn) {
-              <button type="button" nol-button [variant]="secondary" (click)="open(provided, resources.formatSignInTitle(provided.account.host))">{{ card.label }}</button>
+              <button type="button" nol-button [variant]="secondary" (click)="open(provided, resources.formatSignInTitle(provided.account.host), card.account)">{{ card.label }}</button>
             } @else {
               <span class="end">
                 <nol-chip [kind]="chipOf(card)">{{ card.label }}</nol-chip>
                 <button type="button" nol-icon-button [icon]="resources.manageAccountIcon" [label]="resources.formatManageAccount(provided.account.host)"
                   [nolTooltip]="resources.formatManageAccount(provided.account.host)"
-                  (click)="open(provided, resources.formatAccountRowTitle(provided.account.host))"></button>
+                  (click)="open(provided, resources.formatAccountRowTitle(provided.account.host), card.account)"></button>
               </span>
             }
           </div>
