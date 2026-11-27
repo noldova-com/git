@@ -12,6 +12,7 @@ import { FailureCode } from "@noldova/desktop.protocol";
 import { MethodFailureException } from "@noldova/desktop.runtime";
 import { afterEach, beforeEach, describe, it, vi } from "vitest";
 
+import { GitHubUnreachableException } from "../../src/exceptions/github-unreachable.exception.ts";
 import { GitHubApi } from "../../src/services/github-api.ts";
 import { FakeGitHub } from "../fixtures/fake-github.fixture.ts";
 
@@ -266,7 +267,15 @@ describe("GitHubApi", () => {
 
     assert.deepEqual([codeOf(terminated), codeOf(timedOut), codeOf(posted)], [FailureCode.Unavailable, FailureCode.DeadlineExceeded, FailureCode.Unavailable]);
     assert.equal(terminated instanceof MethodFailureException ? terminated.failure.message : "", "GitHub couldn't be reached.");
+    assert.deepEqual([terminated, timedOut, posted].map(t => t instanceof GitHubUnreachableException), [true, true, true]);
     assert.equal(failed, unexpected);
+  });
+
+  it("tells a failure GitHub answered from one that never reached it by its type, not its text", () => {
+    const sameText = GitHubApi.failure(FailureCode.Unavailable, "GitHub couldn't be reached.");
+
+    assert.deepEqual([GitHubApi.isAnswered(sameText), GitHubApi.isAnswered(new GitHubUnreachableException(FailureCode.Unavailable)), GitHubApi.isAnswered(new RangeError("Unexpected."))],
+      [true, false, false]);
   });
 
   it("reads an answer of 8 MiB, and fails one past it as Unavailable, letting go of the rest of its body", async () => {

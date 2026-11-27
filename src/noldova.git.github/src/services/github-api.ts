@@ -11,6 +11,7 @@ import { Failure, FailureCode } from "@noldova/desktop.protocol";
 import { MethodFailureException } from "@noldova/desktop.runtime";
 import { HostingProtocolException } from "@noldova/git.hosting.protocol";
 
+import { GitHubUnreachableException } from "../exceptions/github-unreachable.exception.ts";
 import { CachedAnswer } from "../models/cached-answer.ts";
 import { Resources } from "../resources.ts";
 import type { Fetcher } from "../types/fetcher.ts";
@@ -77,7 +78,7 @@ export class GitHubApi {
   }
 
   public static isAnswered(error: unknown): boolean {
-    return error instanceof MethodFailureException && error.failure.message !== Resources.unreachableMessage;
+    return error instanceof MethodFailureException && !(error instanceof GitHubUnreachableException);
   }
 
   public static isUnauthorized(error: unknown): boolean {
@@ -196,9 +197,9 @@ export class GitHubApi {
     if (signal.aborted)
       return signal.reason;
     if (error instanceof DOMException && error.name === Resources.timeoutErrorName)
-      return GitHubApi.failure(FailureCode.DeadlineExceeded, Resources.unreachableMessage);
+      return new GitHubUnreachableException(FailureCode.DeadlineExceeded);
     if (error instanceof TypeError)
-      return GitHubApi.failure(FailureCode.Unavailable, Resources.unreachableMessage);
+      return new GitHubUnreachableException(FailureCode.Unavailable);
     return error;
   }
 
