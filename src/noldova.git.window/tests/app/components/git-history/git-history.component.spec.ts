@@ -271,6 +271,38 @@ describe("GitHistoryComponent", () => {
     expect([afterKey - keyed, context.callsOf("showView").slice(afterKey)]).toEqual([0, [["git.view"]]]);
   });
 
+  it("keeps the focus in History as Down moves from the changes row through the commits, never showing the Commit view, which shows each one",
+    async () => {
+    onTestFinished(() => GitViewing.showChanges(GitFixtures.folder));
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.graph": graph.toJson(),
+      "git.status": GitFixtures.status([GitFixtures.entry("a.ts", FileState.Unmodified, FileState.Modified)]).toJson() });
+    GitFixtures.setUp(context, [{ provide: WindowPartTokens.activeDocument, useValue: signal(true) }]);
+    const fixture: ComponentFixture<GitHistoryComponent> = TestBed.createComponent(GitHistoryComponent);
+    fixture.componentRef.setInput("instance", GitFixtures.folder);
+    fixture.autoDetectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    const details: GitDetailView<GitCommitView> = GitCommitDetails.of(context);
+    const options = (): readonly HTMLElement[] => [...element.querySelectorAll<HTMLElement>("[role=option]")];
+    const down = (): void => {
+      element.querySelector<HTMLElement>("[aria-selected=true]")?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    };
+    await untilAsync(element, () => options().length === 3);
+    options()[0]?.click();
+    await fixture.whenStable();
+    const before: number = context.callsOf("showView").length;
+
+    down();
+    await untilAsync(element, () => options()[1]?.getAttribute("aria-selected") === "true");
+    const first: string | undefined = details.shown()?.commit.commit.subject;
+    down();
+    await untilAsync(element, () => options()[2]?.getAttribute("aria-selected") === "true");
+    const second: string | undefined = details.shown()?.commit.commit.subject;
+
+    expect([first, second, context.callsOf("showView").slice(before).filter(t => t[0] === "git.commitView"), context.callsOf("openView")])
+      .toEqual(["Second", "First", [], []]);
+  });
+
   it("keeps each folder's chosen commit, so a commit chosen in one History leaves another folder's History on its own", async () => {
     const other: string = "/work/other";
     onTestFinished(() => [GitFixtures.folder, other].forEach(t => GitViewing.showChanges(t)));
