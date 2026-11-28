@@ -552,7 +552,7 @@ describe("GitRepositoryComponent", () => {
     it.each([true, false])("switches to a branch only on the remote by its local name from its Remotes row's Switch to branch and by a double-click, with the branch card shown %s", async shown => {
       GitViewOptions.showsBranch.set(shown);
       onTestFinished(() => GitViewOptions.showsBranch.set(true));
-      const { element, context } = await renderWithAsync({ "git.switchBranch": null, "git.branches": GitFixtures.branches("main", ["main"], ["origin/main", "origin/team/colleague"]).toJson() });
+      const { element, context } = await renderWithAsync({ "git.switchBranch": null, "git.branches": GitFixtures.branches("main", ["feature", "main"], ["origin/main", "origin/team/colleague"]).toJson() });
       await openRemoteAsync(element, 1);
       element.querySelector<HTMLElement>("[title='origin/team/']")?.click();
       await domAsync(() => element.querySelectorAll(".remote").length === 2);
@@ -570,7 +570,7 @@ describe("GitRepositoryComponent", () => {
     });
 
     it("offers Switch to branch in a remote branch's menu, and neither in the menu nor at the row's end for the current branch's own", async () => {
-      const { element, context } = await renderWithAsync({ "git.switchBranch": null, "git.branches": GitFixtures.branches("main", ["main"], ["origin/main", "origin/next"]).toJson() });
+      const { element, context } = await renderWithAsync({ "git.switchBranch": null, "git.branches": GitFixtures.branches("main", ["feature", "main"], ["origin/main", "origin/next"]).toJson() });
       await openRemoteAsync(element, 2);
       const forCurrent: readonly boolean[] = (await menuOf(element.querySelector<HTMLElement>("[title='origin/main']") ?? element)).map(isOff);
       document.querySelector("[nol-menu-item]")?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true, cancelable: true }));
@@ -587,7 +587,7 @@ describe("GitRepositoryComponent", () => {
     it("keeps the current branch and says why when Git refuses a remote branch's switch", async () => {
       const { element } = await renderWithAsync({
         "git.switchBranch": GitFixtures.failure(FailureCode.Git, GitCode.ChangesInTheWay, "Your local changes to package-lock.json would be overwritten by checkout."),
-        "git.branches": GitFixtures.branches("main", ["main"], ["origin/main", "origin/next"]).toJson()
+        "git.branches": GitFixtures.branches("main", ["feature", "main"], ["origin/main", "origin/next"]).toJson()
       });
       await openRemoteAsync(element, 2);
 
