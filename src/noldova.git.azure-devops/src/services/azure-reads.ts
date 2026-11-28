@@ -17,6 +17,7 @@ import { BranchPullRequest, type BranchQuery, CheckState, type CommitQuery, File
   HostWorkItemType, PolicyState, ReferenceKind, ReferenceState, type RepositoryQuery, ReviewDecision, ThreadStatus, WorkItemCategory, type WorkItemQuery,
   WorkItemScope, type WorkItemsQuery } from "@noldova/git.hosting.protocol";
 
+import type { IAccountRead } from "../interfaces/i-account-read.ts";
 import type { IAzureTokens } from "../interfaces/i-azure-tokens.ts";
 import { AccountReviewRequests } from "../models/account-review-requests.ts";
 import { AccountWorkItems } from "../models/account-work-items.ts";
@@ -40,8 +41,7 @@ export class AzureReads {
   private readonly signIn: IAzureTokens;
   private readonly log: IModuleLog;
   private static readonly unstopped: AbortSignal = new AbortController().signal;
-  private readonly types: Map<string, Promise<WorkItemTypeStates>> = new Map();
-  private typesToken: AzureCredential | null = null;
+  private readonly types: Map<AzureCredential, Map<string, Promise<WorkItemTypeStates>>> = new Map();
   private reviewers: readonly KnownReviewer[] = [];
   private readonly repositories: Map<string, readonly [string, string]> = new Map();
 
@@ -476,7 +476,7 @@ export class AzureReads {
     });
   }
 
-  private heldOf<T extends { readonly account: SignedInAccount }>(settled: readonly PromiseSettledResult<T>[]): readonly T[] {
+  private heldOf<T extends IAccountRead>(settled: readonly PromiseSettledResult<T>[]): readonly T[] {
     const read: readonly T[] = settled.flatMap(t => t.status === "fulfilled" ? [t.value] : []);
     const failures: readonly unknown[] = settled.flatMap((t): unknown[] => t.status === "rejected" ? [t.reason] : []);
     const unexpected: readonly unknown[] = failures.filter(t => !(t instanceof MethodFailureException));
@@ -546,20 +546,17 @@ export class AzureReads {
 
   private async readTypeAsync(organization: string, project: string, name: string, token: AzureCredential,
     signal: AbortSignal): Promise<WorkItemTypeStates> {
-    if (this.typesToken !== token) {
-      this.types.clear();
-      this.typesToken = token;
-    }
+    for (const dropped of [...this.types.keys()].filter(t => !this.signIn.holds(t)))
+      this.types.delete(dropped);
+    const types: Map<string, Promise<WorkItemTypeStates>> = this.types.get(token) ?? new Map();
+    this.types.set(token, types);
     const key: string = Resources.formatWorkItemTypeKey(organization, project, name);
-    let reading = this.types.get(key);
+    let reading = types.get(key);
     if (reading === undefined) {
       const read = this.readNewTypeAsync(organization, project, name, token);
       reading = read;
-      this.types.set(key, read);
-      read.catch(() => {
-        if (this.types.get(key) === read)
-          this.types.delete(key);
-      });
+      types.set(key, read);
+      read.catch(() => types.delete(key));
     }
     const type = await reading;
     signal.throwIfAborted();

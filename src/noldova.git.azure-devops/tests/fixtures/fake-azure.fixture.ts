@@ -59,6 +59,10 @@ export class FakeAzure {
     });
   };
 
+  public static linesOf(log: FakeModuleLog): readonly string[] {
+    return log.callsOf("write").map(([message]) => String(message));
+  }
+
   public static json(body: unknown, status: number = 200, headers: Readonly<Record<string, string>> = {}): Response {
     return new Response(JSON.stringify(body), { status, headers });
   }
@@ -89,10 +93,6 @@ export class FakeAzure {
   public urls(): readonly string[] {
     return this.requests.map(t => t.url);
   }
-}
-
-export function linesOf(log: FakeModuleLog): readonly string[] {
-  return log.callsOf("write").map(([message]) => String(message));
 }
 
 export class KeptSecrets {

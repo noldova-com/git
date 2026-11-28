@@ -17,7 +17,7 @@ import { AccountPick, AuthorQuery, BranchPullRequest, BranchQuery, CommitQuery, 
 import { afterEach, describe, it, vi } from "vitest";
 
 import { RuntimePart } from "../src/api/index.ts";
-import { FakeAzure, KeptSecrets, linesOf } from "./fixtures/fake-azure.fixture.ts";
+import { FakeAzure, KeptSecrets } from "./fixtures/fake-azure.fixture.ts";
 import { RuntimeContext } from "./fixtures/runtime-context.fixture.ts";
 
 const account: HostAccount = new HostAccount("monalisa@fabrikam.test", "Mona Lisa", null, []);
@@ -92,7 +92,7 @@ describe("RuntimePart", () => {
     assert.deepEqual(answers, [HostSignIn.signedOut().toJson(), HostSignIn.signedIn(account).toJson(), HostSignIn.signedOut().toJson()]);
     assert.deepEqual([context.events.get("git-azure-devops.signInChanged"), context.secrets.values.size],
       [[HostSignIn.signedIn(account).toJson(), HostSignIn.signedOut().toJson()], 0]);
-    assert.ok(!linesOf(context.fake.log).some(t => t.includes("azure-token")));
+    assert.ok(!FakeAzure.linesOf(context.fake.log).some(t => t.includes("azure-token")));
   });
 
   it("adds an account for another organization, reads and signs in or out each account by its id, and publishes every account on its own event", async () => {

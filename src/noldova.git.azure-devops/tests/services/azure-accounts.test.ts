@@ -21,7 +21,7 @@ import { AzureApi } from "../../src/services/azure-api.ts";
 import { AzureReads } from "../../src/services/azure-reads.ts";
 import { AzureWrites } from "../../src/services/azure-writes.ts";
 import { EntraFlow } from "../../src/services/entra-flow.ts";
-import { FakeAzure, KeptSecrets, linesOf } from "../fixtures/fake-azure.fixture.ts";
+import { FakeAzure, KeptSecrets } from "../fixtures/fake-azure.fixture.ts";
 
 const signal: AbortSignal = new AbortController().signal;
 const accountOf = (login: string): HostAccount => new HostAccount(login, null, null, []);
@@ -153,7 +153,7 @@ describe("AzureAccounts", () => {
     await rig.savedAsync();
 
     assert.deepEqual(rig.entries(), [[1, mona.login, "dev.azure.com/fabrikam"]]);
-    assert.ok(linesOf(rig.log).includes("The Azure DevOps sign-in stopped on an unexpected failure: RangeError: Unexpected."));
+    assert.ok(FakeAzure.linesOf(rig.log).includes("The Azure DevOps sign-in stopped on an unexpected failure: RangeError: Unexpected."));
   });
 
   it("drops an account the index names whose own secret is gone, and writes the index without it", async () => {
@@ -190,7 +190,7 @@ describe("AzureAccounts", () => {
 
     await rig.restoreAsync([mona]);
 
-    assert.deepEqual([rig.entries(), linesOf(rig.log)], [[[1, mona.login, "dev.azure.com/fabrikam"]],
+    assert.deepEqual([rig.entries(), FakeAzure.linesOf(rig.log)], [[[1, mona.login, "dev.azure.com/fabrikam"]],
       ["The Azure DevOps accounts kept on this computer couldn't be read; only the first account was restored."]]);
   });
 
@@ -208,7 +208,7 @@ describe("AzureAccounts", () => {
     waiting.appWindows.raiseChanged();
     await waiting.changedAsync(4);
 
-    assert.deepEqual(linesOf(refusing.log)[0], "The Azure DevOps accounts kept on this computer couldn't be read: The secret call failed.");
+    assert.deepEqual(FakeAzure.linesOf(refusing.log)[0], "The Azure DevOps accounts kept on this computer couldn't be read: The secret call failed.");
     assert.deepEqual([before, waiting.entries(), waiting.appWindows.activeCallsOf("onChanged").length], [[[[1, null, null]], 2],
       [[1, mona.login, "dev.azure.com/fabrikam"], [2, hubot.login, "dev.azure.com/contoso"]], 0]);
   });
@@ -323,7 +323,7 @@ describe("AzureAccounts", () => {
 
     const entry = await rig.accounts.addAsync(t => t.signInWithTokenAsync("pat-again", "fabrikam", signal));
 
-    assert.deepEqual([entry.signIn.state, entry.signIn.failure, rig.entries(), rig.store.values.has("git-azure-devops.account2"), linesOf(rig.log).at(-1)],
+    assert.deepEqual([entry.signIn.state, entry.signIn.failure, rig.entries(), rig.store.values.has("git-azure-devops.account2"), FakeAzure.linesOf(rig.log).at(-1)],
       [SignInState.SignedOut, SignInFailure.AlreadyKept, [[1, mona.login, "dev.azure.com/fabrikam"]], false,
         "An added Azure DevOps account signed in to an organization as an account already kept there, so its token was forgotten and it ended signed out as already kept."]);
   });
@@ -516,9 +516,9 @@ describe("AzureAccounts", () => {
     broken.accounts.pick(new AccountPick("dev.azure.com", pathOf("fabrikam"), 2));
     await broken.savedAsync();
 
-    assert.deepEqual([picked, linesOf(refusing.log).at(-1)], [2,
+    assert.deepEqual([picked, FakeAzure.linesOf(refusing.log).at(-1)], [2,
       "The Azure DevOps accounts couldn't be kept on this computer; added accounts and chosen accounts last until the app closes."]);
-    assert.match(linesOf(broken.log).at(-1) ?? "", /RangeError: Unexpected\./);
+    assert.match(FakeAzure.linesOf(broken.log).at(-1) ?? "", /RangeError: Unexpected\./);
   });
 
   it("lets an added account leave and passes on a sign-in that fails unexpectedly", async () => {
@@ -554,7 +554,7 @@ describe("AzureAccounts", () => {
     });
     const parseFailure: unknown = await broken.accounts.restoreAsync().then(() => null, (t: unknown) => t);
 
-    assert.deepEqual([readFailure, parseFailure, refusing.changes, broken.changes, linesOf(refusing.log)], [unexpected, unexpected, [], [], []]);
+    assert.deepEqual([readFailure, parseFailure, refusing.changes, broken.changes, FakeAzure.linesOf(refusing.log)], [unexpected, unexpected, [], [], []]);
   });
 
   it("logs a restore that fails unexpectedly once a window connects", async () => {
@@ -566,7 +566,7 @@ describe("AzureAccounts", () => {
     rig.appWindows.raiseChanged();
     await rig.savedAsync();
 
-    assert.ok(linesOf(rig.log).includes("The Azure DevOps sign-in stopped on an unexpected failure: RangeError: Unexpected."));
+    assert.ok(FakeAzure.linesOf(rig.log).includes("The Azure DevOps sign-in stopped on an unexpected failure: RangeError: Unexpected."));
   });
 
   it("does nothing with an index whose read ends after it was disposed", async () => {

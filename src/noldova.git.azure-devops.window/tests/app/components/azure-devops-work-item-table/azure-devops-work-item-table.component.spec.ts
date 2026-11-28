@@ -22,40 +22,42 @@ const REPOSITORY: string = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
 const feature: HostWorkItemType = new HostWorkItemType("Feature", "773B93", "icon_trophy");
 const story: HostWorkItemType = new HostWorkItemType("User Story", "009CCC", "icon_book");
 
-function detailOf(id: number, type: HostWorkItemType, title: string, iteration: string | null, children: readonly number[],
-  pullRequests: readonly HostReference[], commits: number): HostWorkItemDetail {
-  return new HostWorkItemDetail(new HostWorkItem("git-azure-devops", "fabrikam", "Sample Project", id, type, title, "Active", WorkItemCategory.InProgress,
-    `https://dev.azure.com/fabrikam/Sample%20Project/_workitems/edit/${id}`, null, iteration, null, null), null, null, null, null, null, children, pullRequests,
-  commits, []);
+class Table {
+  public static detailOf(id: number, type: HostWorkItemType, title: string, iteration: string | null, children: readonly number[],
+    pullRequests: readonly HostReference[], commits: number): HostWorkItemDetail {
+    return new HostWorkItemDetail(new HostWorkItem("git-azure-devops", "fabrikam", "Sample Project", id, type, title, "Active", WorkItemCategory.InProgress,
+      `https://dev.azure.com/fabrikam/Sample%20Project/_workitems/edit/${id}`, null, iteration, null, null), null, null, null, null, null, children, pullRequests,
+    commits, []);
+  }
+
+  public static open(shown: readonly WorkItemRow[], selected: HostWorkItemDetail | null = null,
+    context: FakeWindowPartContext = new FakeWindowPartContext()): ComponentFixture<AzureDevOpsWorkItemTableComponent> {
+    TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: context }] });
+    const fixture = TestBed.createComponent(AzureDevOpsWorkItemTableComponent);
+    fixture.componentRef.setInput("rows", shown);
+    fixture.componentRef.setInput("selected", selected);
+    fixture.componentRef.setInput("label", "Work items");
+    fixture.componentRef.setInput("empty", "No work items match.");
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  public static rowsOf(fixture: ComponentFixture<AzureDevOpsWorkItemTableComponent>): HTMLElement[] {
+    const element: unknown = fixture.nativeElement;
+    return element instanceof HTMLElement ? [...element.querySelectorAll<HTMLElement>(".wrow.item")] : [];
+  }
+
+  public static cellsOf(row: HTMLElement): string[] {
+    return [...row.querySelectorAll<HTMLElement>("[role=gridcell]")].slice(1).map(t => ((t.querySelector(".title-text") ?? t).textContent ?? "").trim());
+  }
 }
 
-const parent: HostWorkItemDetail = detailOf(7490, feature, "Markdown export", null, [7521, 7522], [], 0);
-const linked: HostWorkItemDetail = detailOf(7521, story, "Export notes as Markdown files", "Sample Project\\Sprint 17", [],
+const parent: HostWorkItemDetail = Table.detailOf(7490, feature, "Markdown export", null, [7521, 7522], [], 0);
+const linked: HostWorkItemDetail = Table.detailOf(7521, story, "Export notes as Markdown files", "Sample Project\\Sprint 17", [],
   [new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 752), new HostReference("git-azure-devops", "fabrikam", REPOSITORY, 479)], 3);
-const committed: HostWorkItemDetail = detailOf(7522, story, "Send note digest emails", "Sample Project\\Sprint 17", [], [], 2);
-const bare: HostWorkItemDetail = detailOf(7530, story, "Export preferences", null, [], [], 0);
+const committed: HostWorkItemDetail = Table.detailOf(7522, story, "Send note digest emails", "Sample Project\\Sprint 17", [], [], 2);
+const bare: HostWorkItemDetail = Table.detailOf(7530, story, "Export preferences", null, [], [], 0);
 const rows: readonly WorkItemRow[] = [new WorkItemRow(parent, 0), new WorkItemRow(linked, 1), new WorkItemRow(committed, 1), new WorkItemRow(bare, 0)];
-
-function open(shown: readonly WorkItemRow[], selected: HostWorkItemDetail | null = null,
-  context: FakeWindowPartContext = new FakeWindowPartContext()): ComponentFixture<AzureDevOpsWorkItemTableComponent> {
-  TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: context }] });
-  const fixture = TestBed.createComponent(AzureDevOpsWorkItemTableComponent);
-  fixture.componentRef.setInput("rows", shown);
-  fixture.componentRef.setInput("selected", selected);
-  fixture.componentRef.setInput("label", "Work items");
-  fixture.componentRef.setInput("empty", "No work items match.");
-  fixture.detectChanges();
-  return fixture;
-}
-
-function rowsOf(fixture: ComponentFixture<AzureDevOpsWorkItemTableComponent>): HTMLElement[] {
-  const element: unknown = fixture.nativeElement;
-  return element instanceof HTMLElement ? [...element.querySelectorAll<HTMLElement>(".wrow.item")] : [];
-}
-
-function cellsOf(row: HTMLElement): string[] {
-  return [...row.querySelectorAll<HTMLElement>("[role=gridcell]")].slice(1).map(t => ((t.querySelector(".title-text") ?? t).textContent ?? "").trim());
-}
 
 describe("AzureDevOpsWorkItemTableComponent", () => {
   afterEach(() => {
@@ -63,9 +65,9 @@ describe("AzureDevOpsWorkItemTableComponent", () => {
   });
 
   it("shows each row's id, title, state, iteration's last name and links: its first pull request, else its commits, else its children, else none", () => {
-    const fixture = open(rows);
+    const fixture = Table.open(rows);
 
-    expect(rowsOf(fixture).map(cellsOf)).toEqual([
+    expect(Table.rowsOf(fixture).map(t => Table.cellsOf(t))).toEqual([
       ["7490", "Markdown export", "Active", "—", "2 children"],
       ["7521", "Export notes as Markdown files", "Active", "Sprint 17", "!752"],
       ["7522", "Send note digest emails", "Active", "Sprint 17", "2 commits"],
@@ -79,12 +81,12 @@ describe("AzureDevOpsWorkItemTableComponent", () => {
     const listedFor: HostWorkItemDetail = new HostWorkItemDetail(new HostWorkItem(item.host, item.organization, item.project, 7540, story,
       "Export every note in the notebook as Markdown files with their attachments", item.state, item.category, item.url, null, item.iteration, null, null),
     null, null, null, null, null, [], [], 0, [], null, "octocat");
-    const fixture = open([new WorkItemRow(listedFor, 0), new WorkItemRow(bare, 0)]);
+    const fixture = Table.open([new WorkItemRow(listedFor, 0), new WorkItemRow(bare, 0)]);
     const host: unknown = fixture.nativeElement;
     if (host instanceof HTMLElement)
       host.style.inlineSize = "40rem";
     fixture.detectChanges();
-    const [named, plain] = rowsOf(fixture);
+    const [named, plain] = Table.rowsOf(fixture);
     const title = named?.querySelector<HTMLElement>(".title-text");
     const account = named?.querySelector<HTMLElement>(".account");
     const cell = named?.querySelector<HTMLElement>(".cell-title")?.getBoundingClientRect();
@@ -97,18 +99,18 @@ describe("AzureDevOpsWorkItemTableComponent", () => {
   });
 
   it("shows a pull request as a chip and the other links as muted text", () => {
-    const fixture = open(rows);
+    const fixture = Table.open(rows);
 
-    expect(rowsOf(fixture).map(t => [!Object.isNull(t.querySelector(".links .chip")), !Object.isNull(t.querySelector(".links .muted"))]))
+    expect(Table.rowsOf(fixture).map(t => [!Object.isNull(t.querySelector(".links .chip")), !Object.isNull(t.querySelector(".links .muted"))]))
       .toEqual([[false, true], [true, false], [false, true], [false, true]]);
   });
 
   it("opens a chip's first pull request on a click, naming it, without choosing its row, and keeps Enter and Space on the chip from choosing it", () => {
     const context = new FakeWindowPartContext();
-    const fixture = open(rows, null, context);
+    const fixture = Table.open(rows, null, context);
     const chosen: HostWorkItemDetail[] = [];
     fixture.componentInstance.chosen.subscribe(t => chosen.push(t));
-    const chip = rowsOf(fixture)[1]?.querySelector<HTMLButtonElement>("button.chip");
+    const chip = Table.rowsOf(fixture)[1]?.querySelector<HTMLButtonElement>("button.chip");
 
     chip?.click();
     chip?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
@@ -119,8 +121,8 @@ describe("AzureDevOpsWorkItemTableComponent", () => {
   });
 
   it("indents a title by its row's depth and draws its type's icon in its type's color", () => {
-    const fixture = open(rows);
-    const shown = rowsOf(fixture);
+    const fixture = Table.open(rows);
+    const shown = Table.rowsOf(fixture);
 
     expect([shown.map(t => t.querySelector<HTMLElement>(".cell-title")?.style.paddingLeft),
       shown.map(t => t.querySelector<HTMLElement>(".wi")?.style.color)]).toEqual([
@@ -131,9 +133,9 @@ describe("AzureDevOpsWorkItemTableComponent", () => {
   it("draws a type's icon as Azure DevOps drew it, 0.875 of the symbol it stands in for and centred in the symbol's square, and the symbol when it drew none",
     () => {
     const svg: string = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill="#009CCC" d="M2 2h12v12H2z"/></svg>';
-    const drawn: HostWorkItemDetail = detailOf(7540, new HostWorkItemType("User Story", "009CCC", "icon_book", svg), "Import notes", null, [], [], 0);
-    const fixture = open([new WorkItemRow(drawn, 0), new WorkItemRow(bare, 0)]);
-    const [imaged, plain] = rowsOf(fixture);
+    const drawn: HostWorkItemDetail = Table.detailOf(7540, new HostWorkItemType("User Story", "009CCC", "icon_book", svg), "Import notes", null, [], [], 0);
+    const fixture = Table.open([new WorkItemRow(drawn, 0), new WorkItemRow(bare, 0)]);
+    const [imaged, plain] = Table.rowsOf(fixture);
     const image = imaged?.querySelector<HTMLImageElement>("img.type-image");
     const imageBox = image?.getBoundingClientRect();
     const symbolBox = plain?.querySelector<HTMLElement>(".wi")?.getBoundingClientRect();
@@ -147,19 +149,19 @@ describe("AzureDevOpsWorkItemTableComponent", () => {
   });
 
   it("marks only the chosen work item's row as selected, its title in the same weight as the others'", () => {
-    const fixture = open(rows, linked);
-    const weights: string[] = rowsOf(fixture).map(t => getComputedStyle(t.querySelector(".cell-title") ?? t).fontWeight);
+    const fixture = Table.open(rows, linked);
+    const weights: string[] = Table.rowsOf(fixture).map(t => getComputedStyle(t.querySelector(".cell-title") ?? t).fontWeight);
 
-    expect(rowsOf(fixture).map(t => [t.classList.contains("sel"), t.getAttribute("aria-selected")])).toEqual([
+    expect(Table.rowsOf(fixture).map(t => [t.classList.contains("sel"), t.getAttribute("aria-selected")])).toEqual([
       [false, "false"], [true, "true"], [false, "false"], [false, "false"]]);
     expect(new Set(weights).size).toBe(1);
   });
 
   it("chooses a row's work item on a click, Enter or Space", () => {
-    const fixture = open(rows);
+    const fixture = Table.open(rows);
     const chosen: HostWorkItemDetail[] = [];
     fixture.componentInstance.chosen.subscribe(t => chosen.push(t));
-    const shown = rowsOf(fixture);
+    const shown = Table.rowsOf(fixture);
 
     shown[0]?.click();
     shown[1]?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
@@ -170,17 +172,17 @@ describe("AzureDevOpsWorkItemTableComponent", () => {
   });
 
   it("gives each parent a chevron that collapses its children and expands them again, without choosing its row, every parent expanded at first", () => {
-    const grandchild: HostWorkItemDetail = detailOf(7540, story, "Tagging", null, [], [], 0);
-    const fixture = open([...rows.slice(0, 2), new WorkItemRow(grandchild, 2), ...rows.slice(2)]);
+    const grandchild: HostWorkItemDetail = Table.detailOf(7540, story, "Tagging", null, [], [], 0);
+    const fixture = Table.open([...rows.slice(0, 2), new WorkItemRow(grandchild, 2), ...rows.slice(2)]);
     const chosen: HostWorkItemDetail[] = [];
     fixture.componentInstance.chosen.subscribe(t => chosen.push(t));
-    const ids = (): readonly string[] => rowsOf(fixture).map(t => t.querySelector(".id")?.textContent?.trim() ?? "");
-    const toggles = (): readonly (readonly (string | null)[])[] => rowsOf(fixture).map(t => {
+    const ids = (): readonly string[] => Table.rowsOf(fixture).map(t => t.querySelector(".id")?.textContent?.trim() ?? "");
+    const toggles = (): readonly (readonly (string | null)[])[] => Table.rowsOf(fixture).map(t => {
       const toggle = t.querySelector("button.toggle");
       return [t.getAttribute("aria-level"), t.getAttribute("aria-expanded"), toggle?.getAttribute("aria-label") ?? null, toggle?.textContent?.trim() ?? null];
     });
     const click = (id: string): void => {
-      rowsOf(fixture).find(t => t.querySelector(".id")?.textContent?.trim() === id)?.querySelector<HTMLElement>("button.toggle")?.click();
+      Table.rowsOf(fixture).find(t => t.querySelector(".id")?.textContent?.trim() === id)?.querySelector<HTMLElement>("button.toggle")?.click();
       fixture.detectChanges();
     };
 
@@ -198,26 +200,26 @@ describe("AzureDevOpsWorkItemTableComponent", () => {
   });
 
   it("keeps Enter and Space on a chevron from choosing its row, and sets an empty 1.25rem space in place of a chevron on a row without children", () => {
-    const fixture = open(rows);
+    const fixture = Table.open(rows);
     const chosen: HostWorkItemDetail[] = [];
     fixture.componentInstance.chosen.subscribe(t => chosen.push(t));
-    const toggle = rowsOf(fixture)[0]?.querySelector<HTMLElement>("button.toggle");
+    const toggle = Table.rowsOf(fixture)[0]?.querySelector<HTMLElement>("button.toggle");
 
     toggle?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     toggle?.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
-    const spaces = rowsOf(fixture).map(t => t.querySelector<HTMLElement>(".toggle")?.getBoundingClientRect().width);
+    const spaces = Table.rowsOf(fixture).map(t => t.querySelector<HTMLElement>(".toggle")?.getBoundingClientRect().width);
     const rem: number = parseFloat(getComputedStyle(document.documentElement).fontSize);
 
-    expect([chosen, spaces.map(t => Math.round(t ?? 0)), rowsOf(fixture)[3]?.querySelector("span.toggle")?.getAttribute("aria-hidden")])
+    expect([chosen, spaces.map(t => Math.round(t ?? 0)), Table.rowsOf(fixture)[3]?.querySelector("span.toggle")?.getAttribute("aria-hidden")])
       .toEqual([[], [1.25, 1.25, 1.25, 1.25].map(t => Math.round(t * rem)), "true"]);
   });
 
   it("names the grid by its label and says the empty text when it has no rows", () => {
-    const fixture = open([]);
+    const fixture = Table.open([]);
     const element: unknown = fixture.nativeElement;
     const grid = element instanceof HTMLElement ? element.querySelector("[role=grid]") : null;
 
-    expect([grid?.getAttribute("aria-label"), rowsOf(fixture).length, grid?.querySelector(".empty")?.textContent?.trim()])
+    expect([grid?.getAttribute("aria-label"), Table.rowsOf(fixture).length, grid?.querySelector(".empty")?.textContent?.trim()])
       .toEqual(["Work items", 0, "No work items match."]);
   });
 });

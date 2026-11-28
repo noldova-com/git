@@ -390,15 +390,17 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
     const host = new Host();
     const octocat = HostSignIn.signedIn(new HostAccount("octocat", null, null, []));
     const waiting = HostSignIn.waitingInBrowser("https://login.microsoftonline.com/example");
-    const listOf = (...entries: [number, HostSignIn][]): HostAccountList => new HostAccountList(entries.map(([id, t]) => new HostAccountEntry(id, t)));
+    const first = new HostAccountEntry(1, octocat);
     host.requests.answer(AzureDevOpsNames.readReviewRequestsMethod, ...Array.from({ length: 4 }, () => new HostReviewRequestList([request], false).toJson()));
     const reviews = host.pullRequests.reviewsFor(remote);
     host.pullRequests.refreshReviews(remote);
     await Host.untilAsync(reviews, GitPullRequestsState.Ready);
     const counts: number[] = [];
 
-    for (const list of [listOf([1, octocat]), listOf([1, HostSignIn.signedOut()]), listOf([1, octocat], [2, waiting]), listOf([1, octocat], [2, waiting]),
-      listOf([1, octocat], [2, octocat]), listOf([1, octocat], [2, octocat]), listOf([1, octocat], [2, HostSignIn.signedOut()]), listOf([1, octocat])]) {
+    for (const list of [new HostAccountList([first]), new HostAccountList([new HostAccountEntry(1, HostSignIn.signedOut())]),
+      new HostAccountList([first, new HostAccountEntry(2, waiting)]), new HostAccountList([first, new HostAccountEntry(2, waiting)]),
+      new HostAccountList([first, new HostAccountEntry(2, octocat)]), new HostAccountList([first, new HostAccountEntry(2, octocat)]),
+      new HostAccountList([first, new HostAccountEntry(2, HostSignIn.signedOut())]), new HostAccountList([first])]) {
       host.context.raiseEvent(AzureDevOpsNames.accountsChangedEvent, list.toJson());
       await Promise.allSettled(host.requests.answered);
       counts.push(host.requests.methods.length);

@@ -8,9 +8,10 @@
 
 import type { HostWorkItemList } from "@noldova/git.hosting.protocol";
 
+import type { IAccountRead } from "../interfaces/i-account-read.ts";
 import type { SignedInAccount } from "./signed-in-account.ts";
 
-export class AccountWorkItems {
+export class AccountWorkItems implements IAccountRead {
   public readonly account: SignedInAccount;
   public readonly list: HostWorkItemList;
 

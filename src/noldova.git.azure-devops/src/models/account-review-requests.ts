@@ -8,9 +8,10 @@
 
 import type { HostReviewRequestList } from "@noldova/git.hosting.protocol";
 
+import type { IAccountRead } from "../interfaces/i-account-read.ts";
 import type { SignedInAccount } from "./signed-in-account.ts";
 
-export class AccountReviewRequests {
+export class AccountReviewRequests implements IAccountRead {
   public readonly account: SignedInAccount;
   public readonly list: HostReviewRequestList;
 
