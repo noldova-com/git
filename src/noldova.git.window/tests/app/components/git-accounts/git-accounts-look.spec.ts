@@ -9,6 +9,7 @@
 import { Component, signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
+import { HostAccount } from "@noldova/git.hosting.protocol";
 import type {} from "@vitest/browser-playwright";
 import { DefaultTheme } from "@noldova/ui.components.angular";
 import { AppearanceFixture } from "@noldova/ui.components.angular/testing";
@@ -44,7 +45,8 @@ describe("GitAccountsComponent in the kit's look", () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     onTestFinished(GitHostAccounts.provide(context, {
       id: "git-github.account", host: "GitHub", column: "GitHub", mark: "GH", markColor: "#24292f", signIn: TestSignInComponent,
-      cards: signal([new GitHostCard("GitHub · example-user", "Signed in on this computer · access to your repositories", GitHostCardState.SignedIn, "Signed in")]),
+      cards: signal([new GitHostCard("example-user", "Signed in on this computer · access to your repositories", GitHostCardState.SignedIn, "Signed in", null,
+        new HostAccount("example-user", null, null, ["repo"]))]),
       features: [GitHostFeature.PullRequests, GitHostFeature.BuildsOnCommits]
     }));
     onTestFinished(GitHostAccounts.provide(context, {
@@ -68,7 +70,7 @@ describe("GitAccountsComponent in the kit's look", () => {
     }
   });
 
-  it.each(AppearanceFixture.modes)("sets the cards beside what each host can do on a wide page, in the kit's sizes and colours, in %s mode", async mode => {
+  it.each(AppearanceFixture.modes)("sets the cards beside what each host can do on a wide page, an account's avatar in the host mark's place, in the kit's sizes and colours, in %s mode", async mode => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
     const element: HTMLElement = await renderAsync("60rem");
 
@@ -80,6 +82,9 @@ describe("GitAccountsComponent in the kit's look", () => {
     const cardBox: DOMRect = box(card);
     const mark: HTMLElement = card.querySelector<HTMLElement>(".mark") ?? element;
     const markBox: DOMRect = box(mark);
+    const avatar: DOMRect = box(mark.querySelector("nol-avatar"));
+    const logo: HTMLElement = cards[1]?.querySelector<HTMLElement>(".mark") ?? element;
+    const logoBox: DOMRect = box(logo);
     const text: DOMRect = box(card.querySelector(".text"));
     const end: DOMRect = box(card.querySelector(".end"));
     const rows: DOMRect[] = [...element.querySelectorAll("[role=row]")].map(t => box(t));
@@ -95,8 +100,11 @@ describe("GitAccountsComponent in the kit's look", () => {
       rem(cardBox.bottom - card.clientTop - text.bottom)]).toEqual([0.75, 0.75, 0.75, 0.75]);
     expect(cards.slice(1).map((t, i) => rem(box(t).top - box(cards[i] ?? t).bottom))).toEqual([0.75]);
     expect([style.borderTopLeftRadius, style.borderTopColor, style.backgroundColor]).toEqual(["8px", resolve("var(--nol-card-border)"), resolve("var(--nol-panel)")]);
-    expect([getComputedStyle(mark).borderTopLeftRadius, getComputedStyle(mark).color, getComputedStyle(mark).backgroundColor])
-      .toEqual(["6px", resolve("var(--nol-button-text)"), "rgb(36, 41, 47)"]);
+    expect([rem(avatar.width), rem(avatar.height), rem((avatar.left + avatar.right - markBox.left - markBox.right) / 2), rem((avatar.top + avatar.bottom - markBox.top - markBox.bottom) / 2),
+      mark.textContent?.trim(), getComputedStyle(mark).backgroundColor]).toEqual([1.75, 1.75, 0, 0, "E", "rgba(0, 0, 0, 0)"]);
+    expect([rem(logoBox.left - markBox.left), rem(logoBox.width), rem(logoBox.height), logo.textContent?.trim()]).toEqual([0, 2, 2, "Az"]);
+    expect([getComputedStyle(logo).borderTopLeftRadius, getComputedStyle(logo).color, getComputedStyle(logo).backgroundColor])
+      .toEqual(["6px", resolve("var(--nol-button-text)"), "rgb(0, 103, 184)"]);
     expect([getComputedStyle(card.querySelector(".card-title") ?? card).fontSize, getComputedStyle(card.querySelector(".detail") ?? card).fontSize,
       getComputedStyle(element.querySelector("h2") ?? card).fontSize]).toEqual(["13px", "12px", "15px"]);
     const rowBorder: number = parseFloat(getComputedStyle(element.querySelector("[role=row]") ?? card).borderBottomWidth);

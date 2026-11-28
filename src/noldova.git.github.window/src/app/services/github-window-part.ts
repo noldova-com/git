@@ -10,23 +10,24 @@ import { signal, type WritableSignal } from "@angular/core";
 import "@noldova/context.core";
 import { ContentPadding, type IWindowPart, type IWindowPartContext, WindowException } from "@noldova/desktop.window";
 import { GitHubNames } from "@noldova/git.github.protocol";
-import { HostSignIn } from "@noldova/git.hosting.protocol";
+import { HostAccountList, type HostSignIn } from "@noldova/git.hosting.protocol";
 import type { GitRemote } from "@noldova/git.protocol";
 import { GitAvatars, GitHostAccounts, GitHostCard, GitHostCardState, GitHostFeature, GitHostRows, GitLinkReferences, GitPullRequests } from "@noldova/git.window";
 
 import { GitHubHostRowComponent } from "../components/github-host-row/github-host-row.component.ts";
-import { GitHubSignInComponent } from "../components/github-sign-in/github-sign-in.component.ts";
+import { GitHubAccountsComponent } from "../components/github-accounts/github-accounts.component.ts";
 import { Resources } from "../../resources.ts";
+import { AccountEvents } from "./account-events.ts";
+import { GitHubAccountList } from "./github-account-list.ts";
 import { GitHubAuthorAvatars } from "./github-author-avatars.ts";
 import { GitHubPullRequests } from "./github-pull-requests.ts";
 import { GitHubReferenceSource } from "./github-reference-source.ts";
-import { SignInEvents } from "./sign-in-events.ts";
 
 export class GitHubWindowPart implements IWindowPart {
   private context: IWindowPartContext | null = null;
   private withdraw: (() => void) | null = null;
   private withdrawAccount: (() => void) | null = null;
-  private readonly cards: WritableSignal<readonly GitHostCard[]> = signal(GitHubWindowPart.cardsFor(null));
+  private readonly cards: WritableSignal<readonly GitHostCard[]> = signal(GitHubWindowPart.firstCards());
   private unfollow: (() => void) | null = null;
   private withdrawLinks: (() => void) | null = null;
   private changes: number = 0;
@@ -68,12 +69,12 @@ export class GitHubWindowPart implements IWindowPart {
       GitHubReferenceSource.release(context);
     };
     this.context = context;
-    this.cards.set(GitHubWindowPart.cardsFor(null));
+    this.cards.set(GitHubWindowPart.firstCards());
     this.withdrawAccount = GitHostAccounts.provide(context, { id: Resources.accountId, host: Resources.hostName, column: Resources.hostColumn, mark: Resources.hostMark, markColor: Resources.hostColor,
-      cards: this.cards.asReadonly(), signIn: GitHubSignInComponent, features: [GitHostFeature.PullRequests, GitHostFeature.BuildsOnCommits] });
-    this.unfollow = SignInEvents.follow(context, signIn => {
+      cards: this.cards.asReadonly(), signIn: GitHubAccountsComponent, features: [GitHostFeature.PullRequests, GitHostFeature.BuildsOnCommits] });
+    this.unfollow = AccountEvents.follow(context, list => {
       this.changes++;
-      this.showCards(context, GitHubWindowPart.cardsFor(signIn));
+      this.showList(context, list);
     });
     void this.readCardsAsync(context);
   }
@@ -91,39 +92,56 @@ export class GitHubWindowPart implements IWindowPart {
     this.withdrawLinks = null;
     this.unfollow?.();
     this.unfollow = null;
+    if (!Object.isNull(this.context))
+      GitHubAccountList.show(this.context, null);
     this.context = null;
   }
 
-  private static cardsFor(signIn: HostSignIn | null): GitHostCard[] {
+  private static firstCards(): GitHostCard[] {
+    return [GitHubWindowPart.cardOf(Resources.firstAccount, null)];
+  }
+
+  private static cardsOf(list: HostAccountList): GitHostCard[] {
+    return list.accounts.map(t => GitHubWindowPart.cardOf(t.id, t.signIn));
+  }
+
+  private static cardOf(id: number, signIn: HostSignIn | null): GitHostCard {
     const account = signIn?.account ?? null;
     if (!Object.isNull(account))
-      return [new GitHostCard(Resources.formatAccountTitle(account.login), Resources.formatAccess(account.scopes), GitHostCardState.SignedIn, Resources.signedIn)];
+      return new GitHostCard(account.name ?? account.login, Resources.formatAccountDetail(account), GitHostCardState.SignedIn, Resources.signedIn, String(id), account);
     const code = signIn?.deviceCode ?? null;
     if (!Object.isNull(code))
-      return [new GitHostCard(Resources.hostName, Resources.formatCodeNote(code.verificationUri, code.userCode, false), GitHostCardState.Waiting, Resources.waiting)];
-    return [new GitHostCard(Resources.hostName, Resources.signedOutNote, GitHostCardState.SignedOut, Resources.signInAction)];
+      return new GitHostCard(Resources.hostName, Resources.formatCodeNote(code.verificationUri, code.userCode, false), GitHostCardState.Waiting, Resources.waiting, String(id));
+    return new GitHostCard(Resources.hostName, Resources.signedOutNote, GitHostCardState.SignedOut, Resources.signInAction, String(id));
   }
 
   private static unreadCards(): GitHostCard[] {
-    return [new GitHostCard(Resources.hostName, Resources.signInUnread, GitHostCardState.Failed, Resources.signInAction)];
+    return [new GitHostCard(Resources.hostName, Resources.signInUnread, GitHostCardState.Failed, Resources.signInAction, String(Resources.firstAccount))];
   }
 
   private async readCardsAsync(context: IWindowPartContext): Promise<void> {
     const changes: number = this.changes;
-    let signIn: HostSignIn;
+    let list: HostAccountList;
     try {
-      signIn = HostSignIn.fromJson(await context.requestAsync(GitHubNames.readSignInMethod, null));
+      list = HostAccountList.fromJson(await context.requestAsync(GitHubNames.readAccountsMethod, null));
     }
     catch (error) {
       if (!(error instanceof WindowException))
         throw error;
-      context.log(Resources.formatRequestFailed(GitHubNames.readSignInMethod, String(error)));
+      context.log(Resources.formatRequestFailed(GitHubNames.readAccountsMethod, String(error)));
       if (this.changes === changes)
         this.showCards(context, GitHubWindowPart.unreadCards());
       return;
     }
     if (this.changes === changes)
-      this.showCards(context, GitHubWindowPart.cardsFor(signIn));
+      this.showList(context, list);
+  }
+
+  private showList(context: IWindowPartContext, list: HostAccountList): void {
+    if (this.context !== context)
+      return;
+    GitHubAccountList.show(context, list);
+    this.cards.set(GitHubWindowPart.cardsOf(list));
   }
 
   private showCards(context: IWindowPartContext, cards: GitHostCard[]): void {

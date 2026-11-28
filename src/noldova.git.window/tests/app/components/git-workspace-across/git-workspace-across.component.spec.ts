@@ -296,6 +296,16 @@ describe("GitWorkspaceAcrossComponent", () => {
     expect([panel.texts(".needs .row"), panel.has(".quiet"), panel.has(".more")]).toEqual([["rate_review Review #9 Change 9 · a Review"], false, false]);
   });
 
+  it("names the account a review request was listed for after its repository, keeping the number as the link", async () => {
+    const host: IGitPullRequests = { claims: () => true, hostName: "GitHub", signInPage: "github.account", listFor: () => signal(null), refresh: () => undefined };
+    const panel: Panel = Panel.render([rowOf("/work/a", statusOf("main", null))]);
+    panel.fixture.componentRef.setInput("reviews", new GitWorkspaceReviews([new GitWorkspaceReview(new GitPullRequestRow("9", "#9", "Change 9",
+      "https://github.com/example-owner/a/pull/9", false, 0, 0, 0, 0, "fix/y", null, "kim"), "/work/a", "a", host)], false));
+    await panel.fixture.whenStable();
+
+    expect([panel.texts(".needs .row"), panel.find(".review a").textContent?.trim()]).toEqual([["rate_review Review #9 Change 9 · a · kim Review"], "#9"]);
+  });
+
   it("says nothing needs the person when nothing does", async () => {
     const panel: Panel = Panel.render([rowOf("/work/a", statusOf("main", null)), rowOf("/work/b", statusOf("main", null))]);
     await panel.fixture.whenStable();

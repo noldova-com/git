@@ -11,14 +11,15 @@ import "@noldova/context.core";
 import { LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitHubNames } from "@noldova/git.github.protocol";
-import { BranchPullRequest, BranchQuery, CheckState, DeviceCode, HostAccount, HostChanges, HostCheck, HostItem, HostReference, HostSignIn, ReferenceKind,
-  ReferenceState } from "@noldova/git.hosting.protocol";
+import { AccountPick, BranchPullRequest, BranchQuery, CheckState, DeviceCode, HostAccount, HostAccountEntry, HostAccountList, HostChanges, HostCheck, HostItem,
+  HostReference, HostSignIn, ReferenceKind, ReferenceState, RepositoryAccount, RepositoryQuery } from "@noldova/git.hosting.protocol";
 import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
 import { ClipboardWriter } from "@noldova/ui.components.angular";
 import { ClipboardWriterFixture } from "@noldova/ui.components.angular/testing";
 import { describe, expect, it } from "vitest";
 
 import { GitHubHostRowComponent } from "../../../../src/app/components/github-host-row/github-host-row.component.ts";
+import { GitHubAccountList } from "../../../../src/app/services/github-account-list.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
@@ -40,6 +41,17 @@ const checks: readonly HostCheck[] = [
 ];
 const answer: BranchPullRequest = new BranchPullRequest(pullRequest, checks);
 const none: BranchPullRequest = new BranchPullRequest(null, []);
+const lee: HostSignIn = HostSignIn.signedIn(new HostAccount("lee", null, null, ["repo"]));
+const repository: RepositoryQuery = new RepositoryQuery("github.com", "example-owner/example-repository");
+
+function accountsOf(...signIns: HostSignIn[]): HostAccountList {
+  return new HostAccountList(signIns.map((t, i) => new HostAccountEntry(i + 1, t)));
+}
+
+function menuRows(): string[][] {
+  return [...document.querySelectorAll<HTMLElement>("button[nol-menu-item]")].map(t => [t.querySelector(".nol-menu-item-label")?.textContent?.trim() ?? "",
+    t.getAttribute("aria-checked") ?? ""]);
+}
 
 function wordsOf(node: Node): string {
   const words: string[] = [];
@@ -583,5 +595,160 @@ describe("GitHubHostRowComponent", () => {
     page.fixture?.destroy();
 
     expect([shown, page.context.activeCallsOf("onEvent").filter(t => t[0] === GitHubNames.signInChangedEvent).length]).toEqual([["#7 Sample pull request title"], 0]);
+  });
+
+  it("names the account it reads the repository with once several are signed in, and switches to another from its menu, reading the pull request again", async () => {
+    const page = new Page();
+    GitHubAccountList.show(page.context, accountsOf(signedIn, lee));
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson(), none.toJson());
+    page.requests.answer(GitHubNames.readRepositoryAccountMethod, new RepositoryAccount(2).toJson());
+    page.requests.answer(GitHubNames.pickAccountMethod, new RepositoryAccount(1).toJson());
+    await page.openAsync(signedIn);
+    const shown = page.texts(".account");
+
+    await page.clickAsync("Switch account");
+    await page.untilAsync(() => menuRows().length === 2);
+    const menu = menuRows();
+    document.querySelectorAll<HTMLElement>("button[nol-menu-item]")[0]?.click();
+    await page.untilAsync(() => page.texts(".account .notice-text").join() === "Account: example-user");
+    await page.untilAsync(() => page.texts(".notice-text").includes("No pull request for this branch"));
+
+    expect([shown, menu]).toEqual([["Account: lee Switch account"], [["example-user", "false"], ["lee", "true"]]]);
+    expect(page.requests.payloads.filter((_, i) => page.requests.methods[i] !== GitHubNames.readBranchPullRequestMethod))
+      .toEqual([null, repository.toJson(), new AccountPick("github.com", "example-owner/example-repository", 1).toJson()]);
+    expect(page.requests.methods.filter(t => t === GitHubNames.readBranchPullRequestMethod)).toHaveLength(2);
+  });
+
+  it("names no account, and asks for none, while only one is signed in", async () => {
+    const page = new Page();
+    GitHubAccountList.show(page.context, accountsOf(signedIn, HostSignIn.signedOut()));
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
+    await page.openAsync(signedIn);
+
+    expect([page.element.querySelector(".account"), page.requests.methods]).toEqual([null, [GitHubNames.readSignInMethod, GitHubNames.readBranchPullRequestMethod]]);
+  });
+
+  it("reads the pull request with an added account while the first is signed out", async () => {
+    const page = new Page();
+    GitHubAccountList.show(page.context, accountsOf(HostSignIn.signedOut(), lee));
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
+    await page.openAsync(HostSignIn.signedOut());
+
+    expect([page.texts(".title"), page.element.querySelector(".account")]).toEqual([["#7 Sample pull request title"], null]);
+  });
+
+  it("reads the account again when the accounts change, keeping the pull request when it stays the same, and drops the line once one is left", async () => {
+    const page = new Page();
+    GitHubAccountList.show(page.context, accountsOf(signedIn, lee));
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
+    page.requests.answer(GitHubNames.readRepositoryAccountMethod, new RepositoryAccount(2).toJson(), new RepositoryAccount(2).toJson());
+    await page.openAsync(signedIn);
+
+    GitHubAccountList.show(page.context, accountsOf(signedIn, lee, HostSignIn.signedIn(new HostAccount("example-bot", null, null, []))));
+    await page.settleAsync();
+    await Promise.allSettled(page.requests.answered);
+    await page.settleAsync();
+    const withThree = page.texts(".account .notice-text");
+    GitHubAccountList.show(page.context, accountsOf(signedIn));
+    await page.settleAsync();
+
+    expect([withThree, page.element.querySelector(".account"), page.requests.methods.filter(t => t === GitHubNames.readBranchPullRequestMethod).length,
+      page.requests.methods.filter(t => t === GitHubNames.readRepositoryAccountMethod).length]).toEqual([["Account: lee"], null, 1, 2]);
+  });
+
+  it("drops an account answer for a repository the row no longer shows", async () => {
+    const page = new Page();
+    const other: GitRemote = new GitRemote("origin", "github.com", "example-owner/other", RemoteTransport.Https);
+    GitHubAccountList.show(page.context, accountsOf(signedIn, lee));
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson(), answer.toJson());
+    const release = page.requests.hold(GitHubNames.readRepositoryAccountMethod);
+    page.requests.answer(GitHubNames.readRepositoryAccountMethod, new RepositoryAccount(1).toJson());
+    page.create(signedIn);
+    while (!page.requests.methods.includes(GitHubNames.readRepositoryAccountMethod))
+      await page.requests.askedAsync(page.requests.answered.length + 1);
+
+    page.fixture?.componentRef.setInput("remote", other);
+    while (page.requests.methods.filter(t => t === GitHubNames.readRepositoryAccountMethod).length < 2)
+      await page.requests.askedAsync(page.requests.answered.length + 1);
+    release(new RepositoryAccount(2).toJson());
+    await Promise.allSettled(page.requests.answered);
+    await page.settleAsync();
+
+    expect([page.texts(".account .notice-text"), page.requests.methods.filter(t => t === GitHubNames.readBranchPullRequestMethod).length]).toEqual([["Account: example-user"], 2]);
+  });
+
+  it.each([["answered", false], ["failed", true]] as const)("drops a switch %s for a repository the row no longer shows", async (_, fails) => {
+    const page = new Page();
+    const other: GitRemote = new GitRemote("origin", "github.com", "example-owner/other", RemoteTransport.Https);
+    GitHubAccountList.show(page.context, accountsOf(signedIn, lee));
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson(), answer.toJson());
+    page.requests.answer(GitHubNames.readRepositoryAccountMethod, new RepositoryAccount(2).toJson(), new RepositoryAccount(2).toJson());
+    const fail = fails ? page.requests.holdFailure(GitHubNames.pickAccountMethod) : null;
+    const release = fails ? null : page.requests.hold(GitHubNames.pickAccountMethod);
+    await page.openAsync(signedIn);
+    await page.clickAsync("Switch account");
+    await page.untilAsync(() => menuRows().length === 2);
+    document.querySelectorAll<HTMLElement>("button[nol-menu-item]")[0]?.click();
+    while (!page.requests.methods.includes(GitHubNames.pickAccountMethod))
+      await page.requests.askedAsync(page.requests.answered.length + 1);
+
+    page.fixture?.componentRef.setInput("remote", other);
+    while (page.requests.methods.filter(t => t === GitHubNames.readRepositoryAccountMethod).length < 2)
+      await page.requests.askedAsync(page.requests.answered.length + 1);
+    await page.requests.answered[page.requests.methods.lastIndexOf(GitHubNames.readRepositoryAccountMethod)];
+    fail?.(new WindowFailure("Not connected."));
+    release?.(new RepositoryAccount(1).toJson());
+    await Promise.allSettled(page.requests.answered);
+    await page.settleAsync();
+
+    expect([page.texts(".account .notice-text"), page.element.querySelector("[role=alert]"), page.requests.methods.filter(t => t === GitHubNames.readBranchPullRequestMethod).length])
+      .toEqual([["Account: lee"], null, 2]);
+  });
+
+  it("logs an account read that fails and names no account, and passes on a failure that isn't the window's", async () => {
+    const page = new Page();
+    GitHubAccountList.show(page.context, accountsOf(signedIn, lee));
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
+    page.requests.fail(GitHubNames.readRepositoryAccountMethod, new WindowFailure("Not connected."));
+    await page.openAsync(signedIn);
+    const failed = [page.element.querySelector(".account"), page.logs];
+    TestBed.resetTestingModule();
+    const unexpected = new TypeError("Unexpected.");
+    const second = new Page();
+    GitHubAccountList.show(second.context, accountsOf(signedIn, lee));
+    second.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
+    second.requests.fail(GitHubNames.readRepositoryAccountMethod, unexpected);
+    const rejected = UnhandledRejections.nextAsync();
+    await second.openAsync(signedIn);
+
+    expect(failed).toEqual([null, [`The GitHub module's ${GitHubNames.readRepositoryAccountMethod} request failed: WindowFailure: Not connected.`]]);
+    expect(await rejected).toBe(unexpected);
+  });
+
+  it("says GitHub didn't switch the account, and logs why, when the pick fails, and passes on a failure that isn't the window's", async () => {
+    const page = new Page();
+    GitHubAccountList.show(page.context, accountsOf(signedIn, lee));
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
+    page.requests.answer(GitHubNames.readRepositoryAccountMethod, new RepositoryAccount(2).toJson());
+    page.requests.fail(GitHubNames.pickAccountMethod, new WindowFailure("Not connected."));
+    const unexpected = new TypeError("Unexpected.");
+    page.requests.fail(GitHubNames.pickAccountMethod, unexpected);
+    await page.openAsync(signedIn);
+    const pick = async (): Promise<void> => {
+      await page.clickAsync("Switch account");
+      await page.untilAsync(() => menuRows().length === 2);
+      document.querySelectorAll<HTMLElement>("button[nol-menu-item]")[0]?.click();
+      await page.settleAsync();
+    };
+
+    await pick();
+    const failed = [page.texts("[role=alert] .notice-text"), page.logs];
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
+    await page.clickAsync("Try again");
+    const rejected = UnhandledRejections.nextAsync();
+    await pick();
+
+    expect(failed).toEqual([["GitHub didn't switch the account. Try again."], [`The GitHub module's ${GitHubNames.pickAccountMethod} request failed: WindowFailure: Not connected.`]]);
+    expect(await rejected).toBe(unexpected);
   });
 });

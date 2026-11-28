@@ -26,19 +26,25 @@ LICENSE file in the root directory of this source tree.
       <div class="host" [attr.data-setting]="rowOf(provided)">
         @for (card of provided.account.cards(); track $index) {
           <div class="card">
-            <span class="mark" [style.background-color]="provided.account.markColor" aria-hidden="true">{{ provided.account.mark }}</span>
+            @if (card.person; as person) {
+              <span class="mark person" aria-hidden="true">
+                <nol-avatar [name]="person.login" [image]="person.avatar" [initials]="initialOf(person)" [colorKey]="person.login" [decorative]="true" />
+              </span>
+            } @else {
+              <span class="mark" [style.background-color]="provided.account.markColor" aria-hidden="true">{{ provided.account.mark }}</span>
+            }
             <span class="text">
               <span class="card-title">{{ card.title }}</span>
               <span class="detail">{{ card.detail }}</span>
             </span>
             @if (card.asksToSignIn) {
-              <button type="button" nol-button [variant]="secondary" (click)="open(provided, resources.formatSignInTitle(provided.account.host))">{{ card.label }}</button>
+              <button type="button" nol-button [variant]="secondary" (click)="open(provided, resources.formatSignInTitle(provided.account.host), card.account)">{{ card.label }}</button>
             } @else {
               <span class="end">
                 <nol-chip [kind]="chipOf(card)">{{ card.label }}</nol-chip>
                 <button type="button" nol-icon-button [icon]="resources.manageAccountIcon" [label]="resources.formatManageAccount(provided.account.host)"
                   [nolTooltip]="resources.formatManageAccount(provided.account.host)"
-                  (click)="open(provided, resources.formatAccountRowTitle(provided.account.host))"></button>
+                  (click)="open(provided, resources.formatAccountRowTitle(provided.account.host), card.account)"></button>
               </span>
             }
           </div>

@@ -41,6 +41,36 @@
   margin-top: var(--nol-space-2);
 }
 
+.account {
+  display: flex;
+  gap: var(--nol-space-2);
+  align-items: center;
+  margin-top: var(--nol-space-2);
+  padding-inline: calc(var(--nol-view-padding-inline) + var(--nol-border-width));
+  color: var(--nol-text-muted);
+}
+
+.switch {
+  flex-shrink: 0;
+  margin-block: calc((1lh - 1.5rem) / 2);
+  padding: calc((1.5rem - 1lh) / 2) 0;
+  border: 0;
+  background: none;
+  color: var(--nol-link);
+  font: inherit;
+  font-size: var(--nol-text-label);
+  cursor: pointer;
+}
+
+.switch:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.switch:disabled {
+  color: var(--nol-text-muted);
+  cursor: default;
+}
+
 .pr {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

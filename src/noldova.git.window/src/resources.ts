@@ -49,6 +49,7 @@ export class Resources {
   public static readonly featureYes: string = "Yes";
   public static readonly featureNo: string = "No";
   public static readonly accountInput: string = "account";
+  public static readonly chosenAccountInput: string = "chosen";
   public static readonly dialogTitleInput: string = "title";
   public static readonly accountRowPrefix: string = "git.account.";
   public static readonly hostFeatures: readonly GitHostFeature[] = Object.values(GitHostFeature);
@@ -1407,8 +1408,8 @@ export class Resources {
 
   public static readonly moreReviews: string = "More pull requests ask for your review than the host listed.";
 
-  public static formatReviewRequest(label: string, repository: string): string {
-    return `Review ${label} · ${repository}`;
+  public static formatReviewRequest(label: string, repository: string, account: string | null): string {
+    return Object.isNull(account) ? `Review ${label} · ${repository}` : `Review ${label} · ${repository} · ${account}`;
   }
 
   public static formatAgentWaiting(repository: string, name: string): string {
