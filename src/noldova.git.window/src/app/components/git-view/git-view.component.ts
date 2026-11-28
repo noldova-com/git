@@ -49,6 +49,7 @@ export class GitViewComponent {
   protected readonly phases: typeof GitViewPhase = GitViewPhase;
   private readonly errors: ErrorHandler = inject(ErrorHandler);
   protected readonly secondary: ButtonVariant = ButtonVariant.Secondary;
+  protected readonly primary: ButtonVariant = ButtonVariant.Primary;
   protected readonly state: GitViewStateService = inject(GitViewStateService);
   protected readonly showsBranch: Signal<boolean> = GitViewOptions.showsBranch;
   protected readonly switching: Signal<string | null> = computed(() => GitPendingSwitch.branchOf(this.state.folder()));
@@ -126,6 +127,14 @@ export class GitViewComponent {
 
   protected abortOperation(): void {
     void this.state.abortOperationAsync().catch((error: unknown) => this.errors.handleError(error));
+  }
+
+  protected continueOperation(): void {
+    void this.state.continueOperationAsync().catch((error: unknown) => this.errors.handleError(error));
+  }
+
+  protected skipOperation(): void {
+    void this.state.skipOperationAsync().catch((error: unknown) => this.errors.handleError(error));
   }
 
   private lookUnder(folder: string | null): void {

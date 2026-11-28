@@ -57,6 +57,7 @@
       "git.markerCheck",
       "git.continueOperation",
       "git.abortOperation",
+      "git.skipOperation",
       "git.predict",
       "git.rebasePlan",
       "git.rebaseCheck",

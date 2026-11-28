@@ -314,6 +314,7 @@ export class RuntimePart implements IRuntimePart {
       t => new ResolveConflictWriter(runner, hooks, filters, t.path, t.resolution, t.text));
     registerWrite(GitNames.continueOperationMethod, t => GitOperationParams.fromJson(t), () => new OperationWriter(runner, hooks, GitNames.continueOperationMethod));
     registerWrite(GitNames.abortOperationMethod, t => GitOperationParams.fromJson(t), () => new OperationWriter(runner, hooks, GitNames.abortOperationMethod));
+    registerWrite(GitNames.skipOperationMethod, t => GitOperationParams.fromJson(t), () => new OperationWriter(runner, hooks, GitNames.skipOperationMethod));
     const predictions = new PredictionReader(runner, versions, filters);
     register(GitNames.predictMethod, t => GitPredictParams.fromJson(t), (folders, params, signal) => predictions.readAsync(folders.top, params.id, params.action, signal));
     const rebasePlans = new RebasePlanReader(runner);

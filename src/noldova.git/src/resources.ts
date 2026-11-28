@@ -511,6 +511,7 @@ export class Resources {
   public static readonly branchExistsPattern: RegExp = /already exists/u;
   public static readonly revertCommand: string = "revert";
   public static readonly abortOption: string = "--abort";
+  public static readonly skipOption: string = "--skip";
   public static readonly cherryPickArguments: readonly string[] = ["cherry-pick"];
   public static readonly revertArguments: readonly string[] = ["revert", "--no-edit"];
   public static readonly mainlineArguments: readonly string[] = ["-m", "1"];
@@ -740,7 +741,8 @@ export class Resources {
   public static readonly resolutionNotOffered: string = "That choice isn't offered for this kind of conflict. Nothing changed.";
   public static readonly resolutionMarkersLeft: string = "The resolved text still has conflict marker lines. Resolve every conflict first. Nothing changed.";
   public static readonly continueMarkersLeft: string = "A file still has conflict marker lines, staged or not. Fix them before continuing; the files come with the failure as untrusted text.";
-  public static readonly noOperation: string = "No merge, rebase, cherry-pick or revert is in progress, so there is nothing to continue or abort.";
+  public static readonly noOperation: string = "No merge, rebase, cherry-pick or revert is in progress, so there is nothing to continue, skip or abort.";
+  public static readonly skipMerge: string = "A merge can't be skipped. Continue it once its files are resolved, or abort it.";
   public static readonly fileOutsideRepository: string = "The file's folder leads outside the repository, so the module doesn't write it. Nothing changed.";
   public static readonly offeredResolutions: Readonly<Record<ConflictKind, readonly ConflictResolution[]>> = {
     [ConflictKind.BothModified]: [ConflictResolution.Text, ConflictResolution.Ours, ConflictResolution.Theirs],
@@ -778,6 +780,7 @@ export class Resources {
   public static readonly wholeFileNote: string = "This takes the whole file from one side and drops every change from the other, not only the conflicting lines.";
   public static readonly abortNote: string = "Aborting puts the branch, the index and the worktree back as they were before it started, and drops every resolution made since.";
   public static readonly continueHooks: readonly string[] = [...Resources.commitHooks, "post-rewrite"];
+  public static readonly skipNote: string = "Skipping drops the commit it stopped at, with its changes and any resolution made for it, and goes on to the next.";
 
   public static formatPointsAt(id: string): string {
     return `--points-at=${id}`;
@@ -809,6 +812,10 @@ export class Resources {
 
   public static formatAbortTitle(operation: string): string {
     return `Abort the ${operation}`;
+  }
+
+  public static formatSkipTitle(operation: string): string {
+    return `Skip this commit of the ${operation}`;
   }
 
   public static formatWriteDoneUnread(failure: string): string {

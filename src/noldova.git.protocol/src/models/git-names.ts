@@ -56,6 +56,7 @@ export class GitNames {
   public static readonly markerCheckMethod: string = "git.markerCheck";
   public static readonly continueOperationMethod: string = "git.continueOperation";
   public static readonly abortOperationMethod: string = "git.abortOperation";
+  public static readonly skipOperationMethod: string = "git.skipOperation";
   public static readonly predictMethod: string = "git.predict";
   public static readonly mergeMethod: string = "git.merge";
   public static readonly rebasePlanMethod: string = "git.rebasePlan";

@@ -4823,6 +4823,11 @@ export declare class GitNames {
   public static readonly abortOperationMethod: string;
 
   /**
+   * `git.skipOperation`: skips the commit the rebase, cherry-pick or revert in progress stopped at and goes on to the next, with {@link GitOperationParams}; refused for a merge, which git can't skip.
+   */
+  public static readonly skipOperationMethod: string;
+
+  /**
    * `git.predict`: works out what merging a commit into the current branch, or cherry-picking or reverting it there, would do, with {@link GitPredictParams}, answering {@link GitPrediction}; it changes neither the working folder nor the index.
    */
   public static readonly predictMethod: string;
@@ -4856,7 +4861,7 @@ export declare class GitNames {
 
   /**
    * `git.rebase`: rebases the current branch onto a commit with the given steps, with {@link GitRebaseParams}; it stops on a conflict or an Edit step,
-   * which `git.continueOperation` and `git.abortOperation` then finish; for the app's main process only.
+   * which `git.continueOperation`, `git.skipOperation` and `git.abortOperation` then finish; for the app's main process only.
    */
   public static readonly rebaseMethod: string;
 }
@@ -5702,7 +5707,7 @@ export declare class GitResolveParams {
 }
 
 /**
- * The parameters of `git.continueOperation` and `git.abortOperation`: the folder and the status they are based on.
+ * The parameters of `git.continueOperation`, `git.abortOperation` and `git.skipOperation`: the folder and the status they are based on.
  * @example
  * ```ts
  * import { GitOperationParams } from "@noldova/git.protocol";

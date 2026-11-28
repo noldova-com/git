@@ -572,7 +572,7 @@ describe("Resources", () => {
     assert.equal(Resources.conflictGone, "That file is no longer in conflict, so there is nothing to read or resolve. Read the status again.");
     assert.equal(Resources.resolutionNotOffered, "That choice isn't offered for this kind of conflict. Nothing changed.");
     assert.equal(Resources.resolutionMarkersLeft, "The resolved text still has conflict marker lines. Resolve every conflict first. Nothing changed.");
-    assert.equal(Resources.noOperation, "No merge, rebase, cherry-pick or revert is in progress, so there is nothing to continue or abort.");
+    assert.equal(Resources.noOperation, "No merge, rebase, cherry-pick or revert is in progress, so there is nothing to continue, skip or abort.");
     assert.equal(Resources.fileOutsideRepository, "The file's folder leads outside the repository, so the module doesn't write it. Nothing changed.");
     assert.deepEqual(Resources.rerereSettings, ["-c", "rerere.enabled=true"]);
     assert.deepEqual(Resources.acceptEditorSettings, ["-c", "core.editor=true"]);
@@ -590,7 +590,7 @@ describe("Resources", () => {
     assert.equal(Resources.formatPointsAt("abc"), "--points-at=abc");
     assert.deepEqual([Resources.formatOntoLabel("main"), Resources.formatYourCommitLabel("abc1234"), Resources.formatPickedLabel("abc1234"),
       Resources.formatRevertedLabel("abc1234")], ["onto main", "your commit abc1234", "commit abc1234", "revert of abc1234"]);
-    assert.deepEqual([Resources.formatResolveTitle("a.txt", "deleting it"), Resources.formatContinueTitle("rebase"), Resources.formatAbortTitle("merge")],
-      ["Resolve a.txt with deleting it", "Continue the rebase", "Abort the merge"]);
+    assert.deepEqual([Resources.formatResolveTitle("a.txt", "deleting it"), Resources.formatContinueTitle("rebase"), Resources.formatAbortTitle("merge"),
+      Resources.formatSkipTitle("revert")], ["Resolve a.txt with deleting it", "Continue the rebase", "Abort the merge", "Skip this commit of the revert"]);
   });
 });

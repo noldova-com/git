@@ -7,12 +7,13 @@
  */
 
 import { type IPermissionDetail, type IPermissionRequest, PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
-import { GitNames, type GitStatus, type OperationKind, UndoMode, UntrustedSource } from "@noldova/git.protocol";
+import { GitNames, type GitStatus, OperationKind, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
 import { CommitConflictsException } from "../exceptions/commit-conflicts.exception.ts";
 import { ContinueMarkersLeftException } from "../exceptions/continue-markers-left.exception.ts";
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
 import { NoOperationException } from "../exceptions/no-operation.exception.ts";
+import { SkipMergeException } from "../exceptions/skip-merge.exception.ts";
 import type { IGitWrite } from "../interfaces/i-git-write.ts";
 import { GitArguments } from "../models/git-arguments.ts";
 import { ProgramLimits } from "../models/program-limits.ts";
@@ -43,23 +44,38 @@ export class OperationWriter implements IGitWrite {
     return this.method === GitNames.continueOperationMethod;
   }
 
+  private get isAbort(): boolean {
+    return !this.isContinue && !this.isSkip;
+  }
+
+  private get isSkip(): boolean {
+    return this.method === GitNames.skipOperationMethod;
+  }
+
+  private get option(): string {
+    return this.isContinue ? Resources.continueOption : this.isSkip ? Resources.skipOption : Resources.abortOption;
+  }
+
   public refuse(status: GitStatus): void {
     if (status.operation === null)
       throw new NoOperationException();
     if (this.isContinue && status.entries.some(t => t.conflict !== null))
       throw new CommitConflictsException();
+    if (this.isSkip && status.operation.kind === OperationKind.Merge)
+      throw new SkipMergeException();
   }
 
   public async requestAsync(folders: RepositoryFolders, status: GitStatus, _call: unknown, signal?: AbortSignal): Promise<IPermissionRequest | null> {
     const name = OperationWriter.commandOf(OperationWriter.kindOf(status));
-    const details: IPermissionDetail[] = this.isContinue
+    const hooks: IPermissionDetail[] = this.isContinue || this.isSkip
       ? [WritePermission.hooksDetail(await this.hooks.readAsync(folders.top, Resources.continueHooks, signal))]
-      : [{ label: Resources.noteLabel, kind: PermissionDetailKind.Text, value: Resources.abortNote }];
+      : [];
+    const notes: IPermissionDetail[] = this.isContinue ? [] : [{ label: Resources.noteLabel, kind: PermissionDetailKind.Text, value: this.isSkip ? Resources.skipNote : Resources.abortNote }];
     return WritePermission.create(
       this.method,
       folders.top,
-      this.isContinue ? Resources.formatContinueTitle(name) : Resources.formatAbortTitle(name),
-      details,
+      this.isContinue ? Resources.formatContinueTitle(name) : this.isSkip ? Resources.formatSkipTitle(name) : Resources.formatAbortTitle(name),
+      [...hooks, ...notes],
       ToolRisk.High,
       OperationWriter.OPTIONS);
   }
@@ -68,13 +84,13 @@ export class OperationWriter implements IGitWrite {
     const command = OperationWriter.commandOf(OperationWriter.kindOf(status));
     if (this.isContinue)
       await this.checkMarkersAsync(folders.top, signal);
-    const gitArguments = new GitArguments([command, this.isContinue ? Resources.continueOption : Resources.abortOption])
+    const gitArguments = new GitArguments([command, this.option])
       .withSettings([...Resources.acceptEditorSettings, ...Resources.rerereSettings]);
     const result = await this.runner.runAsync(ProgramRun.writeGit(gitArguments, folders.top, folders.gitFolder, folders.commonGitFolder, OperationWriter.LIMITS, signal));
     if (result.exit.code === 0)
       return;
     const text = `${result.output.toString(Resources.utf8Encoding)}${result.errors.toString(Resources.utf8Encoding)}`;
-    if (this.isContinue && Resources.pickConflictPattern.test(text))
+    if (!this.isAbort && Resources.pickConflictPattern.test(text))
       return;
     throw new GitFailedException(command, { text, source: UntrustedSource.Repository });
   }

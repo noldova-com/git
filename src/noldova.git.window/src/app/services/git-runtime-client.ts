@@ -296,6 +296,10 @@ export class GitRuntimeClient {
     await this.context.requestAsync(GitNames.abortOperationMethod, new GitOperationParams(folder, basedOn).toJson());
   }
 
+  public async skipOperationAsync(folder: string, basedOn: string): Promise<void> {
+    await this.context.requestAsync(GitNames.skipOperationMethod, new GitOperationParams(folder, basedOn).toJson());
+  }
+
   public async watchAsync(folder: string): Promise<void> {
     await this.context.requestAsync(GitNames.watchMethod, new GitFolderParams(folder).toJson());
   }

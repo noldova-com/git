@@ -13,19 +13,21 @@ import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
 import { PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
-import { ConflictResolution, GitNames, OperationKind, UntrustedSource } from "@noldova/git.protocol";
+import { ConflictResolution, GitNames, OperationKind, RebaseAction, RebaseStep, UntrustedSource } from "@noldova/git.protocol";
 
 import { CommitConflictsException } from "../../src/exceptions/commit-conflicts.exception.ts";
 import { ContinueMarkersLeftException } from "../../src/exceptions/continue-markers-left.exception.ts";
 import { GitFailedException } from "../../src/exceptions/git-failed.exception.ts";
 import { NoOperationException } from "../../src/exceptions/no-operation.exception.ts";
 import { PickStoppedException } from "../../src/exceptions/pick-stopped.exception.ts";
+import { SkipMergeException } from "../../src/exceptions/skip-merge.exception.ts";
 import { FilterOptionsReader } from "../../src/services/filter-options.reader.ts";
 import { GitVersionReader } from "../../src/services/git-version.reader.ts";
 import { HooksReader } from "../../src/services/hooks.reader.ts";
 import { OperationWriter } from "../../src/services/operation.writer.ts";
 import { PickWriter } from "../../src/services/pick.writer.ts";
 import { ProgramRunner } from "../../src/services/program-runner.ts";
+import { RebaseWriter } from "../../src/services/rebase.writer.ts";
 import { RepositoryReader } from "../../src/services/repository.reader.ts";
 import { ResolveConflictWriter } from "../../src/services/resolve-conflict.writer.ts";
 import { StatusReader } from "../../src/services/status.reader.ts";
@@ -84,6 +86,9 @@ describe("OperationWriter", () => {
   };
   const continuing = (programs: ProgramRunner = runner): OperationWriter => new OperationWriter(programs, hooks, GitNames.continueOperationMethod);
   const aborting = (programs: ProgramRunner = runner): OperationWriter => new OperationWriter(programs, hooks, GitNames.abortOperationMethod);
+  const skipping = (programs: ProgramRunner = runner): OperationWriter => new OperationWriter(programs, hooks, GitNames.skipOperationMethod);
+  const idOf = async (revision: string): Promise<string> => (await repository.runGitAsync(["rev-parse", revision])).trim();
+  const subjectsAsync = async (): Promise<readonly string[]> => (await repository.runGitAsync(["log", "--format=%s"])).trim().split("\n");
   const writeAsync = async (write: OperationWriter): Promise<void> => {
     const { folders, status } = await readAsync();
     write.refuse(status);
@@ -123,6 +128,33 @@ describe("OperationWriter", () => {
       [false, ["Side 2", "Side 1", "Main"]]);
   });
 
+  test("continues a rebase from an edit stop, committing what was staged into the stopped commit and going on to the next step", async () => {
+    await repository.runGitAsync(["switch", "--quiet", "side"]);
+    const steps = [new RebaseStep(await idOf("side~1"), RebaseAction.Edit, null), new RebaseStep(await idOf("side"), RebaseAction.Pick, null)];
+    await (await readAsync()).runAsync(new RebaseWriter(runner, hooks, await idOf("side~2"), steps, false));
+    const { status: stopped } = await readAsync();
+    assert.deepEqual([stopped.operation?.kind, stopped.entries.some(t => t.conflict !== null)], [OperationKind.Rebase, false]);
+    await repository.writeAsync("b.txt", "added at the stop\n");
+    await repository.runGitAsync(["add", "b.txt"]);
+
+    await writeAsync(continuing());
+
+    assert.deepEqual([await existsAsync("rebase-merge"), await subjectsAsync(), (await repository.runGitAsync(["show", "--name-only", "--format=", "HEAD~1"])).trim().split("\n").sort()],
+      [false, ["Side 2", "Side 1", "Base", "Start"], ["a.txt", "b.txt"]]);
+  });
+
+  test("skips the commit a rebase stopped at, answering normally at the next conflict and finishing on the last skip", async () => {
+    await repository.runGitAsync(["switch", "--quiet", "side"]);
+    await conflictAsync(["rebase", "main"]);
+
+    await writeAsync(skipping());
+
+    const { status: stopped } = await readAsync();
+    assert.deepEqual([stopped.operation?.kind, stopped.entries.find(t => t.path === "a.txt")?.conflict !== null], [OperationKind.Rebase, true]);
+    await writeAsync(skipping());
+    assert.deepEqual([await existsAsync("rebase-merge"), await subjectsAsync(), await worktreeAsync()], [false, ["Main", "Base", "Start"], "one\nmain\nthree\n"]);
+  });
+
   test("aborts a merge, putting the branch and the worktree back", async () => {
     await conflictAsync(["merge", "--quiet", "side"]);
     const { status } = await readAsync();
@@ -133,9 +165,9 @@ describe("OperationWriter", () => {
     assert.deepEqual([await existsAsync("MERGE_HEAD"), await worktreeAsync()], [false, "one\nmain\nthree\n"]);
   });
 
-  test("refuses with no operation in progress, and refuses to continue while a file is unmerged", async () => {
+  test("refuses with no operation in progress, refuses to continue while a file is unmerged, and refuses to skip a merge", async () => {
     const { folders, status: clean } = await readAsync();
-    for (const write of [continuing(), aborting()]) {
+    for (const write of [continuing(), aborting(), skipping()]) {
       assert.throws(() => write.refuse(clean), (error: unknown) => error instanceof NoOperationException);
       await assert.rejects(write.runAsync(folders, clean), (error: unknown) => error instanceof NoOperationException);
       await assert.rejects(write.requestAsync(folders, clean, call), (error: unknown) => error instanceof NoOperationException);
@@ -144,6 +176,7 @@ describe("OperationWriter", () => {
     const { status: conflicted } = await readAsync();
 
     assert.throws(() => continuing().refuse(conflicted), (error: unknown) => error instanceof CommitConflictsException);
+    assert.throws(() => skipping().refuse(conflicted), (error: unknown) => error instanceof SkipMergeException && error.message === "A merge can't be skipped. Continue it once its files are resolved, or abort it.");
   });
 
   test("refuses to continue while a staged file still has marker lines, naming them as untrusted text", async () => {
@@ -187,7 +220,18 @@ describe("OperationWriter", () => {
     }
   });
 
-  test("asks an agent's continue or abort at high risk, once only, with the hooks a continue runs or what an abort drops", async () => {
+  test("fails with git's output as untrusted text when a skip fails otherwise", async () => {
+    await conflictAsync(["cherry-pick", "side"]);
+    const scripted = new ScriptedRunnerFixture(supervisor.context);
+    scripted.failing = "cherry-pick --skip";
+    scripted.failingCode = 128;
+
+    await assert.rejects(writeAsync(skipping(scripted)), (error: unknown) => error instanceof GitFailedException && error.output?.source === UntrustedSource.Repository
+      && error.output.text.includes("scripted failure"));
+    assert.equal(await existsAsync("CHERRY_PICK_HEAD"), true);
+  });
+
+  test("asks an agent's continue, abort or skip at high risk, once only, with the hooks a continue or skip runs and what an abort or skip drops", async () => {
     await conflictAsync(["cherry-pick", "side"]);
     const { folders, status } = await readAsync();
 
@@ -205,6 +249,16 @@ describe("OperationWriter", () => {
       title: "Abort the cherry-pick",
       details: [{ label: "Note", kind: PermissionDetailKind.Text,
         value: "Aborting puts the branch, the index and the worktree back as they were before it started, and drops every resolution made since." }],
+      risk: ToolRisk.High,
+      options: [PermissionOption.AllowOnce, PermissionOption.Deny]
+    });
+    assert.deepEqual(await skipping().requestAsync(folders, status, call), {
+      action: "git.skipOperation",
+      subject: folders.top,
+      title: "Skip this commit of the cherry-pick",
+      details: [{ label: "Hooks that will run", kind: PermissionDetailKind.Text, value: "None" },
+        { label: "Note", kind: PermissionDetailKind.Text,
+          value: "Skipping drops the commit it stopped at, with its changes and any resolution made for it, and goes on to the next." }],
       risk: ToolRisk.High,
       options: [PermissionOption.AllowOnce, PermissionOption.Deny]
     });
