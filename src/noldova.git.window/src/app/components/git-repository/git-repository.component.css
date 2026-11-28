@@ -164,6 +164,10 @@ button.row {
   background: var(--nol-hover);
 }
 
+.remote:is(:hover, :focus-within) > .row > .count {
+  visibility: hidden;
+}
+
 .remote:has(> .row.sel) > .actions {
   background-color: var(--nol-selected);
 }

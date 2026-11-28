@@ -225,7 +225,7 @@ describe("GitRepositoryComponent in the kit's look", () => {
     expect(rem((box(remote).top - box(remoteRow).top) - (box(local).top - box(localRow).top))).toBe(0);
   });
 
-  it.each(AppearanceFixture.modes)("draws a remote branch's Switch to branch over its row's end on the row's fill when it is hovered or focused, its glyph where the counts end and the counts kept where they rest, in %s mode",
+  it.each(AppearanceFixture.modes)("draws a remote branch's Switch to branch at its row's end on the row's fill in place of its counts when it is hovered or focused, its glyph where the counts end and the counts keeping their place, in %s mode",
     async mode => {
       AppearanceFixture.apply(DefaultTheme.theme, mode);
       const element: HTMLElement = await renderAsync({
@@ -240,9 +240,10 @@ describe("GitRepositoryComponent in the kit's look", () => {
       const row: HTMLElement = wrap.querySelector<HTMLElement>(".row") ?? wrap;
       const actions: HTMLElement = wrap.querySelector<HTMLElement>(".actions") ?? wrap;
       const ends = (): number[] => [".count.ahead", ".count.behind"].map(t => rem(box(row.querySelector(t)).right));
-      const shown = (): readonly string[] => [getComputedStyle(actions).display, getComputedStyle(actions).backgroundColor, getComputedStyle(row).backgroundColor];
+      const shown = (): readonly string[] => [getComputedStyle(actions).display, getComputedStyle(actions).backgroundColor, getComputedStyle(row).backgroundColor,
+        getComputedStyle(row.querySelector(".count") ?? row).visibility];
       const rest: number[] = ends();
-      const atRest: string = getComputedStyle(actions).display;
+      const atRest: readonly string[] = [getComputedStyle(actions).display, getComputedStyle(row.querySelector(".count") ?? row).visibility];
       const end: number = RightEdge.endOf(row.querySelector(".count.behind") ?? row);
 
       row.focus();
@@ -256,10 +257,11 @@ describe("GitRepositoryComponent in the kit's look", () => {
       await untilAsync(() => row.classList.contains("sel"));
       const selected: readonly string[] = shown();
 
-      expect(atRest).toBe("none");
+      expect(atRest).toEqual(["none", "visible"]);
       expect([focused[0], hovered[0], focused[1], hovered[1]]).toEqual([rest, rest, "flex", "flex"]);
       expect([focused[2], hovered[2]]).toEqual([focused[3], hovered[3]]);
       expect(focused[2]).not.toBe("rgba(0, 0, 0, 0)");
+      expect([focused[4], hovered[4]]).toEqual(["hidden", "hidden"]);
       expect(selected[1]).toBe(selected[2]);
       expect(selected[1]).not.toBe(hovered[2]);
       expect(missed).toEqual([]);
