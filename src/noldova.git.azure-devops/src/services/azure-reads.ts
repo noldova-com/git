@@ -17,7 +17,10 @@ import { BranchPullRequest, type BranchQuery, CheckState, type CommitQuery, File
   HostWorkItemType, PolicyState, ReferenceKind, ReferenceState, type RepositoryQuery, ReviewDecision, ThreadStatus, WorkItemCategory, type WorkItemQuery,
   WorkItemScope, type WorkItemsQuery } from "@noldova/git.hosting.protocol";
 
+import type { IAccountRead } from "../interfaces/i-account-read.ts";
 import type { IAzureTokens } from "../interfaces/i-azure-tokens.ts";
+import { AccountReviewRequests } from "../models/account-review-requests.ts";
+import { AccountWorkItems } from "../models/account-work-items.ts";
 import type { AzureCredential } from "../models/azure-credential.ts";
 import { AzureRepository } from "../models/azure-repository.ts";
 import { ChangeCounts } from "../models/change-counts.ts";
@@ -28,6 +31,7 @@ import { LineCounts } from "../models/line-counts.ts";
 import type { PeopleQuery } from "../models/people-query.ts";
 import { QueriedIds } from "../models/queried-ids.ts";
 import { RanBuild } from "../models/ran-build.ts";
+import type { SignedInAccount } from "../models/signed-in-account.ts";
 import { WorkItemTypeStates } from "../models/work-item-type-states.ts";
 import { Resources } from "../resources.ts";
 import { AzureApi } from "./azure-api.ts";
@@ -37,9 +41,8 @@ export class AzureReads {
   private readonly signIn: IAzureTokens;
   private readonly log: IModuleLog;
   private static readonly unstopped: AbortSignal = new AbortController().signal;
-  private readonly types: Map<string, Promise<WorkItemTypeStates>> = new Map();
-  private typesToken: AzureCredential | null = null;
-  private reviewer: KnownReviewer | null = null;
+  private readonly types: Map<AzureCredential, Map<string, Promise<WorkItemTypeStates>>> = new Map();
+  private reviewers: readonly KnownReviewer[] = [];
   private readonly repositories: Map<string, readonly [string, string]> = new Map();
 
   public constructor(api: AzureApi, signIn: IAzureTokens, log: IModuleLog) {
@@ -390,20 +393,18 @@ export class AzureReads {
     if (!this.signIn.isSignedIn)
       return HostReviewRequestList.signedOut();
     const repository: AzureRepository | null = AzureRepository.parse(query.host, query.path);
-    const token: AzureCredential | null = repository === null ? null : this.signIn.tokenFor(repository.organization, query.host, query.path);
-    if (token === null || repository === null)
+    const signedIn: readonly SignedInAccount[] = this.signIn.signedIn;
+    const accounts: readonly SignedInAccount[] = repository === null ? [] : AzureReads.inOrganization(signedIn, repository.organization);
+    if (repository === null || accounts.length === 0)
       return new HostReviewRequestList([], false);
-    const list: HostReviewRequestList = await this.askAsync(token, async () => {
-      const reviewer: string = await this.readReviewerAsync(repository.organization, token, signal);
-      const pulls: JsonReader | null = await this.api.getAsync(Resources.formatReviewRequestsUrl(repository.organization, repository.project, repository.name,
-        reviewer), token, signal);
-      const read: readonly JsonReader[] = pulls === null ? [] : AzureApi.read(() => pulls.readObjectArray(Resources.valueField));
-      const asked: readonly HostReviewRequest[] = AzureApi.read(() => read.filter(t => AzureReads.waitsOn(t, reviewer))
-        .map(t => this.noted(query.host, query.path, AzureReads.reviewRequestOf(repository.organization, t))));
-      return new HostReviewRequestList(asked.slice(0, HostReviewRequestList.maximumRows).toSorted((a, b) => b.createdAt - a.createdAt),
-        read.length > HostReviewRequestList.maximumRows);
-    });
-    return this.signIn.holds(token) ? list : HostReviewRequestList.signedOut();
+    const settled: readonly PromiseSettledResult<AccountReviewRequests>[] = await AzureReads.inTurnAsync(accounts, async t =>
+      new AccountReviewRequests(t, await this.readAccountReviewsAsync(query, repository, t, signedIn.length > 1, signal)));
+    const held: readonly AccountReviewRequests[] = this.heldOf(settled);
+    if (held.length === 0)
+      return HostReviewRequestList.signedOut();
+    const rows: readonly HostReviewRequest[] = held.flatMap(t => t.list.rows).toSorted((a, b) => b.createdAt - a.createdAt);
+    return new HostReviewRequestList(rows.slice(0, HostReviewRequestList.maximumRows), rows.length > HostReviewRequestList.maximumRows
+      || held.some(t => t.list.hasMore) || settled.some(t => t.status === "rejected"));
   }
 
   public async readWorkItemAsync(query: WorkItemQuery, signal: AbortSignal): Promise<HostWorkItem | null> {
@@ -424,19 +425,64 @@ export class AzureReads {
   }
 
   public async readWorkItemsAsync(query: WorkItemsQuery, signal: AbortSignal): Promise<HostWorkItemList> {
-    const token: AzureCredential | null = query.host === AzureDevOpsNames.moduleId ? this.signIn.tokenFor(query.organization) : null;
-    if (token === null || !Resources.organizationPattern.test(query.organization))
-      return new HostWorkItemList([], false);
-    const list: HostWorkItemList = await this.askAsync(token, async () => {
+    const none: HostWorkItemList = new HostWorkItemList([], false);
+    if (query.host !== AzureDevOpsNames.moduleId || !Resources.organizationPattern.test(query.organization))
+      return none;
+    if (query.scope === WorkItemScope.Ids) {
+      const token: AzureCredential | null = this.signIn.tokenFor(query.organization);
+      if (token === null)
+        return none;
+      const list: HostWorkItemList = await this.readListAsync(query, token, null, signal);
+      return this.signIn.holds(token) ? list : none;
+    }
+    const signedIn: readonly SignedInAccount[] = this.signIn.signedIn;
+    const accounts: readonly SignedInAccount[] = AzureReads.inOrganization(signedIn, query.organization);
+    if (accounts.length === 0)
+      return none;
+    const settled: readonly PromiseSettledResult<AccountWorkItems>[] = await AzureReads.inTurnAsync(accounts, async t =>
+      new AccountWorkItems(t, await this.readListAsync(query, t.token, signedIn.length > 1 ? t.login : null, signal)));
+    const held: readonly AccountWorkItems[] = this.heldOf(settled);
+    const details: Map<number, HostWorkItemDetail> = new Map();
+    for (const detail of held.flatMap(t => t.list.items))
+      if (!details.has(detail.item.id))
+        details.set(detail.item.id, detail);
+    return new HostWorkItemList(AzureReads.treeOf([...details.values()]), held.some(t => t.list.isTruncated));
+  }
+
+  private async readListAsync(query: WorkItemsQuery, token: AzureCredential, account: string | null, signal: AbortSignal): Promise<HostWorkItemList> {
+    return this.askAsync(token, async () => {
       const queried: QueriedIds = await this.queryIdsAsync(query, token, signal);
       const found: readonly JsonReader[] = await this.readBatchAsync(query.organization, queried.ids, token, signal);
       const items: readonly JsonReader[] = query.scope === WorkItemScope.Mine ? await this.withAncestorsAsync(query.organization, found, token, signal) : found;
       const details: HostWorkItemDetail[] = [];
       for (const item of items)
-        details.push(await this.detailOfAsync(query.organization, item, token, signal));
+        details.push(await this.detailOfAsync(query.organization, item, token, signal, account));
       return new HostWorkItemList(AzureReads.treeOf(details), queried.isTruncated);
     });
-    return this.signIn.holds(token) ? list : new HostWorkItemList([], false);
+  }
+
+  private async readAccountReviewsAsync(query: RepositoryQuery, repository: AzureRepository, account: SignedInAccount, isNamed: boolean,
+    signal: AbortSignal): Promise<HostReviewRequestList> {
+    const token: AzureCredential = account.token;
+    return this.askAsync(token, async () => {
+      const reviewer: string = await this.readReviewerAsync(repository.organization, token, signal);
+      const pulls: JsonReader | null = await this.api.getAsync(Resources.formatReviewRequestsUrl(repository.organization, repository.project, repository.name,
+        reviewer), token, signal);
+      const read: readonly JsonReader[] = pulls === null ? [] : AzureApi.read(() => pulls.readObjectArray(Resources.valueField));
+      const asked: readonly HostReviewRequest[] = AzureApi.read(() => read.filter(t => AzureReads.waitsOn(t, reviewer))
+        .map(t => this.noted(query.host, query.path, AzureReads.reviewRequestOf(repository.organization, t, isNamed ? account.login : null))));
+      return new HostReviewRequestList(asked.slice(0, HostReviewRequestList.maximumRows).toSorted((a, b) => b.createdAt - a.createdAt),
+        read.length > HostReviewRequestList.maximumRows);
+    });
+  }
+
+  private heldOf<T extends IAccountRead>(settled: readonly PromiseSettledResult<T>[]): readonly T[] {
+    const read: readonly T[] = settled.flatMap(t => t.status === "fulfilled" ? [t.value] : []);
+    const failures: readonly unknown[] = settled.flatMap((t): unknown[] => t.status === "rejected" ? [t.reason] : []);
+    const unexpected: readonly unknown[] = failures.filter(t => !(t instanceof MethodFailureException));
+    if (unexpected.length > 0 || read.length === 0)
+      throw unexpected[0] ?? failures[0];
+    return read.filter(t => this.signIn.holds(t.account.token));
   }
 
   public async readDetailAsync(organization: string, answer: JsonReader, token: AzureCredential, signal: AbortSignal): Promise<HostWorkItemDetail> {
@@ -490,29 +536,27 @@ export class AzureReads {
     return items;
   }
 
-  private async detailOfAsync(organization: string, answer: JsonReader, token: AzureCredential, signal: AbortSignal): Promise<HostWorkItemDetail> {
+  private async detailOfAsync(organization: string, answer: JsonReader, token: AzureCredential, signal: AbortSignal,
+    account: string | null = null): Promise<HostWorkItemDetail> {
     const fields: JsonReader = AzureApi.read(() => answer.readObject(Resources.fieldsField));
     const project: string = AzureApi.read(() => fields.readNonBlankString(Resources.teamProjectField));
     const type = await this.readTypeAsync(organization, project, AzureApi.read(() => fields.readNonBlankString(Resources.workItemTypeField)), token, signal);
-    return AzureApi.read(() => AzureReads.detailOf(organization, answer, project, fields, type));
+    return AzureApi.read(() => AzureReads.detailOf(organization, answer, project, fields, type, account));
   }
 
   private async readTypeAsync(organization: string, project: string, name: string, token: AzureCredential,
     signal: AbortSignal): Promise<WorkItemTypeStates> {
-    if (this.typesToken !== token) {
-      this.types.clear();
-      this.typesToken = token;
-    }
+    for (const dropped of [...this.types.keys()].filter(t => !this.signIn.holds(t)))
+      this.types.delete(dropped);
+    const types: Map<string, Promise<WorkItemTypeStates>> = this.types.get(token) ?? new Map();
+    this.types.set(token, types);
     const key: string = Resources.formatWorkItemTypeKey(organization, project, name);
-    let reading = this.types.get(key);
+    let reading = types.get(key);
     if (reading === undefined) {
       const read = this.readNewTypeAsync(organization, project, name, token);
       reading = read;
-      this.types.set(key, read);
-      read.catch(() => {
-        if (this.types.get(key) === read)
-          this.types.delete(key);
-      });
+      types.set(key, read);
+      read.catch(() => types.delete(key));
     }
     const type = await reading;
     signal.throwIfAborted();
@@ -608,15 +652,15 @@ export class AzureReads {
   }
 
   private async readReviewerAsync(organization: string, token: AzureCredential, signal: AbortSignal): Promise<string> {
-    const known: KnownReviewer | null = this.reviewer;
-    if (known !== null && known.token === token)
+    const known: KnownReviewer | undefined = this.reviewers.find(t => t.token === token);
+    if (known !== undefined)
       return known.id;
     const connection: JsonReader | null = await this.api.getAsync(Resources.formatConnectionDataUrl(organization), token, signal);
     if (connection === null)
       throw AzureApi.failure(FailureCode.Unavailable, Resources.unreadableAnswerMessage);
     const id: string = AzureApi.read(() => connection.readObject(Resources.authenticatedUserField).readNonBlankString(Resources.idField));
     if (this.signIn.holds(token))
-      this.reviewer = new KnownReviewer(token, id);
+      this.reviewers = [...this.reviewers.filter(t => this.signIn.holds(t.token)), new KnownReviewer(token, id)];
     return id;
   }
 
@@ -633,14 +677,27 @@ export class AzureReads {
     }
   }
 
+  private static async inTurnAsync<T>(accounts: readonly SignedInAccount[],
+    read: (account: SignedInAccount) => Promise<T>): Promise<readonly PromiseSettledResult<T>[]> {
+    const settled: PromiseSettledResult<T>[] = [];
+    for (const account of accounts)
+      settled.push(await read(account).then((value): PromiseSettledResult<T> => ({ status: "fulfilled", value }),
+        (reason: unknown): PromiseSettledResult<T> => ({ status: "rejected", reason })));
+    return settled;
+  }
+
+  private static inOrganization(accounts: readonly SignedInAccount[], organization: string): readonly SignedInAccount[] {
+    return accounts.filter(t => Resources.isSameOrganization(t.organization, organization));
+  }
+
   private static waitsOn(pull: JsonReader, reviewer: string): boolean {
     return pull.readObjectArray(Resources.reviewersField).some(t => t.hasField(Resources.idField) && t.readString(Resources.idField) === reviewer
       && t.readInteger(Resources.voteField) === 0);
   }
 
-  private static reviewRequestOf(organization: string, pull: JsonReader): HostReviewRequest {
+  private static reviewRequestOf(organization: string, pull: JsonReader, account: string | null): HostReviewRequest {
     const item: HostItem = AzureReads.itemOf(organization, pull);
-    return new HostReviewRequest(item.reference, item.title, item.url, item.state === ReferenceState.Draft, item.createdAt);
+    return new HostReviewRequest(item.reference, item.title, item.url, item.state === ReferenceState.Draft, item.createdAt, account);
   }
 
   public repositoryOf(reference: HostReference): readonly [string, string] | null {
@@ -692,7 +749,7 @@ export class AzureReads {
   }
 
   private static detailOf(organization: string, answer: JsonReader, project: string, fields: JsonReader,
-    type: WorkItemTypeStates): HostWorkItemDetail {
+    type: WorkItemTypeStates, account: string | null): HostWorkItemDetail {
     const id: number = answer.readInteger(Resources.idField);
     const relations: readonly JsonReader[] = answer.hasField(Resources.relationsField) ? answer.readObjectArray(Resources.relationsField) : [];
     const urls = (relation: string): readonly string[] => relations.filter(t => t.readString(Resources.relationField) === relation)
@@ -708,7 +765,7 @@ export class AzureReads {
     return new HostWorkItemDetail(AzureReads.workItemOf(organization, id, project, fields, type), number(Resources.pointsFields),
       number([Resources.remainingWorkField]), number([Resources.completedWorkField]), number(Resources.orderFields),
       fields.hasField(Resources.acceptanceCriteriaField) ? AzureReads.plainTextOf(fields.readString(Resources.acceptanceCriteriaField)) : null, children,
-      pullRequests, links.filter(t => t.startsWith(Resources.commitArtifactPrefix)).length, branches);
+      pullRequests, links.filter(t => t.startsWith(Resources.commitArtifactPrefix)).length, branches, null, account);
   }
 
   private static childOf(url: string): number {

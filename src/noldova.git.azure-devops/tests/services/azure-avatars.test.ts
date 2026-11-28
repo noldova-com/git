@@ -16,7 +16,7 @@ import { describe, it } from "vitest";
 
 import { AzureApi } from "../../src/services/azure-api.ts";
 import { AzureAvatars } from "../../src/services/azure-avatars.ts";
-import { FakeAzure, FakeToken, linesOf } from "../fixtures/fake-azure.fixture.ts";
+import { FakeAzure, FakeToken } from "../fixtures/fake-azure.fixture.ts";
 
 const signal: AbortSignal = new AbortController().signal;
 const commit: string = "6dcb09b5b57875f334f61aebed695e2e4193db5e";
@@ -126,7 +126,7 @@ describe("AzureAvatars", () => {
       avatars.push(await rig.readAsync(query(email)));
 
     assert.deepEqual(avatars.map(t => t?.slice(0, t.indexOf(";")) ?? null), ["data:image/jpeg", "data:image/gif", "data:image/webp", null, null, null]);
-    assert.deepEqual(linesOf(rig.log), ["An Azure DevOps picture isn't shown: the image is empty.", "An Azure DevOps picture isn't shown: the image is over 64 KiB.",
+    assert.deepEqual(FakeAzure.linesOf(rig.log), ["An Azure DevOps picture isn't shown: the image is empty.", "An Azure DevOps picture isn't shown: the image is over 64 KiB.",
       "An Azure DevOps picture isn't shown: the answer isn't a PNG, JPEG, GIF or WebP image."]);
   });
 

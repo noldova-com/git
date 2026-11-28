@@ -68,6 +68,10 @@ export class AzureSignIn {
     return this.held?.organization ?? null;
   }
 
+  public get holding(): HeldSignIn | null {
+    return this.held;
+  }
+
   public get place(): string | null {
     return this.target === null ? null : Resources.formatPlace(this.target);
   }
@@ -112,7 +116,7 @@ export class AzureSignIn {
     if (this.signIn.state !== SignInState.SignedOut || this.stopped.signal.aborted)
       return;
     const credential = restored.kind === SignInKind.Microsoft ? AzureCredential.ofAccess(Resources.emptyText) : AzureCredential.ofToken(restored.token);
-    this.held = new HeldSignIn(credential, restored.organization);
+    this.held = new HeldSignIn(credential, restored.organization, restored.account.login);
     this.kept = restored;
     this.target = restored.organization;
     this.set(HostSignIn.signedIn(restored.account));
@@ -276,7 +280,7 @@ export class AzureSignIn {
   }
 
   private signedIn(credential: AzureCredential, kept: KeptSignIn): void {
-    this.held = new HeldSignIn(credential, kept.organization);
+    this.held = new HeldSignIn(credential, kept.organization, kept.account.login);
     this.kept = kept;
     this.log.write(Resources.formatSignedIn(kept.account.login));
     this.set(HostSignIn.signedIn(kept.account));

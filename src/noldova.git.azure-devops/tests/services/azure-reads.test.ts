@@ -20,12 +20,14 @@ import { BranchPullRequest, BranchQuery, CheckState, CommitQuery, FileChangeKind
   WorkItemsQuery } from "@noldova/git.hosting.protocol";
 import { describe, it } from "vitest";
 
+import type { IAzureTokens } from "../../src/interfaces/i-azure-tokens.ts";
 import { AzureCredential } from "../../src/models/azure-credential.ts";
 import { FoundPerson } from "../../src/models/found-person.ts";
 import { PeopleQuery } from "../../src/models/people-query.ts";
+import { SignedInAccount } from "../../src/models/signed-in-account.ts";
 import { AzureApi } from "../../src/services/azure-api.ts";
 import { AzureReads } from "../../src/services/azure-reads.ts";
-import { FakeAzure, FakeToken, linesOf } from "../fixtures/fake-azure.fixture.ts";
+import { FakeAzure, FakeToken } from "../fixtures/fake-azure.fixture.ts";
 
 const signal: AbortSignal = new AbortController().signal;
 const repositoryId: string = "3411ebc1-d5aa-464f-9615-0b527bc66719";
@@ -155,6 +157,54 @@ function note(id: number, parent: number | null, body: string): HostComment {
   return new HostComment(id, parent, monalisa, Date.parse("2027-01-15T10:00:00Z"), body);
 }
 
+const monalisaToken: AzureCredential = AzureCredential.ofToken("monalisa-token");
+const octocatToken: AzureCredential = AzureCredential.ofToken("octocat-token");
+const octocatId: string = "a1b2c3d4-0000-0000-0000-000000000001";
+const octocatRequestsUrl: string = "https://dev.azure.com/fabrikam/web/_apis/git/repositories/site/pullrequests"
+  + `?searchCriteria.reviewerId=${octocatId}&searchCriteria.status=active&$top=101&api-version=7.1`;
+const twoInFabrikam: readonly SignedInAccount[] = [new SignedInAccount(1, "monalisa", "fabrikam", monalisaToken),
+  new SignedInAccount(2, "octocat", "Fabrikam", octocatToken)];
+
+class Octocat {
+  public static connection(): Response {
+    return FakeAzure.json({ authenticatedUser: { id: octocatId, providerDisplayName: "The Octocat" } });
+  }
+}
+
+class SeveralAccounts implements IAzureTokens {
+  public held: readonly AzureCredential[];
+  private readonly accounts: readonly SignedInAccount[];
+
+  public constructor(accounts: readonly SignedInAccount[]) {
+    this.accounts = accounts;
+    this.held = accounts.map(t => t.token);
+  }
+
+  public get isSignedIn(): boolean {
+    return this.held.length > 0;
+  }
+
+  public get signedIn(): readonly SignedInAccount[] {
+    return this.accounts.filter(t => this.held.includes(t.token));
+  }
+
+  public tokenFor(): AzureCredential | null {
+    return this.signedIn[0]?.token ?? null;
+  }
+
+  public holds(token: AzureCredential): boolean {
+    return this.held.includes(token);
+  }
+
+  public refusedAsync(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  public readyAsync(): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
 function failureOf(error: unknown): string | null {
   return error instanceof MethodFailureException ? error.failure.code : null;
 }
@@ -225,7 +275,7 @@ describe("AzureReads", () => {
 
     const read: HostItem | null = await reads.readReferenceAsync(reference, signal);
 
-    assert.deepEqual([read?.changes?.additions, read?.changes?.deletions, read?.changes?.changedFiles, linesOf(log)], [9, 0, 3, []]);
+    assert.deepEqual([read?.changes?.additions, read?.changes?.deletions, read?.changes?.changedFiles, FakeAzure.linesOf(log)], [9, 0, 3, []]);
     assert.deepEqual(azure.requests.slice(3).map(t => JsonReader.fromValue(t.body).readObjectArray("fileDiffParams").map(f => f.readString("path"))),
       [["/a.ts", "/b.ts", "/c.ts"], ["/a.ts", "/b.ts"], ["/c.ts"]]);
   });
@@ -257,7 +307,7 @@ describe("AzureReads", () => {
 
       assert.deepEqual(read, read.map(() => item));
       assert.deepEqual([failureOf(refused), token.refused, azure.requests.length], [FailureCode.Unauthorized, ["azure-token"], 34]);
-      assert.deepEqual(linesOf(log), ["Azure DevOps found no line blocks for the pull request's files.", "Azure DevOps refused the request (500).",
+      assert.deepEqual(FakeAzure.linesOf(log), ["Azure DevOps found no line blocks for the pull request's files.", "Azure DevOps refused the request (500).",
         "Azure DevOps' answer couldn't be read at $.value.0.lineDiffBlocks.0.changeType.", "Azure DevOps couldn't be reached."]
         .map(t => `Azure DevOps pull request !12 shows no line and file counts: ${t}`));
     });
@@ -313,7 +363,7 @@ describe("AzureReads", () => {
 
     const read: HostPullRequest | null = await reads.readPullRequestAsync(reference, signal);
 
-    assert.deepEqual(linesOf(log), ["Azure DevOps' icon_insect icon isn't shown: Azure DevOps answered 404."]);
+    assert.deepEqual(FakeAzure.linesOf(log), ["Azure DevOps' icon_insect icon isn't shown: Azure DevOps answered 404."]);
 
     assert.deepEqual(read, new HostPullRequest(item, [
       new HostReviewer(new HostPerson("octocat@fabrikam.test", null, null, undefined, "Octo Cat"), 0.5, "Approved with suggestions", true),
@@ -1262,6 +1312,64 @@ describe("AzureReads", () => {
     assert.deepEqual([failures, token.refused], [[FailureCode.Unauthorized, FailureCode.Unavailable, FailureCode.Unavailable], ["azure-token"]]);
   });
 
+  it("merges the review requests of every account signed in to the organization, each naming its account, and drops one that signs out while the other stays", async () => {
+    const azure = new FakeAzure();
+    const octocats = (): Response => FakeAzure.json({ value: [asking(10, { pullRequestId: 13, creationDate: "2027-01-16T08:00:00Z" })] });
+    azure.answer(connection(), FakeAzure.json({ value: [asking(0)] }), Octocat.connection(), octocats(), FakeAzure.json({ value: [asking(0)] }));
+    const release = azure.hold();
+    const tokens = new SeveralAccounts(twoInFabrikam);
+    const reads = new AzureReads(new AzureApi(azure.fetch), tokens, new FakeModuleLog());
+    const query = new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site");
+    const thirteen = new HostReviewRequest(new HostReference("git-azure-devops", "fabrikam", repositoryId, 13), "Add the sign-in page",
+      "https://dev.azure.com/fabrikam/Web%20Site/_git/site/pullrequest/13", false, Date.parse("2027-01-16T08:00:00Z"), "octocat");
+
+    const merged = await reads.readReviewRequestsAsync(query, signal);
+    const reading = reads.readReviewRequestsAsync(query, signal);
+    await azure.askedAsync(6);
+    tokens.held = [monalisaToken];
+    release(octocats());
+    const duringSignOut = await reading;
+    azure.answer(FakeAzure.json({ value: [asking(0)] }));
+    const oneLeft = await reads.readReviewRequestsAsync(query, signal);
+
+    assert.deepEqual(merged, new HostReviewRequestList([thirteen,
+      new HostReviewRequest(reference, "Add the sign-in page", page, false, Date.parse("2027-01-15T09:30:00Z"), "monalisa")], false));
+    assert.deepEqual([duringSignOut.rows.map(t => [t.reference.number, t.account]), duringSignOut.hasMore, oneLeft.rows.map(t => [t.reference.number, t.account])],
+      [[[12, "monalisa"]], false, [[12, null]]]);
+    assert.deepEqual(azure.urls(), [connectionUrl, reviewRequestsUrl, connectionUrl, octocatRequestsUrl, reviewRequestsUrl, octocatRequestsUrl, reviewRequestsUrl]);
+    assert.deepEqual(azure.requests.map(t => t.header("Authorization")), [monalisaToken, monalisaToken, octocatToken, octocatToken, monalisaToken, octocatToken,
+      monalisaToken].map(t => t.authorization));
+  });
+
+  it("answers the other accounts' review requests with more past them when one account's read fails, fails when every read does, and reads no other organization's account", async () => {
+    const azure = new FakeAzure();
+    azure.answer(connection(), FakeAzure.json({ value: [asking(0)] }), new Response(null, { status: 404 }),
+      new Response(null, { status: 500 }), new Response(null, { status: 404 }),
+      connection(), FakeAzure.json({ value: [asking(0)] }));
+    const reads = new AzureReads(new AzureApi(azure.fetch), new SeveralAccounts(twoInFabrikam), new FakeModuleLog());
+    const query = new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site");
+
+    const partly = await reads.readReviewRequestsAsync(query, signal);
+    const failure = failureOf(await reads.readReviewRequestsAsync(query, signal).then(() => null, (t: unknown) => t));
+    const elsewhere = await new AzureReads(new AzureApi(azure.fetch), new SeveralAccounts([new SignedInAccount(1, "monalisa", "fabrikam", monalisaToken),
+      new SignedInAccount(2, "kim", "contoso", octocatToken)]), new FakeModuleLog()).readReviewRequestsAsync(query, signal);
+
+    assert.deepEqual([partly.rows.map(t => [t.reference.number, t.account]), partly.hasMore, failure, elsewhere.rows.map(t => [t.reference.number, t.account]),
+      elsewhere.hasMore], [[[12, "monalisa"]], true, FailureCode.Unavailable, [[12, "monalisa"]], false]);
+    assert.deepEqual(azure.urls(), [connectionUrl, reviewRequestsUrl, connectionUrl, reviewRequestsUrl, connectionUrl, connectionUrl, reviewRequestsUrl]);
+  });
+
+  it("passes on a review request read that fails in a way it doesn't know, even when another account's read answers", async () => {
+    const azure = new FakeAzure();
+    azure.fail(new RangeError("Unexpected."));
+    azure.answer(Octocat.connection(), FakeAzure.json({ value: [] }));
+    const reads = new AzureReads(new AzureApi(azure.fetch), new SeveralAccounts(twoInFabrikam), new FakeModuleLog());
+
+    const failure: unknown = await reads.readReviewRequestsAsync(new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site"), signal).then(() => null, (t: unknown) => t);
+
+    assert.deepEqual([failure instanceof RangeError, azure.urls()], [true, [connectionUrl, connectionUrl, octocatRequestsUrl]]);
+  });
+
   it("reads the merge types every merge-type policy allows, in Azure DevOps's order, a policy with no allow settings by its legacy useSquashMerge, or all four without one or when the policies can't be shown", async () => {
     const azure = new FakeAzure();
     const limit = (settings: Readonly<Record<string, boolean>>): Record<string, unknown> => ({ status: "approved",
@@ -1428,7 +1536,7 @@ describe("AzureReads", () => {
       await new AzureReads(new AzureApi(late.fetch), new FakeToken(), log).readWorkItemAsync(workItemQuery, signal)];
 
     assert.deepEqual(read.map(t => [t?.id, t?.type.name, t?.type.image]), [[42, "User Story", null], [42, "User Story", null]]);
-    assert.deepEqual(linesOf(log), ["Azure DevOps' icon_book icon isn't shown: Azure DevOps couldn't be reached.",
+    assert.deepEqual(FakeAzure.linesOf(log), ["Azure DevOps' icon_book icon isn't shown: Azure DevOps couldn't be reached.",
       "Azure DevOps' icon_book icon isn't shown: Azure DevOps couldn't be reached."]);
   });
 
@@ -1557,6 +1665,56 @@ describe("AzureReads, work items", () => {
       azure.requests[3]?.body], ["POST", "application/json", { query: "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND "
       + "[System.AssignedTo] = @Me AND [System.State] NOT IN ('Closed', 'Removed') ORDER BY [System.ChangedDate] DESC" },
     { ids: [43, 42], $expand: "Relations", errorPolicy: "Omit" }, { ids: [40], $expand: "Relations", errorPolicy: "Omit" }]);
+  });
+
+  it("merges the work items of every account signed in to the organization, each naming its account, an item both list once, and names none once one stays", async () => {
+    const azure = new FakeAzure();
+    const loose = (id: number, title: string): Record<string, unknown> => batched(id, { "System.Title": title, "System.Parent": undefined }, []);
+    azure.answer(types(), listed(42), found(loose(42, "Sign in with a token")), FakeAzure.json(workItemType()), icon(),
+      types(), listed(44, 42), found(loose(44, "Export the note"), loose(42, "Sign in with a token")), FakeAzure.json(workItemType()), icon(),
+      types(), listed(42), found(loose(42, "Sign in with a token")));
+    const tokens = new SeveralAccounts(twoInFabrikam);
+    const reads = new AzureReads(new AzureApi(azure.fetch), tokens, new FakeModuleLog());
+    const named = (id: number, title: string, account: string | null): HostWorkItemDetail =>
+      new HostWorkItemDetail(itemOf(id, title, null), null, null, null, null, null, [], [], 0, [], null, account);
+
+    const merged = await reads.readWorkItemsAsync(mine, signal);
+    tokens.held = [monalisaToken];
+    const oneLeft = await reads.readWorkItemsAsync(mine, signal);
+
+    assert.deepEqual([merged, oneLeft], [new HostWorkItemList([named(42, "Sign in with a token", "monalisa"), named(44, "Export the note", "octocat")], false),
+      new HostWorkItemList([named(42, "Sign in with a token", null)], false)]);
+    assert.deepEqual(azure.requests.filter(t => t.url === wiqlUrl).map(t => t.header("Authorization")), [monalisaToken.authorization, octocatToken.authorization, monalisaToken.authorization]);
+  });
+
+  it("reads each work item type and its icon once for each of two accounts in one organization, however often the merged list is read", async () => {
+    const azure = new FakeAzure();
+    const loose = (id: number): Record<string, unknown> => batched(id, { "System.Title": "Sign in with a token", "System.Parent": undefined }, []);
+    azure.answer(types(), listed(42), found(loose(42)), FakeAzure.json(workItemType()), icon(), types(), listed(42), found(loose(42)), FakeAzure.json(workItemType()),
+      icon(), types(), listed(42), found(loose(42)), types(), listed(42), found(loose(42)));
+    const reads = new AzureReads(new AzureApi(azure.fetch), new SeveralAccounts(twoInFabrikam), new FakeModuleLog());
+
+    await reads.readWorkItemsAsync(mine, signal);
+    await reads.readWorkItemsAsync(mine, signal);
+
+    assert.deepEqual([typeUrl, iconUrl].map(url => azure.requests.filter(t => t.url === url).map(t => t.header("Authorization"))),
+      [[monalisaToken.authorization, octocatToken.authorization], [monalisaToken.authorization, octocatToken.authorization]]);
+  });
+
+  it("reads work items by their ids with the organization's account, none signed out, and drops them once its token changed while they were read", async () => {
+    const azure = new FakeAzure();
+    const ids = new WorkItemsQuery("git-azure-devops", "fabrikam", "Web Site", WorkItemScope.Ids, [42]);
+    const token = new FakeToken();
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
+    const release = azure.hold();
+
+    const signedOut = await new AzureReads(new AzureApi(azure.fetch), new FakeToken(null), new FakeModuleLog()).readWorkItemsAsync(ids, signal);
+    const reading = reads.readWorkItemsAsync(ids, signal);
+    await azure.askedAsync(1);
+    token.answer("token", AzureCredential.ofToken("other-token"));
+    release(found());
+
+    assert.deepEqual([signedOut, await reading, azure.urls()], [new HostWorkItemList([], false), new HostWorkItemList([], false), [batchUrl]]);
   });
 
   it("reads work items by their ids in batches of 200 without a query, and answers none for ids Azure DevOps doesn't show", async () => {

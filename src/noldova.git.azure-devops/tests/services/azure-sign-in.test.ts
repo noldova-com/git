@@ -17,11 +17,12 @@ import { afterEach, describe, it, vi } from "vitest";
 
 import type { IAzureTokens } from "../../src/interfaces/i-azure-tokens.ts";
 import { AzureCredential } from "../../src/models/azure-credential.ts";
+import { SignedInAccount } from "../../src/models/signed-in-account.ts";
 import { AzureApi } from "../../src/services/azure-api.ts";
 import { AzureReads } from "../../src/services/azure-reads.ts";
 import { AzureSignIn } from "../../src/services/azure-sign-in.ts";
 import { EntraFlow } from "../../src/services/entra-flow.ts";
-import { FakeAzure, KeptSecrets, linesOf } from "../fixtures/fake-azure.fixture.ts";
+import { FakeAzure, KeptSecrets } from "../fixtures/fake-azure.fixture.ts";
 
 const connectionUrl: string = "https://dev.azure.com/fabrikam/_apis/connectionData";
 const account: HostAccount = new HostAccount("monalisa@fabrikam.test", "Mona Lisa", null, []);
@@ -37,6 +38,10 @@ const basic = (token: string): string => `Basic ${Buffer.from(`:${token}`).toStr
 const tokensOf = (signIn: AzureSignIn): IAzureTokens => ({
   get isSignedIn(): boolean {
     return signIn.token !== null;
+  },
+  get signedIn(): readonly SignedInAccount[] {
+    const held = signIn.holding;
+    return held === null ? [] : [new SignedInAccount(1, held.login, held.organization, held.token)];
   },
   tokenFor: () => signIn.token,
   holds: t => signIn.token === t,
@@ -164,7 +169,7 @@ describe("AzureSignIn", () => {
 
     assert.deepEqual([signedIn, rig.signIn.token?.authorization ?? null, rig.signIn.organization, rig.kept(), rig.azure.urls()],
       [HostSignIn.signedIn(account), basic("azure-token"), "fabrikam", { kind: "token", token: "azure-token", organization: "fabrikam", account: account.toJson() }, [connectionUrl]]);
-    assert.deepEqual([rig.states(), linesOf(rig.log)], [["SignedIn"], ["Signed in to Azure DevOps as monalisa@fabrikam.test."]]);
+    assert.deepEqual([rig.states(), FakeAzure.linesOf(rig.log)], [["SignedIn"], ["Signed in to Azure DevOps as monalisa@fabrikam.test."]]);
   });
 
   it("ends signed out as Refused for a token its organization refuses, doesn't show or answers as anonymous, as Unreachable when it can't be reached, and keeps nothing", async () => {
@@ -178,7 +183,7 @@ describe("AzureSignIn", () => {
 
     assert.deepEqual(ended, [HostSignIn.signedOut(SignInFailure.Refused), HostSignIn.signedOut(SignInFailure.Refused),
       HostSignIn.signedOut(SignInFailure.Refused), HostSignIn.signedOut(SignInFailure.Unreachable), HostSignIn.signedOut(SignInFailure.Unreachable)]);
-    assert.deepEqual([rig.signIn.token?.authorization ?? null, rig.signIn.organization, rig.kept(), linesOf(rig.log)], [null, null, undefined, [
+    assert.deepEqual([rig.signIn.token?.authorization ?? null, rig.signIn.organization, rig.kept(), FakeAzure.linesOf(rig.log)], [null, null, undefined, [
       "The Azure DevOps sign-in ended signed out: Refused.", "The Azure DevOps sign-in ended signed out: Refused.",
       "The Azure DevOps sign-in ended signed out: Refused.", "The Azure DevOps sign-in ended signed out: Unreachable.",
       "The Azure DevOps sign-in ended signed out: Unreachable."]]);
@@ -297,12 +302,12 @@ describe("AzureSignIn", () => {
 
     await Promise.all([revoked, unchecked, broken].map(t => t.signIn.restoreAsync()));
     await revoked.changedAsync(2);
-    while (linesOf(unchecked.log).length + linesOf(broken.log).length < 2)
+    while (FakeAzure.linesOf(unchecked.log).length + FakeAzure.linesOf(broken.log).length < 2)
       await new Promise<void>(resolve => setImmediate(resolve));
 
     assert.deepEqual([revoked.states(), revoked.kept(), revoked.signIn.token?.authorization ?? null], [["SignedIn", "SignedOut Revoked"], undefined, null]);
     assert.deepEqual([unchecked.signIn.current, unchecked.signIn.token?.authorization ?? null], [HostSignIn.signedIn(account), basic("kept-token")]);
-    assert.deepEqual([linesOf(unchecked.log), linesOf(broken.log)], [["The kept Azure DevOps sign-in couldn't be checked now, so it stays: Azure DevOps refused the request (500)."],
+    assert.deepEqual([FakeAzure.linesOf(unchecked.log), FakeAzure.linesOf(broken.log)], [["The kept Azure DevOps sign-in couldn't be checked now, so it stays: Azure DevOps refused the request (500)."],
       ["The Azure DevOps sign-in stopped on an unexpected failure: RangeError: Unexpected."]]);
   });
 
@@ -322,7 +327,7 @@ describe("AzureSignIn", () => {
     disposed.signIn.dispose();
     await drainAsync();
 
-    assert.deepEqual([signedOut.states(), disposed.states(), linesOf(disposed.log)], [["SignedIn", "SignedOut"], ["SignedIn"], []]);
+    assert.deepEqual([signedOut.states(), disposed.states(), FakeAzure.linesOf(disposed.log)], [["SignedIn", "SignedOut"], ["SignedIn"], []]);
   });
 
   it("counts no kept value as no sign-in, and logs a kept value it can't read, leaving the value alone", async () => {
@@ -333,7 +338,7 @@ describe("AzureSignIn", () => {
     await empty.signIn.restoreAsync();
     await unreadable.signIn.restoreAsync();
 
-    assert.deepEqual([empty.changes, unreadable.changes, linesOf(unreadable.log), unreadable.store.values.size],
+    assert.deepEqual([empty.changes, unreadable.changes, FakeAzure.linesOf(unreadable.log), unreadable.store.values.size],
       [[], [], ["The Azure DevOps sign-in ended signed out: Unkept."], 1]);
   });
 
@@ -376,7 +381,7 @@ describe("AzureSignIn", () => {
     await logged.signIn.restoreAsync();
     const error: unknown = await thrown.signIn.restoreAsync().then(() => null, (t: unknown) => t);
 
-    assert.deepEqual([logged.signIn.current, logged.appWindows.activeCallsOf("onChanged").length, linesOf(logged.log)],
+    assert.deepEqual([logged.signIn.current, logged.appWindows.activeCallsOf("onChanged").length, FakeAzure.linesOf(logged.log)],
       [HostSignIn.signedOut(), 0, ["The kept Azure DevOps sign-in couldn't be read from this computer's secrets: The secret call failed."]]);
     assert.deepEqual([error, thrown.changes], [unexpected, []]);
   });
@@ -404,7 +409,7 @@ describe("AzureSignIn", () => {
     releaseSignedIn();
     await restoringSignedIn;
 
-    assert.deepEqual([kept.changes, kept.azure.requests.length, waiting.appWindows.activeCallsOf("onChanged").length, linesOf(waiting.log)], [[], 0, 0, []]);
+    assert.deepEqual([kept.changes, kept.azure.requests.length, waiting.appWindows.activeCallsOf("onChanged").length, FakeAzure.linesOf(waiting.log)], [[], 0, 0, []]);
     assert.deepEqual([signedIn.states(), signedIn.signIn.token?.authorization ?? null], [["SignedIn"], basic("azure-token")]);
   });
 
@@ -423,7 +428,7 @@ describe("AzureSignIn", () => {
 
     assert.deepEqual([signedOut, forgotten.kept(), unforgotten.signIn.token?.authorization ?? null, unforgotten.signIn.organization], [[HostSignIn.signedOut(),
       HostSignIn.signedOut(SignInFailure.Unforgotten)], undefined, null, null]);
-    assert.deepEqual(linesOf(unforgotten.log), ["The Azure DevOps token couldn't be removed from this computer's secrets; it is no longer used."]);
+    assert.deepEqual(FakeAzure.linesOf(unforgotten.log), ["The Azure DevOps token couldn't be removed from this computer's secrets; it is no longer used."]);
   });
 
   it("still removes a kept Microsoft sign-in when removing the token fails, signing out as Unforgotten and logging it once", async () => {
@@ -437,7 +442,7 @@ describe("AzureSignIn", () => {
     rig.store.removeFailureName = "git-azure-devops.signIn";
     const signedOut: HostSignIn = await rig.signIn.signOutAsync();
 
-    assert.deepEqual([signedOut, [...rig.store.values.keys()], linesOf(rig.log)], [HostSignIn.signedOut(SignInFailure.Unforgotten), ["git-azure-devops.signIn"],
+    assert.deepEqual([signedOut, [...rig.store.values.keys()], FakeAzure.linesOf(rig.log)], [HostSignIn.signedOut(SignInFailure.Unforgotten), ["git-azure-devops.signIn"],
       ["The Azure DevOps token couldn't be removed from this computer's secrets; it is no longer used."]]);
   });
 
@@ -453,7 +458,7 @@ describe("AzureSignIn", () => {
     const signedIn: readonly HostSignIn[] = [await rig.signIn.signInWithTokenAsync("azure-token", "fabrikam", signal),
       await unremoved.signIn.signInWithTokenAsync("azure-token", "fabrikam", signal)];
 
-    assert.deepEqual([signedIn, [...rig.store.values.keys()], [...unremoved.store.values.keys()].sort(), linesOf(unremoved.log).length],
+    assert.deepEqual([signedIn, [...rig.store.values.keys()], [...unremoved.store.values.keys()].sort(), FakeAzure.linesOf(unremoved.log).length],
       [[HostSignIn.signedIn(account), HostSignIn.signedIn(account)], ["git-azure-devops.signIn"], ["git-azure-devops.microsoftSignIn", "git-azure-devops.signIn"], 2]);
   });
 
@@ -514,7 +519,7 @@ describe("AzureSignIn", () => {
     await scoped.signIn.refusedAsync(heldOf(scoped.signIn));
 
     assert.deepEqual([scoped.signIn.token?.authorization ?? null, scoped.states(), scoped.azure.requests.length], [basic("kept-token"), ["SignedIn", "SignedIn"], 3]);
-    assert.deepEqual(linesOf(scoped.log), ["The kept Azure DevOps sign-in couldn't be checked now, so it stays: Azure DevOps refused the request (500)."]);
+    assert.deepEqual(FakeAzure.linesOf(scoped.log), ["The kept Azure DevOps sign-in couldn't be checked now, so it stays: Azure DevOps refused the request (500)."]);
   });
 });
 
@@ -575,7 +580,7 @@ describe("AzureSignIn with Microsoft", () => {
       [[tokenUrl, connectionUrl], "POST", "application/x-www-form-urlencoded", "Bearer access-1"]);
     assert.deepEqual({ ...form, code_verifier: null }, { client_id: "a1e591a3-da4c-47be-995b-3bc71493bf84", scope: scopes, grant_type: "authorization_code",
       code: "code-1", redirect_uri: address.searchParams.get("redirect_uri"), code_verifier: null });
-    assert.deepEqual([rig.states(), rig.signIn.current, rig.signIn.token?.authorization, rig.kept(), linesOf(rig.log)],
+    assert.deepEqual([rig.states(), rig.signIn.current, rig.signIn.token?.authorization, rig.kept(), FakeAzure.linesOf(rig.log)],
       [["Waiting", "SignedIn"], HostSignIn.signedIn(account), "Bearer access-1", keptMicrosoft("refresh-1"), ["Signed in to Azure DevOps as monalisa@fabrikam.test."]]);
     await assert.rejects(browse(waiting, { code: "code-2" }), TypeError);
   });
@@ -631,7 +636,7 @@ describe("AzureSignIn with Microsoft", () => {
 
     assert.deepEqual([await pages[0]?.text(), denied.states(), failed.states(), denied.azure.requests.length, denied.kept()],
       ["The Azure DevOps sign-in didn't finish. You can close this tab.", ["Waiting", "SignedOut Denied"], ["Waiting", "SignedOut Refused"], 0, undefined]);
-    assert.deepEqual(linesOf(denied.log), ["The Azure DevOps sign-in ended signed out: Denied."]);
+    assert.deepEqual(FakeAzure.linesOf(denied.log), ["The Azure DevOps sign-in ended signed out: Denied."]);
   });
 
   it("ends signed out as Refused when Microsoft refuses the code or the organization refuses the account, as Unreachable when either can't be reached, and as Unkept", async () => {
@@ -659,7 +664,7 @@ describe("AzureSignIn with Microsoft", () => {
     assert.deepEqual(rigs.map(t => t.states()[1]), ["SignedOut Refused", "SignedOut Refused", "SignedOut Refused", "SignedOut Unreachable", "SignedOut Unreachable",
       "SignedOut Unreachable", "SignedOut Unreachable", "SignedOut Unkept", "SignedOut Unreachable", "SignedOut Unreachable"]);
     assert.deepEqual(rigs.map(t => [t.kept(), t.signIn.token]), rigs.map(() => [undefined, null]));
-    assert.deepEqual(linesOf(broken.log), ["The Azure DevOps sign-in ended signed out: Unreachable.",
+    assert.deepEqual(FakeAzure.linesOf(broken.log), ["The Azure DevOps sign-in ended signed out: Unreachable.",
       "The Azure DevOps sign-in stopped on an unexpected failure: RangeError: Unexpected."]);
   });
 
@@ -674,7 +679,7 @@ describe("AzureSignIn with Microsoft", () => {
     answers.push(await signedOut.signIn.signOutAsync());
 
     assert.deepEqual(answers, [HostSignIn.signedOut(), HostSignIn.signedOut(), HostSignIn.signedOut(), HostSignIn.signedOut()]);
-    assert.deepEqual([cancelled.states(), signedOut.states(), idle.states(), linesOf(cancelled.log)], [["Waiting", "SignedOut"], ["Waiting", "SignedOut"], [], []]);
+    assert.deepEqual([cancelled.states(), signedOut.states(), idle.states(), FakeAzure.linesOf(cancelled.log)], [["Waiting", "SignedOut"], ["Waiting", "SignedOut"], [], []]);
     await assert.rejects(browse(waiting, { code: "code-1" }), TypeError);
   });
 
@@ -715,8 +720,8 @@ describe("AzureSignIn with Microsoft", () => {
     await drainAsync();
 
     assert.deepEqual([cancelled.states(), cancelled.kept(), cancelled.signIn.token], [["Waiting", "SignedOut"], undefined, null]);
-    assert.deepEqual([unkeptLate.states(), linesOf(unkeptLate.log)], [["Waiting", "SignedOut"], ["The Azure DevOps sign-in ended signed out: Unkept."]]);
-    assert.deepEqual([disposed.states(), disposed.azure.requests.length, linesOf(disposed.log)], [["Waiting"], 1, []]);
+    assert.deepEqual([unkeptLate.states(), FakeAzure.linesOf(unkeptLate.log)], [["Waiting", "SignedOut"], ["The Azure DevOps sign-in ended signed out: Unkept."]]);
+    assert.deepEqual([disposed.states(), disposed.azure.requests.length, FakeAzure.linesOf(disposed.log)], [["Waiting"], 1, []]);
     assert.deepEqual([savedLate.states(), savedLate.kept()], [["Waiting"], keptMicrosoft("refresh-1")]);
   });
 
@@ -731,7 +736,7 @@ describe("AzureSignIn with Microsoft", () => {
     await rig.changedAsync(2);
     vi.useRealTimers();
 
-    assert.deepEqual([before, rig.states(), linesOf(rig.log)], [["Waiting"], ["Waiting", "SignedOut Expired"], ["The Azure DevOps sign-in ended signed out: Expired."]]);
+    assert.deepEqual([before, rig.states(), FakeAzure.linesOf(rig.log)], [["Waiting"], ["Waiting", "SignedOut Expired"], ["The Azure DevOps sign-in ended signed out: Expired."]]);
     await assert.rejects(browse(waiting, { code: "code-1" }), TypeError);
   });
 
@@ -811,7 +816,7 @@ describe("AzureSignIn with Microsoft", () => {
     rig.signIn.dispose();
 
     assert.deepEqual([token?.authorization, token?.canWriteCode, rig.kept(), rig.states()], ["Bearer access-1", false, keptMicrosoft("refresh-2"), ["SignedIn", "SignedIn"]]);
-    assert.ok(linesOf(rig.log).includes("The Azure DevOps sign-in is kept without replies, thread states and votes, which Microsoft asks to allow; sign in again to allow them."));
+    assert.ok(FakeAzure.linesOf(rig.log).includes("The Azure DevOps sign-in is kept without replies, thread states and votes, which Microsoft asks to allow; sign in again to allow them."));
   });
 
   it("keeps a sign-in whose renewal can't reach Microsoft, logging it, renews once on a refused read, and logs a renewal it can't keep", async () => {
@@ -830,7 +835,7 @@ describe("AzureSignIn with Microsoft", () => {
 
     assert.deepEqual([rig.azure.urls(), credential.authorization, rig.kept(), rig.states()], [[tokenUrl, tokenUrl, connectionUrl], "Bearer access-1",
       keptMicrosoft("refresh-1"), ["SignedIn", "SignedIn"]]);
-    assert.deepEqual(linesOf(rig.log), ["The kept Azure DevOps sign-in couldn't be checked now, so it stays: Microsoft's sign-in couldn't be reached.",
+    assert.deepEqual(FakeAzure.linesOf(rig.log), ["The kept Azure DevOps sign-in couldn't be checked now, so it stays: Microsoft's sign-in couldn't be reached.",
       "The renewed Azure DevOps sign-in couldn't be kept in this computer's secrets; the one kept before stays until it expires."]);
   });
 
@@ -855,7 +860,7 @@ describe("AzureSignIn with Microsoft", () => {
     await drainAsync();
 
     assert.deepEqual([signedOut.states(), signedOut.kept(), signedOut.azure.requests.length], [["SignedIn", "SignedOut"], undefined, 1]);
-    assert.deepEqual([disposed.states(), linesOf(disposed.log)], [["SignedIn"], []]);
-    assert.deepEqual([ready, linesOf(broken.log)], [undefined, ["The Azure DevOps sign-in stopped on an unexpected failure: RangeError: Unexpected."]]);
+    assert.deepEqual([disposed.states(), FakeAzure.linesOf(disposed.log)], [["SignedIn"], []]);
+    assert.deepEqual([ready, FakeAzure.linesOf(broken.log)], [undefined, ["The Azure DevOps sign-in stopped on an unexpected failure: RangeError: Unexpected."]]);
   });
 });

@@ -23,6 +23,7 @@ import { WorkItemFilter } from "../../models/work-item-filter.ts";
 import { WorkItemRow } from "../../models/work-item-row.ts";
 import { WorkItemsPlace } from "../../models/work-items-place.ts";
 import { Resources } from "../../../resources.ts";
+import { AccountEvents } from "../../services/account-events.ts";
 import { AccountSettings } from "../../services/account-settings.ts";
 import { SignInEvents } from "../../services/sign-in-events.ts";
 import { WorkItemSelection } from "../../services/work-item-selection.ts";
@@ -76,6 +77,7 @@ export class AzureDevOpsWorkItemComponent {
       this.isSignedOut.set(signIn.state === SignInState.SignedOut);
       this.retry();
     }));
+    inject(DestroyRef).onDestroy(AccountEvents.followOthers(this.context, () => this.retry()));
     effect(onCleanup => {
       this.attempt();
       const instance: string = this.instance();
