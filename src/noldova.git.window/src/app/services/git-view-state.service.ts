@@ -218,6 +218,10 @@ export class GitViewStateService {
     return this.writeAsync((folder, basedOn) => this.client.abortOperationAsync(folder, basedOn));
   }
 
+  public skipOperationAsync(): Promise<void> {
+    return this.writeAsync((folder, basedOn) => this.client.skipOperationAsync(folder, basedOn));
+  }
+
   public stageAsync(paths: readonly string[]): Promise<void> {
     return this.writeAsync((folder, basedOn) => this.client.stageAsync(folder, paths, basedOn));
   }

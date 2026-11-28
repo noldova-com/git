@@ -375,6 +375,10 @@ export class Resources {
 
   public static readonly resolveConflictsLabel: string = "Resolve conflicts";
 
+  public static formatOperationReady(kind: OperationKind): string {
+    return `Nothing is in conflict. ${Resources.continueLabels[kind]} when you're ready.`;
+  }
+
   public static formatConflictText(files: number): string {
     return files === 0
       ? "Every conflict is resolved. Commit to finish."
@@ -959,6 +963,10 @@ export class Resources {
     Merge: "Abort merge", Rebase: "Abort rebase", CherryPick: "Abort cherry-pick", Revert: "Abort revert"
   };
 
+  public static readonly skipLabels: Readonly<Record<OperationKind, string | null>> = {
+    Merge: null, Rebase: "Skip this commit", CherryPick: "Skip this commit", Revert: "Skip this commit"
+  };
+
   public static readonly operationNouns: Readonly<Record<OperationKind, string>> = {
     Merge: "merge", Rebase: "rebase step", CherryPick: "cherry-pick", Revert: "revert"
   };
@@ -1046,7 +1054,7 @@ export class Resources {
     "git.createBranchAt": "Create a branch at a commit", "git.renameBranch": "Rename a branch", "git.deleteBranch": "Delete a branch", "git.createTag": "Tag",
     "git.deleteTag": "Delete a tag", "git.stageLines": "Stage lines", "git.unstageLines": "Unstage lines", "git.undo": "Undo", "git.reset": "Reset",
     "git.undoCommit": "Undo the last commit", "git.forcePush": "Force push", "git.resolveConflict": "Resolve a conflict", "git.continueOperation": "Continue",
-    "git.abortOperation": "Abort", "git.merge": "Merge", "git.stash": "Stash", "git.fetch": "Fetch", "git.rebase": "Rebase"
+    "git.abortOperation": "Abort", "git.skipOperation": "Skip a commit", "git.merge": "Merge", "git.stash": "Stash", "git.fetch": "Fetch", "git.rebase": "Rebase"
   };
 
   public static readonly fetchOfferLabel: string = "Fetch";

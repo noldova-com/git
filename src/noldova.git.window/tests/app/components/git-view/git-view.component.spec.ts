@@ -242,7 +242,8 @@ describe("GitViewComponent", () => {
     view.context.allow("openDocument");
     onTestFinished(() => GitResolving.opened.set(new Map()));
 
-    expect(view.texts(".banner .banner-action")).toEqual(["Resolve conflicts", "Abort merge"]);
+    expect(view.texts(".banner .banner-action")).toEqual(["Resolve conflicts", "Commit the merge", "Abort merge"]);
+    expect(view.find<HTMLButtonElement>(".banner .continue-operation").disabled).toBe(true);
     view.find<HTMLButtonElement>(".banner .resolve-conflicts").click();
 
     expect(view.context.callsOf("openDocument")).toEqual([["git.conflicts", GitFixtures.folder, "Conflicts: project"]]);
@@ -253,7 +254,56 @@ describe("GitViewComponent", () => {
     await view.state.refreshAsync();
     await view.untilAsync(() => view.all(".banner .resolve-conflicts").length === 0);
 
-    expect(view.texts(".banner .banner-action")).toEqual(["Abort merge"]);
+    expect(view.texts(".banner .muted, .banner .banner-action")).toEqual(["Nothing is in conflict. Commit the merge when you're ready.", "Commit the merge", "Abort merge"]);
+    expect(view.find<HTMLButtonElement>(".banner .continue-operation").disabled).toBe(false);
+  });
+
+  it("offers Continue, Skip and Abort at a rebase's edit stop with nothing in conflict, sends each for the status it shows, and reports one that fails outside Git", async () => {
+    const status: GitStatus = GitFixtures.status([], null, { operation: new GitOperation(OperationKind.Rebase, "c".repeat(40), "Add b") });
+    let answer: JsonValue | Error = new Error("continue broke");
+    const view: GitViewFixture = await GitViewFixture.renderAsync({
+      ...GitFixtures.watching, "git.status": status.toJson(), "git.continueOperation": () => answer, "git.skipOperation": () => answer
+    });
+    const handled: string[] = [];
+    vi.spyOn(TestBed.inject(ErrorHandler), "handleError").mockImplementation(error => handled.push(String(error)));
+    const clickAsync = async (button: string): Promise<void> => {
+      await view.untilAsync(() => !view.find<HTMLButtonElement>(`.banner .${button}`).disabled);
+      view.find<HTMLButtonElement>(`.banner .${button}`).click();
+    };
+
+    expect(view.texts(".banner .muted, .banner .banner-action")).toEqual([
+      "Nothing is in conflict. Continue the rebase when you're ready.", "Continue the rebase", "Skip this commit", "Abort rebase"
+    ]);
+    expect(view.all(".banner .banner-action").map(t => t instanceof HTMLButtonElement && t.disabled)).toEqual([false, false, false]);
+    await clickAsync("continue-operation");
+    await Wait.until(() => handled.length === 1);
+    answer = new Error("skip broke");
+    await clickAsync("skip-operation");
+    await Wait.until(() => handled.length === 2);
+    expect(handled).toEqual(["Error: continue broke", "Error: skip broke"]);
+
+    answer = null;
+    await clickAsync("continue-operation");
+    await view.untilAsync(() => view.requested("git.continueOperation").length === 2);
+    await clickAsync("skip-operation");
+    await view.untilAsync(() => view.requested("git.skipOperation").length === 2);
+    const sent = [1, 2].map(() => ({ folder: GitFixtures.folder, basedOn: status.fingerprint }));
+    expect([view.requested("git.continueOperation"), view.requested("git.skipOperation")]).toEqual([sent, sent]);
+  });
+
+  it("holds Continue and Skip while a write runs", async () => {
+    const answers: Readonly<Record<string, JsonValue>> = {
+      ...GitFixtures.watching, "git.status": GitFixtures.status([], null, { operation: new GitOperation(OperationKind.CherryPick, "c".repeat(40), "Pick it") }).toJson()
+    };
+    const view: GitViewFixture = await GitViewFixture.renderAsync(answers);
+    const requests: GitHeldRequests = new GitHeldRequests(view.context, ["git.continueOperation"], answers);
+
+    const continuing: Promise<void> = view.state.continueOperationAsync();
+    await view.untilAsync(() => view.find<HTMLButtonElement>(".banner .continue-operation").disabled);
+    expect(view.all(".banner .continue-operation, .banner .skip-operation").map(t => t instanceof HTMLButtonElement && t.disabled)).toEqual([true, true]);
+    await requests.answerAsync("git.continueOperation", null);
+    await continuing;
+    await view.untilAsync(() => !view.find<HTMLButtonElement>(".banner .continue-operation").disabled);
   });
 
   it("says how many Git LFS files the runtime couldn't check, after the files", async () => {

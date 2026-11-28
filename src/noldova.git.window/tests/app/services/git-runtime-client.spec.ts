@@ -206,7 +206,7 @@ describe("GitRuntimeClient", () => {
   it("reads a conflict and sends its resolution, a continue and an abort with the fingerprint they were based on", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const conflict: GitConflict = new GitConflict("a.txt", ConflictKind.BothModified, OperationKind.Merge, "b\n", "o\n", "t\n", "m\n", "main", "feature", null, null, false, false);
-    GitFixtures.answerWith(context, { "git.conflict": conflict.toJson(), "git.resolveConflict": null, "git.continueOperation": null, "git.abortOperation": null });
+    GitFixtures.answerWith(context, { "git.conflict": conflict.toJson(), "git.resolveConflict": null, "git.continueOperation": null, "git.abortOperation": null, "git.skipOperation": null });
     const client: GitRuntimeClient = new GitRuntimeClient(context);
 
     expect(await client.conflictAsync(folder, "a.txt")).toEqual(conflict);
@@ -214,13 +214,15 @@ describe("GitRuntimeClient", () => {
     await client.resolveConflictAsync(folder, "b.txt", ConflictResolution.Delete, null, "f2");
     await client.continueOperationAsync(folder, "f3");
     await client.abortOperationAsync(folder, "f4");
+    await client.skipOperationAsync(folder, "f5");
 
     expect(context.callsOf("requestAsync")).toEqual([
       ["git.conflict", { folder, path: "a.txt" }],
       ["git.resolveConflict", { folder, path: "a.txt", resolution: "Text", text: "r\n", basedOn: "f1" }],
       ["git.resolveConflict", { folder, path: "b.txt", resolution: "Delete", text: null, basedOn: "f2" }],
       ["git.continueOperation", { folder, basedOn: "f3" }],
-      ["git.abortOperation", { folder, basedOn: "f4" }]
+      ["git.abortOperation", { folder, basedOn: "f4" }],
+      ["git.skipOperation", { folder, basedOn: "f5" }]
     ]);
   });
 

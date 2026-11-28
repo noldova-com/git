@@ -25,6 +25,9 @@ describe("Resources", () => {
       "One file has conflicts. Resolve it, or abort.",
       "Two files have conflicts. Resolve them, or abort."
     ]);
+    expect([Resources.formatOperationReady(OperationKind.Rebase), Resources.formatOperationReady(OperationKind.Merge)]).toEqual([
+      "Nothing is in conflict. Continue the rebase when you're ready.", "Nothing is in conflict. Commit the merge when you're ready."
+    ]);
   });
 
   it("writes a count in a sentence or button as a word from one to nine and in digits otherwise, capitalized where it starts a sentence", () => {

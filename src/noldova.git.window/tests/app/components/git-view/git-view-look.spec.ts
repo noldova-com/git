@@ -321,20 +321,40 @@ describe("GitViewComponent in the kit's look", () => {
     await page.screenshot({ element: view.element, path: `${screenshots}/git-view-force-push-${mode}.png` });
   });
 
-  it.each(AppearanceFixture.modes)("puts Resolve conflicts before Abort in the operation's banner, a gap apart and the same height, Abort at the banner's end, in %s mode", async mode => {
+  it.each(AppearanceFixture.modes)("lays the operation's actions in a row under its text, from the text's start, Resolve conflicts first and Abort last, a gap apart and the same height, in %s mode", async mode => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
     const view: GitViewFixture = await GitViewFixture.renderAsync({ ...GitFixtures.watching, "git.status": status.toJson() });
-    view.element.style.width = "25rem";
+    view.element.style.width = "40rem";
     await view.fixture.whenStable();
 
     const banner: HTMLElement = view.find(".banner .abort-operation").closest<HTMLElement>(".banner") ?? view.element;
-    const resolve: DOMRect = box(view.find(".banner .resolve-conflicts"));
-    const abort: DOMRect = box(view.find(".banner .abort-operation"));
-    const text: DOMRect = box(view.find(".banner .resolve-conflicts").closest(".banner")?.querySelector(".banner-text") ?? null);
-    expect([rem(abort.left - resolve.right), rem(box(banner).right - banner.clientLeft - abort.right), rem(resolve.left - text.right)]).toEqual([0.5, 0.625, 0.5]);
-    expect(rem(resolve.height)).toBe(rem(abort.height));
+    const actions: readonly DOMRect[] = [...banner.querySelectorAll(".operation-actions .banner-action")].map(t => box(t));
+    const text: DOMRect = box(banner.querySelector(".banner-text"));
+    const muted: DOMRect = box(banner.querySelector(".muted"));
+    const last: DOMRect = actions[actions.length - 1] ?? new DOMRect();
+    expect(view.texts(".banner .operation-actions .banner-action")).toEqual(["Resolve conflicts", "Commit the merge", "Abort merge"]);
+    expect([rem((actions[0] ?? last).left - text.left), ...actions.slice(1).map((t, i) => rem(t.left - (actions[i] ?? t).right))]).toEqual([0, 0.5, 0.5]);
+    expect([new Set(actions.map(t => rem(t.top))).size, new Set(actions.map(t => rem(t.height))).size, muted.bottom < last.top, last.right <= text.right]).toEqual([1, 1, true, true]);
+    expect(rem(box(banner).bottom - banner.clientTop - last.bottom)).toBe(rem(parseFloat(getComputedStyle(banner).paddingBottom)));
 
     await page.screenshot({ element: view.element, path: `${screenshots}/git-view-resolve-conflicts-${mode}.png` });
+  });
+
+  it.each(AppearanceFixture.modes)("wraps a rebase's Continue, Skip and Abort inside the text's width, each row from the text's start, in %s mode", async mode => {
+    AppearanceFixture.apply(DefaultTheme.theme, mode);
+    const stopped = GitFixtures.status([], null, { branch: "sample/1234-branch", operation: new GitOperation(OperationKind.Rebase, "c".repeat(40), "Add the sample model") });
+    const view: GitViewFixture = await GitViewFixture.renderAsync({ ...GitFixtures.watching, "git.status": stopped.toJson() });
+    view.element.style.width = "16rem";
+    await view.fixture.whenStable();
+
+    const text: DOMRect = box(view.find(".banner .banner-text"));
+    const actions: readonly DOMRect[] = view.all(".banner .operation-actions .banner-action").map(t => box(t));
+    const rows: readonly number[] = [...new Set(actions.map(t => rem(t.top)))];
+    const starts: readonly number[] = rows.map(top => Math.min(...actions.filter(t => rem(t.top) === top).map(t => t.left)));
+    expect(view.texts(".banner .operation-actions .banner-action")).toEqual(["Continue the rebase", "Skip this commit", "Abort rebase"]);
+    expect([rows.length > 1, starts.map(t => rem(t - text.left)), actions.every(t => t.right <= text.right)]).toEqual([true, rows.map(() => 0), true]);
+
+    await page.screenshot({ element: view.element, path: `${screenshots}/git-view-rebase-stop-${mode}.png` });
   });
 
   it("keeps the cards, rows and inline diff in place in forced colours, with their borders, signed diff lines, a Highlight outline on the open row and branch, and a Highlight fill on the active option",

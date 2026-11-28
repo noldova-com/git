@@ -240,6 +240,7 @@ describe("RuntimePart", () => {
       GitNames.resolveConflictMethod,
       GitNames.continueOperationMethod,
       GitNames.abortOperationMethod,
+      GitNames.skipOperationMethod,
       GitNames.predictMethod,
       GitNames.rebasePlanMethod,
       GitNames.rebaseCheckMethod,
@@ -544,6 +545,7 @@ describe("RuntimePart", () => {
       { name: GitNames.resolveConflictMethod, payload: basedOn => ({ folder: repository.folder, path: "a.txt", resolution: "Ours", text: null, basedOn }) },
       { name: GitNames.continueOperationMethod, payload: basedOn => ({ folder: repository.folder, basedOn }) },
       { name: GitNames.abortOperationMethod, payload: basedOn => ({ folder: repository.folder, basedOn }) },
+      { name: GitNames.skipOperationMethod, payload: basedOn => ({ folder: repository.folder, basedOn }) },
       { name: GitNames.mergeMethod, payload: basedOn => ({ folder: repository.folder, id: "0".repeat(40), basedOn }) },
       { name: GitNames.rebaseMethod, payload: basedOn => ({ folder: repository.folder, onto: "0".repeat(40), steps: [{ id: "1".repeat(40), action: "Pick", message: null }], updateRefs: false, basedOn }) },
       { name: GitNames.fetchMethod, payload: basedOn => ({ folder: repository.folder, basedOn }) },
@@ -677,6 +679,20 @@ describe("RuntimePart", () => {
 
       assert.equal(await writeAsync(GitNames.abortOperationMethod, { folder: repository.folder, basedOn: await basedOnAsync() }), null);
       assert.equal(await repository.runGitAsync(["status", "--porcelain=v1"]), "");
+    });
+
+    it("skips the commit a cherry-pick stopped at for a person's click and answers null, keeping HEAD", async () => {
+      await repository.runGitAsync(["switch", "--quiet", "--create", "side"]);
+      await repository.writeAsync("a.txt", "side\n");
+      await repository.runGitAsync(["commit", "--quiet", "-am", "Side"]);
+      await repository.runGitAsync(["switch", "--quiet", "main"]);
+      await repository.writeAsync("a.txt", "main\n");
+      await repository.runGitAsync(["commit", "--quiet", "-am", "Main"]);
+      await repository.runGitAsync(["cherry-pick", "side"]).catch(() => "");
+      const head = await repository.runGitAsync(["rev-parse", "HEAD"]);
+
+      assert.equal(await writeAsync(GitNames.skipOperationMethod, { folder: repository.folder, basedOn: await basedOnAsync() }), null);
+      assert.deepEqual([await repository.runGitAsync(["rev-parse", "HEAD"]), await repository.runGitAsync(["status", "--porcelain=v1"])], [head, ""]);
     });
 
     it("stages, discards, commits, creates and switches branches for a person's click, each on the status it is based on, and answers null", async () => {

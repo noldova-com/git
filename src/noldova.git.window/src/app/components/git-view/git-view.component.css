@@ -89,6 +89,13 @@
   flex: none;
 }
 
+.operation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nol-space-2);
+  margin-top: var(--nol-space-1);
+}
+
 .warning {
   color: var(--nol-warning);
 }

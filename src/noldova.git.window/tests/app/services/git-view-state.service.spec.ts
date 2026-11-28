@@ -592,7 +592,7 @@ describe("GitViewStateService", () => {
     const conflict: GitConflict = new GitConflict("a.ts", ConflictKind.BothModified, OperationKind.Merge, "b\n", "o\n", "t\n", "m\n", "main", "feature", null, null, false, false);
     GitFixtures.answerWith(context, {
       ...GitFixtures.watching, "git.conflict": conflict.toJson(), "git.resolveConflict": null, "git.continueOperation": null, "git.abortOperation": null,
-      "git.status": GitFixtures.status([], null, { fingerprint: "f9" }).toJson()
+      "git.skipOperation": null, "git.status": GitFixtures.status([], null, { fingerprint: "f9" }).toJson()
     });
     const { state, chosen } = start(context);
 
@@ -604,12 +604,14 @@ describe("GitViewStateService", () => {
     await state.resolveConflictAsync("a.ts", ConflictResolution.Text, "r\n");
     await state.continueOperationAsync();
     await state.abortOperationAsync();
+    await state.skipOperationAsync();
 
     expect(context.callsOf("requestAsync").filter(t => !["git.status", "git.watch", "git.unwatch", "git.commitSigning"].includes(String(t[0])))).toEqual([
       ["git.conflict", { folder, path: "a.ts" }],
       ["git.resolveConflict", { folder, path: "a.ts", resolution: "Text", text: "r\n", basedOn: "f9" }],
       ["git.continueOperation", { folder, basedOn: "f9" }],
-      ["git.abortOperation", { folder, basedOn: "f9" }]
+      ["git.abortOperation", { folder, basedOn: "f9" }],
+      ["git.skipOperation", { folder, basedOn: "f9" }]
     ]);
   });
 

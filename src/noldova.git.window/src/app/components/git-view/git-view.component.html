@@ -43,11 +43,21 @@ LICENSE file in the root directory of this source tree.
     @if (status.operation; as operation) {
       <div class="banner" role="status">
         <span class="banner-icon warning material-symbols-rounded" aria-hidden="true">{{ resources.mergeIcon }}</span>
-        <span class="banner-text"><span class="strong">{{ operationOf(operation, status.branch) }}</span><span class="muted">{{ resources.formatConflictText(state.conflicts()) }}</span></span>
-        @if (firstConflict(); as path) {
-          <button nol-button type="button" class="banner-action resolve-conflicts" (click)="openConflict(state.folder() ?? '', path)">{{ resources.resolveConflictsLabel }}</button>
-        }
-        <button nol-button type="button" class="banner-action abort-operation" [variant]="secondary" (click)="abortOperation()">{{ resources.abortLabels[operation.kind] }}</button>
+        <span class="banner-text">
+          <span class="strong">{{ operationOf(operation, status.branch) }}</span>
+          <span class="muted">{{ state.conflicts() === 0 ? resources.formatOperationReady(operation.kind) : resources.formatConflictText(state.conflicts()) }}</span>
+          <span class="operation-actions">
+            @if (firstConflict(); as path) {
+              <button nol-button type="button" class="banner-action resolve-conflicts" (click)="openConflict(state.folder() ?? '', path)">{{ resources.resolveConflictsLabel }}</button>
+            }
+            <button nol-button type="button" class="banner-action continue-operation" [variant]="firstConflict() ? secondary : primary" [disabled]="state.busy() || state.conflicts() > 0"
+              (click)="continueOperation()">{{ resources.continueLabels[operation.kind] }}</button>
+            @if (resources.skipLabels[operation.kind]; as skip) {
+              <button nol-button type="button" class="banner-action skip-operation" [variant]="secondary" [disabled]="state.busy()" (click)="skipOperation()">{{ skip }}</button>
+            }
+            <button nol-button type="button" class="banner-action abort-operation" [variant]="secondary" (click)="abortOperation()">{{ resources.abortLabels[operation.kind] }}</button>
+          </span>
+        </span>
       </div>
     }
     @if (state.watchFailure(); as watchFailure) {
