@@ -253,6 +253,27 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     await page.screenshot({ element: side, path: `${screenshots}/git-workspace-side-${mode}.png` });
   });
 
+  it.each(AppearanceFixture.modes)("lines Across repositories up with the button before it, Add repository with no row chosen and Remove with rows chosen, in %s mode", async mode => {
+    AppearanceFixture.apply(DefaultTheme.theme, mode);
+    const element: HTMLElement = await renderAsync();
+    const toolbar: HTMLElement = element.querySelector<HTMLElement>(".toolbar") ?? element;
+    const measure = (selector: string): readonly unknown[] => {
+      const button: HTMLElement = toolbar.querySelector<HTMLElement>(".open-across") ?? toolbar;
+      const before: HTMLElement = toolbar.querySelector<HTMLElement>(selector) ?? toolbar;
+      return [button.previousElementSibling === before, rem(box(button).height - box(before).height), rem(box(button).top - box(before).top),
+        rem(box(button).left - box(before).right)];
+    };
+    const alone: readonly unknown[] = measure(".add");
+
+    for (const row of [2, 3])
+      element.querySelector<HTMLElement>(`.tr:not(.th):nth-child(${row + 1}) nol-checkbox input`)?.click();
+    await untilAsync(element, () => !Object.isNull(toolbar.querySelector(".remove")));
+    const chosen: readonly unknown[] = measure(".remove");
+    await page.screenshot({ element: toolbar, path: `${screenshots}/git-workspace-toolbar-across-${mode}.png` });
+
+    expect([alone, chosen]).toEqual([[true, 0, 0, 0.25], [true, 0, 0, 0.25]]);
+  });
+
   it.each(AppearanceFixture.modes)("lines the toolbar's Pull and New branch up with Fetch all, the result under it and the branch dialog's field with its text, in %s mode", async mode => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
     const element: HTMLElement = await renderAsync();

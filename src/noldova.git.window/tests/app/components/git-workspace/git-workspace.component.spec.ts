@@ -275,6 +275,19 @@ describe("GitWorkspaceComponent", () => {
       .toEqual([true, true, [opened, opened], []]);
   });
 
+  it("keeps Across repositories last in the toolbar's left group, after Add repository with no row chosen and after Remove with rows chosen", async () => {
+    const workspace: GitWorkspace = fresh("/work/a", "/work/b");
+    const screen: Screen = Screen.render(workspace.id);
+    await screen.untilAsync(() => screen.texts(".sync").join() === "Up to date,Up to date");
+    const before = (): string[] => [...screen.find(".toolbar .open-across").previousElementSibling?.classList ?? []];
+    const alone: readonly string[] = before();
+
+    screen.select(0);
+    screen.select(1);
+
+    expect([alone.includes("add"), before().includes("remove"), screen.find(".toolbar .open-across").nextElementSibling?.classList.contains("grow")]).toEqual([true, true, true]);
+  });
+
   it("follows only the rows on screen, stops following a row the filter hides, and reads every listed repository when the window regains focus", async () => {
     const folders: string[] = Array.from({ length: 60 }, (_, i) => `/work/r${i}`);
     const workspace: GitWorkspace = fresh(...folders);
