@@ -14,17 +14,18 @@ import { NotificationPost, NotificationSeverity, QualifiedName } from "@noldova/
 import { CommandContribution, ContentPadding, DockSide, DocumentContribution, type IWindowPart, type IWindowPartContext, ViewContribution, WindowException }
   from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
-import { HostSignIn } from "@noldova/git.hosting.protocol";
+import { type HostAccountEntry, HostAccountList } from "@noldova/git.hosting.protocol";
 import { GitFolderParams, GitNames, type GitRemote, GitStatus } from "@noldova/git.protocol";
 import { GitAvatars, GitFolder, GitHostAccounts, GitHostCard, GitHostCardState, GitHostFeature, GitHostRows, GitLinkReferences, GitPullRequests,
   GitRepositoryLinks } from "@noldova/git.window";
 
 import { AzureDevOpsHostRowComponent } from "../components/azure-devops-host-row/azure-devops-host-row.component.ts";
-import { AzureDevOpsSignInComponent } from "../components/azure-devops-sign-in/azure-devops-sign-in.component.ts";
+import { AzureDevOpsAccountsComponent } from "../components/azure-devops-accounts/azure-devops-accounts.component.ts";
 import { AzureDevOpsRemote } from "../models/azure-devops-remote.ts";
 import { BranchRequest } from "../models/branch-request.ts";
 import { WorkItemsPlace } from "../models/work-items-place.ts";
 import { Resources } from "../../resources.ts";
+import { AccountEvents } from "./account-events.ts";
 import { AzureDevOpsAuthorAvatars } from "./azure-devops-author-avatars.ts";
 import { AzureDevOpsCommitPrefixes } from "./azure-devops-commit-prefixes.ts";
 import { AzureDevOpsPages } from "./azure-devops-pages.ts";
@@ -33,14 +34,13 @@ import { AzureDevOpsReferenceSource } from "./azure-devops-reference-source.ts";
 import { AzureDevOpsRepositoryLinks } from "./azure-devops-repository-links.ts";
 import { BranchDialog } from "./branch-dialog.ts";
 import { PullRequestSelection } from "./pull-request-selection.ts";
-import { SignInEvents } from "./sign-in-events.ts";
 import { WorkItemSelection } from "./work-item-selection.ts";
 
 export class AzureDevOpsWindowPart implements IWindowPart {
   private context: IWindowPartContext | null = null;
   private withdraw: (() => void) | null = null;
   private withdrawAccount: (() => void) | null = null;
-  private readonly cards: WritableSignal<readonly GitHostCard[]> = signal(AzureDevOpsWindowPart.cardsFor(null));
+  private readonly cards: WritableSignal<readonly GitHostCard[]> = signal(AzureDevOpsWindowPart.firstCards());
   private unfollow: (() => void) | null = null;
   private withdrawLinks: (() => void) | null = null;
   private changes: number = 0;
@@ -105,12 +105,12 @@ export class AzureDevOpsWindowPart implements IWindowPart {
       AzureDevOpsReferenceSource.release(context);
     };
     this.context = context;
-    this.cards.set(AzureDevOpsWindowPart.cardsFor(null));
+    this.cards.set(AzureDevOpsWindowPart.firstCards());
     this.withdrawAccount = GitHostAccounts.provide(context, { id: Resources.accountId, host: Resources.hostName, column: Resources.hostColumn, mark: Resources.hostMark,
-      markColor: Resources.hostColor, cards: this.cards.asReadonly(), signIn: AzureDevOpsSignInComponent, features: AzureDevOpsWindowPart.features });
-    this.unfollow = SignInEvents.follow(context, signIn => {
+      markColor: Resources.hostColor, cards: this.cards.asReadonly(), signIn: AzureDevOpsAccountsComponent, features: AzureDevOpsWindowPart.features });
+    this.unfollow = AccountEvents.follow(context, list => {
       this.changes++;
-      this.showCards(context, AzureDevOpsWindowPart.cardsFor(signIn));
+      this.showCards(context, AzureDevOpsWindowPart.cardsOf(list));
     });
     void this.readCardsAsync(context);
   }
@@ -139,35 +139,45 @@ export class AzureDevOpsWindowPart implements IWindowPart {
     return true;
   }
 
-  private static cardsFor(signIn: HostSignIn | null): GitHostCard[] {
-    const account = signIn?.account ?? null;
+  private static firstCards(): GitHostCard[] {
+    return [new GitHostCard(Resources.hostName, Resources.signedOutNote, GitHostCardState.SignedOut, Resources.signInAction, String(Resources.firstAccount))];
+  }
+
+  private static cardsOf(list: HostAccountList): GitHostCard[] {
+    return list.accounts.length === 0 ? AzureDevOpsWindowPart.firstCards() : list.accounts.map(t => AzureDevOpsWindowPart.cardOf(t));
+  }
+
+  private static cardOf(entry: HostAccountEntry): GitHostCard {
+    const id: string = String(entry.id);
+    const account = entry.signIn.account;
     if (!Object.isNull(account))
-      return [new GitHostCard(Resources.formatAccountTitle(account.login), Resources.formatAccountNote(account.login), GitHostCardState.SignedIn, Resources.signedInChip)];
-    if (!Object.isNullOrUndefined(signIn?.address))
-      return [new GitHostCard(Resources.hostName, Resources.browserNote, GitHostCardState.Waiting, Resources.waiting)];
-    return [new GitHostCard(Resources.hostName, Resources.signedOutNote, GitHostCardState.SignedOut, Resources.signInAction)];
+      return new GitHostCard(Resources.formatAccountTitle(account.login), Resources.formatAccountNote(account.login, entry.place), GitHostCardState.SignedIn,
+        Resources.signedInChip, id);
+    if (!Object.isNullOrUndefined(entry.signIn.address))
+      return new GitHostCard(Resources.hostName, Resources.browserNote, GitHostCardState.Waiting, Resources.waiting, id);
+    return new GitHostCard(Resources.hostName, Resources.signedOutNote, GitHostCardState.SignedOut, Resources.signInAction, id);
   }
 
   private static unreadCards(): GitHostCard[] {
-    return [new GitHostCard(Resources.hostName, Resources.signInUnread, GitHostCardState.Failed, Resources.signInAction)];
+    return [new GitHostCard(Resources.hostName, Resources.signInUnread, GitHostCardState.Failed, Resources.signInAction, String(Resources.firstAccount))];
   }
 
   private async readCardsAsync(context: IWindowPartContext): Promise<void> {
     const changes: number = this.changes;
-    let signIn: HostSignIn;
+    let list: HostAccountList;
     try {
-      signIn = HostSignIn.fromJson(await context.requestAsync(AzureDevOpsNames.readSignInMethod, null));
+      list = HostAccountList.fromJson(await context.requestAsync(AzureDevOpsNames.readAccountsMethod, null));
     }
     catch (error) {
       if (!(error instanceof WindowException))
         throw error;
-      context.log(Resources.formatRequestFailed(AzureDevOpsNames.readSignInMethod, String(error)));
+      context.log(Resources.formatRequestFailed(AzureDevOpsNames.readAccountsMethod, String(error)));
       if (this.changes === changes)
         this.showCards(context, AzureDevOpsWindowPart.unreadCards());
       return;
     }
     if (this.changes === changes)
-      this.showCards(context, AzureDevOpsWindowPart.cardsFor(signIn));
+      this.showCards(context, AzureDevOpsWindowPart.cardsOf(list));
   }
 
   private showCards(context: IWindowPartContext, cards: GitHostCard[]): void {

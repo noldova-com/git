@@ -21,9 +21,11 @@ describe("The Azure DevOps window part's Resources", () => {
         "The Azure DevOps module couldn't open https://dev.azure.com/_usersSettings/tokens: Error: No."]);
   });
 
-  it("says the account is signed in on this computer, with its name when it has one, and names the account for the Settings search", () => {
-    expect([Resources.formatSignedIn("Mona Lisa"), Resources.formatSignedIn(null), Resources.formatAccountNote("monalisa@example.com")])
-      .toEqual(["Mona Lisa · signed in on this computer", "Signed in on this computer", "Signed in on this computer as monalisa@example.com"]);
+  it("says the account is signed in on this computer, with its name when it has one, and names the account and its organization for the Settings search", () => {
+    expect([Resources.formatSignedIn("Mona Lisa"), Resources.formatSignedIn(null), Resources.formatAccountNote("monalisa@example.com", null),
+      Resources.formatAccountNote("monalisa@example.com", "dev.azure.com/fabrikam")])
+      .toEqual(["Mona Lisa · signed in on this computer", "Signed in on this computer", "Signed in on this computer as monalisa@example.com",
+        "Signed in on this computer as monalisa@example.com in dev.azure.com/fabrikam"]);
   });
 
   it("names a person by the name they show, or without one by their login, a group's by its name alone", () => {

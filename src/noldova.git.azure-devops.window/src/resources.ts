@@ -91,6 +91,11 @@ export class Resources {
   public static readonly waiting: string = "Waiting for the browser";
   public static readonly signInAction: string = "Sign in";
   public static readonly accountTitle: string = "Account";
+  public static readonly firstAccount: number = 1;
+  public static readonly addAccount: string = "Add another Azure DevOps account";
+  public static readonly addAccountIcon: IconName = "person_add";
+  public static readonly addAccountTitle: string = "Another account";
+  public static readonly addAccountUnanswered: string = "Azure DevOps didn't add the account.";
   public static readonly signedOutNote: string = "Sign in to see pull requests, their checks and their reviewers' votes. Git works without it.";
   public static readonly signIn: string = "Sign in";
   public static readonly signInIcon: IconName = "login";
@@ -507,8 +512,8 @@ export class Resources {
     return `${Resources.hostName} · ${login}`;
   }
 
-  public static formatAccountNote(login: string): string {
-    return `${Resources.signedIn} as ${login}`;
+  public static formatAccountNote(login: string, place: string | null): string {
+    return Object.isNull(place) ? `${Resources.signedIn} as ${login}` : `${Resources.signedIn} as ${login} in ${place}`;
   }
 
   public static formatSignedIn(name: string | null): string {

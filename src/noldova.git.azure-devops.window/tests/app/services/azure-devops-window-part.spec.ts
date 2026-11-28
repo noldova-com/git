@@ -13,8 +13,8 @@ import { NotificationPost, NotificationSeverity, QualifiedName } from "@noldova/
 import { type CommandContribution, ContentPadding, DockSide, type DocumentContribution, NotificationHandle, type ViewContribution } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
-import { HostAccount, HostAvatar, HostChanges, HostItem, HostPullRequest, HostPullRequestList, HostPullRequestRow, HostReference, HostSignIn, ReferenceKind, ReferenceState,
-  SignInFailure, WorkItemCategory } from "@noldova/git.hosting.protocol";
+import { HostAccount, HostAccountEntry, HostAccountList, HostAvatar, HostChanges, HostItem, HostPullRequest, HostPullRequestList, HostPullRequestRow,
+  HostReference, HostSignIn, ReferenceKind, ReferenceState, SignInFailure, SignInState, WorkItemCategory } from "@noldova/git.hosting.protocol";
 import { GitBranches, GitNames, GitRemote, GitStatus, RemoteTransport } from "@noldova/git.protocol";
 import { GitAvatars, GitCommitPrefixes, GitFolder, GitHostAccounts, GitHostCard, GitHostCardState, GitHostFeature, GitHostRows, GitLinkReferences, GitPullRequests,
   GitPullRequestsState, GitRepositoryLinks, type IProvidedGitHostAccount } from "@noldova/git.window";
@@ -23,11 +23,11 @@ import { MarkdownViewComponent, provideMarkdown } from "@noldova/ui.components.a
 import { describe, expect, it, onTestFinished } from "vitest";
 
 import manifest from "../../../../noldova.git.azure-devops/module.json" with { type: "json" };
+import { AzureDevOpsAccountsComponent } from "../../../src/app/components/azure-devops-accounts/azure-devops-accounts.component.ts";
 import { AzureDevOpsHostRowComponent } from "../../../src/app/components/azure-devops-host-row/azure-devops-host-row.component.ts";
 import { AzureDevOpsPullRequestComponent } from "../../../src/app/components/azure-devops-pull-request/azure-devops-pull-request.component.ts";
 import { AzureDevOpsPullRequestDetailComponent }
   from "../../../src/app/components/azure-devops-pull-request-detail/azure-devops-pull-request-detail.component.ts";
-import { AzureDevOpsSignInComponent } from "../../../src/app/components/azure-devops-sign-in/azure-devops-sign-in.component.ts";
 import { AzureDevOpsWorkItemComponent } from "../../../src/app/components/azure-devops-work-item/azure-devops-work-item.component.ts";
 import { AzureDevOpsWorkItemDetailComponent } from "../../../src/app/components/azure-devops-work-item-detail/azure-devops-work-item-detail.component.ts";
 import { PullRequestChoice } from "../../../src/app/models/pull-request-choice.ts";
@@ -45,21 +45,26 @@ import { WindowFailure } from "../../fixtures/window-failure.fixture.ts";
 import { detailOf, itemOf, story } from "../../fixtures/work-items-page.fixture.ts";
 
 const signedOutNote: string = "Sign in to see pull requests, their checks and their reviewers' votes. Git works without it.";
-const signedOutCards: GitHostCard[] = [new GitHostCard("Azure DevOps", signedOutNote, GitHostCardState.SignedOut, "Sign in")];
-const signedInCards: GitHostCard[] = [
-  new GitHostCard("Azure DevOps · monalisa@example.com", "Signed in on this computer as monalisa@example.com", GitHostCardState.SignedIn, "Signed in")
-];
-const otherCards: GitHostCard[] = [
-  new GitHostCard("Azure DevOps · octocat@example.com", "Signed in on this computer as octocat@example.com", GitHostCardState.SignedIn, "Signed in")
-];
+const browserNote: string = "Finish signing in with Microsoft in the browser; this page updates once you're done.";
+const signedOutCard = (id: number): GitHostCard => new GitHostCard("Azure DevOps", signedOutNote, GitHostCardState.SignedOut, "Sign in", String(id));
+const signedInCard = (login: string, id: number): GitHostCard => new GitHostCard(`Azure DevOps · ${login}`,
+  `Signed in on this computer as ${login} in dev.azure.com/fabrikam`, GitHostCardState.SignedIn, "Signed in", String(id));
+const waitingCard = (id: number): GitHostCard => new GitHostCard("Azure DevOps", browserNote, GitHostCardState.Waiting, "Waiting for the browser", String(id));
+const signedOutCards: GitHostCard[] = [signedOutCard(1)];
+const signedInCards: GitHostCard[] = [signedInCard("monalisa@example.com", 1)];
+const otherCards: GitHostCard[] = [signedInCard("octocat@example.com", 1)];
 const unreadCards: GitHostCard[] = [
-  new GitHostCard("Azure DevOps", "Azure DevOps' sign-in couldn't be read; the app's log has the details.", GitHostCardState.Failed, "Sign in")
-];
-const waitingCards: GitHostCard[] = [
-  new GitHostCard("Azure DevOps", "Finish signing in with Microsoft in the browser; this page updates once you're done.", GitHostCardState.Waiting, "Waiting for the browser")
+  new GitHostCard("Azure DevOps", "Azure DevOps' sign-in couldn't be read; the app's log has the details.", GitHostCardState.Failed, "Sign in", "1")
 ];
 const signedIn: HostSignIn = HostSignIn.signedIn(new HostAccount("monalisa@example.com", "Mona Lisa", null, []));
 const otherSignedIn: HostSignIn = HostSignIn.signedIn(new HostAccount("octocat@example.com", null, null, []));
+const waiting: HostSignIn = HostSignIn.waitingInBrowser("https://login.microsoftonline.com/example");
+
+function listOf(...signIns: HostSignIn[]): HostAccountList {
+  return new HostAccountList(signIns.map((t, i) => new HostAccountEntry(i + 1, t, t.state === SignInState.SignedOut ? null : "dev.azure.com/fabrikam")));
+}
+
+const signedOutList: HostAccountList = listOf(HostSignIn.signedOut());
 
 function accountOf(): IProvidedGitHostAccount | null {
   return GitHostAccounts.accounts().find(t => t.account.id === "git-azure-devops.account") ?? null;
@@ -91,7 +96,7 @@ describe("AzureDevOpsWindowPart", () => {
   it("reconnects only while it is active", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    new RequestAnswers(context).answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    new RequestAnswers(context).answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
 
     const answers: boolean[] = [await part.reconnectAsync()];
     await part.activateAsync(context);
@@ -105,7 +110,7 @@ describe("AzureDevOpsWindowPart", () => {
   it("deactivates before it was ever active, and a second time, without failing", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    new RequestAnswers(context).answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    new RequestAnswers(context).answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
 
     await part.deactivateAsync();
     await part.activateAsync(context);
@@ -120,7 +125,7 @@ describe("AzureDevOpsWindowPart", () => {
       onTestFinished(() => localStorage.clear());
       const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
       const context: FakeWindowPartContext = new FakeWindowPartContext();
-      new RequestAnswers(context).answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson(), HostSignIn.signedOut().toJson());
+      new RequestAnswers(context).answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson(), signedOutList.toJson());
       await part.activateAsync(context);
       AzureDevOpsCommitPrefixes.keep("/repository", "users/kim/42-sign-in", 42);
       const kept = ["main", "users/kim/42-sign-in"].map(t => GitCommitPrefixes.prefixFor("/repository", t));
@@ -138,7 +143,7 @@ describe("AzureDevOpsWindowPart", () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const azure: GitRemote = new GitRemote("origin", "dev.azure.com", "fabrikam/web/_git/site", RemoteTransport.Https);
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    new RequestAnswers(context).answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    new RequestAnswers(context).answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
 
     const before = GitHostRows.rowFor(azure);
     await part.activateAsync(context);
@@ -153,7 +158,7 @@ describe("AzureDevOpsWindowPart", () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const azure: GitRemote = new GitRemote("origin", "dev.azure.com", "fabrikam/web/_git/site", RemoteTransport.Https);
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    new RequestAnswers(context).answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    new RequestAnswers(context).answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
 
     const before = GitPullRequests.of(azure);
     await part.activateAsync(context);
@@ -167,7 +172,7 @@ describe("AzureDevOpsWindowPart", () => {
   it("gives the Git view its Azure DevOps link source while it is active, and withdraws it once", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    new RequestAnswers(context).answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    new RequestAnswers(context).answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
 
     const before = GitLinkReferences.of("/repository");
     await part.activateAsync(context);
@@ -186,7 +191,7 @@ describe("AzureDevOpsWindowPart", () => {
     const requests = new RequestAnswers(context);
     const remote: GitRemote = new GitRemote("origin", "dev.azure.com", "fabrikam/web/_git/site", RemoteTransport.Https);
     const url = "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/7";
-    requests.answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    requests.answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
     requests.answer(AzureDevOpsNames.readPullRequestsMethod, new HostPullRequestList([new HostPullRequestRow(
       new HostReference("git-azure-devops", "fabrikam", "3f2504e0-4f89-11d3-9a0c-0305e82c3301", 7), "Export all notes", url, false, 0, 0, 0, 0, "export-notes", "main")],
     false).toJson());
@@ -209,7 +214,7 @@ describe("AzureDevOpsWindowPart", () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const picture = "data:image/png;base64,iVBORw0KGgo=";
     const answers = new RequestAnswers(context);
-    answers.answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    answers.answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
     answers.answer(GitNames.statusMethod, new GitStatus("main", null, null, [], false, "f1", null,
       new GitRemote("origin", "dev.azure.com", "fabrikam/web/_git/site", RemoteTransport.Https)).toJson());
     answers.answer(AzureDevOpsNames.readAuthorAvatarMethod, new HostAvatar(picture).toJson());
@@ -227,7 +232,7 @@ describe("AzureDevOpsWindowPart", () => {
   it("claims remotes on each of Azure DevOps' hosts, and no other host's, nor a remote with no host", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    new RequestAnswers(context).answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    new RequestAnswers(context).answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
     const remotes: readonly GitRemote[] = [
       new GitRemote("origin", "dev.azure.com", "fabrikam/web/_git/site", RemoteTransport.Https),
       new GitRemote("origin", "ssh.dev.azure.com", "v3/fabrikam/web/site", RemoteTransport.Ssh),
@@ -250,7 +255,7 @@ describe("AzureDevOpsWindowPart", () => {
   it("gives Accounts and hosts its Azure DevOps account while it is active, with the sign-in as its dialog and only the features it has, and withdraws it once", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    new RequestAnswers(context).answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    new RequestAnswers(context).answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
 
     const before: IProvidedGitHostAccount | null = accountOf();
     await part.activateAsync(context);
@@ -260,7 +265,7 @@ describe("AzureDevOpsWindowPart", () => {
 
     expect(before).toBeNull();
     expect(provided?.context).toBe(context);
-    expect(provided?.account).toEqual(expect.objectContaining({ host: "Azure DevOps", column: "Azure", mark: "Az", markColor: "#0067b8", signIn: AzureDevOpsSignInComponent,
+    expect(provided?.account).toEqual(expect.objectContaining({ host: "Azure DevOps", column: "Azure", mark: "Az", markColor: "#0067b8", signIn: AzureDevOpsAccountsComponent,
       features: [GitHostFeature.PullRequests, GitHostFeature.VotesAndPolicies, GitHostFeature.BuildsOnCommits, GitHostFeature.WorkItems,
         GitHostFeature.BranchFromItem, GitHostFeature.AutoComplete] }));
     expect([accountOf(), context.callsOf("registerSettingsPage"), context.callsOf("setSettingsRows")]).toEqual([null, [], []]);
@@ -269,7 +274,7 @@ describe("AzureDevOpsWindowPart", () => {
   it("registers the pull request and My work items documents, whose components are the pull request page and the work item list, without padding", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    new RequestAnswers(context).answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    new RequestAnswers(context).answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
     const registered: DocumentContribution[] = [];
     context.answer("registerDocument", t => {
       registered.push(t);
@@ -288,7 +293,7 @@ describe("AzureDevOpsWindowPart", () => {
     async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    new RequestAnswers(context).answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    new RequestAnswers(context).answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
     const registered: ViewContribution[] = [];
     context.answer("registerView", t => {
       registered.push(t);
@@ -309,7 +314,7 @@ describe("AzureDevOpsWindowPart", () => {
   it("opens the Work item view for a work item chosen, hears the person close it, and stops listening when it deactivates", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    new RequestAnswers(context).answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    new RequestAnswers(context).answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
     await part.activateAsync(context);
     const selection = WorkItemSelection.of(context);
     const choiceOf = (id: number): WorkItemChoice => new WorkItemChoice(new WorkItemsPlace("fabrikam", "Sample Project", null),
@@ -326,7 +331,7 @@ describe("AzureDevOpsWindowPart", () => {
   it("opens the Pull request view for a pull request chosen, hears the person close it, and stops listening when it deactivates", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    new RequestAnswers(context).answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    new RequestAnswers(context).answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
     await part.activateAsync(context);
     const selection = PullRequestSelection.of(context);
     const choiceOf = (number: number): PullRequestChoice => {
@@ -347,7 +352,7 @@ describe("AzureDevOpsWindowPart", () => {
   it("registers Open my work items, which opens the project its instance names", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    new RequestAnswers(context).answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    new RequestAnswers(context).answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
     const commands: CommandContribution[] = [];
     context.answer("registerCommand", t => {
       commands.push(t);
@@ -373,7 +378,7 @@ describe("AzureDevOpsWindowPart", () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const answers = new RequestAnswers(context);
-    answers.answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    answers.answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
     const status = new GitStatus("main", null, null, [], false, "f1", null, new GitRemote("origin", "dev.azure.com", "fabrikam/Sample%20Project/_git/site",
       RemoteTransport.Https));
     answers.answer(GitNames.statusMethod, status.toJson(), status.toJson());
@@ -400,7 +405,7 @@ describe("AzureDevOpsWindowPart", () => {
       const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
       const context: FakeWindowPartContext = new FakeWindowPartContext();
       const answers = new RequestAnswers(context);
-      answers.answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+      answers.answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
       answers.answer(GitNames.statusMethod, new GitStatus("main", null, null, [], false, "f1", null, new GitRemote("origin", "github.com", "octocat/hello-world",
         RemoteTransport.Https)).toJson());
       answers.fail(GitNames.statusMethod, new WindowFailure("The runtime stopped."));
@@ -428,7 +433,7 @@ describe("AzureDevOpsWindowPart", () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const answers = new RequestAnswers(context);
-    answers.answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    answers.answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
     const error: RangeError = new RangeError("The status was out of range.");
     answers.fail(GitNames.statusMethod, error);
     const commands: CommandContribution[] = [];
@@ -446,7 +451,7 @@ describe("AzureDevOpsWindowPart", () => {
   it("gives the repository panel a My work items row for an Azure DevOps remote while it is active, opening its project, and none for another host's", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    new RequestAnswers(context).answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    new RequestAnswers(context).answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
     const azure: GitRemote = new GitRemote("origin", "dev.azure.com", "fabrikam/Sample%20Project/_git/site", RemoteTransport.Https);
     const before = GitRepositoryLinks.of(azure);
 
@@ -468,19 +473,35 @@ describe("AzureDevOpsWindowPart", () => {
     expect(names.filter((t, i) => names.indexOf(t) !== i)).toEqual([]);
   });
 
-  it("shows the signed-out card on activation, then the card of the sign-in it reads", async () => {
+  it("shows the first account's signed-out card on activation, then a card for each account it reads, each naming its account and organization", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    const release = new RequestAnswers(context).hold(AzureDevOpsNames.readSignInMethod);
+    const release = new RequestAnswers(context).hold(AzureDevOpsNames.readAccountsMethod);
 
     await part.activateAsync(context);
     const first: readonly GitHostCard[] | null = cardsOf();
-    release(signedIn.toJson());
-    await Wait.until(() => expect(cardsOf()).toEqual(signedInCards));
+    release(listOf(signedIn, otherSignedIn).toJson());
+    await Wait.until(() => expect(cardsOf()).toEqual([signedInCard("monalisa@example.com", 1), signedInCard("octocat@example.com", 2)]));
     await part.deactivateAsync();
 
-    expect(context.callsOf("requestAsync")).toEqual([[AzureDevOpsNames.readSignInMethod, null]]);
+    expect(context.callsOf("requestAsync")).toEqual([[AzureDevOpsNames.readAccountsMethod, null]]);
     expect(first).toEqual(signedOutCards);
+  });
+
+  it("shows the first account's signed-out card for a list that holds no account", async () => {
+    const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    const requests: RequestAnswers = new RequestAnswers(context);
+    requests.answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
+
+    await part.activateAsync(context);
+    await Promise.allSettled(requests.answered);
+    context.raiseEvent(AzureDevOpsNames.accountsChangedEvent, listOf(signedIn).toJson());
+    context.raiseEvent(AzureDevOpsNames.accountsChangedEvent, new HostAccountList([]).toJson());
+    const cards: readonly GitHostCard[] | null = cardsOf();
+    await part.deactivateAsync();
+
+    expect(cards).toEqual(signedOutCards);
   });
 
   it("updates the repository panel's pull requests and the account's card together at once when someone signs in or out anywhere", async () => {
@@ -488,7 +509,7 @@ describe("AzureDevOpsWindowPart", () => {
     const azure: GitRemote = new GitRemote("origin", "dev.azure.com", "fabrikam/web/_git/site", RemoteTransport.Https);
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const requests: RequestAnswers = new RequestAnswers(context);
-    requests.answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    requests.answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
     requests.answer(AzureDevOpsNames.readPullRequestsMethod, HostPullRequestList.signedOut().toJson(), new HostPullRequestList([new HostPullRequestRow(
       new HostReference("git-azure-devops", "fabrikam", "3f2504e0-4f89-11d3-9a0c-0305e82c3301", 12), "Fix the sign-in",
       "https://dev.azure.com/fabrikam/web/_git/site/pullrequest/12", false, 0, 0, 0, 0, "fix-sign-in", "main")], false).toJson(), HostPullRequestList.signedOut().toJson());
@@ -501,10 +522,12 @@ describe("AzureDevOpsWindowPart", () => {
     await until(GitPullRequestsState.SignedOut);
 
     context.raiseEvent(AzureDevOpsNames.signInChangedEvent, signedIn.toJson());
+    context.raiseEvent(AzureDevOpsNames.accountsChangedEvent, listOf(signedIn).toJson());
     const cardsOnSignIn: readonly GitHostCard[] | null = cardsOf();
     await until(GitPullRequestsState.Ready);
     const titlesOnSignIn = list?.()?.rows.map(t => t.title);
     context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut().toJson());
+    context.raiseEvent(AzureDevOpsNames.accountsChangedEvent, signedOutList.toJson());
     const cardsOnSignOut: readonly GitHostCard[] | null = cardsOf();
     await until(GitPullRequestsState.SignedOut);
     await part.deactivateAsync();
@@ -512,38 +535,40 @@ describe("AzureDevOpsWindowPart", () => {
     expect([cardsOnSignIn, titlesOnSignIn, cardsOnSignOut]).toEqual([signedInCards, ["Fix the sign-in"], signedOutCards]);
   });
 
-  it("follows the sign-in's changes with its card, the browser's wait among them, until it deactivates", async () => {
+  it("follows the account list's changes with a card per account, the browser's wait among them, until it deactivates", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const requests: RequestAnswers = new RequestAnswers(context);
-    requests.answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+    requests.answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
 
     await part.activateAsync(context);
     await Promise.allSettled(requests.answered);
     const account: IProvidedGitHostAccount | null = accountOf();
-    context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.waitingInBrowser("https://login.microsoftonline.com/example").toJson());
+    context.raiseEvent(AzureDevOpsNames.accountsChangedEvent, listOf(signedIn, waiting).toJson());
     const whileWaiting: readonly GitHostCard[] | null = cardsOf();
-    context.raiseEvent(AzureDevOpsNames.signInChangedEvent, signedIn.toJson());
+    context.raiseEvent(AzureDevOpsNames.accountsChangedEvent, listOf(signedIn, otherSignedIn).toJson());
     const afterSignIn: readonly GitHostCard[] | null = cardsOf();
-    context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedOut(SignInFailure.Revoked).toJson());
+    context.raiseEvent(AzureDevOpsNames.accountsChangedEvent, listOf(HostSignIn.signedOut(SignInFailure.Revoked), otherSignedIn).toJson());
     const afterRevoke: readonly GitHostCard[] | null = cardsOf();
     await part.deactivateAsync();
-    context.raiseEvent(AzureDevOpsNames.signInChangedEvent, signedIn.toJson());
+    context.raiseEvent(AzureDevOpsNames.accountsChangedEvent, listOf(signedIn).toJson());
 
-    expect([context.callsOf("onEvent").map(t => t[0]), context.activeCallsOf("onEvent")]).toEqual([[AzureDevOpsNames.signInChangedEvent, AzureDevOpsNames.signInChangedEvent,
-      AzureDevOpsNames.signInChangedEvent, GitNames.changedEvent, AzureDevOpsNames.signInChangedEvent], []]);
-    expect([whileWaiting, afterSignIn, afterRevoke, account?.account.cards()]).toEqual([waitingCards, signedInCards, signedOutCards, signedOutCards]);
+    expect(context.activeCallsOf("onEvent")).toEqual([]);
+    expect(context.callsOf("onEvent").map(t => t[0]).filter(t => t === AzureDevOpsNames.accountsChangedEvent)).toEqual([AzureDevOpsNames.accountsChangedEvent]);
+    expect([whileWaiting, afterSignIn, afterRevoke, account?.account.cards()]).toEqual([[signedInCard("monalisa@example.com", 1), waitingCard(2)],
+      [signedInCard("monalisa@example.com", 1), signedInCard("octocat@example.com", 2)], [signedOutCard(1), signedInCard("octocat@example.com", 2)],
+      [signedOutCard(1), signedInCard("octocat@example.com", 2)]]);
   });
 
-  it("drops the sign-in it read once a change arrived while the read was on its way, so the newer card stays", async () => {
+  it("drops the accounts it read once a change arrived while the read was on its way, so the newer cards stay", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const requests: RequestAnswers = new RequestAnswers(context);
-    const release = requests.hold(AzureDevOpsNames.readSignInMethod);
+    const release = requests.hold(AzureDevOpsNames.readAccountsMethod);
 
     await part.activateAsync(context);
-    context.raiseEvent(AzureDevOpsNames.signInChangedEvent, signedIn.toJson());
-    release(HostSignIn.signedOut().toJson());
+    context.raiseEvent(AzureDevOpsNames.accountsChangedEvent, listOf(signedIn).toJson());
+    release(signedOutList.toJson());
     await Promise.allSettled(requests.answered);
     const cards: readonly GitHostCard[] | null = cardsOf();
     await part.deactivateAsync();
@@ -552,23 +577,23 @@ describe("AzureDevOpsWindowPart", () => {
     expect(cards).toEqual(signedInCards);
   });
 
-  it("says the sign-in couldn't be read on its card, and logs why, when the read fails", async () => {
+  it("says the accounts couldn't be read on the first account's card, and logs why, when the read fails", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    new RequestAnswers(context).fail(AzureDevOpsNames.readSignInMethod, new WindowFailure("The host is gone."));
+    new RequestAnswers(context).fail(AzureDevOpsNames.readAccountsMethod, new WindowFailure("The host is gone."));
 
     await part.activateAsync(context);
     await Wait.until(() => expect(cardsOf()).toEqual(unreadCards));
     await part.deactivateAsync();
 
-    expect(context.callsOf("log")).toEqual([[`The Azure DevOps module's ${AzureDevOpsNames.readSignInMethod} request failed: WindowFailure: The host is gone.`]]);
+    expect(context.callsOf("log")).toEqual([[`The Azure DevOps module's ${AzureDevOpsNames.readAccountsMethod} request failed: WindowFailure: The host is gone.`]]);
   });
 
-  it("passes on a failure of the sign-in's read that isn't the window's, rather than showing the card of a sign-in it couldn't read", async () => {
+  it("passes on a failure of the accounts' read that isn't the window's, rather than showing cards of accounts it couldn't read", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const unexpected = new TypeError("Unexpected.");
-    new RequestAnswers(context).fail(AzureDevOpsNames.readSignInMethod, unexpected);
+    new RequestAnswers(context).fail(AzureDevOpsNames.readAccountsMethod, unexpected);
     const rejected = UnhandledRejections.nextAsync();
 
     await part.activateAsync(context);
@@ -580,13 +605,13 @@ describe("AzureDevOpsWindowPart", () => {
     expect([cards, context.callsOf("log")]).toEqual([signedOutCards, []]);
   });
 
-  it("keeps the card of a change that arrived while a failing read was on its way", async () => {
+  it("keeps the cards of a change that arrived while a failing read was on its way", async () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const context: FakeWindowPartContext = new FakeWindowPartContext();
-    const reject = new RequestAnswers(context).holdFailure(AzureDevOpsNames.readSignInMethod);
+    const reject = new RequestAnswers(context).holdFailure(AzureDevOpsNames.readAccountsMethod);
 
     await part.activateAsync(context);
-    context.raiseEvent(AzureDevOpsNames.signInChangedEvent, signedIn.toJson());
+    context.raiseEvent(AzureDevOpsNames.accountsChangedEvent, listOf(signedIn).toJson());
     reject(new WindowFailure("The host is gone."));
     await Wait.until(() => expect(context.callsOf("log")).toHaveLength(1));
     const cards: readonly GitHostCard[] | null = cardsOf();
@@ -599,17 +624,17 @@ describe("AzureDevOpsWindowPart", () => {
     const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
     const first: FakeWindowPartContext = new FakeWindowPartContext();
     const firstRequests: RequestAnswers = new RequestAnswers(first);
-    const release = firstRequests.hold(AzureDevOpsNames.readSignInMethod);
+    const release = firstRequests.hold(AzureDevOpsNames.readAccountsMethod);
     const second: FakeWindowPartContext = new FakeWindowPartContext();
-    const reread = new RequestAnswers(second).hold(AzureDevOpsNames.readSignInMethod);
+    const reread = new RequestAnswers(second).hold(AzureDevOpsNames.readAccountsMethod);
 
     await part.activateAsync(first);
     await part.deactivateAsync();
     await part.activateAsync(second);
-    release(signedIn.toJson());
+    release(listOf(signedIn).toJson());
     await Promise.allSettled(firstRequests.answered);
     const afterStaleRead: readonly GitHostCard[] | null = cardsOf();
-    reread(otherSignedIn.toJson());
+    reread(listOf(otherSignedIn).toJson());
     await Wait.until(() => expect(cardsOf()).toEqual(otherCards));
     const provider = accountOf()?.context;
     await part.deactivateAsync();
@@ -623,7 +648,8 @@ describe("AzureDevOpsWindowPart", () => {
       const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
       const context: FakeWindowPartContext = new FakeWindowPartContext();
       const requests = new RequestAnswers(context);
-      requests.answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson(), HostSignIn.signedOut().toJson());
+      requests.answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
+      requests.answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
       requests.answer(GitNames.statusMethod, new GitStatus("main", "f".repeat(40), null, [], false, "f1", null,
         new GitRemote("origin", "dev.azure.com", "Fabrikam/Sample%20Project/_git/site", RemoteTransport.Https)).toJson());
       await part.activateAsync(context);
@@ -659,7 +685,7 @@ describe("AzureDevOpsWindowPart", () => {
       const part: AzureDevOpsWindowPart = new AzureDevOpsWindowPart();
       const context: FakeWindowPartContext = new FakeWindowPartContext();
       const requests = new RequestAnswers(context);
-      requests.answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
+      requests.answer(AzureDevOpsNames.readAccountsMethod, signedOutList.toJson());
       requests.answer(GitNames.statusMethod, new GitStatus("main", "f".repeat(40), null, [], false, "f1", null, null).toJson());
       requests.answer(GitNames.branchesMethod, new GitBranches("main", ["main"], [], [], []).toJson());
       requests.answer(AzureDevOpsNames.readSignInMethod, HostSignIn.signedOut().toJson());
