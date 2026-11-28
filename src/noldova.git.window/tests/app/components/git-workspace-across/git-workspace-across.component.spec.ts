@@ -213,7 +213,7 @@ describe("GitWorkspaceAcrossComponent", () => {
 
     expect([panel.texts(".needs .row"), panel.pullRequests]).toEqual([["stacks git: #214, then #215: merge in order, #214 first Open"], ["git #214"]]);
     expect(panel.rem(row).height).toBeCloseTo(1.625, 2);
-    expect(panel.rem(icon).x - panel.rem(row).x).toBeCloseTo(0.25, 2);
+    expect(panel.rem(icon).x - panel.rem(row).x).toBeCloseTo(0.5, 2);
     expect(panel.rem(icon).width).toBeCloseTo(0.8125, 2);
   });
 

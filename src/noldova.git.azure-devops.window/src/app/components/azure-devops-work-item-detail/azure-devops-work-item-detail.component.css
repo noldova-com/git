@@ -144,8 +144,14 @@
 
 .line {
   height: 1.625rem;
-  padding: 0 var(--nol-space-1);
+  margin-inline: calc(-1 * var(--nol-space-2));
+  padding: 0 var(--nol-space-2);
   border-radius: var(--nol-radius-medium);
+}
+
+.kind > [nol-icon-button]:last-child,
+.line > [nol-icon-button]:last-child {
+  margin-inline-end: calc((var(--nol-icon) - var(--nol-icon-button-target)) / 2);
 }
 
 .line > :not(.grow) {

@@ -498,7 +498,7 @@ describe("GitHistoryComponent", () => {
         groups(),
         !Object.isNull(element.querySelector(".more")),
         ends.every((t, index) => index === 0 || t.left >= (ends[index - 1]?.right ?? 0)),
-        rem(box(".field").left - last.right) >= 0.25 && rem(box(".toolbar").right - box(".field").right) === 0.5
+        rem(box(".field").left - last.right) >= 0.25 && rem(box(".toolbar").right - box(".field").right) === 0.75
       ];
     };
     const unavailable = (action: string): boolean => element.querySelector(`.actions [data-action="${action}"]`)?.getAttribute("aria-disabled") === "true";

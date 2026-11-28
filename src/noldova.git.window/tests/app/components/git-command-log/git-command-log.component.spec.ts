@@ -12,11 +12,13 @@ import "@noldova/context.core";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { FailureCode, GitCommand, GitCommandLog } from "@noldova/git.protocol";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
+import { page } from "vitest/browser";
 
 import { GitCommandLogComponent } from "../../../../src/app/components/git-command-log/git-command-log.component.ts";
 import { GitRuntimeClient } from "../../../../src/app/services/git-runtime-client.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
+import { RightEdge } from "../../../fixtures/right-edge.fixture.ts";
 import { Wait } from "../../../fixtures/wait.fixture.ts";
 
 class MountedLog {
@@ -72,6 +74,18 @@ describe("GitCommandLogComponent", () => {
     expect([line?.title, (line?.scrollWidth ?? 0) > (line?.clientWidth ?? 0), rem(row.height), rem(row.left - list.left), rem(row.width) === rem(list.width)]).toEqual([
       push.line, true, 1.75, 0, true
     ]);
+  });
+
+  it("ends every row's duration, whatever its length, on the list's right edge", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    GitFixtures.answerWith(context, { ...GitFixtures.watching, "git.status": GitFixtures.status().toJson(), "git.commandLog": commands.toJson() });
+    const { element } = mount(context);
+    await until(() => element.querySelectorAll(".command").length === 3);
+    const list: Element | null = element.querySelector(".commands");
+    const edge: number = Object.isNull(list) ? 0 : RightEdge.contentOf(list);
+
+    expect([1, 2, 3].flatMap(t => RightEdge.missesOf(element, edge, [`.command:nth-child(${String(t)}) .duration`]))).toEqual([]);
+    await page.screenshot({ element, path: "../../../../../../_build/window/screenshots/git-command-log.png" });
   });
 
   it("draws no card, heading, help text or line between rows, the first row at its top and each row's time at its edge", async () => {

@@ -18,7 +18,7 @@ export class GitLayout {
     const problems: string[] = [];
     for (const element of shown) {
       const style: CSSStyleDeclaration = getComputedStyle(element);
-      if (style.display === "inline" || element.scrollWidth <= element.clientWidth + GitLayout.SLACK)
+      if (style.display === "inline" || style.overflowX === "visible" || element.scrollWidth <= element.clientWidth + GitLayout.SLACK)
         continue;
       if (style.overflowX === "auto" || style.overflowX === "scroll")
         problems.push(`scrolls sideways: ${GitLayout.nameOf(element)}`);

@@ -48,6 +48,7 @@
 
 .section-head .add-reviewer {
   margin-block: calc((var(--nol-line-panel) - var(--nol-icon-button-target)) / 2);
+  margin-inline-end: calc((var(--nol-icon) - var(--nol-icon-button-target)) / 2);
 }
 
 .section-title {
@@ -115,7 +116,8 @@
 
 .row {
   min-height: var(--nol-button-height);
-  padding: 0 var(--nol-space-1);
+  margin-inline: calc(-1 * var(--nol-space-2));
+  padding: 0 var(--nol-space-2);
   border: 0;
   border-radius: var(--nol-radius-medium);
   background: none;
@@ -123,6 +125,10 @@
   font: inherit;
   text-align: start;
   white-space: nowrap;
+}
+
+.row > [nol-icon-button]:last-child {
+  margin-inline-end: calc((var(--nol-icon) - var(--nol-icon-button-target)) / 2);
 }
 
 button.row {

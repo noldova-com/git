@@ -23,6 +23,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { page as browser } from "vitest/browser";
 
 import { GitLayout } from "../../../../../noldova.git.window/tests/fixtures/git-layout.fixture.ts";
+import { RightEdge } from "../../../../../noldova.git.window/tests/fixtures/right-edge.fixture.ts";
 import { AzureDevOpsPullRequestComponent } from "../../../../src/app/components/azure-devops-pull-request/azure-devops-pull-request.component.ts";
 import { AzureDevOpsPullRequestDetailComponent } from "../../../../src/app/components/azure-devops-pull-request-detail/azure-devops-pull-request-detail.component.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
@@ -282,7 +283,7 @@ describe("AzureDevOpsPullRequestComponent in the kit's look", () => {
     const kind = boxOf(root, "nol-git-azure-devops-add-reviewer .person:nth-child(2) .kind");
 
     AppearanceFixture.expectPixels(title.left, side.left);
-    AppearanceFixture.expectPixels(button.right, side.right);
+    AppearanceFixture.expectPixels(RightEdge.endOf(find(root, ".add-reviewer")), side.right);
     AppearanceFixture.expectPixels(button.top + button.height / 2, title.top + title.height / 2);
     AppearanceFixture.expectPixels(search.left, side.left);
     AppearanceFixture.expectPixels(search.width, side.width);
@@ -321,6 +322,9 @@ describe("AzureDevOpsPullRequestComponent in the kit's look", () => {
     }
     AppearanceFixture.expectPixels(policy.left - cardBox.left, px(0.75) + border);
     AppearanceFixture.expectPixels(cardBox.right - policy.right, px(0.75) + border);
+    const detail: HTMLElement = find(root, ".detail");
+    expect(RightEdge.missesOf(detail, RightEdge.contentOf(detail), [".section-head .add-reviewer", ".reviewer .required", ".row > [nol-icon-button]", ".row .work-state"])).toEqual([]);
+    expect(RightEdge.missesOf(card, RightEdge.contentOf(card), [".card-head > .small", ".policy > .small"])).toEqual([]);
     await browser.screenshot({ element: find(root, ".view"), path: `${screenshots}/pull-request-view-${mode}.png` });
   });
 
@@ -579,6 +583,10 @@ describe("AzureDevOpsPullRequestComponent in the kit's look", () => {
     await fixture.whenStable();
 
     await browser.screenshot({ element: frame, path: `${screenshots}/pull-request-threads-30rem-${mode}.png` });
+    const threads: HTMLElement[] = [...frame.querySelectorAll<HTMLElement>(".thread")];
+    const folded: HTMLElement | undefined = threads.find(t => !Object.isNull(t.querySelector(".fold")));
+    expect([...threads.flatMap(t => RightEdge.missesOf(t, RightEdge.contentOf(t), [Object.isNull(t.querySelector(".fold")) ? ".answer-actions > :last-child" : ".fold > .small"])),
+      Math.round(boxOf(folded ?? frame, ".fold .material-symbols-rounded").left - (folded?.getBoundingClientRect().left ?? 0) - (folded?.clientLeft ?? 0) - px(0.75))]).toEqual([0]);
     expect([frame.querySelectorAll(".comment").length > 0, GitLayout.problemsOf(frame)]).toEqual([true, []]);
   });
 });

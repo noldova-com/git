@@ -24,6 +24,7 @@ import { GitRebaseTarget, GitRebasing } from "../../../../src/app/services/git-r
 import { GitViewOptions } from "../../../../src/app/services/git-view-options.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitLayout } from "../../../fixtures/git-layout.fixture.ts";
+import { RightEdge } from "../../../fixtures/right-edge.fixture.ts";
 
 describe("GitRebaseComponent in the kit's look", () => {
   const screenshots: string = "../../../../../../_build/window/screenshots";
@@ -125,7 +126,8 @@ describe("GitRebaseComponent in the kit's look", () => {
 
       const tidy: DOMRect = box(find(".tidy-up"));
       const row: DOMRect = box(find(".title-row"));
-      expect([rem(tidy.height), rem(row.right - tidy.right), rem(box(find(".tidy-up .nol-toolbar-button-glyph")).left - tidy.left)]).toEqual([1.5, 0, 0.375]);
+      expect([rem(tidy.height), rem(row.right - box(find(".tidy-up .nol-toolbar-button-label")).right), rem(box(find(".tidy-up .nol-toolbar-button-glyph")).left - tidy.left)])
+        .toEqual([1.5, 0, 0.375]);
       expect(rem(box(find(".head")).right - row.right)).toBe(0.75);
 
       const gaps = (group: string): readonly number[] => {
@@ -142,6 +144,7 @@ describe("GitRebaseComponent in the kit's look", () => {
         getComputedStyle(inView(".caps")).color]).toEqual([getComputedStyle(element).fontFamily, true, resolve("var(--nol-panel)"), resolve("var(--nol-text-strong)"),
         resolve("var(--nol-text-muted)")]);
 
+      expect(RightEdge.missesOf(element, RightEdge.endOf(element.querySelector(".start-row .start") ?? element), [".title-row .tidy-up"])).toEqual([]);
       await page.screenshot({ element, path: `${screenshots}/git-rebase-${mode}.png` });
       await page.screenshot({ element: view, path: `${screenshots}/git-rebase-preview-${mode}.png` });
     });

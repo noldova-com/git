@@ -21,6 +21,7 @@ import { AppearanceFixture, PointerFixture, TooltipFixture } from "@noldova/ui.c
 import { afterEach, describe, expect, it } from "vitest";
 import { cdp, page } from "vitest/browser";
 
+import { RightEdge } from "../../../../../noldova.git.window/tests/fixtures/right-edge.fixture.ts";
 import { GitHubHostRowComponent } from "../../../../src/app/components/github-host-row/github-host-row.component.ts";
 import { GitHubAccountList } from "../../../../src/app/services/github-account-list.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
@@ -167,7 +168,7 @@ describe("GitHubHostRowComponent in the kit's look", () => {
     expect(shown).toEqual([null, `#1234 ${title}`, longCheck]);
   });
 
-  it.each(AppearanceFixture.modes)("sets the account line under the card, its mark on the card's icons, its quiet switch's end on the card's with a 1.5rem target that leaves the line as it was, in %s mode", async mode => {
+  it.each(AppearanceFixture.modes)("sets the account line under the card, its mark on the card's icons, its quiet switch's end on the open button's glyph with a 1.5rem target that leaves the line as it was, in %s mode", async mode => {
     const fixture = await openAsync(mode, HostSignIn.signedIn(account), answer, (context, requests) => {
       GitHubAccountList.show(context, new HostAccountList([new HostAccountEntry(1, HostSignIn.signedIn(account)),
         new HostAccountEntry(2, HostSignIn.signedIn(new HostAccount("example-bot", null, null, ["repo"])))]));
@@ -178,7 +179,6 @@ describe("GitHubHostRowComponent in the kit's look", () => {
     const root: HTMLElement = fixture.nativeElement;
     const card = find(root, ".pr").getBoundingClientRect();
     const state = find(root, ".state").getBoundingClientRect();
-    const open = find(root, ".open").getBoundingClientRect();
     const line = find(root, ".account").getBoundingClientRect();
     const mark = find(root, ".account .notice-mark").getBoundingClientRect();
     const text = find(root, ".account .notice-text");
@@ -190,7 +190,7 @@ describe("GitHubHostRowComponent in the kit's look", () => {
 
     AppearanceFixture.expectPixels(line.top - card.bottom, px(0.5));
     AppearanceFixture.expectPixels(mark.left, state.left);
-    AppearanceFixture.expectPixels(button.right, open.right);
+    AppearanceFixture.expectPixels(RightEdge.endOf(switcher), RightEdge.endOf(find(root, ".open")));
     AppearanceFixture.expectPixels(mark.top + mark.height / 2, line.top + line.height / 2);
     AppearanceFixture.expectPixels(text.getBoundingClientRect().left - mark.right, px(0.5));
     AppearanceFixture.expectPixels(button.top + button.height / 2, text.getBoundingClientRect().top + text.getBoundingClientRect().height / 2);
@@ -222,7 +222,7 @@ describe("GitHubHostRowComponent in the kit's look", () => {
     AppearanceFixture.expectPixels(state.width, px(1));
     AppearanceFixture.expectPixels(titleBox.left - state.right, px(0.5));
     AppearanceFixture.expectPixels(open.left - titleBox.right, px(0.5));
-    AppearanceFixture.expectPixels(card.right - open.right, px(0.625) + border);
+    AppearanceFixture.expectPixels(card.right - open.right, px(0.375) + border);
     AppearanceFixture.expectPixels(line.top - card.top, px(0.5) + border);
     AppearanceFixture.expectTruncates(find(root, ".title .text"));
     AppearanceFixture.expectTruncates(all(root, ".name .text").at(-1) ?? find(root, ".name .text"));
@@ -240,6 +240,7 @@ describe("GitHubHostRowComponent in the kit's look", () => {
     expect(all(root, ".check-icon").map(t => getComputedStyle(t).backgroundColor)).toEqual([resolve("var(--nol-status-failed)"),
       resolve("var(--nol-text-muted)"), resolve("var(--nol-status-ok)"), resolve("var(--nol-status-ok)")]);
 
+    expect(RightEdge.missesOf(root, RightEdge.endOf(find(root, ".check-state")), [".pr .line .open"])).toEqual([]);
     await page.screenshot({ element: find(root, ".dock"), path: `${screenshots}/host-row-pull-request-${mode}.png` });
   });
 

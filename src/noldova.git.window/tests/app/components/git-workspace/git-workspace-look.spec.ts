@@ -30,6 +30,7 @@ import { GitRecentRepositories } from "../../../../src/app/services/git-recent-r
 import { GitWorkspaces } from "../../../../src/app/services/git-workspaces.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitLayout } from "../../../fixtures/git-layout.fixture.ts";
+import { RightEdge } from "../../../fixtures/right-edge.fixture.ts";
 
 class WorkspaceScreens {
   public readonly page: HTMLElement;
@@ -194,6 +195,8 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     })).toEqual(pullRequests.map(() => [0, getComputedStyle(changes).color, "12px", getComputedStyle(changes).fontWeight]));
     expect([rem(box(pullRequests[0] ?? element).width), rem(box(checks[0] ?? element).width), ...rows.map(t => rem(box(t).height))])
       .toEqual([8.5, 5, ...rows.map(() => 2)]);
+    expect(RightEdge.missesOf(element, RightEdge.insideOf(element, 0.75), [".toolbar .filter", ".tr:not(.th) .fetched", ".th .fetched-head"])).toEqual([]);
+    expect(rem(textBox(element.querySelector<HTMLElement>(".toolbar .name") ?? element).left - box(element).left)).toBe(0.75);
 
     await page.screenshot({ element, path: `${screenshots}/git-workspace-${mode}.png` });
   });
@@ -216,6 +219,9 @@ describe("GitWorkspaceComponent in the kit's look", () => {
         .toEqual([resolve("var(--nol-raised)"), resolve("var(--nol-card-border)"), "6px", "rgba(0, 0, 0, 0)"]);
       expect([getComputedStyle(failing).color, getComputedStyle(behind).color]).toEqual([resolve("var(--nol-status-failed)"), resolve("var(--nol-icon-color)")]);
       expect(rows.map(t => rem(box(t).height))).toEqual(rows.map(() => 1.625));
+      expect(RightEdge.missesOf(across, RightEdge.insideOf(across, 0.75), [".failing [nol-toolbar-button]", ".behind [nol-toolbar-button]"])).toEqual([]);
+      expect([rem(box(failing).left - box(across).left), rem(box(behind).left - box(across).left), ...rows.map(t => rem(box(across).right - box(t).right))])
+        .toEqual([0.75, 0.75, ...rows.map(() => 0.25)]);
       expect(rows.map(t => t.innerText.replace(/\s+/gu, " ").trim())).toEqual(["error ui-components feature/kit-0.0.25: one check failing Open",
         "sync_problem One repository is behind and can fast-forward Pull 1"]);
 

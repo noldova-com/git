@@ -30,6 +30,7 @@ import { FixtureLine, GitFixtures } from "../../../fixtures/git-fixtures.fixture
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 import { GitLayout } from "../../../fixtures/git-layout.fixture.ts";
 import { GitViewFixture } from "../../../fixtures/git-view.fixture.ts";
+import { RightEdge } from "../../../fixtures/right-edge.fixture.ts";
 
 describe("GitViewComponent in the kit's look", () => {
   const screenshots: string = "../../../../../../_build/window/screenshots";
@@ -117,8 +118,10 @@ describe("GitViewComponent in the kit's look", () => {
     expect(cards.map(t => rem(t.width))).toEqual(cards.map(() => 23.5));
     expect(rem(box(changes.querySelector(".header")).height)).toBe(1.625);
     expect(rem(box(row).height)).toBe(1.625);
-    expect(rem(box(row.querySelector("nol-file-badge")).left - changesBox.left)).toBe(0.5);
-    expect(rem(changesBox.right - box(row.querySelector(".move")).right)).toBe(0.25);
+    expect([rem(box(row.querySelector("nol-file-badge")).left - changesBox.left), rem(changesBox.left - box(row).left), rem(box(row).right - changesBox.right)]).toEqual([0, 0.5, 0.5]);
+    expect(RightEdge.missesOf(view.element, RightEdge.insideOf(view.element, 0.75),
+      ["nol-git-file-group:nth-of-type(3) .move-all", "nol-git-file-group:nth-of-type(3) .file .move", ".commit"])).toEqual([]);
+    expect(RightEdge.missesOf(changes, RightEdge.insideOf(changes.querySelector(".diff") ?? changes, 0.5), [".hunk-action"])).toEqual([]);
     expect(rem(box(row.querySelector(".move")).right - box(row.querySelector(".state")).right)).toBeGreaterThan(0);
     expect([rem(box(row.querySelector(".move")).left - box(row.querySelector(".discard")).right), rem(box(row.querySelector(".discard")).left - box(row.querySelector(".expand")).right)])
       .toEqual([0.375, 0.375]);
@@ -332,7 +335,7 @@ describe("GitViewComponent in the kit's look", () => {
       };
       expect([rem(card.left - frame.left), rem(card.top - frame.top), rem(card.width)]).toEqual([0.75, 0.75, 23.5]);
       expect([rem(box(changes.querySelector(".header")).height), rem(box(row).height), rem(box(changes.querySelector(".diff > div")).height)]).toEqual([1.625, 1.625, 1.125]);
-      expect(rem(box(row.querySelector("nol-file-badge")).left - box(changes).left)).toBe(0.5);
+      expect(rem(box(row.querySelector("nol-file-badge")).left - box(changes).left)).toBe(0);
       expect([getComputedStyle(view.find("nol-git-branch-card")).borderTopStyle, getComputedStyle(view.find("nol-git-file-group .diff")).borderTopStyle])
         .toEqual(["solid", "solid"]);
       expect([changes.querySelector(".added-line")?.textContent?.startsWith("+"), changes.querySelector(".removed-line")?.textContent?.startsWith("-")]).toEqual([true, true]);

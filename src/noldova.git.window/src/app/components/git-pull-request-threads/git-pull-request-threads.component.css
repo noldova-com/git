@@ -84,7 +84,8 @@
 
 .fold {
   min-height: var(--nol-button-height);
-  padding: 0 var(--nol-space-1);
+  margin-inline: calc(-1 * var(--nol-space-2));
+  padding: 0 var(--nol-space-2);
   border: 0;
   border-radius: var(--nol-radius-medium);
   background: none;

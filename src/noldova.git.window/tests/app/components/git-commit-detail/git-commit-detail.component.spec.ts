@@ -112,7 +112,7 @@ describe("GitCommitDetailComponent", () => {
 
     expect(lines).toEqual(["meta-line|@@ -1,1 +1,2 @@", "| a", "removed-line|-b", "added-line|+c"]);
     expect([expanded, view.find(".file-row:not(.folder)").getAttribute("aria-expanded")]).toEqual(["true", "false"]);
-    expect(inset).toBe(1.75);
+    expect(inset).toBe(1.5);
     expect(view.requested("git.diff")).toHaveLength(1);
   });
 

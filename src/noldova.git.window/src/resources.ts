@@ -801,6 +801,7 @@ export class Resources {
   };
   public static readonly fileLayouts: readonly GitFileLayout[] = [GitFileLayout.Tree, GitFileLayout.Folders, GitFileLayout.List];
   public static readonly rowStartRem: number = 0.25;
+  public static readonly filledRowStartRem: number = 0.5;
   public static readonly commitFileStepRem: number = 1.5;
   public static readonly groupFileStepRem: number = 1.375;
   public static readonly commitFilesLoading: string = "Reading the commit's files…";
