@@ -64,15 +64,20 @@ class Page {
   }
 
   public get alerts(): string[] {
-    return this.texts("[role=alert]");
+    return [...this.element.querySelectorAll("[role=alert] .nol-git-github-banner-text")].map(t => [...t.children].map(u => (u.textContent ?? "").trim()).join(" "));
   }
 
   public async openAsync(chosen: string | null = null, isProvided: boolean = true): Promise<this> {
+    this.open(chosen, isProvided);
+    await this.settleAsync();
+    return this;
+  }
+
+  public open(chosen: string | null = null, isProvided: boolean = true): void {
     TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: this.context },
       ...isProvided ? [{ provide: GitHostAccounts.chosenAccount, useValue: chosen }] : []] });
     this.fixture = TestBed.createComponent(GitHubEnterpriseComponent);
-    await this.settleAsync();
-    return this;
+    this.fixture.detectChanges();
   }
 
   public async settleAsync(): Promise<void> {
@@ -249,7 +254,7 @@ describe("GitHubEnterpriseComponent", () => {
     await page.typeAsync(page.token, "ghp_x");
     page.token.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
     page.token.value = "ghp_y";
-    await page.enterAsync();
+    page.token.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
     release(monaEntry.toJson());
     await page.settleAsync();
 
@@ -279,9 +284,8 @@ describe("GitHubEnterpriseComponent", () => {
     TestBed.resetTestingModule();
     const late = new Page();
     const release = late.requests.hold(GitHubNames.readAccountsMethod);
-    await late.openAsync("2");
+    late.open("2");
     late.context.raiseEvent(GitHubNames.accountsChangedEvent, listOf(monaEntry).toJson());
-    await late.settleAsync();
     release(listOf().toJson());
     await late.settleAsync();
 
