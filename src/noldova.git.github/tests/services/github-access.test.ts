@@ -30,11 +30,19 @@ function signInOf(github: FakeGitHub, secrets: FakeModuleSecrets = new FakeModul
 
 type AccessSignIn = Pick<GitHubSignIn, "current" | "token" | "keptUnreadable">;
 
-function accessOf(first: AccessSignIn, others: ReadonlyMap<number, AccessSignIn> = new Map(), chosen: number | null = null): GitHubAccess {
+function accessOf(first: AccessSignIn, others: ReadonlyMap<number, AccessSignIn> = new Map(), chosen: number | null = null, steps: string[] = []): GitHubAccess {
   return new GitHubAccess({
     first,
-    accountForAsync: () => Promise.resolve(chosen),
+    accountForAsync: (host, path) => {
+      steps.push(`account ${host}/${path}`);
+      return Promise.resolve(chosen);
+    },
     signInOf: id => id === 1 ? first : others.get(id) ?? first
+  }, {
+    useAsync: (folder, remote, host, path) => {
+      steps.push(`use ${folder} ${remote} ${host}/${path}`);
+      return Promise.resolve();
+    }
   });
 }
 
@@ -168,5 +176,19 @@ describe("GitHubAccess", () => {
 
     await assert.rejects(accessOf({ current: HostSignIn.signedOut(), token: null, keptUnreadable: false }).accessForAsync({ host: "github.com", path: "octocat/hello-world" },
       stop.signal), t => t === reason);
+  });
+
+  it("reads the user name in a given folder's remote, origin unless another is named, before it chooses the account, and reads none without a folder", async () => {
+    const second = { current: HostSignIn.signedIn(new HostAccount("hubot", null, null, ["repo"])), token: "gho_hubot", keptUnreadable: false };
+    const steps: string[] = [];
+    const access = accessOf({ current: HostSignIn.signedOut(), token: null, keptUnreadable: false }, new Map([[2, second]]), 2, steps);
+    const repository = { host: "github.com", path: "octocat/hello-world" };
+
+    const answers = [await access.accessForAsync({ ...repository, folder: "/home/kim/hello-world" }, signal),
+      await access.accessForAsync({ ...repository, folder: "/home/kim/hello-world", remote: "upstream" }, signal), await access.accessForAsync(repository, signal)];
+
+    assert.deepEqual(answers.map(t => "login" in t ? t.login : null), ["hubot", "hubot", "hubot"]);
+    assert.deepEqual(steps, ["use /home/kim/hello-world origin github.com/octocat/hello-world", "account github.com/octocat/hello-world",
+      "use /home/kim/hello-world upstream github.com/octocat/hello-world", "account github.com/octocat/hello-world", "account github.com/octocat/hello-world"]);
   });
 });

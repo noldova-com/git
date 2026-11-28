@@ -14,6 +14,10 @@ import type { GitHubSignIn } from "./github-sign-in.ts";
 
 type AccessSignIn = Pick<GitHubSignIn, "current" | "token" | "keptUnreadable">;
 
+interface IAccessFolders {
+  useAsync(folder: string, remote: string, host: string, path: string, signal: AbortSignal): Promise<void>;
+}
+
 interface IAccessAccounts {
   readonly first: AccessSignIn;
   accountForAsync(host: string, path: string, signal: AbortSignal): Promise<number | null>;
@@ -22,17 +26,22 @@ interface IAccessAccounts {
 
 export class GitHubAccess implements IGitHubAccess {
   private readonly accounts: IAccessAccounts;
+  private readonly folders: IAccessFolders;
 
-  public constructor(accounts: IAccessAccounts) {
+  public constructor(accounts: IAccessAccounts, folders: IAccessFolders) {
     this.accounts = accounts;
+    this.folders = folders;
   }
 
   public accessAsync(signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal> {
     return signal.aborted ? Promise.reject(signal.reason) : Promise.resolve(GitHubAccess.answerOf(this.accounts.first));
   }
 
-  public async accessForAsync(repository: { readonly host: string; readonly path: string }, signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal> {
+  public async accessForAsync(repository: { readonly host: string; readonly path: string; readonly folder?: string; readonly remote?: string },
+    signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal> {
     signal.throwIfAborted();
+    if (!Object.isUndefined(repository.folder))
+      await this.folders.useAsync(repository.folder, repository.remote ?? Resources.originRemote, repository.host, repository.path, signal);
     const id: number | null = await this.accounts.accountForAsync(repository.host, repository.path, signal);
     return GitHubAccess.answerOf(id === null ? this.accounts.first : this.accounts.signInOf(id));
   }

@@ -272,6 +272,30 @@ describe("RuntimePart", () => {
     assert.ok([...linesOf(signedIn.fake.log), ...linesOf(signedOut.fake.log)].every(t => !t.includes("gho_token")));
   });
 
+  it("lets git-github.access read a folder's remote through the Git module, so its user name chooses the account on the first call", async () => {
+    const github = new FakeGitHub();
+    github.answer(FakeGitHub.json({ login: "octocat", name: null, avatar_url: null }, 200, { "X-OAuth-Scopes": "repo" }),
+      FakeGitHub.json({ login: "hubot", name: null, avatar_url: null }, 200, { "X-OAuth-Scopes": "repo" }));
+    vi.stubGlobal("fetch", github.fetch);
+    const part = new RuntimePart();
+    const context = new RuntimeContext();
+    const repositories = new FakeRepositories();
+    context.secrets.values.set("git-github.signIn", JSON.stringify({ token: "gho_octocat", account: new HostAccount("octocat", null, null, ["repo"]).toJson() }));
+    context.secrets.values.set("git-github.account2", JSON.stringify({ token: "gho_hubot", account: new HostAccount("hubot", null, null, ["repo"]).toJson() }));
+    context.secrets.values.set("git-github.accounts", JSON.stringify({ accounts: [{ id: 2, host: "github.com", login: "hubot" }], picks: [] }));
+    repositories.users.set("origin", "hubot");
+    context.services.set("git.repositories", repositories);
+
+    await part.activateAsync(context.fake);
+    await github.askedAsync(2);
+    const access = context.published("git-github.access");
+    assert.ok(access instanceof GitHubAccess);
+    const answer = await access.accessForAsync({ host: "github.com", path: "octocat/hello-world", folder: "/home/monalisa/hello-world" }, new AbortController().signal);
+    await part.deactivateAsync();
+
+    assert.deepEqual([answer, repositories.userReads], [new GitHubAccessGrant("gho_hubot", "hubot"), [["/home/monalisa/hello-world", "origin"]]]);
+  });
+
   it("serves the reads through its methods, signed out as no answer, and refuses a request that isn't the protocol's as InvalidParams", async () => {
     const github = new FakeGitHub();
     vi.stubGlobal("fetch", github.fetch);

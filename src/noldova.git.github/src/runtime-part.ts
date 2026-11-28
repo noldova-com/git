@@ -22,6 +22,7 @@ import { GitHubAccounts } from "./services/github-accounts.ts";
 import { GitHubApi } from "./services/github-api.ts";
 import { GitHubAvatars } from "./services/github-avatars.ts";
 import { GitHubDeviceFlow } from "./services/github-device-flow.ts";
+import { GitHubFolderUsers } from "./services/github-folder-users.ts";
 import { GitHubReads } from "./services/github-reads.ts";
 import { GitHubTools } from "./tools/github-tools.ts";
 
@@ -117,7 +118,8 @@ export class RuntimePart implements IRuntimePart {
       handleAsync: async request => (await accounts.connectAsync(RuntimePart.read(RuntimePart.fromWindow(request, Resources.tokenNotFromWindowMessage),
         TokenConnect.fromJson), request.signal)).toJson()
     });
-    context.publishService(GitHubNames.accessService, new GitHubAccess(accounts));
+    context.publishService(GitHubNames.accessService, new GitHubAccess(accounts,
+      new GitHubFolderUsers(accounts, () => context.getService(GitNames.repositoriesService, GitRepositories))));
     const tools = new GitHubTools(reads, accounts, () => context.getService(GitNames.repositoriesService, GitRepositories));
     this.context = context;
     this.accounts = accounts;

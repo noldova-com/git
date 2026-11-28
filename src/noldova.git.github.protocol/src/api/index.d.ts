@@ -358,21 +358,25 @@ export interface IGitHubAccess {
   accessAsync(signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal>;
 
   /**
-   * Answers the token and login of the account the module reads the repository with, as a `GitHubAccessGrant`: the one the person chose for it,
-   * else the first signed-in account that can read it, else the first signed-in account. With none signed in, it answers why, as
-   * `accessAsync` does for the first account.
+   * Answers the token and login of the account the module reads the repository with, as a `GitHubAccessGrant`: the signed-in account whose login
+   * is the user name in the repository's remote address, else the one the person chose for it, else the only one, else the first signed-in account
+   * that can read it, else the first signed-in account. With none signed in, it answers why, as `accessAsync` does for the first account.
+   * Given the folder of a checkout, it first reads the user name in that folder's remote, so the name counts on the first call; without one, the name
+   * counts only once the module's window or tools read that repository's remote.
    *
-   * @param repository The repository's host, such as `github.com`, and its path, such as `octocat/hello-world`.
+   * @param repository The repository's host, such as `github.com`, and its path, such as `octocat/hello-world`; and, optionally, the absolute `folder`
+   * of a checkout of it and the name of its `remote`, `origin` by default. A folder whose remote isn't on that host and path, or that has no remote
+   * of that name, adds nothing; the user name never leaves the module.
    * @param signal Withdraws the call: an aborted signal rejects with its reason.
    * @example
    * ```ts
    * import type { IGitHubAccess } from "@noldova/git.github.protocol";
    *
    * export async function loginForAsync(access: IGitHubAccess, signal: AbortSignal): Promise<string | null> {
-   *   const answer = await access.accessForAsync({ host: "github.com", path: "octocat/hello-world" }, signal);
+   *   const answer = await access.accessForAsync({ host: "github.com", path: "octocat/hello-world", folder: "/home/kim/hello-world" }, signal);
    *   return "login" in answer ? answer.login : null;
    * }
    * ```
    */
-  accessForAsync(repository: { readonly host: string; readonly path: string }, signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal>;
+  accessForAsync(repository: { readonly host: string; readonly path: string; readonly folder?: string; readonly remote?: string }, signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal>;
 }

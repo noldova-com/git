@@ -347,6 +347,10 @@ export class GitHubAccounts implements IGitHubTokens {
     return signIn.account === null ? null : signIn.account.login.toLowerCase();
   }
 
+  public static isSameKey(host: string, path: string, otherHost: string, otherPath: string): boolean {
+    return GitHubAccounts.keyOf(host, path) === GitHubAccounts.keyOf(otherHost, otherPath);
+  }
+
   private static keyOf(host: string, path: string): string {
     const key: string = Resources.formatDraftSubject(host, path).toLowerCase();
     return key.endsWith(Resources.gitSuffix) ? key.slice(0, -Resources.gitSuffix.length) : key;
