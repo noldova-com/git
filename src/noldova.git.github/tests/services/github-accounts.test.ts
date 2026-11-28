@@ -225,6 +225,57 @@ describe("GitHubAccounts", () => {
     assert.deepEqual([rig.accounts.list.accounts.map(t => t.id), rig.changes, rig.index()], [[1], ["2 Waiting", "2 SignedOut"], undefined]);
   });
 
+  it("keeps an account added while a restore waits, its sign-in still running once the restore ends", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat"]);
+    const restored = rig.github.hold();
+    const restoring = rig.accounts.restoreAsync();
+    await rig.github.askedAsync(1);
+    const granted = rig.github.hold();
+
+    const adding = rig.accounts.addAsync();
+    await rig.github.askedAsync(2);
+    restored(userOf("octocat"));
+    await restoring;
+    granted(FakeGitHub.json(grant));
+    const added = await adding;
+
+    assert.deepEqual([added.id, added.signIn.state, rig.accounts.list.accounts.map(t => [t.id, t.signIn.state])],
+      [2, SignInState.Waiting, [[1, SignInState.SignedIn], [2, SignInState.Waiting]]]);
+  });
+
+  it("gives an account added while the restore reads the index an id the index doesn't name", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat", "hubot"]);
+    const read = rig.store.holdRead();
+    const held = [rig.github.hold(), rig.github.hold(), rig.github.hold()];
+    const restoring = rig.accounts.restoreAsync();
+
+    const adding = rig.accounts.addAsync();
+    read();
+    await rig.github.askedAsync(3);
+    rig.github.requests.forEach((request, index) => held[index]?.(request.url.includes("/login/device/code") ? FakeGitHub.json(grant)
+      : userOf(request.header("Authorization")?.includes("gho_hubot") === true ? "hubot" : "octocat")));
+    await restoring;
+    const added = await adding;
+
+    assert.deepEqual([added.id, rig.accounts.list.accounts.map(t => [t.id, t.signIn.account?.login ?? null])], [3, [[1, "octocat"], [2, "hubot"], [3, null]]]);
+  });
+
+  it("keeps an index it can't read and the accounts' tokens, refusing an add and writing no pick over them", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat", "hubot"]);
+    rig.store.values.set("git-github.accounts", "{ not json");
+    await rig.restoreAsync(["octocat"]);
+
+    const refusal = await rig.accounts.addAsync().then(() => null, (error: unknown) => error instanceof MethodFailureException ? [error.failure.code, error.failure.message] : null);
+    await rig.accounts.pickAsync(new AccountPick("github.com", "octo/app", 1), new AbortController().signal);
+    await rig.savedAsync();
+
+    assert.deepEqual([refusal, rig.store.values.get("git-github.accounts"), rig.store.values.has("git-github.account2")], [[FailureCode.Unavailable,
+      "The GitHub accounts kept on this computer aren't read, so no account can be added until they are; the ones kept stay as they are."], "{ not json", true]);
+  });
+
   it("signs out an added account while the first stays signed in, forgetting its secret and its picks", async () => {
     const rig = new Rig();
     rig.keep(["octocat", "hubot"], [new AccountPick("github.com", REPOSITORY, 2)]);
@@ -689,6 +740,27 @@ describe("GitHubAccounts", () => {
       [3, [[1, null, "octocat"], [2, null, "hubot"], [3, SERVER, "monalisa"]]]);
     assert.deepEqual([JSON.parse(rig.store.values.get("git-github.account2") ?? "{}").token, rig.github.requests.filter(t => t.url.includes(SERVER))
       .map(t => t.header("Authorization"))], ["gho_hubot", ["Bearer ghp_monalisa"]]);
+  });
+
+  it("restores an Enterprise account the index names on its own server while an account is added beside it", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat", "monalisa"]);
+    rig.store.values.set("git-github.accounts", JSON.stringify({ accounts: [{ id: 2, host: SERVER, login: "monalisa" }], picks: [] }));
+    const read = rig.store.holdRead();
+    const held = [rig.github.hold(), rig.github.hold(), rig.github.hold()];
+    const restoring = rig.accounts.restoreAsync();
+
+    const adding = rig.accounts.addAsync();
+    read();
+    await rig.github.askedAsync(3);
+    rig.github.requests.forEach((request, index) => held[index]?.(request.url.includes("/login/device/code") ? FakeGitHub.json(grant)
+      : userOf(request.url.includes(SERVER) ? "monalisa" : "octocat")));
+    await restoring;
+    const added = await adding;
+
+    assert.deepEqual([added.id, rig.accounts.list.accounts.map(t => [t.id, t.place, t.signIn.account?.login ?? null])],
+      [3, [[1, null, "octocat"], [2, SERVER, "monalisa"], [3, null, null]]]);
+    assert.deepEqual(rig.github.requests.filter(t => t.header("Authorization")?.includes("gho_monalisa") === true).map(t => t.url), [`https://${SERVER}/api/v3/user`]);
   });
 
   it("refuses a connect while the index can't be read, asking no server and keeping the accounts' tokens", async () => {
