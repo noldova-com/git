@@ -29,6 +29,16 @@ const grant = { device_code: "3584d83530557fdd1f46af8289938c8ef79f9dc5", user_co
 const account: HostAccount = new HostAccount("octocat", "The Octocat", null, ["repo"]);
 const avatarUrl: string = "https://avatars.githubusercontent.com/u/583231";
 
+class Caller {
+  public readonly client: string;
+  public readonly window: number | null;
+
+  public constructor(client: string, window: number | null) {
+    this.client = client;
+    this.window = window;
+  }
+}
+
 class Calls {
   public static async callAsync(context: RuntimeContext, name: string, payload: JsonValue = null, client: string = "git-github",
     window: number | null = null): Promise<JsonValue> {
@@ -440,8 +450,8 @@ describe("RuntimePart", () => {
 
     await part.activateAsync(context.fake);
     const refusals: (readonly string[] | null)[] = [];
-    for (const [client, window] of [["cli", null], ["chat", 1], [ShellClients.mainProcess, null]] as const)
-      refusals.push(await Calls.callAsync(context, "git-github.createPullRequest", draft, client, window).then(() => null, Calls.failureOf));
+    for (const caller of [new Caller("cli", null), new Caller("chat", 1), new Caller(ShellClients.mainProcess, null)])
+      refusals.push(await Calls.callAsync(context, "git-github.createPullRequest", draft, caller.client, caller.window).then(() => null, Calls.failureOf));
     const requestsBefore = github.requests.length;
     const made = await Calls.callAsync(context, "git-github.createPullRequest", draft, ShellClients.mainProcess, 1);
     await part.deactivateAsync();
