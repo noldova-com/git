@@ -29,6 +29,7 @@ export class GitHubNames {
   public static readonly readCommitPullRequestMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.readCommitPullRequestMethod);
   public static readonly readAccountsMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.readAccountsMethod);
   public static readonly addAccountMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.addAccountMethod);
+  public static readonly signInWithTokenMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.signInWithTokenMethod);
   public static readonly readRepositoryAccountMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.readRepositoryAccountMethod);
   public static readonly pickAccountMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.pickAccountMethod);
   public static readonly useFolderMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.useFolderMethod);

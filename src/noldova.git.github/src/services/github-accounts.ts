@@ -11,11 +11,14 @@ import { FailureCode, SecretFailureReason, SecretFailures } from "@noldova/deskt
 import { type IAppWindows, type IModuleLog, type IModuleSecrets, MethodFailureException } from "@noldova/desktop.runtime";
 import { AccountPick, HostAccountEntry, HostAccountList, HostingProtocolException, type HostSignIn, RepositoryAccount, SignInState } from "@noldova/git.hosting.protocol";
 
+import { GitHubException } from "../exceptions/github.exception.ts";
 import type { IGitHubTokens } from "../interfaces/i-github-tokens.ts";
+import type { AccountRead } from "../models/account-read.ts";
 import { GitHubRepository } from "../models/github-repository.ts";
 import { KeptAccount } from "../models/kept-account.ts";
 import { KeptAccounts } from "../models/kept-accounts.ts";
 import { SignedInAccount } from "../models/signed-in-account.ts";
+import type { TokenConnect } from "../models/token-connect.ts";
 import { Resources } from "../resources.ts";
 import { GitHubApi } from "./github-api.ts";
 import type { GitHubDeviceFlow } from "./github-device-flow.ts";
@@ -33,8 +36,11 @@ export class GitHubAccounts implements IGitHubTokens {
   private readonly entries: Map<number, GitHubSignIn> = new Map();
   private readonly found: Map<string, Promise<number>> = new Map();
   private readonly users: Map<string, string> = new Map();
+  private readonly dropping: Map<number, Promise<void>> = new Map();
   private picks: readonly AccountPick[] = [];
   private kept: string | null = null;
+  private isIndexRead: boolean = false;
+  private reading: Promise<KeptAccounts | null> = Promise.resolve(null);
   private saving: Promise<void> = Promise.resolve();
   private unfollowWindows: (() => void) | null = null;
   private stopped: boolean = false;
@@ -55,7 +61,8 @@ export class GitHubAccounts implements IGitHubTokens {
   }
 
   public get list(): HostAccountList {
-    return new HostAccountList([...this.entries].map(([id, signIn]) => new HostAccountEntry(id, signIn.current)));
+    return new HostAccountList([...this.entries].map(([id, signIn]) => new HostAccountEntry(id, signIn.current,
+      signIn.host === Resources.host ? null : signIn.host)));
   }
 
   public get signedIn(): readonly SignedInAccount[] {
@@ -63,7 +70,7 @@ export class GitHubAccounts implements IGitHubTokens {
     for (const [id, signIn] of this.entries) {
       const token: string | null = signIn.token;
       const login: string | undefined = signIn.current.account?.login;
-      if (token !== null && login !== undefined)
+      if (token !== null && login !== undefined && signIn.host === Resources.host)
         accounts.push(new SignedInAccount(id, login, token));
     }
     return accounts;
@@ -72,12 +79,13 @@ export class GitHubAccounts implements IGitHubTokens {
   public async restoreAsync(): Promise<void> {
     if (this.stopped)
       return;
-    const kept: KeptAccounts | null = await this.readKeptAsync();
+    this.reading = this.readKeptAsync();
+    const kept: KeptAccounts | null = await this.reading;
     if (this.stopped)
       return;
     for (const account of kept?.accounts ?? []) {
       if (!this.entries.has(account.id))
-        this.entries.set(account.id, this.make(account.id));
+        this.entries.set(account.id, this.make(account.id, account.host));
     }
     this.picks = kept?.picks ?? [];
     await Promise.all([...this.entries.values()].map(t => t.restoreAsync()));
@@ -100,6 +108,29 @@ export class GitHubAccounts implements IGitHubTokens {
     const signIn: GitHubSignIn = this.make(id);
     this.entries.set(id, signIn);
     return new HostAccountEntry(id, await signIn.startAsync());
+  }
+
+  public async connectAsync(connect: TokenConnect, signal: AbortSignal): Promise<HostAccountEntry> {
+    const host: string = connect.host.toLowerCase();
+    if (!Resources.enterpriseHostPattern.test(host) || host === Resources.host)
+      throw GitHubApi.failure(FailureCode.InvalidParams, Resources.enterpriseHostMessage);
+    await this.reading;
+    if (!this.isIndexRead)
+      throw GitHubApi.failure(FailureCode.Unavailable, Resources.accountsUnreadMessage);
+    const read: AccountRead = await this.readTokenAsync(host, connect.token, signal);
+    if (read.account.scopes.length > 0 && !read.account.scopes.includes(Resources.scope))
+      throw GitHubApi.failure(FailureCode.Unauthorized, Resources.formatScopeMissing(host));
+    const id: number = Math.max(...this.entries.keys()) + 1;
+    const signIn: GitHubSignIn = this.make(id, host);
+    this.entries.set(id, signIn);
+    await signIn.adoptAsync(connect.token, read, signal);
+    await this.dropping.get(id);
+    const answer: HostSignIn = signIn.current;
+    if (answer.state !== SignInState.SignedIn && this.entries.has(id)) {
+      this.leave(id);
+      this.publish(id, answer);
+    }
+    return new HostAccountEntry(id, answer, host);
   }
 
   public async signOutAsync(id: number): Promise<HostSignIn> {
@@ -187,9 +218,24 @@ export class GitHubAccounts implements IGitHubTokens {
       signIn.dispose();
   }
 
-  private make(id: number): GitHubSignIn {
+  private make(id: number, host: string = Resources.host): GitHubSignIn {
     const secret: string = id === GitHubAccounts.firstId ? Resources.signInSecret : Resources.formatAccountSecret(id);
-    return new GitHubSignIn(this.flow, this.secrets, this.appWindows, this.log, t => this.onChanged(id, t), secret);
+    return new GitHubSignIn(this.flow, this.secrets, this.appWindows, this.log, t => this.onChanged(id, t), secret, host);
+  }
+
+  private async readTokenAsync(host: string, token: string, signal: AbortSignal): Promise<AccountRead> {
+    let read: AccountRead | null;
+    try {
+      read = await this.flow.readAccountAsync(token, signal, host);
+    }
+    catch (error) {
+      if (!(error instanceof GitHubException))
+        throw error;
+      throw GitHubApi.failure(FailureCode.Unavailable, Resources.formatServerUnreachable(host));
+    }
+    if (read === null)
+      throw GitHubApi.failure(FailureCode.Unauthorized, Resources.formatTokenRefused(host));
+    return read;
   }
 
   private onChanged(id: number, signIn: HostSignIn): void {
@@ -211,8 +257,10 @@ export class GitHubAccounts implements IGitHubTokens {
   }
 
   private twinOf(id: number, signIn: HostSignIn): number | undefined {
+    const host: string = this.signInOf(id).host;
     const login: string | null = GitHubAccounts.loginOf(signIn);
-    const other: number | undefined = login === null ? undefined : [...this.entries.keys()].find(t => t !== id && GitHubAccounts.loginOf(this.signInOf(t).current) === login);
+    const other: number | undefined = login === null ? undefined : [...this.entries].find(([t, entry]) => t !== id && entry.host === host
+      && GitHubAccounts.loginOf(entry.current) === login)?.[0];
     if (other === undefined)
       return undefined;
     return id === GitHubAccounts.firstId ? other : id;
@@ -221,12 +269,14 @@ export class GitHubAccounts implements IGitHubTokens {
   private drop(id: number): void {
     const signIn: GitHubSignIn = this.signInOf(id);
     this.log.write(Resources.accountAlreadyKept);
-    Promise.resolve().then(() => signIn.alreadyKeptAsync()).catch((error: unknown) => this.log.write(Resources.formatSignInBroken(String(error))));
+    this.dropping.set(id, Promise.resolve().then(() => signIn.alreadyKeptAsync())
+      .catch((error: unknown) => this.log.write(Resources.formatSignInBroken(String(error)))));
   }
 
   private leave(id: number): void {
     this.signInOf(id).dispose();
     this.entries.delete(id);
+    this.dropping.delete(id);
     this.picks = this.picks.filter(t => t.account !== id);
   }
 
@@ -270,10 +320,14 @@ export class GitHubAccounts implements IGitHubTokens {
       return null;
     }
     this.kept = kept;
-    if (kept === null)
+    if (kept === null) {
+      this.isIndexRead = true;
       return null;
+    }
     try {
-      return KeptAccounts.fromJson(JsonReader.parseValue(kept));
+      const read: KeptAccounts = KeptAccounts.fromJson(JsonReader.parseValue(kept));
+      this.isIndexRead = true;
+      return read;
     }
     catch (error) {
       if (!(error instanceof JsonException || error instanceof HostingProtocolException))
@@ -294,7 +348,7 @@ export class GitHubAccounts implements IGitHubTokens {
     for (const [id, signIn] of this.entries) {
       const login: string | null = signIn.current.account?.login ?? null;
       if (id !== GitHubAccounts.firstId && (login !== null || signIn.keptUnreadable))
-        accounts.push(new KeptAccount(id, Resources.host, login));
+        accounts.push(new KeptAccount(id, signIn.host, login));
     }
     const value: string = JSON.stringify(new KeptAccounts(accounts, this.picks).toJson());
     if (this.stopped || value === this.kept || (this.kept === null && accounts.length === 0 && this.picks.length === 0))

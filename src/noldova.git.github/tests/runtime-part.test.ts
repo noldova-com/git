@@ -14,7 +14,8 @@ import { MethodFailureException, RequestContext, ToolFailure, ToolFailureCode } 
 import { GitHubAccessGrant, GitHubAccessRefusal } from "@noldova/git.github.protocol";
 import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
 import { AuthorQuery, BranchPullRequest, BranchQuery, CommitQuery, DeviceCode, HostAccount, HostComment, HostCommitComments, HostItem, HostPerson, HostPullRequestList,
-  HostPullRequestThreads, HostReference, HostReviewRequestList, HostSignIn, HostThread, PullRequestDraft, RepositoryQuery, ThreadStatus } from "@noldova/git.hosting.protocol";
+  HostPullRequestThreads, HostReference, HostReviewRequestList, HostSignIn, HostThread, PullRequestDraft, RepositoryQuery, SignInFailure,
+  ThreadStatus } from "@noldova/git.hosting.protocol";
 import { afterEach, describe, it, vi } from "vitest";
 
 import { RuntimePart } from "../src/api/index.ts";
@@ -106,7 +107,7 @@ describe("RuntimePart", () => {
       "git-github.readReference", "git-github.readBranchPullRequest", "git-github.readAuthorAvatar", "git-github.readPullRequests", "git-github.readReviewRequests",
       "git-github.readCommitComments", "git-github.readPullRequest", "git-github.readPullRequestThreads", "git-github.readCommitPullRequest",
       "git-github.createPullRequest", "git-github.readAccounts", "git-github.addAccount", "git-github.readRepositoryAccount", "git-github.pickAccount",
-      "git-github.useFolder"]);
+      "git-github.useFolder", "git-github.signInWithToken"]);
     assert.deepEqual(answers, [HostSignIn.signedOut().toJson(), waiting, HostSignIn.signedOut().toJson(), HostSignIn.signedOut().toJson()]);
     assert.deepEqual([context.events.get("git-github.signInChanged"), github.urls()], [[waiting, HostSignIn.signedOut().toJson()], ["https://github.com/login/device/code"]]);
   });
@@ -186,6 +187,30 @@ describe("RuntimePart", () => {
     assert.deepEqual([used, read, offHost, forgotten], [{ account: 2, isNamedByRemote: true }, { account: 2, isNamedByRemote: true },
       [{ account: null }, { account: null }, { account: null }], { account: 1 }]);
     assert.deepEqual(repositories.userReads, [["/home/monalisa/hello-world", "origin"], ["/home/monalisa/hello-world", "origin"]]);
+  });
+
+  it("connects a GitHub Enterprise account with a window's token, answers a second connect of it as already kept, and refuses a request that isn't "
+    + "a window's or that misses a field", async () => {
+    const github = new FakeGitHub();
+    const mona = (): Response => FakeGitHub.json({ login: "monalisa", name: null, avatar_url: null }, 200, { "X-OAuth-Scopes": "repo" });
+    github.answer(mona(), mona());
+    vi.stubGlobal("fetch", github.fetch);
+    const part = new RuntimePart();
+    const context = new RuntimeContext();
+    const connect = { host: "ghe.example.com", token: "ghp_monalisa" };
+
+    await part.activateAsync(context.fake);
+    const refused = await Promise.all([callAsync(context, "git-github.signInWithToken", connect, "git-github"),
+      callAsync(context, "git-github.signInWithToken", { host: "ghe.example.com" }, ShellClients.mainProcess, 1)].map(t => t.then(() => null, failureOf)));
+    const connected = await callAsync(context, "git-github.signInWithToken", connect, ShellClients.mainProcess, 1);
+    const again = await callAsync(context, "git-github.signInWithToken", { host: "ghe.example.com", token: "ghp_again" }, ShellClients.mainProcess, 1);
+    await part.deactivateAsync();
+
+    assert.deepEqual(refused.map(t => t?.[0]), [FailureCode.Unauthorized, FailureCode.InvalidParams]);
+    assert.deepEqual([refused[0]?.[1], connected, github.urls().at(-1)], ["Only a window can sign in with a token.",
+      { id: 2, signIn: HostSignIn.signedIn(new HostAccount("monalisa", null, null, ["repo"])).toJson(), place: "ghe.example.com" },
+      "https://ghe.example.com/api/v3/user"]);
+    assert.deepEqual(again, { id: 3, signIn: HostSignIn.signedOut(SignInFailure.AlreadyKept).toJson(), place: "ghe.example.com" });
   });
 
   it("passes on a failure to reach the Git module that isn't its absence", async () => {

@@ -16,6 +16,8 @@ import { GitAvatars, GitHostAccounts, GitHostCard, GitHostCardState, GitHostFeat
 
 import { GitHubHostRowComponent } from "../components/github-host-row/github-host-row.component.ts";
 import { GitHubAccountsComponent } from "../components/github-accounts/github-accounts.component.ts";
+import { GitHubEnterpriseComponent } from "../components/github-enterprise/github-enterprise.component.ts";
+import type { EnterpriseEntry } from "../models/enterprise-entry.ts";
 import { Resources } from "../../resources.ts";
 import { AccountEvents } from "./account-events.ts";
 import { GitHubAccountList } from "./github-account-list.ts";
@@ -28,7 +30,9 @@ export class GitHubWindowPart implements IWindowPart {
   private context: IWindowPartContext | null = null;
   private withdraw: (() => void) | null = null;
   private withdrawAccount: (() => void) | null = null;
+  private withdrawEnterprise: (() => void) | null = null;
   private readonly cards: WritableSignal<readonly GitHostCard[]> = signal(GitHubWindowPart.firstCards());
+  private readonly enterpriseCards: WritableSignal<readonly GitHostCard[]> = signal(GitHubWindowPart.enterpriseCardsOf([]));
   private unfollow: (() => void) | null = null;
   private withdrawLinks: (() => void) | null = null;
   private changes: number = 0;
@@ -73,6 +77,9 @@ export class GitHubWindowPart implements IWindowPart {
     this.cards.set(GitHubWindowPart.firstCards());
     this.withdrawAccount = GitHostAccounts.provide(context, { id: Resources.accountId, host: Resources.hostName, column: Resources.hostColumn, mark: Resources.hostMark, markColor: Resources.hostColor,
       cards: this.cards.asReadonly(), signIn: GitHubAccountsComponent, features: [GitHostFeature.PullRequests, GitHostFeature.BuildsOnCommits] });
+    this.withdrawEnterprise = GitHostAccounts.provide(context, { id: Resources.enterpriseAccountId, host: Resources.enterpriseHostName,
+      column: Resources.enterpriseColumn, mark: Resources.hostMark, markColor: Resources.hostColor, cards: this.enterpriseCards.asReadonly(),
+      signIn: GitHubEnterpriseComponent, features: [] });
     this.unfollow = AccountEvents.follow(context, list => {
       this.changes++;
       this.showList(context, list);
@@ -92,6 +99,8 @@ export class GitHubWindowPart implements IWindowPart {
     this.withdraw = null;
     this.withdrawAccount?.();
     this.withdrawAccount = null;
+    this.withdrawEnterprise?.();
+    this.withdrawEnterprise = null;
     this.withdrawLinks?.();
     this.withdrawLinks = null;
     this.unfollow?.();
@@ -109,6 +118,18 @@ export class GitHubWindowPart implements IWindowPart {
 
   private static cardsOf(list: HostAccountList): GitHostCard[] {
     return list.accounts.map(t => GitHubWindowPart.cardOf(t.id, t.signIn));
+  }
+
+  private static enterpriseCardsOf(entries: readonly EnterpriseEntry[]): GitHostCard[] {
+    if (entries.length === 0)
+      return [new GitHostCard(Resources.enterpriseHostName, Resources.enterpriseCardNote, GitHostCardState.SignedOut, Resources.connectAction)];
+    return entries.map(t => {
+      const account = t.signIn.account;
+      return Object.isNull(account)
+        ? new GitHostCard(t.host, Resources.enterpriseCardNote, GitHostCardState.SignedOut, Resources.connectAction, String(t.id))
+        : new GitHostCard(account.name ?? account.login, Resources.formatServerDetail(account.login, t.host), GitHostCardState.SignedIn, Resources.signedIn,
+          String(t.id), account);
+    });
   }
 
   private static cardOf(id: number, signIn: HostSignIn | null): GitHostCard {
@@ -146,8 +167,10 @@ export class GitHubWindowPart implements IWindowPart {
   private showList(context: IWindowPartContext, list: HostAccountList): void {
     if (this.context !== context)
       return;
-    GitHubAccountList.show(context, list);
-    this.cards.set(GitHubWindowPart.cardsOf(list));
+    const gitHub: HostAccountList = GitHubAccountList.gitHubOf(list);
+    GitHubAccountList.show(context, gitHub);
+    this.cards.set(GitHubWindowPart.cardsOf(gitHub));
+    this.enterpriseCards.set(GitHubWindowPart.enterpriseCardsOf(GitHubAccountList.enterpriseOf(list)));
   }
 
   private showCards(context: IWindowPartContext, cards: GitHostCard[]): void {

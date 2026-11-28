@@ -10,6 +10,8 @@ export class Resources {
   public static readonly deviceCodeUrl: string = "https://github.com/login/device/code";
   public static readonly accessTokenUrl: string = "https://github.com/login/oauth/access_token";
   public static readonly userUrl: string = "https://api.github.com/user";
+  public static readonly enterpriseHostMessage: string = "Type the GitHub Enterprise server's name, such as github.example.com; github.com signs in with Sign in to GitHub.";
+  public static readonly tokenNotFromWindowMessage: string = "Only a window can sign in with a token.";
   public static readonly scope: string = "repo";
   public static readonly grantType: string = "urn:ietf:params:oauth:grant-type:device_code";
   public static readonly signInSecret: string = "git-github.signIn";
@@ -19,6 +21,7 @@ export class Resources {
   public static readonly unknownAccountMessage: string = "This GitHub account isn't kept on this computer any more.";
   public static readonly keptAccountsUnreadable: string = "The GitHub accounts kept on this computer couldn't be read; only the first account was restored.";
   public static readonly accountAlreadyKept: string = "An added GitHub account signed in as an account already kept here, so its token was forgotten and it ended signed out as already kept.";
+  public static readonly accountsUnreadMessage: string = "The GitHub accounts kept on this computer aren't read, so no account can be added until they are; the ones kept stay as they are.";
   public static readonly accountsNotKept: string = "The GitHub accounts couldn't be kept on this computer; added accounts and chosen accounts last until the app closes.";
   public static readonly accessSignedOutReason: string = "Sign in to GitHub in Settings, GitHub.";
   public static readonly accessUnreadableReason: string = "The GitHub sign-in kept on this computer couldn't be read; sign in again in Settings, GitHub.";
@@ -108,6 +111,7 @@ export class Resources {
   public static readonly authorField: string = "author";
   public static readonly loginField: string = "login";
   public static readonly hostField: string = "host";
+  public static readonly enterpriseHostPattern: RegExp = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+(?::[1-9][0-9]{0,4})?$/;
   public static readonly accountsField: string = "accounts";
   public static readonly picksField: string = "picks";
   public static readonly avatarUrlField: string = "avatar_url";
@@ -435,5 +439,21 @@ export class Resources {
 
   public static formatDraftSubject(host: string, path: string): string {
     return `${host}/${path}`;
+  }
+
+  public static formatUserUrl(host: string): string {
+    return host === Resources.host ? Resources.userUrl : `https://${host}/api/v3/user`;
+  }
+
+  public static formatTokenRefused(host: string): string {
+    return `${host} didn't accept the token. Check that it was copied whole, hasn't expired and has the ${Resources.scope} scope.`;
+  }
+
+  public static formatScopeMissing(host: string): string {
+    return `The token for ${host} doesn't have the ${Resources.scope} scope, which reading and opening pull requests needs. Create one with ${Resources.scope} ticked.`;
+  }
+
+  public static formatServerUnreachable(host: string): string {
+    return `${host} couldn't be reached. Check the server's name and the network, then connect again.`;
   }
 }

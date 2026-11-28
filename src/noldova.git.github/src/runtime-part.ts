@@ -15,6 +15,7 @@ import { GitHubNames } from "@noldova/git.github.protocol";
 import { GitNames, type GitRemote, GitRepositories } from "@noldova/git.protocol";
 
 import { SignInMethod } from "./models/sign-in-method.ts";
+import { TokenConnect } from "./models/token-connect.ts";
 import { Resources } from "./resources.ts";
 import { GitHubAccess } from "./services/github-access.ts";
 import { GitHubAccounts } from "./services/github-accounts.ts";
@@ -111,6 +112,10 @@ export class RuntimePart implements IRuntimePart {
         accounts.useUser(remote.host, remote.path, await repositories.readRemoteUserAsync(query.folder, query.remote, request.signal));
         return (await accounts.repositoryAccountAsync(remote.host, remote.path, request.signal)).toJson();
       }
+    });
+    context.registerMethod(GitHubNames.signInWithTokenMethod, {
+      handleAsync: async request => (await accounts.connectAsync(RuntimePart.read(RuntimePart.fromWindow(request, Resources.tokenNotFromWindowMessage),
+        TokenConnect.fromJson), request.signal)).toJson()
     });
     context.publishService(GitHubNames.accessService, new GitHubAccess(accounts));
     const tools = new GitHubTools(reads, accounts, () => context.getService(GitNames.repositoriesService, GitRepositories));

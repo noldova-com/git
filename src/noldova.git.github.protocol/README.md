@@ -2,7 +2,7 @@
 
 What the GitHub module's parts share:
 
-- `GitHubNames`: the module's id, Noldova's GitHub app's client id, the sign-in's, the reads', the pull request's and the accounts' method names (`readAccounts`, `addAccount`, `readRepositoryAccount`, `pickAccount` and `useFolder`), the `signInChanged` and `accountsChanged` events, the agent tools' names and the page where the person manages the app's access.
+- `GitHubNames`: the module's id, Noldova's GitHub app's client id, the sign-in's, the reads', the pull request's and the accounts' method names (`readAccounts`, `addAccount`, `signInWithToken`, `readRepositoryAccount`, `pickAccount` and `useFolder`), the `signInChanged` and `accountsChanged` events, the agent tools' names and the page where the person manages the app's access.
 - `IGitHubAccess`, the `git-github.access` service through which another module's runtime part reads a token: `accessAsync` the first account's, and `accessForAsync` that of the account the module reads a repository with.
   Each answers a `GitHubAccessGrant` with the token, the account's login and its host, or a `GitHubAccessRefusal` saying why there is none.
 
