@@ -78,7 +78,7 @@ describe("GitWindowPart", () => {
     expect([context.activeCallsOf("onEvent").length, context.activeCallsOf("provideUndo").length]).toEqual([0, 0]);
   });
 
-  it("registers only the views, documents and commands its module declares", async () => {
+  it("registers only the views, documents and commands its module declares, Across repositories as a document and no longer as a view, so the app keeps a saved layout's old dock tab of it hidden", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     context.allow("provideUndo");
     const views: string[] = [];
@@ -105,6 +105,7 @@ describe("GitWindowPart", () => {
     onTestFinished(() => part.deactivateAsync());
 
     expect([views, documents, commands]).toEqual([manifest.contributes.views, manifest.contributes.documents, manifest.contributes.commands]);
+    expect([views.includes("git.workspaceAcross"), documents.includes("git.workspaceAcross")]).toEqual([false, true]);
   });
 
   it("gives the Git view Gravatar's pictures as the fallback while it is active", async () => {
