@@ -88,6 +88,10 @@
   font-weight: var(--nol-weight-emphasis);
 }
 
+.mark.person {
+  flex-shrink: 0;
+}
+
 .text {
   display: flex;
   flex-direction: column;

@@ -11,12 +11,13 @@ import "@noldova/context.core";
 import { type IWindowPartContext, RuntimeRequestException, WindowException } from "@noldova/desktop.window";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { BranchPullRequest, CheckState, CommitQuery, HostCommitComments, type HostItem, HostPullRequestList, type HostPullRequestRow, type HostReviewRequest,
-  HostReviewRequestList, ReferenceState, RepositoryQuery, ReviewDecision, SignInState } from "@noldova/git.hosting.protocol";
+  type HostAccountList, HostReviewRequestList, ReferenceState, RepositoryQuery, ReviewDecision, SignInState } from "@noldova/git.hosting.protocol";
 import type { GitRemote } from "@noldova/git.protocol";
 import { GitBranchPullRequest, GitCommitComments, GitPullRequestList, GitPullRequestRow, GitPullRequestState, type IGitPullRequests } from "@noldova/git.window";
 
 import type { IRemotePlace } from "../interfaces/i-remote-place.ts";
 import { ReadQueue } from "../models/read-queue.ts";
+import { AccountEvents } from "./account-events.ts";
 import { SignInEvents } from "./sign-in-events.ts";
 import { Resources } from "../../resources.ts";
 
@@ -41,6 +42,8 @@ export class GitHubPullRequests implements IGitPullRequests {
   private readonly rereads: ReadQueue = new ReadQueue(Resources.gitHubReferenceReadLimit);
   private readonly context: IWindowPartContext;
   private readonly unfollow: () => void;
+  private readonly unfollowAccounts: () => void;
+  private states: ReadonlyMap<number, SignInState> = new Map();
 
   public readonly hostName: string = Resources.hostName;
   public readonly signInPage: string = Resources.accountsPage;
@@ -48,10 +51,12 @@ export class GitHubPullRequests implements IGitPullRequests {
   public constructor(context: IWindowPartContext) {
     this.context = context;
     this.unfollow = SignInEvents.follow(context, signIn => this.readAgain(signIn.state));
+    this.unfollowAccounts = AccountEvents.follow(context, list => this.readAgainFor(list));
   }
 
   public stop(): void {
     this.unfollow();
+    this.unfollowAccounts();
   }
 
   public claims(remote: GitRemote): boolean {
@@ -110,9 +115,21 @@ export class GitHubPullRequests implements IGitPullRequests {
       void this.readReviewsAsync(new RepositoryQuery(remote.host, remote.path));
   }
 
+  private readAgainFor(list: HostAccountList): void {
+    const states: ReadonlyMap<number, SignInState> = new Map(list.accounts.map(t => [t.id, t.signIn.state]));
+    const ids: ReadonlySet<number> = new Set([...states.keys(), ...this.states.keys()]);
+    const isChanged: boolean = [...ids].some(t => t !== Resources.firstAccount && states.get(t) !== this.states.get(t) && states.get(t) !== SignInState.Waiting);
+    this.states = states;
+    if (isChanged)
+      this.readAll();
+  }
+
   private readAgain(state: SignInState): void {
-    if (state === SignInState.Waiting)
-      return;
+    if (state !== SignInState.Waiting)
+      this.readAll();
+  }
+
+  private readAll(): void {
     for (const query of this.queries.values())
       void this.readAsync(query);
     for (const query of this.reviewQueries.values())
@@ -216,7 +233,7 @@ export class GitHubPullRequests implements IGitPullRequests {
 
   private static reviewRowOf(request: HostReviewRequest): GitPullRequestRow {
     return new GitPullRequestRow(request.reference.text, Resources.formatPullRequestLabel(request.reference.number), request.title, request.url, request.isDraft, 0,
-      0, 0, 0, "");
+      0, 0, 0, "", null, request.account);
   }
 
   private async readAsync(query: RepositoryQuery): Promise<void> {

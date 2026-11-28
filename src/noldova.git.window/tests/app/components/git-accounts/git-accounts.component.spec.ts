@@ -11,6 +11,7 @@ import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import "@noldova/context.core";
 import { type IWindowPartContext, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
+import { HostAccount } from "@noldova/git.hosting.protocol";
 import { afterEach, describe, expect, it, onTestFinished } from "vitest";
 
 import { GitAccountsComponent } from "../../../../src/app/components/git-accounts/git-accounts.component.ts";
@@ -21,16 +22,19 @@ import { GitHostCard } from "../../../../src/app/models/git-host-card.ts";
 import { GitHostAccounts } from "../../../../src/app/services/git-host-accounts.ts";
 
 const signInContexts: IWindowPartContext[] = [];
+const chosenAccounts: (string | null)[] = [];
 
 @Component({ selector: "nol-git-test-sign-in", template: "<p class=\"test-sign-in\">Sign-in</p>" })
 class TestSignInComponent {
   public constructor() {
     signInContexts.push(inject(WindowPartTokens.context));
+    chosenAccounts.push(inject(GitHostAccounts.chosenAccount));
   }
 }
 
 const signedOut: GitHostCard = new GitHostCard("GitHub", "Sign in to see pull requests.", GitHostCardState.SignedOut, "Sign in");
 const failed: GitHostCard = new GitHostCard("GitHub", "GitHub's sign-in couldn't be read.", GitHostCardState.Failed, "Sign in");
+const picture: string = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEElEQVR4nGNoCrgPRwzEcQC6IhsRLJyGqgAAAABJRU5ErkJggg==";
 const signedIn: GitHostCard = new GitHostCard("Azure DevOps · kim@example.com", "Signed in on this computer", GitHostCardState.SignedIn, "Signed in");
 const waiting: GitHostCard = new GitHostCard("Azure DevOps", "Finish signing in in the browser.", GitHostCardState.Waiting, "Waiting for the browser");
 
@@ -97,6 +101,7 @@ describe("GitAccountsComponent", () => {
 
   afterEach(() => {
     signInContexts.length = 0;
+    chosenAccounts.length = 0;
   });
 
   it("shows each host's cards with its mark, title and detail, a sign-in button while signed out or failed, and a chip and manage button otherwise", async () => {
@@ -138,8 +143,44 @@ describe("GitAccountsComponent", () => {
     const title: string[] = page.texts(".nol-dialog-title", document);
     await page.closeDialogAsync();
 
-    expect([title, signInContexts]).toEqual([["Sign in to GitHub"], [github]]);
+    expect([title, signInContexts, chosenAccounts]).toEqual([["Sign in to GitHub"], [github], [null]]);
     expect(signInContexts[0]).toBe(github);
+  });
+
+  it("opens the host's dialog on the account of the card whose button was clicked", async () => {
+    provide(github, accountOf("git-github.account", "GitHub", "GH", signal([
+      new GitHostCard("kim", "Signed in on this computer", GitHostCardState.SignedIn, "Signed in", "0", new HostAccount("kim", null, null, ["repo"])),
+      new GitHostCard("GitHub", "Sign in again to see pull requests.", GitHostCardState.Failed, "Sign in", "1")]), [GitHostFeature.PullRequests]));
+    const page: Page = new Page();
+    await page.fixture.whenStable();
+
+    await page.clickAsync(page.find(".card:nth-child(2) button[nol-button]"));
+    await page.untilAsync(() => !Object.isNull(page.dialog()?.querySelector(".test-sign-in")));
+    const failedTitle: string[] = page.texts(".nol-dialog-title", document);
+    await page.closeDialogAsync();
+    await page.clickAsync(page.find(".card:nth-child(1) button[nol-icon-button]"));
+    await page.untilAsync(() => !Object.isNull(page.dialog()?.querySelector(".test-sign-in")));
+    const signedInTitle: string[] = page.texts(".nol-dialog-title", document);
+    await page.closeDialogAsync();
+
+    expect([failedTitle, signedInTitle, chosenAccounts]).toEqual([["Sign in to GitHub"], ["GitHub account"], ["1", "0"]]);
+  });
+
+  it("shows a card's account by its picture, or its initial when it has none, in the host mark's place, and the host's mark on a card with no account", async () => {
+    provide(github, accountOf("git-github.account", "GitHub", "GH", signal([
+      new GitHostCard("Kim Lee", "kim · Signed in on this computer", GitHostCardState.SignedIn, "Signed in", "1", new HostAccount("kim", "Kim Lee", picture, ["repo"])),
+      new GitHostCard("lee", "Signed in on this computer", GitHostCardState.SignedIn, "Signed in", "2", new HostAccount("lee", null, null, ["repo"])),
+      new GitHostCard("GitHub", "Sign in to see pull requests.", GitHostCardState.SignedOut, "Sign in", "3")]), [GitHostFeature.PullRequests]));
+    const page: Page = new Page();
+    await page.fixture.whenStable();
+
+    const marks = [...page.element.querySelectorAll(".card .mark")].map(t => {
+      const picture: string | null = t.querySelector("img")?.getAttribute("src") ?? null;
+      return [t.classList.contains("person"), picture ?? (t.textContent ?? "").trim()];
+    });
+
+    expect([page.texts(".card-title"), marks]).toEqual([["Kim Lee", "lee", "GitHub"],
+      [[true, picture], [true, "L"], [false, "GH"]]]);
   });
 
   it("opens the host's account in a dialog titled for the account from a signed-in card's manage button", async () => {
@@ -176,7 +217,7 @@ describe("GitAccountsComponent", () => {
     await page.closeDialogAsync();
 
     expect([add.textContent?.trim(), add.hasAttribute("disabled")]).toEqual(["addAdd an account", false]);
-    expect([listed, title]).toEqual([["GitHub", "Azure DevOps"], ["Sign in to Azure DevOps"]]);
+    expect([listed, title, chosenAccounts]).toEqual([["GitHub", "Azure DevOps"], ["Sign in to Azure DevOps"], [null]]);
     expect(signInContexts[0]).toBe(azure);
   });
 

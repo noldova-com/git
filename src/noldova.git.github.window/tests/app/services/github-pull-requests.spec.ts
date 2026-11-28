@@ -12,7 +12,7 @@ import { FailureCode } from "@noldova/desktop.protocol";
 import { RuntimeRequestException } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitHubNames } from "@noldova/git.github.protocol";
-import { BranchPullRequest, CheckState, CommitQuery, DeviceCode, HostAccount, HostChanges, HostCheck, HostCommitComments, HostItem, HostPullRequestList,
+import { BranchPullRequest, CheckState, CommitQuery, DeviceCode, HostAccount, HostAccountEntry, HostAccountList, HostChanges, HostCheck, HostCommitComments, HostItem, HostPullRequestList,
   HostPullRequestRow, HostReference, HostReviewRequest, HostReviewRequestList, HostSignIn, ReferenceKind, ReferenceState, RepositoryQuery,
   ReviewDecision } from "@noldova/git.hosting.protocol";
 import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
@@ -276,6 +276,40 @@ describe("GitHubPullRequests", () => {
     host.pullRequests.refresh(FOLDER, hostless);
 
     expect([host.requests.methods, host.pullRequests.listFor(FOLDER, pathless)(), host.pullRequests.listFor(FOLDER, hostless)()]).toEqual([[], null, null]);
+  });
+
+  it("reads the lists again when an added account signs in, out or leaves, but not for the first account, a waiting sign-in or an unchanged list", async () => {
+    const host = new Host();
+    const kim = HostSignIn.signedIn(new HostAccount("kim", null, null, ["repo"]));
+    const waiting = HostSignIn.waiting(new DeviceCode("WDJB-MJHT", "https://github.com/login/device", 1_800_000_000_000));
+    const listOf = (...entries: [number, HostSignIn][]): HostAccountList => new HostAccountList(entries.map(([id, t]) => new HostAccountEntry(id, t)));
+    host.requests.answer(GitHubNames.readPullRequestsMethod, ...Array.from({ length: 4 }, () => HostPullRequestList.signedOut().toJson()));
+    await host.readAsync(remote, GitPullRequestsState.SignedOut);
+    const reads = (): number => host.requests.methods.length;
+    const counts: number[] = [];
+
+    for (const list of [listOf([1, kim]), listOf([1, HostSignIn.signedOut()]), listOf([1, kim], [2, waiting]), listOf([1, kim], [2, waiting]), listOf([1, kim], [2, kim]),
+      listOf([1, kim], [2, kim]), listOf([1, kim], [2, HostSignIn.signedOut()]), listOf([1, kim])]) {
+      host.context.raiseEvent(GitHubNames.accountsChangedEvent, list.toJson());
+      await Promise.allSettled(host.requests.answered);
+      counts.push(reads());
+    }
+    host.pullRequests.stop();
+
+    expect(counts).toEqual([1, 1, 1, 1, 2, 2, 3, 4]);
+    expect(host.context.activeCallsOf("onEvent")).toEqual([]);
+  });
+
+  it("keeps the account each review request was listed for on its row", async () => {
+    const host = new Host();
+    host.requests.answer(GitHubNames.readReviewRequestsMethod, new HostReviewRequestList([new HostReviewRequest(request.reference, request.title, request.url,
+      request.isDraft, request.createdAt, "kim")], false).toJson());
+    const reviews = host.pullRequests.reviewsFor(remote);
+
+    host.pullRequests.refreshReviews(remote);
+    await Host.untilAsync(reviews, GitPullRequestsState.Ready);
+
+    expect([reviews()?.rows.map(t => t.account), asked.account]).toEqual([["kim"], null]);
   });
 
   it("reads the remote's review requests into a list of its own, keyed by the remote, with no counts or branch, and says when the search was cut", async () => {

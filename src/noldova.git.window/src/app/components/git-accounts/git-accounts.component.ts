@@ -7,7 +7,8 @@
  */
 
 import { Component, inject, type Signal } from "@angular/core";
-import { ButtonComponent, ButtonVariant, ChipComponent, ChipKind, DialogService, IconButtonComponent, MenuComponent, MenuItemComponent, MenuTriggerDirective,
+import type { HostAccount } from "@noldova/git.hosting.protocol";
+import { AvatarComponent, ButtonComponent, ButtonVariant, ChipComponent, ChipKind, DialogService, IconButtonComponent, MenuComponent, MenuItemComponent, MenuTriggerDirective,
   TooltipDirective } from "@noldova/ui.components.angular";
 
 import { GitHostCardState } from "../../enums/git-host-card-state.ts";
@@ -20,7 +21,7 @@ import { GitAccountDialogComponent } from "../git-account-dialog/git-account-dia
 
 @Component({
   selector: "nol-git-accounts",
-  imports: [ButtonComponent, ChipComponent, IconButtonComponent, MenuComponent, MenuItemComponent, MenuTriggerDirective, TooltipDirective],
+  imports: [AvatarComponent, ButtonComponent, ChipComponent, IconButtonComponent, MenuComponent, MenuItemComponent, MenuTriggerDirective, TooltipDirective],
   templateUrl: "./git-accounts.component.html",
   styleUrl: "./git-accounts.component.css"
 })
@@ -39,14 +40,19 @@ export class GitAccountsComponent {
     return card.state === GitHostCardState.SignedIn ? ChipKind.On : ChipKind.Status;
   }
 
+  protected initialOf(person: HostAccount): string {
+    return person.login.charAt(0).toUpperCase();
+  }
+
   protected has(provided: IProvidedGitHostAccount, feature: GitHostFeature): boolean {
     return provided.account.features.includes(feature);
   }
 
-  protected open(provided: IProvidedGitHostAccount, title: string): void {
+  protected open(provided: IProvidedGitHostAccount, title: string, chosen: string | null = null): void {
     const dialog = this.dialogs.open(GitAccountDialogComponent);
     dialog.componentRef?.setInput(Resources.accountInput, provided);
     dialog.componentRef?.setInput(Resources.dialogTitleInput, title);
+    dialog.componentRef?.setInput(Resources.chosenAccountInput, chosen);
     dialog.componentInstance?.closed.subscribe(() => {
       dialog.close();
     });

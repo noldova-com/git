@@ -49,6 +49,7 @@ export class Resources {
   public static readonly featureYes: string = "Yes";
   public static readonly featureNo: string = "No";
   public static readonly accountInput: string = "account";
+  public static readonly chosenAccountInput: string = "chosen";
   public static readonly dialogTitleInput: string = "title";
   public static readonly accountRowPrefix: string = "git.account.";
   public static readonly hostFeatures: readonly GitHostFeature[] = Object.values(GitHostFeature);
@@ -919,11 +920,10 @@ export class Resources {
   public static readonly rebasePreviewDefaultGroup: number = 0;
   public static readonly rebasePreviewDefaultOrder: number = 60;
   public static readonly rebasePreviewEmpty: string = "Open an interactive rebase to preview it.";
-  public static readonly workspaceAcrossViewName: string = "git.workspaceAcross";
-  public static readonly workspaceAcrossViewInstance: string = "selected";
+  public static readonly workspaceAcrossDocumentName: string = "git.workspaceAcross";
+  public static readonly workspaceAcrossInstance: string = "selected";
   public static readonly workspaceAcrossIcon: IconName = "hub";
-  public static readonly workspaceAcrossDefaultGroup: number = 0;
-  public static readonly workspaceAcrossDefaultOrder: number = 70;
+  public static readonly openAcrossCommand: string = "git.openAcross";
   public static readonly workspaceAcrossEmpty: string = "Open a workspace to see its repositories together here.";
   public static readonly beforeCommitTitle: string = "Before you commit";
   public static readonly baseTitle: string = "Base";
@@ -1411,8 +1411,8 @@ export class Resources {
 
   public static readonly moreReviews: string = "More pull requests ask for your review than the host listed.";
 
-  public static formatReviewRequest(label: string, repository: string): string {
-    return `Review ${label} · ${repository}`;
+  public static formatReviewRequest(label: string, repository: string, account: string | null): string {
+    return Object.isNull(account) ? `Review ${label} · ${repository}` : `Review ${label} · ${repository} · ${account}`;
   }
 
   public static formatAgentWaiting(repository: string, name: string): string {

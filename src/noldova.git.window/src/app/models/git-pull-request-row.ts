@@ -18,9 +18,10 @@ export class GitPullRequestRow {
   public readonly pending: number;
   public readonly headBranch: string;
   public readonly baseBranch: string | null;
+  public readonly account: string | null;
 
   public constructor(key: string, label: string, title: string, url: string, isDraft: boolean, approvals: number, passed: number, failing: number, pending: number,
-    headBranch: string, baseBranch: string | null = null) {
+    headBranch: string, baseBranch: string | null = null, account: string | null = null) {
     this.key = key;
     this.label = label;
     this.title = title;
@@ -32,5 +33,6 @@ export class GitPullRequestRow {
     this.pending = pending;
     this.headBranch = headBranch;
     this.baseBranch = baseBranch;
+    this.account = account;
   }
 }

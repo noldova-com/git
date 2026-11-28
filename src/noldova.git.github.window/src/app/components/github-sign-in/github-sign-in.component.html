@@ -28,14 +28,11 @@ LICENSE file in the root directory of this source tree.
         <button type="button" nol-button class="nol-git-github-cancel" [variant]="secondary" [disabled]="isBusy()" (click)="cancelAsync()">{{ resources.cancel }}</button>
       </div>
     } @else if (current.account; as account) {
-      <div class="nol-git-github-heading">
-        <h3 class="nol-git-github-setting-title">{{ resources.accountTitle }}</h3>
-        <div class="nol-git-github-account">
-          <nol-avatar [name]="account.login" [image]="account.avatar" [initials]="initialOf(account)" [colorKey]="account.login" [decorative]="true" />
-          <span class="nol-git-github-account-text">
-            <span class="nol-git-github-strong">{{ account.login }}</span>
-            <span class="nol-git-github-muted nol-git-github-label">{{ accessOf(account) }}</span>
-          </span>
+      <div class="nol-git-github-account">
+        <nol-avatar [name]="account.login" [image]="account.avatar" [initials]="initialOf(account)" [colorKey]="account.login" [decorative]="true" />
+        <div class="nol-git-github-account-text">
+          <h3 class="nol-git-github-setting-title nol-git-github-strong">{{ nameOf(account) }}</h3>
+          <span class="nol-git-github-muted nol-git-github-label">{{ detailOf(account) }}</span>
         </div>
       </div>
       <div class="nol-git-github-row">

@@ -36,6 +36,7 @@ import { GitWindowPart } from "../../../src/app/services/git-window-part.ts";
 import { GitWorkspaces } from "../../../src/app/services/git-workspaces.ts";
 import { GitFixtures } from "../../fixtures/git-fixtures.fixture.ts";
 import { Resources } from "../../../src/resources.ts";
+import menus from "../../../../noldova.git/menus.json" with { type: "json" };
 import manifest from "../../../../noldova.git/module.json" with { type: "json" };
 
 @Component({ selector: "nol-git-test-sign-in", template: "" })
@@ -72,13 +73,13 @@ describe("GitWindowPart", () => {
     expect(answers).toEqual([false, true, true, false, false]);
     expect(GitAvatars.imageOf("/repository", "kim@example.com", "a1")).toBeNull();
     expect(context.calls.map(t => t.member)).toEqual(["registerView", "registerView", "registerView", "registerDocument", "registerDocument", "registerDocument", "registerView",
-      "registerView", "registerView", "registerView", "registerView", "onViewClosed", "onViewClosed", "onViewClosed", "registerCommand", "registerCommand", "registerCommand", "onViewClosed",
-      "registerDocument", "registerCommand", "registerSettingsPage", "setSettingsRows", "registerStatusBarItem",
+      "registerView", "registerView", "registerView", "onViewClosed", "onViewClosed", "registerCommand", "registerCommand", "registerCommand", "onViewClosed",
+      "registerDocument", "registerDocument", "registerCommand", "registerCommand", "registerSettingsPage", "setSettingsRows", "registerStatusBarItem",
       "registerStatusBarItem", "registerStatusBarItem", "onSettingChanged", "onSettingChanged", "onEvent", "provideUndo", "onEvent"]);
     expect([context.activeCallsOf("onEvent").length, context.activeCallsOf("provideUndo").length, context.activeCallsOf("onSettingChanged").length]).toEqual([0, 0, 0]);
   });
 
-  it("registers only the views, documents and commands its module declares", async () => {
+  it("registers only the views, documents and commands its module declares, Across repositories as a document and no longer as a view, so the app keeps a saved layout's old dock tab of it hidden", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     context.allow("provideUndo");
     const views: string[] = [];
@@ -106,6 +107,7 @@ describe("GitWindowPart", () => {
     onTestFinished(() => part.deactivateAsync());
 
     expect([views, documents, commands]).toEqual([manifest.contributes.views, manifest.contributes.documents, manifest.contributes.commands]);
+    expect([views.includes("git.workspaceAcross"), documents.includes("git.workspaceAcross")]).toEqual([false, true]);
   });
 
   it("gives the Git view Gravatar's pictures as the fallback while it is active", async () => {
@@ -149,7 +151,7 @@ describe("GitWindowPart", () => {
     expect([view?.name, view?.title, view?.icon, view?.defaultSide, view?.isShownByDefault, view?.padding, view?.defaultGroup, view?.defaultOrder])
       .toEqual(["git.view", "Git", "account_tree", DockSide.Right, true, ContentPadding.None, 0, 20]);
     expect(await view?.loadComponent()).toBe(GitViewComponent);
-    expect(context.callsOf("registerView")).toEqual([[view], [views[1]], [views[2]], [views[3]], [views[4]], [views[5]], [views[6]], [views[7]]]);
+    expect(context.callsOf("registerView")).toEqual([[view], [views[1]], [views[2]], [views[3]], [views[4]], [views[5]], [views[6]]]);
   });
 
   it("registers the repository view in the left dock's first group at order 20, after the Workspaces view, shown by default, with no padding, loading its component", async () => {
@@ -289,7 +291,7 @@ describe("GitWindowPart", () => {
     expect(context.callsOf("onViewClosed").map(t => t[0])).toContain("git.conflictDetail");
   });
 
-  it("registers the Rebase preview and Across repositories views with one instance each, in the right dock's first group after the Conflict view, hidden by default, with no padding, loading their components, and follows their closing", async () => {
+  it("registers the Rebase preview view with one instance, in the right dock's first group after the Conflict view, hidden by default, with no padding, loading its component, and follows its closing", async () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     context.allow("provideUndo");
     const views: ViewContribution[] = [];
@@ -309,14 +311,49 @@ describe("GitWindowPart", () => {
     const part: GitWindowPart = new GitWindowPart();
     await part.activateAsync(context);
     onTestFinished(() => part.deactivateAsync());
-    const added: readonly ViewContribution[] = views.slice(6, 8);
+    const added: readonly ViewContribution[] = views.slice(6);
 
     expect(added.map(t => [t.name, t.title, t.icon, t.defaultSide, t.isShownByDefault, t.padding, t.hasInstances, t.defaultGroup, t.defaultOrder])).toEqual([
-      ["git.rebasePreview", "Rebase preview", "low_priority", DockSide.Right, false, ContentPadding.None, true, 0, 60],
-      ["git.workspaceAcross", "Across repositories", "hub", DockSide.Right, false, ContentPadding.None, true, 0, 70]
+      ["git.rebasePreview", "Rebase preview", "low_priority", DockSide.Right, false, ContentPadding.None, true, 0, 60]
     ]);
-    expect(await Promise.all(added.map(t => t.loadComponent()))).toEqual([GitRebasePreviewComponent, GitWorkspaceAcrossViewComponent]);
-    expect(context.callsOf("onViewClosed").map(t => t[0])).toEqual(expect.arrayContaining(["git.rebasePreview", "git.workspaceAcross"]));
+    expect(await Promise.all(added.map(t => t.loadComponent()))).toEqual([GitRebasePreviewComponent]);
+    expect(context.callsOf("onViewClosed").map(t => t[0])).toEqual(expect.arrayContaining(["git.rebasePreview"]));
+    expect(context.callsOf("onViewClosed").map(t => t[0])).not.toContain("git.workspaceAcross");
+  });
+
+  it("registers Across repositories as a document in the middle, with no padding, loading its component, and a command, which the View menu runs, that opens its one tab, showing the open tab again rather than a second", async () => {
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    context.allow("provideUndo");
+    const documents: DocumentContribution[] = [];
+    const commands: CommandContribution[] = [];
+    context.allow("registerView");
+    context.answer("registerDocument", t => {
+      documents.push(t);
+    });
+    context.answer("registerCommand", t => {
+      commands.push(t);
+    });
+    context.allow("openDocument");
+    context.allow("registerSettingsPage");
+    context.allow("setSettingsRows");
+    context.allow("onViewClosed");
+    context.allow("onEvent");
+    context.beStrict();
+    context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
+
+    const part: GitWindowPart = new GitWindowPart();
+    await part.activateAsync(context);
+    onTestFinished(() => part.deactivateAsync());
+    const across: DocumentContribution | undefined = documents.find(t => t.name === "git.workspaceAcross");
+    const command: CommandContribution | undefined = commands.find(t => t.name === "git.openAcross");
+
+    expect([across?.padding, await across?.loadComponent()]).toEqual([ContentPadding.None, GitWorkspaceAcrossViewComponent]);
+    expect([command?.title, command?.icon, await command?.runAsync(null), await command?.runAsync(null)]).toEqual(["Across repositories", "hub", null, null]);
+    expect(context.callsOf("openDocument")).toEqual([
+      ["git.workspaceAcross", "selected", "Across repositories"],
+      ["git.workspaceAcross", "selected", "Across repositories"]
+    ]);
+    expect(menus.groups.filter(t => t.place === "desktop.view").flatMap(t => t.items.map(u => u.command))).toEqual(["git.openAcross"]);
   });
 
   it("opens a repository's command log as the log view's instance, reopens the logs left open when it activates again, and forgets one the person closes", async () => {
