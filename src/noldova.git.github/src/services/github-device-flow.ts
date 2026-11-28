@@ -66,8 +66,9 @@ export class GitHubDeviceFlow {
     });
   }
 
-  public async readAccountAsync(token: string, signal: AbortSignal): Promise<AccountRead | null> {
-    const response = await this.fetchAsync(Resources.userUrl, {
+  public async readAccountAsync(token: string, signal: AbortSignal, host: string = Resources.host): Promise<AccountRead | null> {
+    const url: string = Resources.formatUserUrl(host);
+    const response = await this.fetchAsync(url, {
       headers: {
         [Resources.acceptHeader]: Resources.gitHubJsonType, [Resources.authorizationHeader]: Resources.formatBearer(token),
         [Resources.userAgentHeader]: Resources.userAgent, [Resources.apiVersionHeader]: Resources.apiVersion
@@ -77,7 +78,7 @@ export class GitHubDeviceFlow {
       await GitHubDeviceFlow.dropBodyAsync(response);
       return null;
     }
-    const reader = await GitHubDeviceFlow.readBodyAsync(Resources.userUrl, response, signal);
+    const reader = await GitHubDeviceFlow.readBodyAsync(url, response, signal);
     const scopes: readonly string[] = (response.headers.get(Resources.scopesHeader) ?? "").split(Resources.scopeSeparator).map(t => t.trim()).filter(t => t.length > 0);
     return GitHubDeviceFlow.read(() => new AccountRead(new HostAccount(reader.readNonBlankString(Resources.loginField), reader.readNullableString(Resources.nameField), null,
       scopes), reader.readNullableString(Resources.avatarUrlField)));

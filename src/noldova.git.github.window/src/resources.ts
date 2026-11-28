@@ -18,6 +18,23 @@ export class Resources {
   public static readonly hostColumn: string = "GitHub";
   public static readonly hostMark: string = "GH";
   public static readonly hostColor: string = "#24292f";
+  public static readonly enterpriseAccountId: string = "git-github.enterprise";
+  public static readonly enterpriseHostName: string = "GitHub Enterprise";
+  public static readonly enterpriseColumn: string = "GitHub Enterprise";
+  public static readonly enterpriseTitle: string = "GitHub Enterprise account";
+  public static readonly enterpriseNote: string = "Connect an account on your company's GitHub Enterprise server with a personal access token.";
+  public static readonly enterpriseCardNote: string = "Connect an account on a GitHub Enterprise server with a personal access token.";
+  public static readonly connectAction: string = "Connect";
+  public static readonly connectIcon: IconName = "link";
+  public static readonly serverLabel: string = "GitHub Enterprise server";
+  public static readonly serverPlaceholder: string = "github.example.com";
+  public static readonly tokenLabel: string = "Personal access token";
+  public static readonly tokenPlaceholder: string = "Paste the personal access token";
+  public static readonly tokenNote: string = "Create the token on the server's page; it opens with the repo scope ticked and the token named for this app.";
+  public static readonly makeToken: string = "Create a token on the server";
+  public static readonly manageTokens: string = "Manage tokens on the server";
+  public static readonly connectUnanswered: string = "The GitHub module didn't answer the connect.";
+  public static readonly tokenDescription: string = "Noldova Git";
   public static readonly signedIn: string = "Signed in";
   public static readonly waiting: string = "Waiting for the code";
   public static readonly signInAction: string = "Sign in";
@@ -246,5 +263,17 @@ export class Resources {
 
   public static formatGitHubReferenceReadFailed(error: string): string {
     return `Reading a GitHub reference failed, so it shows as a plain link: ${error}`;
+  }
+
+  public static formatServerDetail(login: string, host: string): string {
+    return `${login} · ${host}`;
+  }
+
+  public static formatTokenPageUrl(host: string): string {
+    return `https://${host}/settings/tokens/new?scopes=${Resources.repositoryScope}&description=${encodeURIComponent(Resources.tokenDescription)}`;
+  }
+
+  public static formatTokensUrl(host: string): string {
+    return `https://${host}/settings/tokens`;
   }
 }

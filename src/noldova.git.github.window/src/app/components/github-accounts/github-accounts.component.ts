@@ -16,6 +16,7 @@ import { ButtonComponent, ButtonVariant } from "@noldova/ui.components.angular";
 
 import { Resources } from "../../../resources.ts";
 import { AccountEvents } from "../../services/account-events.ts";
+import { GitHubAccountList } from "../../services/github-account-list.ts";
 import { GitHubSignInComponent } from "../github-sign-in/github-sign-in.component.ts";
 
 @Component({
@@ -55,7 +56,7 @@ export class GitHubAccountsComponent implements OnInit {
   public ngOnInit(): void {
     this.destroyRef.onDestroy(AccountEvents.follow(this.context, list => {
       this.changes++;
-      this.list.set(list);
+      this.list.set(GitHubAccountList.gitHubOf(list));
       this.isRead.set(true);
     }));
     void this.readAsync();
@@ -88,7 +89,7 @@ export class GitHubAccountsComponent implements OnInit {
     try {
       const list = HostAccountList.fromJson(await this.context.requestAsync(GitHubNames.readAccountsMethod, null));
       if (this.changes === changes)
-        this.list.set(list);
+        this.list.set(GitHubAccountList.gitHubOf(list));
     }
     catch (error) {
       if (!(error instanceof WindowException))

@@ -15,6 +15,7 @@ import { FakeAppWindows, FakeModuleLog, FakeModuleSecrets } from "@noldova/deskt
 import { AccountPick, HostAccount, HostSignIn, SignInFailure, SignInState } from "@noldova/git.hosting.protocol";
 import { afterEach, describe, it, vi } from "vitest";
 
+import { TokenConnect } from "../../src/models/token-connect.ts";
 import { GitHubAccounts } from "../../src/services/github-accounts.ts";
 import { GitHubApi } from "../../src/services/github-api.ts";
 import { GitHubAvatars } from "../../src/services/github-avatars.ts";
@@ -29,6 +30,9 @@ const keptOf = (login: string): string => JSON.stringify({ token: `gho_${login}`
 const userOf = (login: string): Response => FakeGitHub.json({ login, name: null, avatar_url: null }, 200, { "X-OAuth-Scopes": "repo" });
 const repository = (): Response => FakeGitHub.json({ full_name: REPOSITORY });
 const missing = (): Response => FakeGitHub.json({ message: "Not Found" }, 404);
+const SERVER: string = "ghe.example.com";
+const failureOf = (connecting: Promise<unknown>): Promise<unknown> => connecting.then(() => null,
+  (error: unknown) => error instanceof MethodFailureException ? [error.failure.code, error.failure.message] : error);
 
 class Rig {
   public readonly github: FakeGitHub = new FakeGitHub();
@@ -662,5 +666,165 @@ describe("GitHubAccounts", () => {
     await rig.accounts.restoreAsync();
 
     assert.deepEqual([rig.appWindows.activeCallsOf("onChanged").length, rig.changes.length, changes], [0, 0, 0]);
+  });
+
+  it("connects a GitHub Enterprise account with a token, reading its user from that server, names the server in the list and the index, and restores it there", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat"]);
+    await rig.restoreAsync(["octocat"]);
+    const signal = new AbortController().signal;
+    rig.github.answer(FakeGitHub.json({ login: "monalisa", name: "Mona", avatar_url: null }, 200, { "X-OAuth-Scopes": "repo, read:org" }));
+
+    const entry = await rig.accounts.connectAsync(new TokenConnect("GHE.Example.com", "ghp_monalisa"), signal);
+    await rig.savedAsync();
+    const asked = [rig.github.urls(), rig.github.requests[0]?.header("Authorization")];
+    const restored = new Rig();
+    for (const [name, value] of rig.store.values)
+      restored.store.values.set(name, value);
+    restored.github.answer(userOf("octocat"), FakeGitHub.json({ login: "monalisa", name: "Mona", avatar_url: null }, 200, { "X-OAuth-Scopes": "repo, read:org" }));
+    await restored.accounts.restoreAsync();
+    await restored.changedAsync(4);
+
+    assert.deepEqual(entry.toJson(), { id: 2, signIn: HostSignIn.signedIn(new HostAccount("monalisa", "Mona", null, ["repo", "read:org"])).toJson(), place: SERVER });
+    assert.deepEqual(asked, [[`https://${SERVER}/api/v3/user`], "Bearer ghp_monalisa"]);
+    assert.deepEqual(rig.index(), { accounts: [{ id: 2, host: SERVER, login: "monalisa" }], picks: [] });
+    assert.deepEqual([rig.accounts.list.accounts.map(t => t.place), rig.accounts.signedIn.map(t => t.login),
+      await rig.accounts.accountForAsync("github.com", REPOSITORY, signal)], [[null, SERVER], ["octocat"], 1]);
+    assert.deepEqual([restored.github.urls(), restored.accounts.list.toJson()], [["https://api.github.com/user", `https://${SERVER}/api/v3/user`],
+      rig.accounts.list.toJson()]);
+  });
+
+  it("lets a connect that answers while the restore reads the index wait for it, taking an id the index doesn't name and keeping that account's token", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat", "hubot"]);
+    const read = rig.store.holdRead();
+    const held = [rig.github.hold(), rig.github.hold(), rig.github.hold()];
+    const restoring = rig.accounts.restoreAsync();
+
+    const connecting = rig.accounts.connectAsync(new TokenConnect(SERVER, "ghp_monalisa"), new AbortController().signal);
+    read();
+    await rig.github.askedAsync(3);
+    rig.github.requests.forEach((request, index) => held[index]?.(userOf(request.url.includes(SERVER) ? "monalisa"
+      : request.header("Authorization")?.includes("gho_hubot") === true ? "hubot" : "octocat")));
+    await restoring;
+    const entry = await connecting;
+    await rig.savedAsync();
+
+    assert.deepEqual([entry.id, rig.accounts.list.accounts.map(t => [t.id, t.place, t.signIn.account?.login ?? null])],
+      [3, [[1, null, "octocat"], [2, null, "hubot"], [3, SERVER, "monalisa"]]]);
+    assert.deepEqual([JSON.parse(rig.store.values.get("git-github.account2") ?? "{}").token, rig.github.requests.filter(t => t.url.includes(SERVER))
+      .map(t => t.header("Authorization"))], ["gho_hubot", ["Bearer ghp_monalisa"]]);
+  });
+
+  it("restores an Enterprise account the index names on its own server while an account is added beside it", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat", "monalisa"]);
+    rig.store.values.set("git-github.accounts", JSON.stringify({ accounts: [{ id: 2, host: SERVER, login: "monalisa" }], picks: [] }));
+    const read = rig.store.holdRead();
+    const held = [rig.github.hold(), rig.github.hold(), rig.github.hold()];
+    const restoring = rig.accounts.restoreAsync();
+
+    const adding = rig.accounts.addAsync();
+    read();
+    await rig.github.askedAsync(3);
+    rig.github.requests.forEach((request, index) => held[index]?.(request.url.includes("/login/device/code") ? FakeGitHub.json(grant)
+      : userOf(request.url.includes(SERVER) ? "monalisa" : "octocat")));
+    await restoring;
+    const added = await adding;
+
+    assert.deepEqual([added.id, rig.accounts.list.accounts.map(t => [t.id, t.place, t.signIn.account?.login ?? null])],
+      [3, [[1, null, "octocat"], [2, SERVER, "monalisa"], [3, null, null]]]);
+    assert.deepEqual(rig.github.requests.filter(t => t.header("Authorization")?.includes("gho_monalisa") === true).map(t => t.url), [`https://${SERVER}/api/v3/user`]);
+  });
+
+  it("refuses a connect while the index can't be read, asking no server and keeping the accounts' tokens", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat", "hubot"]);
+    rig.store.values.set("git-github.accounts", "{ not json");
+    await rig.restoreAsync(["octocat"]);
+
+    const refusal = await failureOf(rig.accounts.connectAsync(new TokenConnect(SERVER, "ghp_monalisa"), new AbortController().signal));
+    await rig.savedAsync();
+
+    assert.deepEqual([refusal, rig.github.requests.length, rig.store.values.has("git-github.account2")],
+      [[FailureCode.Unavailable, "The GitHub accounts kept on this computer aren't read, so no account can be added until they are; the ones kept stay as they are."],
+        0, true]);
+  });
+
+  it("never starts GitHub's browser sign-in for a GitHub Enterprise account its server signed out", async () => {
+    const rig = new Rig();
+    await rig.accounts.restoreAsync();
+    rig.github.answer(FakeGitHub.json({ login: "monalisa", name: null, avatar_url: null }));
+    await rig.accounts.connectAsync(new TokenConnect(SERVER, "ghp_monalisa"), new AbortController().signal);
+    await rig.savedAsync();
+    const restored = new Rig();
+    for (const [name, value] of rig.store.values)
+      restored.store.values.set(name, value);
+    restored.github.answer(FakeGitHub.json({ message: "Bad credentials" }, 401));
+    await restored.accounts.restoreAsync();
+    await restored.untilAsync("2 SignedOut");
+    const asked: number = restored.github.requests.length;
+
+    const answer = await restored.accounts.signInOf(2).startAsync();
+
+    assert.deepEqual([answer.state, restored.github.requests.length], [SignInState.SignedOut, asked]);
+  });
+
+  it("refuses a server's name that isn't one, or github.com, a token the server refuses or that lacks the repo scope, naming the scope, and a server it can't reach, "
+    + "keeping nothing", async () => {
+    const rig = new Rig();
+    await rig.accounts.restoreAsync();
+    const signal = new AbortController().signal;
+    rig.github.answer(FakeGitHub.json({ message: "Bad credentials" }, 401),
+      FakeGitHub.json({ login: "monalisa", name: null, avatar_url: null }, 200, { "X-OAuth-Scopes": "read:org" }));
+
+    const failures = [await failureOf(rig.accounts.connectAsync(new TokenConnect(`https://${SERVER}`, "ghp_x"), signal)),
+      await failureOf(rig.accounts.connectAsync(new TokenConnect("GitHub.com", "ghp_x"), signal)),
+      await failureOf(rig.accounts.connectAsync(new TokenConnect(SERVER, "ghp_x"), signal)),
+      await failureOf(rig.accounts.connectAsync(new TokenConnect(SERVER, "ghp_x"), signal))];
+    rig.github.fail(new TypeError("fetch failed"));
+    failures.push(await failureOf(rig.accounts.connectAsync(new TokenConnect(SERVER, "ghp_x"), signal)));
+    await rig.savedAsync();
+
+    const server = "Type the GitHub Enterprise server's name, such as github.example.com; github.com signs in with Sign in to GitHub.";
+    assert.deepEqual(failures, [[FailureCode.InvalidParams, server], [FailureCode.InvalidParams, server],
+      [FailureCode.Unauthorized, `${SERVER} didn't accept the token. Check that it was copied whole, hasn't expired and has the repo scope.`],
+      [FailureCode.Unauthorized, `The token for ${SERVER} doesn't have the repo scope, which reading and opening pull requests needs. Create one with repo ticked.`],
+      [FailureCode.Unavailable, `${SERVER} couldn't be reached. Check the server's name and the network, then connect again.`]]);
+    assert.deepEqual([rig.accounts.list.accounts.length, rig.index(), rig.changes], [1, undefined, []]);
+  });
+
+  it("passes on a failure to read the token's user that isn't GitHub's", async () => {
+    const rig = new Rig();
+    const unexpected = new RangeError("Unexpected.");
+    await rig.accounts.restoreAsync();
+    vi.spyOn(GitHubDeviceFlow.prototype, "readAccountAsync").mockRejectedValueOnce(unexpected);
+
+    assert.equal(await failureOf(rig.accounts.connectAsync(new TokenConnect(SERVER, "ghp_x"), new AbortController().signal)), unexpected);
+  });
+
+  it("takes a token whose server names no scopes, keeps one login on two servers apart, answers a second connect of the same account as already kept "
+    + "once its token is forgotten, and leaves an account whose token couldn't be kept", async () => {
+    const rig = new Rig();
+    await rig.accounts.restoreAsync();
+    const signal = new AbortController().signal;
+    const mona = (): Response => FakeGitHub.json({ login: "monalisa", name: null, avatar_url: null });
+    rig.github.answer(mona(), mona(), mona());
+
+    const first = await rig.accounts.connectAsync(new TokenConnect(SERVER, "ghp_one"), signal);
+    const other = await rig.accounts.connectAsync(new TokenConnect("github.example.org", "ghp_two"), signal);
+    const again = await rig.accounts.connectAsync(new TokenConnect(SERVER, "ghp_three"), signal);
+    await rig.savedAsync();
+    const kept = [rig.accounts.list.accounts.map(t => [t.id, t.place, t.signIn.state, t.signIn.failure]), rig.store.values.has("git-github.account4"), rig.changes.includes("4 SignedIn")];
+    rig.github.answer(mona());
+    rig.store.saveFailure = KeptSecrets.failure(SecretFailureReason.Unprotected);
+    const unkept = await rig.accounts.connectAsync(new TokenConnect("github.example.net", "ghp_four"), signal);
+
+    assert.deepEqual([first.signIn.state, other.signIn.state, first.signIn.account?.scopes], [SignInState.SignedIn, SignInState.SignedIn, []]);
+    assert.deepEqual(again.toJson(), { id: 4, signIn: HostSignIn.signedOut(SignInFailure.AlreadyKept).toJson(), place: SERVER });
+    assert.deepEqual(kept, [[[1, null, SignInState.SignedOut, null], [2, SERVER, SignInState.SignedIn, null], [3, "github.example.org", SignInState.SignedIn, null]],
+      false, false]);
+    assert.deepEqual([unkept.toJson(), rig.accounts.list.accounts.map(t => t.id)], [{ id: 4, signIn: HostSignIn.signedOut(SignInFailure.Unkept).toJson(),
+      place: "github.example.net" }, [1, 2, 3]]);
   });
 });

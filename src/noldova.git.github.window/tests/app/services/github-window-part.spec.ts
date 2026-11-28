@@ -19,6 +19,7 @@ import { describe, expect, it } from "vitest";
 
 import { GitHubHostRowComponent } from "../../../src/app/components/github-host-row/github-host-row.component.ts";
 import { GitHubAccountsComponent } from "../../../src/app/components/github-accounts/github-accounts.component.ts";
+import { GitHubEnterpriseComponent } from "../../../src/app/components/github-enterprise/github-enterprise.component.ts";
 import { GitHubFolders } from "../../../src/app/services/github-folders.ts";
 import { GitHubPullRequests } from "../../../src/app/services/github-pull-requests.ts";
 import { GitHubWindowPart } from "../../../src/app/services/github-window-part.ts";
@@ -49,6 +50,12 @@ function accountOf(): IProvidedGitHostAccount | null {
 function cardsOf(): readonly GitHostCard[] | null {
   return accountOf()?.account.cards() ?? null;
 }
+
+function enterpriseOf(): IProvidedGitHostAccount | null {
+  return GitHostAccounts.accounts().find(t => t.account.id === "git-github.enterprise") ?? null;
+}
+
+const enterpriseNote: string = "Connect an account on a GitHub Enterprise server with a personal access token.";
 
 describe("GitHubWindowPart", () => {
   it("reconnects only while it is active", async () => {
@@ -394,5 +401,41 @@ describe("GitHubWindowPart", () => {
       ["GitHub", "Enter this code at github.com/login/device.", GitHostCardState.Waiting, "2", null],
       ["Example Bot", "example-bot · Signed in on this computer · no access to your repositories", GitHostCardState.SignedIn, "3", "example-bot"]
     ]);
+  });
+
+  it("gives Accounts and hosts one GitHub Enterprise host while it is active, with the token connect as its dialog and no features yet, and withdraws it once", async () => {
+    const part: GitHubWindowPart = new GitHubWindowPart();
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    new RequestAnswers(context).answer(GitHubNames.readAccountsMethod, listOf(HostSignIn.signedOut()));
+
+    await part.activateAsync(context);
+    const provided: IProvidedGitHostAccount | null = enterpriseOf();
+    await part.deactivateAsync();
+    await part.deactivateAsync();
+
+    expect(provided?.account).toEqual(expect.objectContaining({ host: "GitHub Enterprise", column: "GitHub Enterprise", mark: "GH", markColor: "#24292f",
+      signIn: GitHubEnterpriseComponent, features: [] }));
+    expect([provided?.account.cards(), enterpriseOf()]).toEqual([[new GitHostCard("GitHub Enterprise", enterpriseNote, GitHostCardState.SignedOut, "Connect")], null]);
+  });
+
+  it("shows each GitHub Enterprise account as its own card under that host, naming its server, and leaves them out of GitHub's cards", async () => {
+    const part: GitHubWindowPart = new GitHubWindowPart();
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    const mona: HostAccount = new HostAccount("monalisa", "Mona", null, ["repo"]);
+    new RequestAnswers(context).answer(GitHubNames.readAccountsMethod, new HostAccountList([new HostAccountEntry(1, signedIn),
+      new HostAccountEntry(2, HostSignIn.signedIn(mona), "ghe.example.com"),
+      new HostAccountEntry(3, HostSignIn.signedIn(new HostAccount("hubot", null, null, ["repo"])), "ghe.example.com"),
+      new HostAccountEntry(4, HostSignIn.signedOut(), "github.example.org")]).toJson());
+
+    await part.activateAsync(context);
+    await Wait.until(() => expect(enterpriseOf()?.account.cards()).toHaveLength(3));
+    const cards = enterpriseOf()?.account.cards();
+    const gitHub = cardsOf();
+    await part.deactivateAsync();
+
+    expect(cards).toEqual([new GitHostCard("Mona", "monalisa · ghe.example.com", GitHostCardState.SignedIn, "Signed in", "2", mona),
+      new GitHostCard("hubot", "hubot · ghe.example.com", GitHostCardState.SignedIn, "Signed in", "3", new HostAccount("hubot", null, null, ["repo"])),
+      new GitHostCard("github.example.org", enterpriseNote, GitHostCardState.SignedOut, "Connect", "4")]);
+    expect(gitHub).toEqual(signedInCards);
   });
 });

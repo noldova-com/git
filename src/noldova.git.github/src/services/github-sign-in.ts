@@ -41,14 +41,17 @@ export class GitHubSignIn {
   private heldToken: string | null = null;
   private unreadable: boolean = false;
 
+  public readonly host: string;
+
   public constructor(flow: GitHubDeviceFlow, secrets: IModuleSecrets, appWindows: IAppWindows, log: IModuleLog, changed: (signIn: HostSignIn) => void,
-    secret: string = Resources.signInSecret) {
+    secret: string = Resources.signInSecret, host: string = Resources.host) {
     this.flow = flow;
     this.secrets = secrets;
     this.appWindows = appWindows;
     this.log = log;
     this.changed = changed;
     this.secret = secret;
+    this.host = host;
   }
 
   public get current(): HostSignIn {
@@ -105,7 +108,7 @@ export class GitHubSignIn {
   }
 
   public async startAsync(): Promise<HostSignIn> {
-    if (this.signIn.state !== SignInState.SignedOut || this.waiting !== null || this.stopped.signal.aborted)
+    if (this.host !== Resources.host || this.signIn.state !== SignInState.SignedOut || this.waiting !== null || this.stopped.signal.aborted)
       return this.signIn;
     const waiting = new AbortController();
     this.waiting = waiting;
@@ -117,6 +120,17 @@ export class GitHubSignIn {
     }
     catch (error) {
       this.end(error, signal);
+    }
+    return this.signIn;
+  }
+
+  public async adoptAsync(token: string, read: AccountRead, signal: AbortSignal): Promise<HostSignIn> {
+    const signed = AbortSignal.any([signal, this.stopped.signal]);
+    try {
+      await this.keepReadAsync(token, read, signed);
+    }
+    catch (error) {
+      this.end(error, signed);
     }
     return this.signIn;
   }
@@ -191,6 +205,10 @@ export class GitHubSignIn {
     const read = await this.flow.readAccountAsync(token, signal);
     if (read === null)
       throw new SignInTokenRefusedException();
+    await this.keepReadAsync(token, read, signal);
+  }
+
+  private async keepReadAsync(token: string, read: AccountRead, signal: AbortSignal): Promise<void> {
     const { account } = read;
     const save: number = ++this.saves;
     try {
@@ -218,7 +236,7 @@ export class GitHubSignIn {
   private async checkAsync(token: string, generation: number): Promise<void> {
     let read: AccountRead | null;
     try {
-      read = await this.flow.readAccountAsync(token, this.stopped.signal);
+      read = await this.flow.readAccountAsync(token, this.stopped.signal, this.host);
     }
     catch (error) {
       if (this.stopped.signal.aborted)
