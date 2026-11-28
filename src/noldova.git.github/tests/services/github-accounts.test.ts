@@ -221,6 +221,39 @@ describe("GitHubAccounts", () => {
     assert.deepEqual([rig.accounts.list.accounts.map(t => t.id), rig.changes, rig.index()], [[1], ["2 Waiting", "2 SignedOut"], undefined]);
   });
 
+  it("keeps an account added while a restore waits, its sign-in still running once the restore ends", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat"]);
+    const restored = rig.github.hold();
+    const restoring = rig.accounts.restoreAsync();
+    await rig.github.askedAsync(1);
+    const granted = rig.github.hold();
+
+    const adding = rig.accounts.addAsync();
+    await rig.github.askedAsync(2);
+    restored(userOf("octocat"));
+    await restoring;
+    granted(FakeGitHub.json(grant));
+    const added = await adding;
+
+    assert.deepEqual([added.id, added.signIn.state, rig.accounts.list.accounts.map(t => [t.id, t.signIn.state])],
+      [2, SignInState.Waiting, [[1, SignInState.SignedIn], [2, SignInState.Waiting]]]);
+  });
+
+  it("keeps an index it can't read and the accounts' tokens, refusing an add and writing no pick over them", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat", "hubot"]);
+    rig.store.values.set("git-github.accounts", "{ not json");
+    await rig.restoreAsync(["octocat"]);
+
+    const refusal = await rig.accounts.addAsync().then(() => null, (error: unknown) => error instanceof MethodFailureException ? [error.failure.code, error.failure.message] : null);
+    await rig.accounts.pickAsync(new AccountPick("github.com", "octo/app", 1), new AbortController().signal);
+    await rig.savedAsync();
+
+    assert.deepEqual([refusal, rig.store.values.get("git-github.accounts"), rig.store.values.has("git-github.account2")], [[FailureCode.Unavailable,
+      "The GitHub accounts kept on this computer aren't read, so no account can be added until they are; the ones kept stay as they are."], "{ not json", true]);
+  });
+
   it("signs out an added account while the first stays signed in, forgetting its secret and its picks", async () => {
     const rig = new Rig();
     rig.keep(["octocat", "hubot"], [new AccountPick("github.com", REPOSITORY, 2)]);

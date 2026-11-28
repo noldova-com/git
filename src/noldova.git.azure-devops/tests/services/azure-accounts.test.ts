@@ -213,19 +213,38 @@ describe("AzureAccounts", () => {
       [[1, mona.login, "dev.azure.com/fabrikam"], [2, hubot.login, "dev.azure.com/contoso"]], 0]);
   });
 
-  it("keeps an account added while a restore runs, signed in, in the list and the index once its sign-in answers", async () => {
+  it("keeps an account added while a restore waits, signed in, in the list and the index once its sign-in answers", async () => {
     const rig = new Rig();
-    const release = rig.azure.hold();
+    rig.keep([mona]);
+    const restored = rig.azure.hold();
+    const restoring = rig.accounts.restoreAsync();
+    await rig.azure.askedAsync(1);
+    const signedIn = rig.azure.hold();
 
     const adding = rig.accounts.addAsync(t => t.signInWithTokenAsync("pat-hubot", "contoso", signal));
-    await rig.azure.askedAsync(1);
-    await rig.accounts.restoreAsync();
-    release(profileOf(hubot.login));
+    await rig.azure.askedAsync(2);
+    restored(profileOf(mona.login));
+    await restoring;
+    signedIn(profileOf(hubot.login));
     const entry = await adding;
     await rig.savedAsync();
 
-    assert.deepEqual([entry.id, entry.signIn.state, rig.entries(), rig.index()], [2, SignInState.SignedIn, [[1, null, null], [2, hubot.login, "dev.azure.com/contoso"]],
-      { accounts: [{ id: 2, organization: "contoso", login: hubot.login }], picks: [] }]);
+    assert.deepEqual([entry.id, entry.signIn.state, rig.entries(), rig.index()], [2, SignInState.SignedIn,
+      [[1, mona.login, "dev.azure.com/fabrikam"], [2, hubot.login, "dev.azure.com/contoso"]], { accounts: [{ id: 2, organization: "contoso", login: hubot.login }], picks: [] }]);
+  });
+
+  it("keeps an index it can't read and the accounts' tokens, refusing an add and writing no pick over them", async () => {
+    const rig = new Rig();
+    rig.keep([mona, hubot]);
+    rig.store.values.set("git-azure-devops.accounts", "{ not json");
+    await rig.restoreAsync([mona]);
+
+    const refusal = await rig.accounts.addAsync(t => t.signInWithTokenAsync("pat-hubot", "contoso", signal)).then(() => null, (error: unknown) => error instanceof MethodFailureException ? [error.failure.code, error.failure.message] : null);
+    rig.accounts.pick(new AccountPick("dev.azure.com", pathOf("fabrikam"), 1));
+    await rig.savedAsync();
+
+    assert.deepEqual([refusal, rig.store.values.get("git-azure-devops.accounts"), rig.store.values.has("git-azure-devops.account2")], [[FailureCode.Unavailable,
+      "The Azure DevOps accounts kept on this computer aren't read, so no account can be added until they are; the ones kept stay as they are."], "{ not json", true]);
   });
 
   it("writes through a reference as the account its repository reads with, else as the organization's last pick", async () => {

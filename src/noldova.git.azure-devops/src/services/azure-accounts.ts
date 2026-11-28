@@ -34,6 +34,7 @@ export class AzureAccounts implements IAzureTokens {
   private readonly dropping: Map<number, Promise<void>> = new Map();
   private picks: readonly AccountPick[] = [];
   private kept: string | null = null;
+  private isIndexRead: boolean = false;
   private saving: Promise<void> = Promise.resolve();
   private unfollowWindows: (() => void) | null = null;
   private stopped: boolean = false;
@@ -87,6 +88,8 @@ export class AzureAccounts implements IAzureTokens {
   }
 
   public async addAsync(signIn: (account: AzureSignIn) => Promise<HostSignIn>): Promise<HostAccountEntry> {
+    if (!this.isIndexRead)
+      throw AzureApi.failure(FailureCode.Unavailable, Resources.accountsUnreadMessage);
     const id: number = Math.max(...this.entries.keys()) + 1;
     const added: AzureSignIn = this.make(id);
     this.entries.set(id, added);
@@ -228,10 +231,14 @@ export class AzureAccounts implements IAzureTokens {
       return null;
     }
     this.kept = kept;
-    if (kept === null)
+    if (kept === null) {
+      this.isIndexRead = true;
       return null;
+    }
     try {
-      return KeptAccounts.fromJson(JsonReader.parseValue(kept));
+      const read: KeptAccounts = KeptAccounts.fromJson(JsonReader.parseValue(kept));
+      this.isIndexRead = true;
+      return read;
     }
     catch (error) {
       if (!(error instanceof JsonException || error instanceof HostingProtocolException))
@@ -255,7 +262,7 @@ export class AzureAccounts implements IAzureTokens {
         accounts.push(new KeptAccount(id, signIn.organization, login));
     }
     const value: string = JSON.stringify(new KeptAccounts(accounts, this.picks).toJson());
-    if (this.stopped || value === this.kept || (this.kept === null && accounts.length === 0 && this.picks.length === 0))
+    if (this.stopped || !this.isIndexRead || value === this.kept || (this.kept === null && accounts.length === 0 && this.picks.length === 0))
       return;
     this.kept = value;
     this.saving = this.saving.then(() => this.secrets.saveAsync(Resources.accountsSecret, value)).catch((error: unknown) =>

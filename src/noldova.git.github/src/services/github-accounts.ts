@@ -34,6 +34,7 @@ export class GitHubAccounts implements IGitHubTokens {
   private readonly found: Map<string, Promise<number>> = new Map();
   private picks: readonly AccountPick[] = [];
   private kept: string | null = null;
+  private isIndexRead: boolean = false;
   private saving: Promise<void> = Promise.resolve();
   private unfollowWindows: (() => void) | null = null;
   private stopped: boolean = false;
@@ -74,14 +75,17 @@ export class GitHubAccounts implements IGitHubTokens {
     const kept: KeptAccounts | null = await this.readKeptAsync();
     if (this.stopped)
       return;
-    for (const account of kept?.accounts ?? []) {
-      if (!this.entries.has(account.id))
-        this.entries.set(account.id, this.make(account.id));
+    const named: readonly number[] = (kept?.accounts ?? []).map(t => t.id);
+    for (const id of named) {
+      if (!this.entries.has(id))
+        this.entries.set(id, this.make(id));
     }
     this.picks = kept?.picks ?? [];
-    await Promise.all([...this.entries.values()].map(t => t.restoreAsync()));
+    const restoring: readonly [number, GitHubSignIn][] = [...this.entries].filter(([id]) => id === GitHubAccounts.firstId || named.includes(id));
+    await Promise.all(restoring.map(([, t]) => t.restoreAsync()));
     for (const [id, signIn] of this.entries) {
-      if (id !== GitHubAccounts.firstId && signIn.current.state === SignInState.SignedOut && signIn.current.failure === null && !signIn.keptUnreadable)
+      if (id !== GitHubAccounts.firstId && named.includes(id) && signIn.current.state === SignInState.SignedOut && signIn.current.failure === null
+        && !signIn.keptUnreadable)
         this.leave(id);
     }
     this.save();
@@ -95,6 +99,8 @@ export class GitHubAccounts implements IGitHubTokens {
   }
 
   public async addAsync(): Promise<HostAccountEntry> {
+    if (!this.isIndexRead)
+      throw GitHubApi.failure(FailureCode.Unavailable, Resources.accountsUnreadMessage);
     const id: number = Math.max(...this.entries.keys()) + 1;
     const signIn: GitHubSignIn = this.make(id);
     this.entries.set(id, signIn);
@@ -246,10 +252,14 @@ export class GitHubAccounts implements IGitHubTokens {
       return null;
     }
     this.kept = kept;
-    if (kept === null)
+    if (kept === null) {
+      this.isIndexRead = true;
       return null;
+    }
     try {
-      return KeptAccounts.fromJson(JsonReader.parseValue(kept));
+      const read: KeptAccounts = KeptAccounts.fromJson(JsonReader.parseValue(kept));
+      this.isIndexRead = true;
+      return read;
     }
     catch (error) {
       if (!(error instanceof JsonException || error instanceof HostingProtocolException))
@@ -273,7 +283,7 @@ export class GitHubAccounts implements IGitHubTokens {
         accounts.push(new KeptAccount(id, Resources.host, login));
     }
     const value: string = JSON.stringify(new KeptAccounts(accounts, this.picks).toJson());
-    if (this.stopped || value === this.kept || (this.kept === null && accounts.length === 0 && this.picks.length === 0))
+    if (this.stopped || !this.isIndexRead || value === this.kept || (this.kept === null && accounts.length === 0 && this.picks.length === 0))
       return;
     this.kept = value;
     this.saving = this.saving.then(() => this.secrets.saveAsync(Resources.accountsSecret, value)).catch((error: unknown) =>

@@ -18,6 +18,7 @@ export class Resources {
   public static readonly unknownAccountMessage: string = "This GitHub account isn't kept on this computer any more.";
   public static readonly keptAccountsUnreadable: string = "The GitHub accounts kept on this computer couldn't be read; only the first account was restored.";
   public static readonly accountAlreadyKept: string = "An added GitHub account signed in as an account already kept here, so its token was forgotten and it ended signed out as already kept.";
+  public static readonly accountsUnreadMessage: string = "The GitHub accounts kept on this computer aren't read, so no account can be added until they are; the ones kept stay as they are.";
   public static readonly accountsNotKept: string = "The GitHub accounts couldn't be kept on this computer; added accounts and chosen accounts last until the app closes.";
   public static readonly accessSignedOutReason: string = "Sign in to GitHub in Settings, GitHub.";
   public static readonly accessUnreadableReason: string = "The GitHub sign-in kept on this computer couldn't be read; sign in again in Settings, GitHub.";
