@@ -243,7 +243,7 @@ describe("GitWorkspaceComponent", () => {
     expect([screen.element.querySelectorAll(".across, aside").length, rem(screen.find("main")).width]).toEqual([0, 90]);
   });
 
-  it("opens the Across repositories view once for the page in front with its repositories, keeps them while a document of another kind is, giving the tab back and taking it again, and empties once the page closes",
+  it("shows the page in front in Across repositories without opening it, keeps its repositories while a document of another kind is in front, and empties once the page closes",
     async () => {
       const workspace: GitWorkspace = fresh("/work/a", "/work/b");
       const screen: Screen = Screen.render(workspace.id, { "/work/a": statusOf("main", 0, 2, 0) });
@@ -259,10 +259,34 @@ describe("GitWorkspaceComponent", () => {
       screen.fixture.destroy();
       screen.view.detectChanges();
 
-      const opened: readonly unknown[] = ["git.workspaceAcross", "selected", "Across repositories"];
-      expect([front.length, behind, empty(), screen.context.callsOf("openView"), screen.context.callsOf("returnView"), screen.context.callsOf("showView")])
-        .toEqual([1, front, ["Open a workspace to see its repositories together here."], [opened, opened], [["git.workspaceAcross", "selected"]], []]);
+      expect([front.length, behind, empty(), screen.context.callsOf("openView"), screen.context.callsOf("returnView"), screen.context.callsOf("openDocument")])
+        .toEqual([1, front, ["Open a workspace to see its repositories together here."], [], [], []]);
     });
+
+  it("opens Across repositories as a document from the Dashboard's toolbar, after Add repository, showing the open tab again on a second click", async () => {
+    const screen: Screen = Screen.render("open");
+    const button: HTMLButtonElement = screen.find<HTMLButtonElement>(".toolbar .open-across");
+
+    button.click();
+    button.click();
+
+    const opened: readonly string[] = ["git.workspaceAcross", "selected", "Across repositories"];
+    expect([button.textContent?.includes("Across repositories"), button.previousElementSibling?.classList.contains("add"), screen.context.callsOf("openDocument"), screen.context.callsOf("openView")])
+      .toEqual([true, true, [opened, opened], []]);
+  });
+
+  it("keeps Across repositories last in the toolbar's left group, after Add repository with no row chosen and after Remove with rows chosen", async () => {
+    const workspace: GitWorkspace = fresh("/work/a", "/work/b");
+    const screen: Screen = Screen.render(workspace.id);
+    await screen.untilAsync(() => screen.texts(".sync").join() === "Up to date,Up to date");
+    const before = (): string[] => [...screen.find(".toolbar .open-across").previousElementSibling?.classList ?? []];
+    const alone: readonly string[] = before();
+
+    screen.select(0);
+    screen.select(1);
+
+    expect([alone.includes("add"), before().includes("remove"), screen.find(".toolbar .open-across").nextElementSibling?.classList.contains("grow")]).toEqual([true, true, true]);
+  });
 
   it("follows only the rows on screen, stops following a row the filter hides, and reads every listed repository when the window regains focus", async () => {
     const folders: string[] = Array.from({ length: 60 }, (_, i) => `/work/r${i}`);

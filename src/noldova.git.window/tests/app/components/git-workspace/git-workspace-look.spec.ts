@@ -127,7 +127,7 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     const view: ComponentFixture<GitWorkspaceAcrossViewComponent> = TestBed.createComponent(GitWorkspaceAcrossViewComponent);
     view.componentRef.setInput("instance", "selected");
     const viewElement: HTMLElement = view.nativeElement;
-    viewElement.style.width = "22rem";
+    viewElement.style.width = "60rem";
     viewElement.style.height = "24rem";
     view.autoDetectChanges();
     const side: ComponentFixture<GitWorkspacesComponent> = TestBed.createComponent(GitWorkspacesComponent);
@@ -198,7 +198,7 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     await page.screenshot({ element, path: `${screenshots}/git-workspace-${mode}.png` });
   });
 
-  it.each(AppearanceFixture.modes)("draws the Across repositories view at the dock's 22rem with no background of its own, its change card raised 0.75rem in, and its rows' icons in their states' colours, in %s mode",
+  it.each(AppearanceFixture.modes)("draws the Across repositories document across the middle's 60rem with no background of its own, its change card raised 0.75rem in, and its rows' icons in their states' colours, in %s mode",
     async mode => {
       AppearanceFixture.apply(DefaultTheme.theme, mode);
       const { page: element, view: panel } = await renderBothAsync();
@@ -211,7 +211,7 @@ describe("GitWorkspaceComponent in the kit's look", () => {
       const rows: HTMLElement[] = [...panel.querySelectorAll<HTMLElement>(".needs .row")];
 
       expect([element.querySelectorAll("nol-git-workspace-across").length, rem(box(across).width), rem(box(card).left - box(panel).left), rem(box(card).top - box(panel).top),
-        rem(box(panel).right - box(card).right), panel.scrollWidth <= panel.clientWidth]).toEqual([0, 22, 0.75, 0.75, 0.75, true]);
+        rem(box(panel).right - box(card).right), panel.scrollWidth <= panel.clientWidth]).toEqual([0, 60, 0.75, 0.75, 0.75, true]);
       expect([getComputedStyle(card).backgroundColor, getComputedStyle(card).borderTopColor, getComputedStyle(card).borderTopLeftRadius, getComputedStyle(panel).backgroundColor])
         .toEqual([resolve("var(--nol-raised)"), resolve("var(--nol-card-border)"), "6px", "rgba(0, 0, 0, 0)"]);
       expect([getComputedStyle(failing).color, getComputedStyle(behind).color]).toEqual([resolve("var(--nol-status-failed)"), resolve("var(--nol-icon-color)")]);
@@ -251,6 +251,27 @@ describe("GitWorkspaceComponent in the kit's look", () => {
     expect(side.scrollHeight).toBe(side.clientHeight);
 
     await page.screenshot({ element: side, path: `${screenshots}/git-workspace-side-${mode}.png` });
+  });
+
+  it.each(AppearanceFixture.modes)("lines Across repositories up with the button before it, Add repository with no row chosen and Remove with rows chosen, in %s mode", async mode => {
+    AppearanceFixture.apply(DefaultTheme.theme, mode);
+    const element: HTMLElement = await renderAsync();
+    const toolbar: HTMLElement = element.querySelector<HTMLElement>(".toolbar") ?? element;
+    const measure = (selector: string): readonly unknown[] => {
+      const button: HTMLElement = toolbar.querySelector<HTMLElement>(".open-across") ?? toolbar;
+      const before: HTMLElement = toolbar.querySelector<HTMLElement>(selector) ?? toolbar;
+      return [button.previousElementSibling === before, rem(box(button).height - box(before).height), rem(box(button).top - box(before).top),
+        rem(box(button).left - box(before).right)];
+    };
+    const alone: readonly unknown[] = measure(".add");
+
+    for (const row of [2, 3])
+      element.querySelector<HTMLElement>(`.tr:not(.th):nth-child(${row + 1}) nol-checkbox input`)?.click();
+    await untilAsync(element, () => !Object.isNull(toolbar.querySelector(".remove")));
+    const chosen: readonly unknown[] = measure(".remove");
+    await page.screenshot({ element: toolbar, path: `${screenshots}/git-workspace-toolbar-across-${mode}.png` });
+
+    expect([alone, chosen]).toEqual([[true, 0, 0, 0.25], [true, 0, 0, 0.25]]);
   });
 
   it.each(AppearanceFixture.modes)("lines the toolbar's Pull and New branch up with Fetch all, the result under it and the branch dialog's field with its text, in %s mode", async mode => {
