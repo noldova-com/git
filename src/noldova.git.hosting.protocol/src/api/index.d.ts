@@ -5495,10 +5495,17 @@ export declare class RepositoryAccount {
   public readonly account: number | null;
 
   /**
+   * Whether the user name in the repository's remote address chose the account, so picking another one for that repository changes nothing.
+   * It never carries the user name.
+   */
+  public readonly isNamedByRemote: boolean;
+
+  /**
    * Makes the answer from its parts.
    *
    * @param account The account's id, a positive whole number, or null.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
+   * @param isNamedByRemote Whether the remote's user name chose the account, false by default; true needs an account.
    * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `account`.
    * @throws {HostingFieldException} With a reader, when a part is out of its range, naming the field by its path, such as `$.account`.
    * @example
@@ -5506,9 +5513,10 @@ export declare class RepositoryAccount {
    * import { RepositoryAccount } from "@noldova/git.hosting.protocol";
    *
    * const answer = new RepositoryAccount(2);
+   * const named = new RepositoryAccount(2, undefined, true);
    * ```
    */
-  public constructor(account: number | null, reader?: JsonReader);
+  public constructor(account: number | null, reader?: JsonReader, isNamedByRemote?: boolean);
 
   /**
    * Reads it from its JSON.

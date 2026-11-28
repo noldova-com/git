@@ -147,7 +147,7 @@ describe("RuntimePart", () => {
     assert.equal(context.events.get("git-github.signInChanged")?.every(t => (t as { account: { login: string } | null }).account?.login !== "hubot"), true);
   });
 
-  it("reads a window's folder's remote, choosing the account its user name names, and answers no account for a remote off a host and path", async () => {
+  it("reads a window's folder's remote, choosing the account its user name names and saying so, and answers no account for a remote off a host and path", async () => {
     const github = new FakeGitHub();
     github.answer(FakeGitHub.json({ login: "octocat", name: null, avatar_url: null }, 200, { "X-OAuth-Scopes": "repo" }),
       FakeGitHub.json({ login: "hubot", name: null, avatar_url: null }, 200, { "X-OAuth-Scopes": "repo" }));
@@ -183,7 +183,8 @@ describe("RuntimePart", () => {
 
     assert.deepEqual([missing, refused.map(t => t?.[0])], [[FailureCode.Unavailable, "The Git module isn't active, so the folder's remote can't be read."],
       [FailureCode.Unauthorized, FailureCode.Unauthorized, FailureCode.InvalidParams]]);
-    assert.deepEqual([used, read, offHost, forgotten], [{ account: 2 }, { account: 2 }, [{ account: null }, { account: null }, { account: null }], { account: 1 }]);
+    assert.deepEqual([used, read, offHost, forgotten], [{ account: 2, isNamedByRemote: true }, { account: 2, isNamedByRemote: true },
+      [{ account: null }, { account: null }, { account: null }], { account: 1 }]);
     assert.deepEqual(repositories.userReads, [["/home/monalisa/hello-world", "origin"], ["/home/monalisa/hello-world", "origin"]]);
   });
 

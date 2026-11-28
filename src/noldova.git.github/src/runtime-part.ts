@@ -95,11 +95,11 @@ export class RuntimePart implements IRuntimePart {
     context.registerMethod(GitHubNames.readRepositoryAccountMethod, {
       handleAsync: async request => {
         const query: RepositoryQuery = RuntimePart.read(request, RepositoryQuery.fromJson);
-        return new RepositoryAccount(await accounts.accountForAsync(query.host, query.path, request.signal)).toJson();
+        return (await accounts.repositoryAccountAsync(query.host, query.path, request.signal)).toJson();
       }
     });
     context.registerMethod(GitHubNames.pickAccountMethod, {
-      handleAsync: async request => new RepositoryAccount(await accounts.pickAsync(RuntimePart.read(request, AccountPick.fromJson), request.signal)).toJson()
+      handleAsync: async request => (await accounts.pickAsync(RuntimePart.read(request, AccountPick.fromJson), request.signal)).toJson()
     });
     context.registerMethod(GitHubNames.useFolderMethod, {
       handleAsync: async request => {
@@ -109,7 +109,7 @@ export class RuntimePart implements IRuntimePart {
         if (remote === null || remote.host === null || remote.path === null)
           return new RepositoryAccount(null).toJson();
         accounts.useUser(remote.host, remote.path, await repositories.readRemoteUserAsync(query.folder, query.remote, request.signal));
-        return new RepositoryAccount(await accounts.accountForAsync(remote.host, remote.path, request.signal)).toJson();
+        return (await accounts.repositoryAccountAsync(remote.host, remote.path, request.signal)).toJson();
       }
     });
     context.publishService(GitHubNames.accessService, new GitHubAccess(accounts));

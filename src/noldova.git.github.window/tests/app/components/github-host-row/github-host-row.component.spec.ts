@@ -252,11 +252,11 @@ describe("GitHubHostRowComponent", () => {
     expect(page.text).toBe("No pull request for this branch");
   });
 
-  it("says a detached HEAD has no pull request, asking only which account reads the folder", async () => {
+  it("says a detached HEAD has no pull request, without asking", async () => {
     const page = new Page();
     await page.openAsync(signedIn, null);
 
-    expect([page.text, page.requests.methods]).toEqual(["No pull request for this branch", [GitHubNames.readSignInMethod, GitHubNames.useFolderMethod]]);
+    expect([page.text, page.requests.methods]).toEqual(["No pull request for this branch", [GitHubNames.readSignInMethod]]);
   });
 
   it("doesn't ask for a remote with no host or path", async () => {
@@ -627,6 +627,18 @@ describe("GitHubHostRowComponent", () => {
     expect(page.requests.methods.filter(t => t === GitHubNames.readBranchPullRequestMethod)).toHaveLength(2);
   });
 
+  it("says the remote's address picks the account its user name names, offering no switch that couldn't take effect", async () => {
+    const page = new Page();
+    GitHubAccountList.show(page.context, accountsOf(signedIn, lee));
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
+    page.requests.answer(GitHubNames.readRepositoryAccountMethod, new RepositoryAccount(2, undefined, true).toJson());
+    await page.openAsync(signedIn);
+    await page.untilAsync(() => page.texts(".account").length === 1);
+
+    expect([page.texts(".account"), page.element.querySelector(".account button"), page.requests.methods.includes(GitHubNames.pickAccountMethod)])
+      .toEqual([["Account: lee, picked by the remote's address"], null, false]);
+  });
+
   it("reads nothing about the repository until the window's folder is in use, so the account its remote's user name names reads the very first time", async () => {
     const page = new Page();
     GitHubAccountList.show(page.context, accountsOf(signedIn, lee));
@@ -642,6 +654,26 @@ describe("GitHubHostRowComponent", () => {
 
     expect([waiting, page.requests.payloads[1]]).toEqual([[GitHubNames.readSignInMethod, GitHubNames.useFolderMethod], folder.toJson()]);
     expect([...page.requests.methods].slice(2).sort()).toEqual([GitHubNames.readBranchPullRequestMethod, GitHubNames.readRepositoryAccountMethod]);
+    expect(page.texts(".title")).toEqual(["#7 Sample pull request title"]);
+  });
+
+  it("sends no read for a repository the row left while its folder's use waited", async () => {
+    const page = new Page();
+    const other: GitRemote = new GitRemote("origin", "github.com", "example-owner/other", RemoteTransport.Https);
+    GitHubAccountList.show(page.context, accountsOf(signedIn, lee));
+    const release = page.requests.hold(GitHubNames.useFolderMethod);
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
+    page.requests.answer(GitHubNames.readRepositoryAccountMethod, new RepositoryAccount(2).toJson());
+    page.create(signedIn);
+    await page.requests.askedAsync(2);
+    page.fixture?.componentRef.setInput("remote", other);
+    await page.untilAsync(() => page.texts(".account .notice-text").join() === "Account: lee");
+    release(new RepositoryAccount(1).toJson());
+    await Promise.allSettled(page.requests.answered);
+    await page.settleAsync();
+
+    expect(page.requests.payloads.filter((_, i) => page.requests.methods[i] !== GitHubNames.readSignInMethod && page.requests.methods[i] !== GitHubNames.useFolderMethod))
+      .toEqual([new BranchQuery("github.com", "example-owner/other", "feature/readme", HEAD).toJson(), new RepositoryQuery("github.com", "example-owner/other").toJson()]);
     expect(page.texts(".title")).toEqual(["#7 Sample pull request title"]);
   });
 

@@ -11,8 +11,8 @@ import { Component, computed, DestroyRef, effect, ElementRef, inject, input, typ
 import "@noldova/context.core";
 import { type IWindowPartContext, LinkPlace, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { GitHubNames } from "@noldova/git.github.protocol";
-import { AccountPick, BranchPullRequest, BranchQuery, CheckState, FolderQuery, type HostAccountList, type HostCheck, HostSignIn, RepositoryAccount,
-  RepositoryQuery, SignInState } from "@noldova/git.hosting.protocol";
+import { AccountPick, BranchPullRequest, BranchQuery, CheckState, type HostAccountList, type HostCheck, HostSignIn, RepositoryAccount, RepositoryQuery,
+  SignInState } from "@noldova/git.hosting.protocol";
 import type { GitRemote } from "@noldova/git.protocol";
 import { FocusKeeper } from "@noldova/git.window";
 import { ButtonComponent, ButtonVariant, ClipboardWriter, IconButtonComponent, MenuComponent, MenuItemComponent, MenuTriggerDirective, SpinnerComponent,
@@ -24,6 +24,7 @@ import type { GitHubLook } from "../../models/github-look.ts";
 import { ShownPullRequest } from "../../models/shown-pull-request.ts";
 import { Resources } from "../../../resources.ts";
 import { GitHubAccountList } from "../../services/github-account-list.ts";
+import { GitHubFolders } from "../../services/github-folders.ts";
 import { GitHubLooks } from "../../services/github-looks.ts";
 import { SignInEvents } from "../../services/sign-in-events.ts";
 
@@ -51,14 +52,9 @@ export class GitHubHostRowComponent implements OnInit {
   private readonly destroyRef: DestroyRef = inject(DestroyRef);
   private readonly tasks: PendingTasks = inject(PendingTasks);
   private readonly accounts: Signal<HostAccountList | null> = GitHubAccountList.of(this.context);
-  private readonly usedFolder: WritableSignal<string | null> = signal<string | null>(null);
-  private readonly folderKey: Signal<string | null> = computed(() => {
-    const remote: GitRemote = this.remote();
-    return !this.isSignedIn() || Object.isNull(remote.host) || Object.isNull(remote.path) ? null : JSON.stringify([this.folder(), remote.name, remote.host, remote.path]);
-  });
-  private readonly isFolderUsed: Signal<boolean> = computed(() => !Object.isNull(this.folderKey()) && this.usedFolder() === this.folderKey());
+  private readonly folderRemote: Signal<string> = computed(() => JSON.stringify([this.folder(), this.remote().name]));
   private readonly query: Signal<BranchQuery | null> = computed(
-    () => this.isFolderUsed() ? GitHubHostRowComponent.queryOf(this.remote(), this.branch(), this.head()) : null,
+    () => this.isSignedIn() ? GitHubHostRowComponent.queryOf(this.remote(), this.branch(), this.head()) : null,
     { equal: GitHubHostRowComponent.isSameQuery });
 
   protected readonly resources: typeof Resources = Resources;
@@ -72,15 +68,14 @@ export class GitHubHostRowComponent implements OnInit {
   protected readonly isBusy: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly copiedCode: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly isReading: WritableSignal<boolean> = signal<boolean>(false);
-  protected readonly reader: WritableSignal<number | null> = signal<number | null>(null);
+  protected readonly reader: WritableSignal<RepositoryAccount | null> = signal<RepositoryAccount | null>(null);
   protected readonly readers: Signal<readonly AccountReader[]> = computed(() => (this.accounts()?.accounts ?? [])
     .flatMap(t => Object.isNull(t.signIn.account) ? [] : [new AccountReader(t.id, t.signIn.account.login)]));
   protected readonly readerQuery: Signal<RepositoryQuery | null> = computed(() => {
     const remote: GitRemote = this.remote();
-    return this.readers().length < 2 || !this.isFolderUsed() || Object.isNull(remote.host) || Object.isNull(remote.path) ? null
-      : new RepositoryQuery(remote.host, remote.path);
+    return this.readers().length < 2 || Object.isNull(remote.host) || Object.isNull(remote.path) ? null : new RepositoryQuery(remote.host, remote.path);
   }, { equal: (a, b) => a?.host === b?.host && a?.path === b?.path });
-  protected readonly shownReader: Signal<AccountReader | null> = computed(() => this.readers().find(t => t.id === this.reader()) ?? null);
+  protected readonly shownReader: Signal<AccountReader | null> = computed(() => this.readers().find(t => t.id === this.reader()?.account) ?? null);
   protected readonly isSignedIn: Signal<boolean> = computed(() => this.signIn()?.state === SignInState.SignedIn || this.readers().length > 0);
   protected readonly shown: Signal<ShownPullRequest | null> = computed(() => {
     const answer: BranchPullRequest | null = this.answer();
@@ -98,19 +93,9 @@ export class GitHubHostRowComponent implements OnInit {
   public constructor() {
     this.destroyRef.onDestroy(FocusKeeper.keep(inject<ElementRef<HTMLElement>>(ElementRef).nativeElement));
     effect(onCleanup => {
-      const key: string | null = this.folderKey();
-      let isCurrent = true;
-      onCleanup(() => {
-        isCurrent = false;
-      });
-      untracked(() => {
-        if (!Object.isNull(key))
-          void this.useFolderAsync(key, new FolderQuery(this.folder(), this.remote().name), () => isCurrent);
-      });
-    });
-    effect(onCleanup => {
       this.attempt();
       const query: BranchQuery | null = this.query();
+      this.folderRemote();
       let isCurrent = true;
       onCleanup(() => {
         isCurrent = false;
@@ -121,12 +106,13 @@ export class GitHubHostRowComponent implements OnInit {
         this.shownQuery = query;
         this.isReading.set(!Object.isNull(query));
         if (!Object.isNull(query))
-          void this.readAsync(query, () => isCurrent);
+          void this.readAsync(this.folder(), this.remote(), query, () => isCurrent);
       });
     });
     effect(onCleanup => {
       this.readers();
       const query: RepositoryQuery | null = this.readerQuery();
+      this.folderRemote();
       let isCurrent = true;
       onCleanup(() => {
         isCurrent = false;
@@ -135,7 +121,7 @@ export class GitHubHostRowComponent implements OnInit {
         if (Object.isNull(query))
           this.reader.set(null);
         else
-          void this.readReaderAsync(query, () => isCurrent);
+          void this.readReaderAsync(this.folder(), this.remote(), query, () => isCurrent);
       });
     });
   }
@@ -223,7 +209,7 @@ export class GitHubHostRowComponent implements OnInit {
     try {
       const answer = RepositoryAccount.fromJson(await this.context.requestAsync(GitHubNames.pickAccountMethod, new AccountPick(query.host, query.path, account).toJson()));
       if (this.readerQuery() === query)
-        this.showReader(answer.account);
+        this.showReader(answer);
     }
     catch (error) {
       if (!(error instanceof WindowException))
@@ -238,29 +224,15 @@ export class GitHubHostRowComponent implements OnInit {
     }
   }
 
-  private async useFolderAsync(key: string, query: FolderQuery, isCurrent: () => boolean): Promise<void> {
+  private async readReaderAsync(folder: string, remote: GitRemote, query: RepositoryQuery, isCurrent: () => boolean): Promise<void> {
     const done = this.tasks.add();
     try {
-      await this.context.requestAsync(GitHubNames.useFolderMethod, query.toJson());
-    }
-    catch (error) {
-      if (!(error instanceof WindowException))
-        throw error;
-      this.context.log(Resources.formatRequestFailed(GitHubNames.useFolderMethod, String(error)));
-    }
-    finally {
-      if (isCurrent())
-        this.usedFolder.set(key);
-      done();
-    }
-  }
-
-  private async readReaderAsync(query: RepositoryQuery, isCurrent: () => boolean): Promise<void> {
-    const done = this.tasks.add();
-    try {
+      await GitHubFolders.useAsync(this.context, folder, remote);
+      if (!isCurrent())
+        return;
       const answer = RepositoryAccount.fromJson(await this.context.requestAsync(GitHubNames.readRepositoryAccountMethod, query.toJson()));
       if (isCurrent())
-        this.showReader(answer.account);
+        this.showReader(answer);
     }
     catch (error) {
       if (!(error instanceof WindowException))
@@ -272,17 +244,20 @@ export class GitHubHostRowComponent implements OnInit {
     }
   }
 
-  private showReader(account: number | null): void {
-    const shown: number | null = this.reader();
-    this.reader.set(account);
-    if (!Object.isNull(shown) && shown !== account)
+  private showReader(answer: RepositoryAccount): void {
+    const shown: number | null = this.reader()?.account ?? null;
+    this.reader.set(answer);
+    if (!Object.isNull(shown) && shown !== answer.account)
       this.attempt.update(t => t + 1);
   }
 
-  private async readAsync(query: BranchQuery, isCurrent: () => boolean): Promise<void> {
+  private async readAsync(folder: string, remote: GitRemote, query: BranchQuery, isCurrent: () => boolean): Promise<void> {
     const done = this.tasks.add();
     this.failure.set(null);
     try {
+      await GitHubFolders.useAsync(this.context, folder, remote);
+      if (!isCurrent())
+        return;
       const answer = BranchPullRequest.fromJson(await this.context.requestAsync(GitHubNames.readBranchPullRequestMethod, query.toJson()));
       if (isCurrent())
         this.answer.set(answer);

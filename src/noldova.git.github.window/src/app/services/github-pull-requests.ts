@@ -18,6 +18,7 @@ import { GitBranchPullRequest, GitCommitComments, GitPullRequestList, GitPullReq
 import type { IRemotePlace } from "../interfaces/i-remote-place.ts";
 import { ReadQueue } from "../models/read-queue.ts";
 import { AccountEvents } from "./account-events.ts";
+import { GitHubFolders } from "./github-folders.ts";
 import { SignInEvents } from "./sign-in-events.ts";
 import { Resources } from "../../resources.ts";
 
@@ -28,16 +29,16 @@ export class GitHubPullRequests implements IGitPullRequests {
     [ReferenceState.ClosedNotPlanned]: GitPullRequestState.Closed
   };
   private readonly lists: Map<string, WritableSignal<GitPullRequestList | null>> = new Map();
-  private readonly queries: Map<string, RepositoryQuery> = new Map();
+  private readonly queries: Map<string, readonly [string, GitRemote, RepositoryQuery]> = new Map();
   private readonly reads: Map<string, number> = new Map();
   private readonly reviews: Map<string, WritableSignal<GitPullRequestList | null>> = new Map();
   private readonly reviewReads: Map<string, number> = new Map();
   private readonly reviewQueries: Map<string, RepositoryQuery> = new Map();
   private readonly comments: Map<string, WritableSignal<GitCommitComments | null>> = new Map();
-  private readonly commentQueries: Map<string, [CommitQuery, WritableSignal<GitCommitComments | null>]> = new Map();
+  private readonly commentQueries: Map<string, readonly [string, GitRemote, CommitQuery, WritableSignal<GitCommitComments | null>]> = new Map();
   private readonly commentReads: Map<string, number> = new Map();
   private readonly commits: Map<string, WritableSignal<GitBranchPullRequest | null>> = new Map();
-  private readonly commitQueries: Map<string, [CommitQuery, WritableSignal<GitBranchPullRequest | null>]> = new Map();
+  private readonly commitQueries: Map<string, readonly [string, GitRemote, CommitQuery, WritableSignal<GitBranchPullRequest | null>]> = new Map();
   private readonly commitReads: Map<string, number> = new Map();
   private readonly rereads: ReadQueue = new ReadQueue(Resources.gitHubReferenceReadLimit);
   private readonly context: IWindowPartContext;
@@ -71,12 +72,12 @@ export class GitHubPullRequests implements IGitPullRequests {
     return this.listOf(GitHubPullRequests.keyOf(remote));
   }
 
-  public refresh(_folder: string, remote: GitRemote): void {
+  public refresh(folder: string, remote: GitRemote): void {
     if (!Object.isNull(remote.host) && !Object.isNull(remote.path))
-      void this.readAsync(new RepositoryQuery(remote.host, remote.path));
+      void this.readAsync(folder, remote, new RepositoryQuery(remote.host, remote.path));
   }
 
-  public commentsFor(_folder: string, remote: GitRemote, commitId: string): Signal<GitCommitComments | null> {
+  public commentsFor(folder: string, remote: GitRemote, commitId: string): Signal<GitCommitComments | null> {
     const key: string = JSON.stringify([remote.host, remote.path, commitId]);
     const known: WritableSignal<GitCommitComments | null> | undefined = this.comments.get(key);
     if (!Object.isUndefined(known))
@@ -85,13 +86,13 @@ export class GitHubPullRequests implements IGitPullRequests {
     this.comments.set(key, answer);
     if (!Object.isNull(remote.host) && !Object.isNull(remote.path)) {
       const query: CommitQuery = new CommitQuery(remote.host, remote.path, commitId);
-      this.commentQueries.set(key, [query, answer]);
-      void this.readCommentsAsync(query, key, answer, GitHubPullRequests.claim(this.commentReads, key));
+      this.commentQueries.set(key, [folder, remote, query, answer]);
+      void this.readCommentsAsync(folder, remote, query, key, answer, GitHubPullRequests.claim(this.commentReads, key));
     }
     return answer;
   }
 
-  public commitFor(_folder: string, remote: GitRemote, commitId: string): Signal<GitBranchPullRequest | null> {
+  public commitFor(folder: string, remote: GitRemote, commitId: string): Signal<GitBranchPullRequest | null> {
     const key: string = JSON.stringify([remote.host, remote.path, commitId]);
     const known: WritableSignal<GitBranchPullRequest | null> | undefined = this.commits.get(key);
     if (!Object.isUndefined(known))
@@ -100,8 +101,8 @@ export class GitHubPullRequests implements IGitPullRequests {
     this.commits.set(key, answer);
     if (!Object.isNull(remote.host) && !Object.isNull(remote.path)) {
       const query: CommitQuery = new CommitQuery(remote.host, remote.path, commitId);
-      this.commitQueries.set(key, [query, answer]);
-      void this.readCommitAsync(query, key, answer, GitHubPullRequests.claim(this.commitReads, key));
+      this.commitQueries.set(key, [folder, remote, query, answer]);
+      void this.readCommitAsync(folder, remote, query, key, answer, GitHubPullRequests.claim(this.commitReads, key));
     }
     return answer;
   }
@@ -130,17 +131,17 @@ export class GitHubPullRequests implements IGitPullRequests {
   }
 
   private readAll(): void {
-    for (const query of this.queries.values())
-      void this.readAsync(query);
+    for (const [folder, remote, query] of this.queries.values())
+      void this.readAsync(folder, remote, query);
     for (const query of this.reviewQueries.values())
       void this.readReviewsAsync(query);
-    for (const [key, [query, answer]] of this.commitQueries) {
+    for (const [key, [folder, remote, query, answer]] of this.commitQueries) {
       const read: number = GitHubPullRequests.claim(this.commitReads, key);
-      this.rereads.add(() => this.readCommitAsync(query, key, answer, read));
+      this.rereads.add(() => this.readCommitAsync(folder, remote, query, key, answer, read));
     }
-    for (const [key, [query, answer]] of this.commentQueries) {
+    for (const [key, [folder, remote, query, answer]] of this.commentQueries) {
       const read: number = GitHubPullRequests.claim(this.commentReads, key);
-      this.rereads.add(() => this.readCommentsAsync(query, key, answer, read));
+      this.rereads.add(() => this.readCommentsAsync(folder, remote, query, key, answer, read));
     }
   }
 
@@ -170,8 +171,10 @@ export class GitHubPullRequests implements IGitPullRequests {
     }
   }
 
-  private async readCommitAsync(query: CommitQuery, key: string, answer: WritableSignal<GitBranchPullRequest | null>, read: number): Promise<void> {
+  private async readCommitAsync(folder: string, remote: GitRemote, query: CommitQuery, key: string, answer: WritableSignal<GitBranchPullRequest | null>,
+    read: number): Promise<void> {
     try {
+      await GitHubFolders.useAsync(this.context, folder, remote);
       const found = BranchPullRequest.fromJson(await this.context.requestAsync(GitHubNames.readCommitPullRequestMethod, query.toJson()));
       if (this.commitReads.get(key) === read)
         answer.set(GitHubPullRequests.commitAnswerOf(found));
@@ -188,8 +191,10 @@ export class GitHubPullRequests implements IGitPullRequests {
     }
   }
 
-  private async readCommentsAsync(query: CommitQuery, key: string, answer: WritableSignal<GitCommitComments | null>, read: number): Promise<void> {
+  private async readCommentsAsync(folder: string, remote: GitRemote, query: CommitQuery, key: string, answer: WritableSignal<GitCommitComments | null>,
+    read: number): Promise<void> {
     try {
+      await GitHubFolders.useAsync(this.context, folder, remote);
       const found = HostCommitComments.fromJson(await this.context.requestAsync(GitHubNames.readCommitCommentsMethod, query.toJson()));
       if (this.commentReads.get(key) === read)
         answer.set(new GitCommitComments(found.count, found.isCapped, found.url));
@@ -236,14 +241,15 @@ export class GitHubPullRequests implements IGitPullRequests {
       0, 0, 0, "", null, request.account);
   }
 
-  private async readAsync(query: RepositoryQuery): Promise<void> {
+  private async readAsync(folder: string, remote: GitRemote, query: RepositoryQuery): Promise<void> {
     const key: string = GitHubPullRequests.keyOf(query);
     const list = this.listOf(key);
-    this.queries.set(key, query);
+    this.queries.set(key, [folder, remote, query]);
     const read: number = (this.reads.get(key) ?? 0) + 1;
     this.reads.set(key, read);
     list.set(GitPullRequestList.reading(list()?.rows ?? []));
     try {
+      await GitHubFolders.useAsync(this.context, folder, remote);
       const answer = HostPullRequestList.fromJson(await this.context.requestAsync(GitHubNames.readPullRequestsMethod, query.toJson()));
       if (this.reads.get(key) === read)
         list.set(answer.isSignedIn ? GitPullRequestList.ready(answer.rows.map(GitHubPullRequests.rowOf)) : GitPullRequestList.signedOut());

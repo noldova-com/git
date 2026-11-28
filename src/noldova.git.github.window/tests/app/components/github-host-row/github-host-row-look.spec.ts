@@ -206,6 +206,34 @@ describe("GitHubHostRowComponent in the kit's look", () => {
     await page.screenshot({ path: `${screenshots}/host-row-account-${mode}.png`, element: find(root, ".dock") });
   });
 
+  it.each(AppearanceFixture.modes)("sets the account the remote's address picks on the account line's edges, on one line within the card and with no switch, in %s mode", async mode => {
+    const fixture = await openAsync(mode, HostSignIn.signedIn(account), answer, (context, requests) => {
+      GitHubAccountList.show(context, new HostAccountList([new HostAccountEntry(1, HostSignIn.signedIn(account)),
+        new HostAccountEntry(2, HostSignIn.signedIn(new HostAccount("example-bot", null, null, ["repo"])))]));
+      requests.answer(GitHubNames.readRepositoryAccountMethod, new RepositoryAccount(2, undefined, true).toJson());
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root: HTMLElement = fixture.nativeElement;
+    const card = find(root, ".pr").getBoundingClientRect();
+    const state = find(root, ".state").getBoundingClientRect();
+    const open = find(root, ".open").getBoundingClientRect();
+    const line = find(root, ".account").getBoundingClientRect();
+    const mark = find(root, ".account .notice-mark").getBoundingClientRect();
+    const text = find(root, ".account .notice-text");
+    const words = text.getBoundingClientRect();
+
+    AppearanceFixture.expectPixels(line.top - card.bottom, px(0.5));
+    AppearanceFixture.expectPixels(mark.left, state.left);
+    AppearanceFixture.expectPixels(mark.top + mark.height / 2, line.top + line.height / 2);
+    AppearanceFixture.expectPixels(words.left - mark.right, px(0.5));
+    AppearanceFixture.expectPixels(words.top + words.height / 2, line.top + line.height / 2);
+    expect([words.height < 2 * Number.parseFloat(getComputedStyle(text).fontSize), words.right <= open.right]).toEqual([true, true]);
+    expect([text.textContent?.trim(), root.querySelector(".account button"), getComputedStyle(text).color])
+      .toEqual(["Account: example-bot, picked by the remote's address", null, getComputedStyle(find(root, ".account")).color]);
+    await page.screenshot({ path: `${screenshots}/host-row-remote-account-${mode}.png`, element: find(root, ".dock") });
+  });
+
   it.each(AppearanceFixture.modes)("sets the pull request's line and its checks inside the card's insets, worst first, in %s mode", async mode => {
     const fixture = await openAsync(mode, HostSignIn.signedIn(account), answer);
     const root: HTMLElement = fixture.nativeElement;

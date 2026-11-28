@@ -352,7 +352,7 @@ describe("GitHubAccounts", () => {
     const picked = await rig.accounts.pickAsync(new AccountPick("github.com", REPOSITORY, 2), signal);
     await rig.savedAsync();
 
-    assert.deepEqual([picked, await rig.accounts.tokenForAsync("github.com", REPOSITORY, signal), rig.github.requests.length], [2, "gho_hubot", 0]);
+    assert.deepEqual([picked.toJson(), await rig.accounts.tokenForAsync("github.com", REPOSITORY, signal), rig.github.requests.length], [{ account: 2 }, "gho_hubot", 0]);
     assert.deepEqual(rig.index(), { accounts: [{ id: 2, host: "github.com", login: "hubot" }], picks: [{ host: "github.com", path: REPOSITORY, account: 2 }] });
   });
 
@@ -392,10 +392,29 @@ describe("GitHubAccounts", () => {
 
     rig.accounts.useUser("GitHub.com", "Octocat/Hello-World.git", "HuBot");
     const named = await rig.accounts.accountForAsync("github.com", REPOSITORY, signal);
+    const answer = await rig.accounts.repositoryAccountAsync("github.com", REPOSITORY, signal);
     await rig.savedAsync();
 
-    assert.deepEqual([named, await rig.accounts.tokenForAsync("github.com", REPOSITORY, signal), rig.github.requests.length], [2, "gho_hubot", 0]);
+    assert.deepEqual([named, answer.toJson(), await rig.accounts.tokenForAsync("github.com", REPOSITORY, signal), rig.github.requests.length],
+      [2, { account: 2, isNamedByRemote: true }, "gho_hubot", 0]);
     assert.deepEqual(rig.index(), { accounts: [{ id: 2, host: "github.com", login: "hubot" }], picks: [{ host: "github.com", path: REPOSITORY, account: 1 }] });
+  });
+
+  it("answers a pick against the remote's user name with the named account, saying the user name chose it, and no account while none is signed in", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat", "hubot"]);
+    await rig.restoreAsync(["octocat", "hubot"]);
+    const signal = new AbortController().signal;
+
+    rig.accounts.useUser("github.com", REPOSITORY, "hubot");
+    const picked = await rig.accounts.pickAsync(new AccountPick("github.com", REPOSITORY, 1), signal);
+    rig.accounts.useUser("github.com", REPOSITORY, null);
+    const unnamed = await rig.accounts.repositoryAccountAsync("github.com", REPOSITORY, signal);
+    await rig.accounts.signOutAsync(1);
+    await rig.accounts.signOutAsync(2);
+
+    assert.deepEqual([picked.toJson(), unnamed.toJson(), (await rig.accounts.repositoryAccountAsync("github.com", REPOSITORY, signal)).toJson()],
+      [{ account: 2, isNamedByRemote: true }, { account: 1 }, { account: null }]);
   });
 
   it("passes over a user name no signed-in account has, a user name it no longer holds, and one whose account signed out", async () => {

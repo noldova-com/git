@@ -9,7 +9,7 @@
 import { JsonException, JsonReader } from "@noldova/context.json";
 import { FailureCode, SecretFailureReason, SecretFailures } from "@noldova/desktop.protocol";
 import { type IAppWindows, type IModuleLog, type IModuleSecrets, MethodFailureException } from "@noldova/desktop.runtime";
-import { AccountPick, HostAccountEntry, HostAccountList, HostingProtocolException, type HostSignIn, SignInState } from "@noldova/git.hosting.protocol";
+import { AccountPick, HostAccountEntry, HostAccountList, HostingProtocolException, type HostSignIn, RepositoryAccount, SignInState } from "@noldova/git.hosting.protocol";
 
 import type { IGitHubTokens } from "../interfaces/i-github-tokens.ts";
 import { GitHubRepository } from "../models/github-repository.ts";
@@ -112,13 +112,18 @@ export class GitHubAccounts implements IGitHubTokens {
     return answer;
   }
 
-  public async pickAsync(pick: AccountPick, signal: AbortSignal): Promise<number | null> {
+  public async pickAsync(pick: AccountPick, signal: AbortSignal): Promise<RepositoryAccount> {
     this.signInOf(pick.account);
     const others: readonly AccountPick[] = this.picks.filter(t => !GitHubAccounts.isSameRepository(t, pick.host, pick.path));
     this.picks = [...others, pick].slice(-Resources.picksCap);
     this.found.delete(GitHubAccounts.keyOf(pick.host, pick.path));
     this.save();
-    return this.accountForAsync(pick.host, pick.path, signal);
+    return this.repositoryAccountAsync(pick.host, pick.path, signal);
+  }
+
+  public async repositoryAccountAsync(host: string, path: string, signal: AbortSignal): Promise<RepositoryAccount> {
+    const id: number | null = await this.accountForAsync(host, path, signal);
+    return id === null ? new RepositoryAccount(null) : new RepositoryAccount(id, undefined, this.namedFor(host, path) === id);
   }
 
   public useUser(host: string, path: string, user: string | null): void {
@@ -136,10 +141,9 @@ export class GitHubAccounts implements IGitHubTokens {
     const first: SignedInAccount | undefined = signedIn[0];
     if (first === undefined)
       return null;
-    const user: string | undefined = this.users.get(GitHubAccounts.keyOf(host, path));
-    const named: SignedInAccount | undefined = signedIn.find(t => t.login.toLowerCase() === user);
-    if (named !== undefined)
-      return named.id;
+    const named: number | null = this.namedFor(host, path);
+    if (named !== null)
+      return named;
     const pick: number | undefined = this.picks.find(t => GitHubAccounts.isSameRepository(t, host, path))?.account;
     if (pick !== undefined && signedIn.some(t => t.id === pick))
       return pick;
@@ -160,6 +164,11 @@ export class GitHubAccounts implements IGitHubTokens {
   public async tokenForAsync(host: string, path: string, signal: AbortSignal): Promise<string | null> {
     const id: number | null = await this.accountForAsync(host, path, signal);
     return id === null ? null : this.signInOf(id).token;
+  }
+
+  private namedFor(host: string, path: string): number | null {
+    const user: string | undefined = this.users.get(GitHubAccounts.keyOf(host, path));
+    return this.signedIn.find(t => t.login.toLowerCase() === user)?.id ?? null;
   }
 
   public holds(token: string): boolean {
