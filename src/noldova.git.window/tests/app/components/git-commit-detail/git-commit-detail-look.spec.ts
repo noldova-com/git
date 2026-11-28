@@ -27,6 +27,7 @@ import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
 import { FixtureLine, GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitLayout } from "../../../fixtures/git-layout.fixture.ts";
 import { GitViewFixture } from "../../../fixtures/git-view.fixture.ts";
+import { RightEdge } from "../../../fixtures/right-edge.fixture.ts";
 
 describe("GitCommitDetailComponent in the kit's look", () => {
   const screenshots: string = "../../../../../../_build/window/screenshots";
@@ -132,6 +133,10 @@ describe("GitCommitDetailComponent in the kit's look", () => {
     expect([letterOf(first)?.textContent, letterOf(second)?.textContent]).toEqual(["R 92%", "M"]);
     expect([letterOf(first)?.getClientRects().length, rem(box(letterOf(first)).height), ends]).toEqual([1, rem(box(letterOf(second)).height), [0.5, 0.5]]);
     expect(box(letterOf(first)).left).toBeGreaterThanOrEqual(box(first?.querySelector(".grow") ?? null).right);
+    const detail: HTMLElement = view.find(".detail");
+    const edge: number = RightEdge.contentOf(detail);
+    expect([...RightEdge.missesOf(detail, edge, [".id-row .more"]), ...[first, second].flatMap(t => RightEdge.missesOf(t ?? detail, edge, [".letter"]))]).toEqual([]);
+    expect([rem(box(detail).right - box(first ?? null).right), rem(box(second?.querySelector("nol-file-badge") ?? null).left - box(detail).left)]).toEqual([0.25, 0.75]);
     await page.screenshot({ element: view.element, path: `${screenshots}/git-commit-detail-similarity-${mode}.png` });
   });
 

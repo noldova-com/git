@@ -55,6 +55,10 @@
   min-width: 0;
 }
 
+.line > [nol-icon-button]:last-child {
+  margin-inline-end: calc((var(--nol-icon) - var(--nol-icon-button-target)) / 2);
+}
+
 .state,
 .check-icon,
 .notice-mark,

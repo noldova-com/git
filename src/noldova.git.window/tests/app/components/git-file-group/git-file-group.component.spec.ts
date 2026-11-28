@@ -84,7 +84,7 @@ describe("GitFileGroupComponent", () => {
       "keyboard_arrow_down folder src/app/deep", "d.ts", "z.ts"]);
     expect(tree).toEqual(["keyboard_arrow_down folder src", "s.ts", "a.ts", "keyboard_arrow_down folder docs", "c.md", "keyboard_arrow_down folder src", "keyboard_arrow_down folder app/deep", "d.ts",
       "b.ts", "z.ts"]);
-    expect(insets).toEqual([1.625, 3, 3, 1.625]);
+    expect(insets).toEqual([1.875, 3.25, 3.25, 1.875]);
     expect([folderIcons, treeIcons]).toEqual([["folder_open", "folder_open"], ["account_tree", "account_tree"]]);
     expect(view.all(".layout button").map(t => t.getAttribute("aria-label"))).toEqual(["Show files as", "Show files as"]);
     expect(closed).toEqual(["keyboard_arrow_down folder src", "s.ts", "a.ts", "keyboard_arrow_down folder docs", "c.md", "chevron_right folder src", "z.ts"]);
@@ -290,6 +290,7 @@ describe("GitFileGroupComponent", () => {
     const diff: DOMRect = row.querySelector(".diff")?.getBoundingClientRect() ?? new DOMRect();
     const hunk: DOMRect = row.querySelector(".hunk")?.getBoundingClientRect() ?? new DOMRect();
     const button: DOMRect = action()?.getBoundingClientRect() ?? new DOMRect();
+    const padding: number = parseFloat(getComputedStyle(action() ?? document.body).paddingRight);
     const context: DOMRect = row.querySelector(".diff > div:nth-child(2)")?.getBoundingClientRect() ?? new DOMRect();
     const line: DOMRect = row.querySelector("button.line")?.getBoundingClientRect() ?? new DOMRect();
     row.querySelector<HTMLElement>("button.line:last-of-type")?.click();
@@ -312,7 +313,7 @@ describe("GitFileGroupComponent", () => {
     expect(chosen).toEqual(["Stage 1 line", ["true", "false"], true]);
     expect(cleared).toEqual(["false", "false"]);
     expect([unstage, unstageLine]).toEqual(["Unstage hunk", "Unstage 1 line"]);
-    expect([rem(hunk.right - button.right), rem(line.left - context.left), rem(line.width - context.width), rem(button.top - hunk.top) >= 0, rem(hunk.bottom - button.bottom) >= 0])
+    expect([rem(hunk.right - button.right + padding), rem(line.left - context.left), rem(line.width - context.width), rem(button.top - hunk.top) >= 0, rem(hunk.bottom - button.bottom) >= 0])
       .toEqual([0.5, 0, 0, true, true]);
     expect(rem(hunk.left - diff.left)).toBeCloseTo(rem(context.left - diff.left));
     const folder: string = GitFixtures.folder;

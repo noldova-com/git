@@ -92,7 +92,11 @@ export class GitDiffFilesComponent {
   }
 
   protected insetOf(depth: number): number | null {
-    return depth === 0 ? null : Resources.rowStartRem + depth * Resources.commitFileStepRem;
+    return depth === 0 ? null : Resources.filledRowStartRem + depth * Resources.commitFileStepRem;
+  }
+
+  protected diffInsetOf(depth: number): number | null {
+    return depth === 0 ? null : depth * Resources.commitFileStepRem;
   }
 
   protected nameOf(path: string): string {

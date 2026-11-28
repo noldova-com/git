@@ -34,23 +34,25 @@ LICENSE file in the root directory of this source tree.
             <ng-container [ngTemplateOutlet]="nameOf" [ngTemplateOutletContext]="{ $implicit: row, name: item.name }" />
           </button>
         }
-        @if (isOpen) {
-          @let wrapLabel = wrapped().has(row.key) ? resources.unwrapLinesLabel : resources.wrapLinesLabel;
-          <button nol-icon-button type="button" class="wrap" [icon]="resources.wrapIcon" [pressed]="wrapped().has(row.key)" [label]="wrapLabel" [nolTooltip]="wrapLabel"
-            (click)="toggleWrap(row)"></button>
-        }
-        @if (row.group !== kinds.Conflicts) {
-          @let diffLabel = isOpen ? resources.hideDiffLabel : resources.showDiffLabel;
-          <button nol-icon-button type="button" class="expand" [icon]="isOpen ? resources.collapseIcon : resources.expandIcon" [label]="diffLabel" [nolTooltip]="diffLabel"
-            [attr.aria-expanded]="isOpen" (click)="toggle(row)"></button>
-        }
-        @if (row.group === kinds.Changes) {
-          @let discardLabel = resources.formatDiscard(row.path);
-          <button nol-icon-button type="button" class="discard" [icon]="resources.discardIcon" [label]="discardLabel" [nolTooltip]="discardLabel"
-            [disabled]="state.busy()" (click)="discardAsync(row)"></button>
-        }
-        <button nol-icon-button type="button" class="move" [icon]="row.group === kinds.Staged ? resources.unstageIcon : resources.stageIcon" [label]="moveLabel"
-          [nolTooltip]="moveLabel" [disabled]="state.busy()" (click)="move(row)"></button>
+        <span class="actions">
+          @if (isOpen) {
+            @let wrapLabel = wrapped().has(row.key) ? resources.unwrapLinesLabel : resources.wrapLinesLabel;
+            <button nol-icon-button type="button" class="wrap" [icon]="resources.wrapIcon" [pressed]="wrapped().has(row.key)" [label]="wrapLabel" [nolTooltip]="wrapLabel"
+              (click)="toggleWrap(row)"></button>
+          }
+          @if (row.group !== kinds.Conflicts) {
+            @let diffLabel = isOpen ? resources.hideDiffLabel : resources.showDiffLabel;
+            <button nol-icon-button type="button" class="expand" [icon]="isOpen ? resources.collapseIcon : resources.expandIcon" [label]="diffLabel" [nolTooltip]="diffLabel"
+              [attr.aria-expanded]="isOpen" (click)="toggle(row)"></button>
+          }
+          @if (row.group === kinds.Changes) {
+            @let discardLabel = resources.formatDiscard(row.path);
+            <button nol-icon-button type="button" class="discard" [icon]="resources.discardIcon" [label]="discardLabel" [nolTooltip]="discardLabel"
+              [disabled]="state.busy()" (click)="discardAsync(row)"></button>
+          }
+          <button nol-icon-button type="button" class="move" [icon]="row.group === kinds.Staged ? resources.unstageIcon : resources.stageIcon" [label]="moveLabel"
+            [nolTooltip]="moveLabel" [disabled]="state.busy()" (click)="move(row)"></button>
+        </span>
       </div>
       @if (isOpen) {
         <div class="diff" [class.wrapped]="wrapped().has(row.key)">

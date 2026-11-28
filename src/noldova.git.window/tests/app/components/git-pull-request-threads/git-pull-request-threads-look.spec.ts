@@ -224,7 +224,7 @@ describe("GitPullRequestThreadsComponent in the kit's look", () => {
     AppearanceFixture.expectPixels(change.top - line.bottom, px(0.5));
   });
 
-  it.each(AppearanceFixture.modes)("folds a finished thread to one line inside its card, cutting a long comment short, in %s mode", async mode => {
+  it.each(AppearanceFixture.modes)("folds a finished thread to one line inside its card, its hover fill 0.25rem from the card and its text 0.75rem in, cutting a long comment short, in %s mode", async mode => {
     const root: HTMLElement = (await openAsync(mode)).nativeElement;
     const [, card] = all(root, ".thread");
     if (Object.isUndefined(card))
@@ -235,8 +235,10 @@ describe("GitPullRequestThreadsComponent in the kit's look", () => {
     const foldBox = fold.getBoundingClientRect();
     const text = find(fold, ".grow");
 
-    AppearanceFixture.expectPixels(foldBox.left - box.left, inset);
-    AppearanceFixture.expectPixels(box.right - foldBox.right, inset);
+    const fill: number = inset - px(0.5);
+    AppearanceFixture.expectPixels(foldBox.left - box.left, fill);
+    AppearanceFixture.expectPixels(box.right - foldBox.right, fill);
+    AppearanceFixture.expectPixels(Number.parseFloat(getComputedStyle(fold).paddingLeft), px(0.5));
     AppearanceFixture.expectPixels(foldBox.height, px(1.625));
     expect(text.scrollWidth).toBeGreaterThan(text.clientWidth);
   });

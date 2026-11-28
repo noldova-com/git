@@ -81,8 +81,8 @@ export class AzureAccounts implements IAzureTokens {
         this.entries.set(id, this.make(id));
     }
     this.picks = kept?.picks ?? [];
-    const restoring: readonly [number, AzureSignIn][] = [...this.entries].filter(([id]) => id === AzureAccounts.firstId || named.includes(id));
-    await Promise.all(restoring.map(([, t]) => t.restoreAsync()));
+    const restoring: readonly AzureSignIn[] = [...this.entries.keys()].filter(id => id === AzureAccounts.firstId || named.includes(id)).map(id => this.signInOf(id));
+    await Promise.all(restoring.map(t => t.restoreAsync()));
     for (const [id, signIn] of this.entries) {
       if (id !== AzureAccounts.firstId && named.includes(id) && signIn.current.state === SignInState.SignedOut && signIn.current.failure === null
         && !signIn.keptUnreadable)
@@ -274,7 +274,7 @@ export class AzureAccounts implements IAzureTokens {
         accounts.push(new KeptAccount(id, signIn.organization, login));
     }
     const value: string = JSON.stringify(new KeptAccounts(accounts, this.picks).toJson());
-    if (this.stopped || value === this.kept || (this.kept === null && accounts.length === 0 && this.picks.length === 0))
+    if (this.stopped || !this.isIndexRead || value === this.kept || (this.kept === null && accounts.length === 0 && this.picks.length === 0))
       return;
     this.kept = value;
     this.saving = this.saving.then(() => this.secrets.saveAsync(Resources.accountsSecret, value)).catch((error: unknown) =>

@@ -8,13 +8,23 @@
 
 import { type Signal, signal, type WritableSignal } from "@angular/core";
 import type { IWindowPartContext } from "@noldova/desktop.window";
-import type { HostAccountList } from "@noldova/git.hosting.protocol";
+import { HostAccountList } from "@noldova/git.hosting.protocol";
+
+import { EnterpriseEntry } from "../models/enterprise-entry.ts";
 
 export class GitHubAccountList {
   private static readonly lists: WeakMap<IWindowPartContext, WritableSignal<HostAccountList | null>> = new WeakMap();
 
   public static of(context: IWindowPartContext): Signal<HostAccountList | null> {
     return GitHubAccountList.listOf(context).asReadonly();
+  }
+
+  public static gitHubOf(list: HostAccountList): HostAccountList {
+    return new HostAccountList(list.accounts.filter(t => Object.isNull(t.place)));
+  }
+
+  public static enterpriseOf(list: HostAccountList): readonly EnterpriseEntry[] {
+    return list.accounts.flatMap(t => Object.isNull(t.place) ? [] : [new EnterpriseEntry(t.id, t.place, t.signIn)]);
   }
 
   public static show(context: IWindowPartContext, list: HostAccountList | null): void {

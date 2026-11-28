@@ -110,6 +110,7 @@ So a repository's hooks and filters run code the repository names, with the pers
 - The command log, which `git.commandLog` answers to a window, keeps each write's git command line, so it holds what the person wrote, such as a commit message, but never a URL's name, password or token, nor a control character; it lives only in the runtime's memory, and no agent tool reads it.
 - git's output comes with a failure as untrusted text, marked as the repository's, never as the module's words or instructions.
 - A file name, commit subject or author in a request or a message has each control character replaced before the module shows it.
+- A GitHub Enterprise token: only a window may give it, through `git-github.signInWithToken`; the module sends it only to the server it was given for, under `https://<server>/api/v3`, keeps it in the module's secrets like a GitHub account's, and never logs it or answers it to a window; a failure names the server and the scope, never the token. github.com's reads and tools never take an Enterprise account's token.
 - A host's token: the Azure DevOps sign-in refuses a payload without a token or an organization's name in a fixed sentence that never repeats it, and logs only the account it signed in as; the token goes only to `dev.azure.com` and `vssps.dev.azure.com` under the organization it was given for.
 - The sign-in with Microsoft's code, verifier, access token and refresh token: none is logged or answered to a window; the code and verifier go only to `login.microsoftonline.com`, the refresh token only there and to the module's secrets, and the access token only to `dev.azure.com` and `vssps.dev.azure.com` under the organization the person named.
 
@@ -127,7 +128,7 @@ A change to any of these is risky in review:
 - which modules can read the GitHub tokens through `git-github.access`, which account it answers for a repository, or what it answers;
 - how the GitHub module chooses the account for a repository, what that check sends, or how the picks and the other accounts' secrets are kept;
 - how the Azure DevOps module chooses the account for a repository or a reference's read or write, or how its picks and the other accounts' secrets are kept;
-- which hosts the GitHub token goes to, whether GitHub's sign-in and API follow a redirect, how much of an answer they read, or what the avatar read sends, follows or takes;
+- which hosts the GitHub or GitHub Enterprise tokens go to, who may give the module an Enterprise token, whether GitHub's sign-in and API follow a redirect, how much of an answer they read, or what the avatar read sends, follows or takes;
 - who may give the Azure DevOps module a token, which hosts the token goes to, whether a request follows a redirect with it, or how it is kept;
 - the sign-in with Microsoft: its client, authority or scopes, what the loopback listener binds to, accepts or answers, how its state and PKCE verifier are made, or how its refresh token is kept and renewed;
 - what `git-azure-devops.readAuthorAvatar` or `git-azure-devops.readPersonAvatar` sends to Azure DevOps or takes, or which work item icons the module takes;

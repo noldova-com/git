@@ -19,6 +19,7 @@ import { AppearanceFixture } from "@noldova/ui.components.angular/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { page } from "vitest/browser";
 
+import { RightEdge } from "../../../../../noldova.git.window/tests/fixtures/right-edge.fixture.ts";
 import { GitHubAccountsComponent } from "../../../../src/app/components/github-accounts/github-accounts.component.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 
@@ -61,7 +62,7 @@ describe("GitHubAccountsComponent in the kit's look", () => {
     AppearanceFixture.reset();
   });
 
-  it.each(AppearanceFixture.modes)("stacks each account's section and the Add row edge to edge, on one start edge, in %s mode", async mode => {
+  it.each(AppearanceFixture.modes)("stacks each account's section and the Add row edge to edge, on one start edge and one right content edge, in %s mode", async mode => {
     const fixture = await openAsync(mode);
     const root: HTMLElement = fixture.nativeElement;
     const sections = all(root, ".nol-git-github-setting");
@@ -76,6 +77,10 @@ describe("GitHubAccountsComponent in the kit's look", () => {
     }
     for (const [index, box] of boxes.entries())
       AppearanceFixture.expectPixels(box.top, boxes[index - 1]?.bottom ?? box.top);
+    const body: HTMLElement = root.querySelector<HTMLElement>(".body") ?? root;
+    const inset: number = start - body.getBoundingClientRect().left - Number.parseFloat(getComputedStyle(body).paddingLeft);
+    for (const section of sections)
+      AppearanceFixture.expectPixels(RightEdge.contentOf(section), RightEdge.contentOf(body) - inset);
     await page.screenshot({ path: `${screenshots}/accounts-${mode}.png`, element: root.querySelector(".body") ?? root });
   });
 });

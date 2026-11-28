@@ -23,6 +23,7 @@ import { afterEach, describe, expect, it, onTestFinished } from "vitest";
 import { page } from "vitest/browser";
 
 import { GitLayout } from "../../../../../noldova.git.window/tests/fixtures/git-layout.fixture.ts";
+import { RightEdge } from "../../../../../noldova.git.window/tests/fixtures/right-edge.fixture.ts";
 import { AzureDevOpsWorkItemComponent } from "../../../../src/app/components/azure-devops-work-item/azure-devops-work-item.component.ts";
 import { AzureDevOpsWorkItemDetailComponent } from "../../../../src/app/components/azure-devops-work-item-detail/azure-devops-work-item-detail.component.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
@@ -152,6 +153,8 @@ describe("AzureDevOpsWorkItemComponent in the kit's look", () => {
     AppearanceFixture.expectPixels(image.width, px(1.5));
     AppearanceFixture.expectPixels(image.height, px(1.5));
     AppearanceFixture.expectPixels(image.left, boxOf(root, ".person").left);
+    const detail: HTMLElement = find(root, ".detail");
+    expect(RightEdge.missesOf(detail, RightEdge.contentOf(detail), [".kind > .open", ".section-head > .small", ".line > .small"])).toEqual([]);
     await page.screenshot({ element: find(root, ".detail"), path: `${screenshots}/work-item-assignee-picture-${mode}.png` });
   });
 

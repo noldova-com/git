@@ -187,6 +187,10 @@ button.file:hover {
   white-space: nowrap;
 }
 
+.pane-head > [nol-toolbar-button]:last-child {
+  margin-inline-end: calc(-1 * var(--nol-pill-padding));
+}
+
 .bar {
   flex: none;
   width: 0.1875rem;

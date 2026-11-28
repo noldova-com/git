@@ -213,6 +213,12 @@ export class Resources {
   public static readonly installedPackageScript: string = "scripts/tests/installed-package/install-and-open.ts";
   public static readonly testTimeCheckScript: string = "scripts/checks/test-time-check.ts";
   public static readonly defaultReporter: string = "--reporter=default";
+  public static readonly stuckTestReporter: string = "--reporter=./scripts/reporters/stuck-test-reporter.ts";
+  public static readonly stuckCheckMilliseconds: number = 5_000;
+  public static readonly stuckMarginMilliseconds: number = 30_000;
+  public static readonly pendingTestState: "pending" = "pending";
+  public static readonly runModes: readonly string[] = ["run", "only"];
+  public static readonly moduleEntityType: "module" = "module";
   public static readonly testTimesReporter: readonly string[] = ["--reporter=json", "--outputFile.json=_build/test-times.json"];
   public static readonly testTimesFile: string = "_build/test-times.json";
   public static readonly slowFilesHeading: string = "### Test files over 1 second";
@@ -361,6 +367,14 @@ export class Resources {
 
   public static formatProcessTimeout(command: string, timeout: number): string {
     return `"${command}" did not finish within ${timeout} ms.`;
+  }
+
+  public static formatStuckTest(file: string, name: string): string {
+    return `${file} > ${name}`;
+  }
+
+  public static formatStuckTests(names: readonly string[], margin: number): string {
+    return [`No word for ${margin} ms past its own time limit, so the run stops; each file with its first unfinished test:`, ...names.map(t => `  ${t}`)].join(Resources.lineEnd);
   }
 
   public static formatGitFailed(gitArguments: readonly string[], exitCode: number | null, errorOutput: string): string {
