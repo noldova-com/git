@@ -46,7 +46,7 @@ export class BoundRepository {
     const host: string | null = origin?.host ?? null;
     const remotePath: string | null = origin?.path ?? null;
     const path: string | null = remotePath?.endsWith(Resources.gitSuffix) === true ? remotePath.slice(0, -Resources.gitSuffix.length) : remotePath;
-    if (host !== Resources.host || path === null || GitHubRepository.parse(path) === null)
+    if (host !== Resources.host || path === null || GitHubRepository.parse(host, path) === null)
       throw GitHubToolFailures.fail(ToolFailureCode.Refused, Resources.notGitHubToolMessage, Resources.notGitHubToolCode);
     if (status.branch === null)
       throw GitHubToolFailures.fail(ToolFailureCode.Refused, Resources.detachedHeadToolMessage, Resources.detachedHeadToolCode);

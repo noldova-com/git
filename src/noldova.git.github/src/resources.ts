@@ -260,7 +260,6 @@ export class Resources {
   public static readonly incompleteResultsField: string = "incomplete_results";
   public static readonly repositoryUrlField: string = "repository_url";
   public static readonly reviewRequestsPath: string = "/search/issues?q=is%3Apr+is%3Aopen+review-requested%3A%40me&sort=updated&order=desc&per_page=100";
-  public static readonly repositoryApiPrefix: string = "https://api.github.com/repos/";
   public static readonly reviewRequestsHeldFor: number = 60_000;
   public static readonly objectType: string = "object";
   public static readonly stringType: string = "string";
@@ -442,7 +441,15 @@ export class Resources {
   }
 
   public static formatUserUrl(host: string): string {
-    return host === Resources.host ? Resources.userUrl : `https://${host}/api/v3/user`;
+    return host === Resources.host ? Resources.userUrl : `${Resources.formatApiUrl(host)}/user`;
+  }
+
+  public static formatApiUrl(host: string): string {
+    return host === Resources.host ? Resources.apiUrl : `https://${host}/api/v3`;
+  }
+
+  public static formatRepositoryApiPrefix(host: string): string {
+    return `${Resources.formatApiUrl(host)}/repos/`;
   }
 
   public static formatTokenRefused(host: string): string {

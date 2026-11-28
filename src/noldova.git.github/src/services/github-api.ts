@@ -25,13 +25,13 @@ export class GitHubApi {
     this.fetcher = fetcher;
   }
 
-  public async getAsync(path: string, token: string, signal: AbortSignal): Promise<JsonReader | null> {
+  public async getAsync(host: string, path: string, token: string, signal: AbortSignal): Promise<JsonReader | null> {
     let answers: Map<string, CachedAnswer> | undefined = this.answers.get(token);
     if (answers === undefined) {
       answers = new Map();
       this.answers.set(token, answers);
     }
-    const url: string = Resources.apiUrl + path;
+    const url: string = Resources.formatApiUrl(host) + path;
     const cached: CachedAnswer | undefined = answers.get(url);
     const now: number = Date.now();
     if (cached !== undefined && now - cached.readAt < Resources.freshFor)
@@ -53,8 +53,8 @@ export class GitHubApi {
     return reader;
   }
 
-  public async postAsync(path: string, token: string, body: Readonly<Record<string, string | boolean>>, signal: AbortSignal): Promise<JsonReader> {
-    const response: Response = await this.fetchAsync(Resources.apiUrl + path, {
+  public async postAsync(host: string, path: string, token: string, body: Readonly<Record<string, string | boolean>>, signal: AbortSignal): Promise<JsonReader> {
+    const response: Response = await this.fetchAsync(Resources.formatApiUrl(host) + path, {
       method: Resources.postMethod,
       headers: { ...GitHubApi.headersOf(token), [Resources.contentTypeHeader]: Resources.jsonType },
       body: JSON.stringify(body)
@@ -153,7 +153,7 @@ export class GitHubApi {
 
   private static apiUrlOf(address: string | null, base: string): URL | null {
     const url: URL | null = address === null ? null : URL.parse(address, base);
-    return url !== null && url.origin === Resources.apiUrl && url.username.length === 0 && url.password.length === 0 ? url : null;
+    return url !== null && url.origin === new URL(base).origin && url.username.length === 0 && url.password.length === 0 ? url : null;
   }
 
   private static headersOf(token: string): Record<string, string> {
