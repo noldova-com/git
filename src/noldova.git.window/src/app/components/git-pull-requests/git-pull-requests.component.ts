@@ -57,9 +57,8 @@ export class GitPullRequestsComponent {
     });
   }
 
-  protected failureOf(hostName: string, list: GitPullRequestList | null): string {
-    const until: number | null = list?.limitedUntil ?? null;
-    return Object.isNull(until) ? list?.failure ?? "" : Resources.formatRateLimited(hostName, this.dates.dateTime(until));
+  protected limitedText(hostName: string, until: number): string {
+    return Resources.formatRateLimited(hostName, this.dates.dateTime(until));
   }
 
   protected refresh(): void {
