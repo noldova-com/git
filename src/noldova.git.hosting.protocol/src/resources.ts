@@ -79,6 +79,8 @@ export class Resources {
   public static readonly commitCommentsUrlExpected: string = "a page exactly when there are comments";
   public static readonly countsExpected: string = "zero counts when the host doesn't count them";
   public static readonly accountIdsExpected: string = "accounts with each id once";
+  public static readonly placeExpected: string = "a lowercase host name, with its port or a path if it has one, and no scheme, user name or trailing '/'";
+  public static readonly placePattern: RegExp = /^[a-z0-9-]+(?:\.[a-z0-9-]+)*(?::[0-9]+)?(?:\/[a-z0-9._-]+)*$/;
   public static readonly commentParentExpected: string = "a parent other than the comment itself";
   public static readonly lineExpected: string = "a line only on a thread that names a file";
   public static readonly commentsExpected: string = "at least one comment";
@@ -92,6 +94,7 @@ export class Resources {
   public static readonly remoteField: string = "remote";
   public static readonly accountsField: string = "accounts";
   public static readonly signInField: string = "signIn";
+  public static readonly placeField: string = "place";
   public static readonly failureField: string = "failure";
   public static readonly userCodeField: string = "userCode";
   public static readonly verificationUriField: string = "verificationUri";

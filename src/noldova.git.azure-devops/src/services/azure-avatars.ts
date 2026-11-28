@@ -10,18 +10,18 @@ import type { JsonReader } from "@noldova/context.json";
 import type { IModuleLog } from "@noldova/desktop.runtime";
 import type { AuthorQuery, PersonQuery } from "@noldova/git.hosting.protocol";
 
-import type { IAzureToken } from "../interfaces/i-azure-token.ts";
+import type { IAzureTokens } from "../interfaces/i-azure-tokens.ts";
 import type { AzureCredential } from "../models/azure-credential.ts";
 import { Resources } from "../resources.ts";
 import { AzureApi } from "./azure-api.ts";
 
 export class AzureAvatars {
   private readonly api: AzureApi;
-  private readonly signIn: IAzureToken;
+  private readonly signIn: IAzureTokens;
   private readonly log: IModuleLog;
   private readonly kept: Map<string, string | null> = new Map();
 
-  public constructor(api: AzureApi, signIn: IAzureToken, log: IModuleLog) {
+  public constructor(api: AzureApi, signIn: IAzureTokens, log: IModuleLog) {
     this.api = api;
     this.signIn = signIn;
     this.log = log;
@@ -36,26 +36,25 @@ export class AzureAvatars {
   }
 
   private async readByEmailAsync(host: string, organization: string, address: string, signal: AbortSignal): Promise<string | null> {
-    const signedIn: string | null = this.signIn.organization;
-    const token: AzureCredential | null = this.signIn.token;
-    if (host !== Resources.host || signedIn === null || token === null || !Resources.isSameOrganization(signedIn, organization))
+    const token: AzureCredential | null = host === Resources.host ? this.signIn.tokenFor(organization) : null;
+    if (token === null)
       return null;
     const email: string = address.trim().toLowerCase();
-    const key: string = Resources.formatAvatarKey(signedIn, email);
+    const key: string = Resources.formatAvatarKey(organization, email);
     const known: string | null | undefined = this.kept.get(key);
     if (known !== undefined)
       return known;
     let avatar: string | null;
     await this.signIn.readyAsync();
     try {
-      avatar = await this.readAsync(signedIn, email, token, signal);
+      avatar = await this.readAsync(organization, email, token, signal);
     }
     catch (error) {
       if (AzureApi.isUnauthorized(error))
         await this.signIn.refusedAsync(token);
       throw error;
     }
-    if (this.signIn.token !== token)
+    if (!this.signIn.holds(token))
       return null;
     this.keep(key, avatar);
     return avatar;

@@ -77,6 +77,11 @@ export class FieldCheck {
       FieldCheck.fail(field, Resources.avatarExpected, reader);
   }
 
+  public static requirePlace(value: string, field: string, reader?: JsonReader): void {
+    if (!Resources.placePattern.test(value))
+      FieldCheck.fail(field, Resources.placeExpected, reader);
+  }
+
   public static requireHttps(value: string, field: string, reader?: JsonReader): void {
     const url: URL | null = URL.parse(value);
     if (url === null || url.protocol !== Resources.httpsProtocol || url.username.length > 0 || url.password.length > 0)
