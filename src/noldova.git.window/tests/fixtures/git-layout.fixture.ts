@@ -31,7 +31,7 @@ export class GitLayout {
         problems.push(`leaves the screen: ${GitLayout.nameOf(text)}`);
     [...seen].forEach(([text, rects], i) => {
       for (const [other, others] of [...seen].slice(i + 1))
-        if (!text.contains(other) && !other.contains(text) && GitLayout.overlaps(rects, others))
+        if (!text.contains(other) && !other.contains(text) && GitLayout.overlaps(rects, others) && !GitLayout.isCovered(text, other, root))
           problems.push(`overlaps: ${GitLayout.nameOf(text)} and ${GitLayout.nameOf(other)}`);
     });
     return problems;
@@ -52,6 +52,25 @@ export class GitLayout {
         height: Math.min(t.bottom, clip.bottom) - Math.max(t.top, clip.top) })).filter(t => t.width > GitLayout.SLACK && t.height > GitLayout.SLACK);
     }
     return rects;
+  }
+
+  private static isCovered(first: HTMLElement, second: HTMLElement, root: HTMLElement): boolean {
+    const a: DOMRect = first.getBoundingClientRect();
+    const b: DOMRect = second.getBoundingClientRect();
+    const x: number = (Math.max(a.left, b.left) + Math.min(a.right, b.right)) / 2;
+    const y: number = (Math.max(a.top, b.top) + Math.min(a.bottom, b.bottom)) / 2;
+    const hit: Element | null = document.elementFromPoint(x, y);
+    const under: HTMLElement = !Object.isNull(hit) && first.contains(hit) ? second : first;
+    for (let cover: Element | null = hit; !Object.isNull(cover) && cover !== root && !cover.contains(under); cover = cover.parentElement) {
+      const style: CSSStyleDeclaration = getComputedStyle(cover);
+      if (style.position === "absolute" && GitLayout.isOpaque(style.backgroundColor))
+        return true;
+    }
+    return false;
+  }
+
+  private static isOpaque(color: string): boolean {
+    return color.startsWith("rgb(") || color.startsWith("color(") && !color.includes("/");
   }
 
   private static overlaps(first: readonly DOMRect[], second: readonly DOMRect[]): boolean {
