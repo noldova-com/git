@@ -46,6 +46,11 @@ export class FieldCheck {
       FieldCheck.fail(field, Resources.nonBlankTextExpected, reader);
   }
 
+  public static requireServer(value: string, field: string, reader?: JsonReader): void {
+    if (!Resources.serverPattern.test(value))
+      FieldCheck.fail(field, Resources.serverExpected, reader);
+  }
+
   public static requirePositive(value: number, field: string, reader?: JsonReader): void {
     if (!Number.isSafeInteger(value) || value < 1)
       FieldCheck.fail(field, Resources.positiveExpected, reader);

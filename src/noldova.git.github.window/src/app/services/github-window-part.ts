@@ -108,7 +108,7 @@ export class GitHubWindowPart implements IWindowPart {
   }
 
   private static cardsOf(list: HostAccountList): GitHostCard[] {
-    return list.accounts.map(t => GitHubWindowPart.cardOf(t.id, t.signIn));
+    return GitHubAccountList.gitHubOf(list).accounts.map(t => GitHubWindowPart.cardOf(t.id, t.signIn));
   }
 
   private static cardOf(id: number, signIn: HostSignIn | null): GitHostCard {

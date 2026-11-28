@@ -147,6 +147,14 @@ export declare class GitHubNames {
   public static readonly addAccountMethod: string;
 
   /**
+   * `git-github.signInWithToken`: only from a window, takes `{ "host": string, "token": string }`, a GitHub Enterprise server's name and a personal
+   * access token the person pasted, reads the token's user from that server, keeps it on this computer as a new account and answers it as
+   * `HostAccountEntry` JSON naming its host. A server's name that isn't one, or github.com, fails as `InvalidParams`; a token the server refuses, or
+   * one without the `repo` scope, fails as `Unauthorized` with a message naming the scope; a server it can't reach fails as `Unavailable`.
+   */
+  public static readonly signInWithTokenMethod: string;
+
+  /**
    * `git-github.readRepositoryAccount`: takes a `RepositoryQuery` as JSON and answers the account the module reads the repository with as
    * `RepositoryAccount` JSON: the signed-in account whose login is the user name in the remote's address, once a window sent its folder with
    * `git-github.useFolder`; else the one the person chose for it; else the first signed-in account that can read it; else the first signed-in account.
