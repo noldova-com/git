@@ -947,12 +947,19 @@ export declare class HostReference {
   public readonly number: number;
 
   /**
+   * The server the repository is on, as `HostAccountEntry.place` names it, such as `github.example.com` for a GitHub Enterprise server; null for a
+   * host with one place, such as github.com. JSON holds it only when it isn't null.
+   */
+  public readonly place: string | null;
+
+  /**
    * Makes a reference from its parts.
    *
    * @param host The id of the host module that reads the reference, which isn't blank.
    * @param owner The owner of the repository on the host: names of letters, digits, `.`, `_`, `-` and percent escapes such as `%20` but not of `/` or `\` joined by `/` for nested groups, none of them `.` or `..`, `%2e` counting as a dot.
    * @param repository The repository's name on the host: letters, digits, `.`, `_` and `-`, other than `.` and `..`.
    * @param number The issue's or pull request's number in its repository, a whole number above zero.
+   * @param place The server the repository is on, checked as `HostAccountEntry`'s place is, or null, the default, for a host with one place.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
    * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `number`.
    * @throws {HostingFieldException} With a reader, when a part is out of its range, naming the field by its path, such as `$.number`.
@@ -961,9 +968,10 @@ export declare class HostReference {
    * import { HostReference } from "@noldova/git.hosting.protocol";
    *
    * const reference = new HostReference("git-github", "team", "repo", 7);
+   * const enterprise = new HostReference("git-github", "team", "repo", 7, "github.example.com");
    * ```
    */
-  public constructor(host: string, owner: string, repository: string, number: number, reader?: JsonReader);
+  public constructor(host: string, owner: string, repository: string, number: number, place?: string | null, reader?: JsonReader);
 
   /**
    * The reference as a person writes it: the owner, a slash, the repository, a number sign and the number.

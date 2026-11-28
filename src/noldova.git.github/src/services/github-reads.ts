@@ -12,7 +12,6 @@ import { MethodFailureException } from "@noldova/desktop.runtime";
 import { type AuthorQuery, BranchPullRequest, type BranchQuery, CheckState, type CommitQuery, HostBuild, HostChanges, HostCheck, HostComment, HostCommitComments, HostItem,
   HostPerson, HostPullRequest, HostPullRequestList, HostPullRequestRow, HostPullRequestThreads, HostReference, HostReviewer, HostReviewRequest, HostReviewRequestList, HostThread,
   type PullRequestDraft, ReferenceKind, ReferenceState, type RepositoryQuery, ReviewDecision, ThreadStatus } from "@noldova/git.hosting.protocol";
-import { GitHubNames } from "@noldova/git.github.protocol";
 
 import type { IGitHubTokens } from "../interfaces/i-github-tokens.ts";
 import { AccountSearch } from "../models/account-search.ts";
@@ -160,10 +159,9 @@ export class GitHubReads {
   }
 
   public async readPullRequestAsync(reference: HostReference, signal: AbortSignal): Promise<HostPullRequest | null> {
-    const token: string | null = reference.host === GitHubNames.moduleId
-      ? await this.tokens.tokenForAsync(Resources.host, Resources.formatRepositoryName(reference.owner, reference.repository), signal) : null;
-    const repository: GitHubRepository | null = GitHubRepository.parse(Resources.host, Resources.formatRepositoryName(reference.owner, reference.repository));
-    if (reference.host !== GitHubNames.moduleId || token === null || repository === null)
+    const repository: GitHubRepository | null = GitHubRepository.ofReference(reference);
+    const token: string | null = repository === null ? null : await this.tokens.tokenForAsync(repository.host, repository.repositoryPath, signal);
+    if (repository === null || token === null)
       return null;
     const pullRequest: HostPullRequest | null = await this.askAsync(token, async () => {
       const pull: JsonReader | null = await this.api.getAsync(repository.host, repository.pathOf(Resources.formatPullPath(reference.number)), token, signal);
@@ -180,10 +178,9 @@ export class GitHubReads {
 
   public async readPullRequestThreadsAsync(reference: HostReference, signal: AbortSignal): Promise<HostPullRequestThreads> {
     const none: HostPullRequestThreads = new HostPullRequestThreads([], false);
-    const token: string | null = reference.host === GitHubNames.moduleId
-      ? await this.tokens.tokenForAsync(Resources.host, Resources.formatRepositoryName(reference.owner, reference.repository), signal) : null;
-    const repository: GitHubRepository | null = GitHubRepository.parse(Resources.host, Resources.formatRepositoryName(reference.owner, reference.repository));
-    if (reference.host !== GitHubNames.moduleId || token === null || repository === null)
+    const repository: GitHubRepository | null = GitHubRepository.ofReference(reference);
+    const token: string | null = repository === null ? null : await this.tokens.tokenForAsync(repository.host, repository.repositoryPath, signal);
+    if (repository === null || token === null)
       return none;
     const threads: HostPullRequestThreads = await this.askAsync(token, async () => {
       const pull: JsonReader | null = await this.api.getAsync(repository.host, repository.pathOf(Resources.formatPullPath(reference.number)), token, signal);
@@ -211,16 +208,14 @@ export class GitHubReads {
         [Resources.titleField]: draft.title, [Resources.bodyField]: draft.body, [Resources.headField]: draft.headBranch, [Resources.baseField]: draft.baseBranch,
         [Resources.draftField]: draft.isDraft
       }, signal);
-      return GitHubApi.read(() => GitHubReads.pullRequestOf(new HostReference(GitHubNames.moduleId, repository.owner, repository.name,
-        created.readInteger(Resources.numberField)), created, null));
+      return GitHubApi.read(() => GitHubReads.pullRequestOf(repository.referenceOf(created.readInteger(Resources.numberField)), created, null));
     });
   }
 
   private async readItemAsync(reference: HostReference, signal: AbortSignal, withAvatar: boolean): Promise<HostItem | null> {
-    const token: string | null = reference.host === GitHubNames.moduleId
-      ? await this.tokens.tokenForAsync(Resources.host, Resources.formatRepositoryName(reference.owner, reference.repository), signal) : null;
-    const repository: GitHubRepository | null = GitHubRepository.parse(Resources.host, Resources.formatRepositoryName(reference.owner, reference.repository));
-    if (reference.host !== GitHubNames.moduleId || token === null || repository === null)
+    const repository: GitHubRepository | null = GitHubRepository.ofReference(reference);
+    const token: string | null = repository === null ? null : await this.tokens.tokenForAsync(repository.host, repository.repositoryPath, signal);
+    if (repository === null || token === null)
       return null;
     const item: HostItem | null = await this.askAsync(token, async () => {
       const issue: JsonReader | null = await this.api.getAsync(repository.host, repository.pathOf(Resources.formatIssuePath(reference.number)), token, signal);
@@ -243,7 +238,7 @@ export class GitHubReads {
     const pull: JsonReader | null = await this.api.getAsync(repository.host, repository.pathOf(Resources.formatPullPath(number)), token, signal);
     if (pull === null)
       return new BranchPullRequest(null, []);
-    const pullRequest: HostItem = GitHubApi.read(() => GitHubReads.pullRequestOf(new HostReference(GitHubNames.moduleId, repository.owner, repository.name, number), pull, null));
+    const pullRequest: HostItem = GitHubApi.read(() => GitHubReads.pullRequestOf(repository.referenceOf(number), pull, null));
     const commit: string = headCommit ?? GitHubApi.read(() => pull.readObject(Resources.headField).readString(Resources.shaField));
     const checks: HostCheck[] = await this.readChecksAsync(repository, commit, token, signal);
     return new BranchPullRequest(pullRequest, checks, await this.readReviewDecisionAsync(repository, number, token, signal));
@@ -301,7 +296,7 @@ export class GitHubReads {
     const head: JsonReader = GitHubApi.read(() => pull.readObject(Resources.headField));
     const commit: string = GitHubApi.read(() => head.readString(Resources.shaField));
     const [checks, verdicts] = await Promise.all([this.readChecksAsync(repository, commit, token, signal), this.readVerdictsAsync(repository, number, token, signal)]);
-    return GitHubApi.read(() => HostPullRequestRow.of(new HostReference(GitHubNames.moduleId, repository.owner, repository.name, number),
+    return GitHubApi.read(() => HostPullRequestRow.of(repository.referenceOf(number),
       pull.readString(Resources.titleField), pull.readString(Resources.htmlUrlField), pull.readBoolean(Resources.draftField),
       verdicts.filter(t => t === Resources.approvedReview).length, checks, head.readString(Resources.refField),
       pull.readObject(Resources.baseField).readString(Resources.refField)));
@@ -364,7 +359,7 @@ export class GitHubReads {
       const prefix: string = Resources.formatRepositoryApiPrefix(host);
       const repository: GitHubRepository | null = address.startsWith(prefix) ? GitHubRepository.parse(host, address.slice(prefix.length)) : null;
       if (repository !== null)
-        rows.push(new HostReviewRequest(new HostReference(GitHubNames.moduleId, repository.owner, repository.name, item.readInteger(Resources.numberField)),
+        rows.push(new HostReviewRequest(repository.referenceOf(item.readInteger(Resources.numberField)),
           item.readString(Resources.titleField), item.readString(Resources.htmlUrlField), item.hasField(Resources.draftField) && item.readBoolean(Resources.draftField),
           Date.parse(item.readString(Resources.createdAtField))));
     }

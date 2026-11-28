@@ -667,6 +667,26 @@ describe("GitHubReads", () => {
     assert.ok(rig.github.requests.length >= 9);
   });
 
+  it("reads a GitHub Enterprise server's references through its API with its account's token, and answers them naming that server", async () => {
+    const rig = new Rig();
+    const mona = new SignedInAccount(3, "mona", "ghe_mona");
+    rig.signIn.servers.set("ghe.example.com", [mona]);
+    rig.signIn.choose("ghe.example.com", "octocat/hello-world", mona);
+    const enterprise = new HostReference("git-github", "octocat", "hello-world", 2, "ghe.example.com");
+    const marker = { ...issue, number: 2, pull_request: { url: "https://ghe.example.com/api/v3/repos/octocat/hello-world/pulls/2" } };
+    rig.github.answer(FakeGitHub.json(marker), FakeGitHub.json(pull), FakeGitHub.json({ ...pull, number: 7 }));
+
+    const read = await rig.reads.readReferenceAsync(enterprise, signal);
+    const opened = await rig.reads.createPullRequestAsync(new PullRequestDraft("ghe.example.com", "octocat/hello-world", "fix-bug", "main", "Fix the bug", "", false),
+      signal);
+
+    assert.deepEqual([read?.reference, opened.reference], [enterprise, new HostReference("git-github", "octocat", "hello-world", 7, "ghe.example.com")]);
+    assert.deepEqual(rig.github.urls(), ["https://ghe.example.com/api/v3/repos/octocat/hello-world/issues/2",
+      "https://ghe.example.com/api/v3/repos/octocat/hello-world/pulls/2", "https://ghe.example.com/api/v3/repos/octocat/hello-world/pulls"]);
+    assert.deepEqual([[...new Set(rig.signIn.asked)], [...new Set(rig.github.requests.map(t => t.header("Authorization")))]],
+      [["ghe.example.com octocat/hello-world"], ["Bearer ghe_mona"]]);
+  });
+
   it("opens a pull request with the token it is given, and fails as signed out when no account holds it any more", async () => {
     const rig = new Rig();
     const draftOf = new PullRequestDraft("github.com", "octocat/hello-world", "fix-bug", "main", "Fix the bug", "", false);

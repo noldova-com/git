@@ -12,23 +12,27 @@ import { Resources } from "../resources.ts";
 import { FieldCheck } from "./field-check.ts";
 
 export class HostReference {
-  private static readonly FIELDS: readonly string[] = [Resources.hostField, Resources.ownerField, Resources.repositoryField, Resources.numberField];
+  private static readonly FIELDS: readonly string[] = [Resources.hostField, Resources.ownerField, Resources.repositoryField, Resources.numberField, Resources.placeField];
 
   public readonly host: string;
   public readonly owner: string;
   public readonly repository: string;
   public readonly number: number;
+  public readonly place: string | null;
 
-  public constructor(host: string, owner: string, repository: string, number: number, reader?: JsonReader) {
+  public constructor(host: string, owner: string, repository: string, number: number, place: string | null = null, reader?: JsonReader) {
     FieldCheck.requireText(host, Resources.hostField, reader);
     FieldCheck.requirePath(owner, Resources.ownerField, reader);
     FieldCheck.requireName(repository, Resources.repositoryField, reader);
     FieldCheck.requirePositive(number, Resources.numberField, reader);
+    if (place !== null)
+      FieldCheck.requirePlace(place, Resources.placeField, reader);
 
     this.host = host;
     this.owner = owner;
     this.repository = repository;
     this.number = number;
+    this.place = place;
   }
 
   public get text(): string {
@@ -43,6 +47,7 @@ export class HostReference {
       reader.readString(Resources.ownerField),
       reader.readString(Resources.repositoryField),
       reader.readInteger(Resources.numberField),
+      reader.hasField(Resources.placeField) ? reader.readNullableString(Resources.placeField) : null,
       reader);
   }
 
@@ -51,7 +56,8 @@ export class HostReference {
       [Resources.hostField]: this.host,
       [Resources.ownerField]: this.owner,
       [Resources.repositoryField]: this.repository,
-      [Resources.numberField]: this.number
+      [Resources.numberField]: this.number,
+      ...(this.place === null ? {} : { [Resources.placeField]: this.place })
     };
   }
 }
