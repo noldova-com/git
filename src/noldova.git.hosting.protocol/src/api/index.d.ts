@@ -5222,11 +5222,18 @@ export declare class HostAccountEntry {
   public readonly signIn: HostSignIn;
 
   /**
+   * The server of an account on another server than the module's own, such as a GitHub Enterprise server's `github.example.com`, or null for the module's own.
+   */
+  public readonly host: string | null;
+
+  /**
    * Makes the entry from its parts.
    *
    * @param id The account's id, a positive whole number.
    * @param signIn The account's sign-in.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
+   * @param host The server of an account on another server than the module's own: a lowercase name with an optional port, such as `github.example.com:8443`; null,
+   * by default, for the module's own.
    * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `account`.
    * @throws {HostingFieldException} With a reader, when a part is out of its range, naming the field by its path, such as `$.account`.
    * @example
@@ -5236,7 +5243,7 @@ export declare class HostAccountEntry {
    * const entry = new HostAccountEntry(1, HostSignIn.signedIn(new HostAccount("octocat", null, null, ["repo"])));
    * ```
    */
-  public constructor(id: number, signIn: HostSignIn, reader?: JsonReader);
+  public constructor(id: number, signIn: HostSignIn, reader?: JsonReader, host?: string | null);
 
   /**
    * Reads it from its JSON.
@@ -5256,7 +5263,7 @@ export declare class HostAccountEntry {
   public static fromJson(value: unknown, path?: string): HostAccountEntry;
 
   /**
-   * Writes it as JSON: `id` and `signIn`.
+   * Writes it as JSON: `id` and `signIn`, and `host` only when the account is on another server.
    *
    * @returns The JSON.
    * @example

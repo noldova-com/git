@@ -643,6 +643,24 @@ describe("GitHubAccounts", () => {
       rig.accounts.list.toJson()]);
   });
 
+  it("never starts GitHub's browser sign-in for a GitHub Enterprise account its server signed out", async () => {
+    const rig = new Rig();
+    rig.github.answer(FakeGitHub.json({ login: "monalisa", name: null, avatar_url: null }));
+    await rig.accounts.connectAsync(new TokenConnect(SERVER, "ghp_monalisa"), new AbortController().signal);
+    await rig.savedAsync();
+    const restored = new Rig();
+    for (const [name, value] of rig.store.values)
+      restored.store.values.set(name, value);
+    restored.github.answer(FakeGitHub.json({ message: "Bad credentials" }, 401));
+    await restored.accounts.restoreAsync();
+    await restored.untilAsync("2 SignedOut");
+    const asked: number = restored.github.requests.length;
+
+    const answer = await restored.accounts.signInOf(2).startAsync();
+
+    assert.deepEqual([answer.state, restored.github.requests.length], [SignInState.SignedOut, asked]);
+  });
+
   it("refuses a server's name that isn't one, or github.com, a token the server refuses or that lacks the repo scope, naming the scope, and a server it can't reach, "
     + "keeping nothing", async () => {
     const rig = new Rig();

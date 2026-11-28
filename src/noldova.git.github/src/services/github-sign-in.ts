@@ -108,7 +108,7 @@ export class GitHubSignIn {
   }
 
   public async startAsync(): Promise<HostSignIn> {
-    if (this.signIn.state !== SignInState.SignedOut || this.waiting !== null || this.stopped.signal.aborted)
+    if (this.host !== Resources.host || this.signIn.state !== SignInState.SignedOut || this.waiting !== null || this.stopped.signal.aborted)
       return this.signIn;
     const waiting = new AbortController();
     this.waiting = waiting;
