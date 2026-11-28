@@ -95,7 +95,7 @@ export class GitHubReads {
   }
 
   public async readReviewRequestsAsync(query: RepositoryQuery, signal: AbortSignal): Promise<HostReviewRequestList> {
-    const accounts: readonly SignedInAccount[] = this.tokens.signedInOn(query.host);
+    const accounts: readonly SignedInAccount[] = this.tokens.serves(query.host) ? this.tokens.signedInOn(query.host) : this.tokens.signedIn;
     const repository: GitHubRepository | null = GitHubRepository.parse(query.host, query.path);
     if (accounts.length === 0)
       return HostReviewRequestList.signedOut();
