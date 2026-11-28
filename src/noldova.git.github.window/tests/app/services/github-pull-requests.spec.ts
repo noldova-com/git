@@ -232,6 +232,16 @@ describe("GitHubPullRequests", () => {
     expect([host.pullRequests.commentsFor(FOLDER, remote, ids[4] ?? "") === counts[4], host.reads.length]).toEqual([true, 15]);
   });
 
+  it("keeps when a used-up rate limit resets from a failed pull request read", async () => {
+    const host = new Host();
+    host.requests.fail(GitHubNames.readPullRequestsMethod, new RuntimeRequestException(FailureCode.Unavailable, "GitHub's rate limit is used up.",
+      { rateLimitedUntil: 1_800_003_600_000 }));
+
+    const list = await host.readAsync(remote, GitPullRequestsState.Failed);
+
+    expect([list()?.failure, list()?.limitedUntil]).toEqual(["GitHub's rate limit is used up.", 1_800_003_600_000]);
+  });
+
   it("shows the runtime's message for a failed read, says plainly that the window failed, and logs both", async () => {
     const host = new Host();
     host.requests.fail(GitHubNames.readPullRequestsMethod, new RuntimeRequestException(FailureCode.Unavailable, "The repository isn't reachable."));
@@ -328,11 +338,12 @@ describe("GitHubPullRequests", () => {
     expect([host.requests.methods, host.requests.payloads]).toEqual([[GitHubNames.readReviewRequestsMethod], [new RepositoryQuery("github.com", "octocat/site").toJson()]]);
   });
 
-  it("keeps the review requests it showed while it reads again and after a failed read, logging it, and says when nobody is signed in", async () => {
+  it("keeps the review requests it showed and when a used-up rate limit resets after a failed read, logging it, and says when nobody is signed in", async () => {
     const host = new Host();
     host.requests.answer(GitHubNames.readReviewRequestsMethod, new HostReviewRequestList([request], false).toJson());
     const release = host.requests.hold(GitHubNames.readReviewRequestsMethod);
-    host.requests.fail(GitHubNames.readReviewRequestsMethod, new RuntimeRequestException(FailureCode.Unavailable, "GitHub's rate limit resets at 12:01."));
+    host.requests.fail(GitHubNames.readReviewRequestsMethod, new RuntimeRequestException(FailureCode.Unavailable, "GitHub's rate limit resets at 12:01.",
+      { rateLimitedUntil: 1_800_003_600_000 }));
     host.requests.fail(GitHubNames.readReviewRequestsMethod, new WindowFailure("The runtime stopped."));
     host.requests.answer(GitHubNames.readReviewRequestsMethod, HostReviewRequestList.signedOut().toJson());
     const reviews = host.pullRequests.reviewsFor(remote);
@@ -350,7 +361,8 @@ describe("GitHubPullRequests", () => {
     }
 
     expect(states).toEqual([GitPullRequestList.ready([asked]), GitPullRequestList.reading([asked]), GitPullRequestList.ready([asked]),
-      GitPullRequestList.failed("GitHub's rate limit resets at 12:01.", [asked]), GitPullRequestList.failed(UNANSWERED, [asked]), GitPullRequestList.signedOut()]);
+      GitPullRequestList.failedBy(new RuntimeRequestException(FailureCode.Unavailable, "GitHub's rate limit resets at 12:01.", { rateLimitedUntil: 1_800_003_600_000 }), UNANSWERED,
+        [asked]), GitPullRequestList.failed(UNANSWERED, [asked]), GitPullRequestList.signedOut()]);
     expect(host.context.callsOf("log").map(t => String(t[0]))).toEqual([
       "The GitHub module's git-github.readReviewRequests request failed: RuntimeRequestException: GitHub's rate limit resets at 12:01.",
       "The GitHub module's git-github.readReviewRequests request failed: WindowFailure: The runtime stopped."]);

@@ -9,4 +9,6 @@
 import type { Provider } from "@angular/core";
 import { kitTestProviders } from "@noldova/ui.components.angular/testing";
 
-export default [...kitTestProviders] satisfies Provider[];
+import { TimeFormatsFixture } from "./fixtures/time-formats.fixture.ts";
+
+export default [...kitTestProviders, TimeFormatsFixture.formats.provider] satisfies Provider[];

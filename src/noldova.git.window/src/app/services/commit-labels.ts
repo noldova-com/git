@@ -6,13 +6,15 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import type { TimeFormatService } from "@noldova/desktop.window";
+
 import { Resources } from "../../resources.ts";
 
 export class CommitLabels {
   private static readonly MINUTE: number = 60_000;
   private static readonly HOUR: number = 60 * CommitLabels.MINUTE;
 
-  public static ageOf(iso: string, now: Date): string {
+  public static ageOf(iso: string, now: Date, dates: TimeFormatService): string {
     const date: Date = new Date(iso);
     const time: number = date.getTime();
     if (Number.isNaN(time))
@@ -28,9 +30,7 @@ export class CommitLabels {
     const startOfYesterday: Date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
     if (time >= startOfYesterday.getTime())
       return Resources.ageYesterday;
-    return date.getFullYear() === now.getFullYear()
-      ? date.toLocaleDateString(Resources.dateLocale, { month: "short", day: "numeric" })
-      : date.toLocaleDateString(Resources.dateLocale, { year: "numeric", month: "short", day: "numeric" });
+    return date.getFullYear() === now.getFullYear() ? dates.shortDate(iso) : dates.date(iso);
   }
 
   public static initialsOf(name: string): string {

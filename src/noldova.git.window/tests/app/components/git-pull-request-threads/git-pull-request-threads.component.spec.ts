@@ -8,18 +8,19 @@
 
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import "@noldova/context.core";
-import { FailureCode } from "@noldova/desktop.protocol";
+import { DatePattern, FailureCode } from "@noldova/desktop.protocol";
 import { RuntimeRequestException, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { HostComment, HostPerson, HostPullRequestThreads, HostReference, HostThread, ThreadStatus } from "@noldova/git.hosting.protocol";
 import type { LinkOpenEvent } from "@noldova/ui.components.angular";
 import { provideMarkdown } from "@noldova/ui.components.angular/markdown";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { GitPullRequestThreadsComponent } from "../../../../src/app/components/git-pull-request-threads/git-pull-request-threads.component.ts";
 import { ThreadLine } from "../../../../src/app/models/thread-line.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { TestPullRequestHost } from "../../../fixtures/test-pull-request-host.fixture.ts";
+import { TimeFormatsFixture } from "../../../fixtures/time-formats.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
@@ -147,12 +148,13 @@ class Threads {
 }
 
 describe("GitPullRequestThreadsComponent", () => {
+  afterEach(() => TimeFormatsFixture.reset());
+
   it("reads the pull request's threads and shows each one's file, line, state and comments, counting the open ones", async () => {
     const threads = await new Threads().answer(onLine, general, pending).openAsync();
     await threads.untilAsync(() => !Object.isNull(threads.element.querySelector(".comment strong")));
 
-    const date = (time: number): string => new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
-      .format(time);
+    const date = (time: number): string => DatePattern.format(new Date(time), "MMM d, h:mm a");
     expect([threads.requests.methods, threads.requests.payloads]).toEqual([[TestPullRequestHost.threadsMethod], [reference.toJson()]]);
     expect(threads.texts(".threads-head")).toEqual(["Comments 2 open threads"]);
     expect(threads.texts(".thread-head")).toEqual(["forum Active comment on notes-export.ts, line 42 Go to line", "forum Pending comment"]);
@@ -161,6 +163,17 @@ describe("GitPullRequestThreadsComponent", () => {
       `O octocat@fabrikam.test ${date(PUBLISHED)} Waiting on design.`]);
     expect([...threads.element.querySelectorAll(".comment")].map(t => t.classList.contains("reply"))).toEqual([false, true, false, false]);
     expect([...threads.element.querySelectorAll(".thread-state")].map(t => t.classList.contains("open"))).toEqual([true, true]);
+  });
+
+  it("shows each comment's time by the date and time format setting, and again when it changes", async () => {
+    const threads = await new Threads().answer(onLine).openAsync();
+    await threads.untilAsync(() => !Object.isNull(threads.element.querySelector(".comment strong")));
+    const before: string = threads.texts(".comment")[0] ?? "";
+    TimeFormatsFixture.use24Hour();
+    await threads.settleAsync();
+
+    expect([before, threads.texts(".comment")[0]]).toEqual([`O octocat@fabrikam.test ${DatePattern.format(new Date(PUBLISHED), "MMM d, h:mm a")} Should this respect local times ?`,
+      `O octocat@fabrikam.test ${DatePattern.format(new Date(PUBLISHED), "d MMM, HH:mm")} Should this respect local times ?`]);
   });
 
   it("folds a finished thread to its first comment until it is opened, and counts one open thread", async () => {
@@ -230,6 +243,22 @@ describe("GitPullRequestThreadsComponent", () => {
     const failed: string = "The Example module's git-example.readPullRequestThreads request failed";
     expect(threads.context.callsOf("log").map(t => String(t[0]).startsWith(failed))).toEqual([true, true]);
     expect([threads.element.querySelector("[role=alert]"), threads.texts(".comment").length]).toEqual([null, 1]);
+  });
+
+  it("writes when a used-up rate limit resets by the date and time format setting, and again when it changes", async () => {
+    const until: number = 1_800_003_600_000;
+    const threads = new Threads();
+    threads.requests.fail(TestPullRequestHost.threadsMethod, new RuntimeRequestException(FailureCode.Unavailable, "used up until 2027-01-15T09:00:00.000Z.",
+      { rateLimitedUntil: until }));
+    await threads.openAsync();
+    const twelve: string = threads.text;
+    TimeFormatsFixture.use24Hour();
+    await threads.settleAsync();
+
+    expect([twelve, threads.text]).toEqual([
+      `Comments error Example's rate limit for this account is used up until ${DatePattern.format(new Date(until), TimeFormatsFixture.dateTime)}. Try again`,
+      `Comments error Example's rate limit for this account is used up until ${DatePattern.format(new Date(until), TimeFormatsFixture.dateTime24)}. Try again`
+    ]);
   });
 
   it("rethrows a failure that isn't the window's, and an answer it can't read", async () => {
@@ -395,6 +424,24 @@ describe("GitPullRequestThreadsComponent", () => {
 
     expect(held).toEqual([true, true, true, "true"]);
     expect([threads.draft().disabled, threads.button(".change").disabled, threads.button(".send").disabled, threads.draft().value]).toEqual([false, false, false, "Fixed."]);
+  });
+
+  it("writes when a used-up rate limit resets under the thread a write failed on, by the date and time format setting, and again when it changes", async () => {
+    const until: number = 1_800_003_600_000;
+    const threads = await new Threads().answer(onLine).openAsync();
+    threads.requests.fail(TestPullRequestHost.replyMethod, new RuntimeRequestException(FailureCode.Unavailable, "used up until 2027-01-15T09:00:00.000Z.",
+      { rateLimitedUntil: until }));
+    await threads.typeAsync("Local times apply.");
+    threads.button(".send").click();
+    await threads.settleAsync();
+    const twelve: string[] = threads.texts(".answer-failure");
+    TimeFormatsFixture.use24Hour();
+    await threads.settleAsync();
+
+    expect([twelve, threads.texts(".answer-failure")]).toEqual([
+      [`error Example's rate limit for this account is used up until ${DatePattern.format(new Date(until), TimeFormatsFixture.dateTime)}.`],
+      [`error Example's rate limit for this account is used up until ${DatePattern.format(new Date(until), TimeFormatsFixture.dateTime24)}.`]
+    ]);
   });
 
   it("shows a write's failure under its thread, the runtime's message or that the host didn't answer, keeps the draft, sends nothing again and logs no text", async () => {

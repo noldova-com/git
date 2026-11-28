@@ -66,4 +66,8 @@ describe("HostingNames", () => {
   it("names the pull request threads read after the host module's id", () => {
     assert.equal(HostingNames.nameOf("git-azure-devops", HostingNames.readPullRequestThreadsMethod), "git-azure-devops.readPullRequestThreads");
   });
+
+  it("names the failure detail that holds when a host's rate limit resets", () => {
+    assert.equal(HostingNames.rateLimitedUntilDetail, "rateLimitedUntil");
+  });
 });

@@ -270,6 +270,10 @@ export class Resources {
     return failing > 0 ? `${count}, ${failing} with failing checks` : count;
   }
 
+  public static formatRateLimited(hostName: string, until: string): string {
+    return `${hostName}'s rate limit for this account is used up until ${until}.`;
+  }
+
   public static formatPullRequestsHost(hostName: string, count: number): string {
     return count > Resources.shownPullRequests ? `${hostName} · ${Resources.shownPullRequests}+` : hostName;
   }
@@ -595,7 +599,6 @@ export class Resources {
   public static readonly autoCompleteResolveConfirm: string = "This is the last open thread of a pull request that completes by itself, so resolving it may merge it at once.";
   public static readonly resolveAnyway: string = "Resolve anyway";
   public static readonly cancelAction: string = "Cancel";
-  public static readonly commentDateFormat: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" };
   public static readonly openThreadStates: readonly ThreadStatus[] = [ThreadStatus.Active, ThreadStatus.Pending];
   public static readonly doneThreadStates: readonly ThreadStatus[] = [ThreadStatus.Resolved, ThreadStatus.WontFix, ThreadStatus.ByDesign, ThreadStatus.Closed];
   public static readonly threadLabels: Readonly<Record<ThreadStatus, string>> = {
@@ -651,6 +654,7 @@ export class Resources {
   public static readonly statusBarItemName: string = "git.branch";
   public static readonly statusBarBranchIcon: IconName = "call_split";
   public static readonly fetchedItemName: string = "git.fetched";
+  public static readonly timeSettings: readonly string[] = ["desktop.timeFormat", "desktop.dateTimeFormat"];
   public static readonly commandItemName: string = "git.lastCommand";
   public static readonly commandLogViewName: string = "git.commands";
   public static readonly commandLogDefaultGroup: number = 0;
@@ -830,7 +834,6 @@ export class Resources {
   public static readonly deleteIcon: IconName = "delete";
   public static readonly cherryPickTitle: string = "Apply this commit's change onto the current branch as a new commit";
   public static readonly revertTitle: string = "Make a new commit on the current branch that undoes this commit's change";
-  public static readonly authoredFormat: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" };
 
   public static formatFilesChanged(count: number): string {
     return count === 1 ? "1 file changed" : `${count} files changed`;
@@ -917,11 +920,10 @@ export class Resources {
   public static readonly rebasePreviewDefaultGroup: number = 0;
   public static readonly rebasePreviewDefaultOrder: number = 60;
   public static readonly rebasePreviewEmpty: string = "Open an interactive rebase to preview it.";
-  public static readonly workspaceAcrossViewName: string = "git.workspaceAcross";
-  public static readonly workspaceAcrossViewInstance: string = "selected";
+  public static readonly workspaceAcrossDocumentName: string = "git.workspaceAcross";
+  public static readonly workspaceAcrossInstance: string = "selected";
   public static readonly workspaceAcrossIcon: IconName = "hub";
-  public static readonly workspaceAcrossDefaultGroup: number = 0;
-  public static readonly workspaceAcrossDefaultOrder: number = 70;
+  public static readonly openAcrossCommand: string = "git.openAcross";
   public static readonly workspaceAcrossEmpty: string = "Open a workspace to see its repositories together here.";
   public static readonly beforeCommitTitle: string = "Before you commit";
   public static readonly baseTitle: string = "Base";
@@ -1527,7 +1529,6 @@ export class Resources {
   public static readonly pullRequestNoCommits: string = "No commits.";
   public static readonly pullRequestCommitsCapped: string = "Showing the latest 250.";
   public static readonly pullRequestMoreMark: string = "+";
-  public static readonly pullRequestCommitDateFormat: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
   public static readonly pullRequestFilesLabel: string = "Files";
   public static readonly pullRequestNoFiles: string = "No changed files.";
   public static readonly pullRequestFilesOpenHint: string = "Open this repository in Git to see each file's changes.";

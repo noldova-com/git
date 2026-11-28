@@ -49,8 +49,8 @@ describe("GitStatusFollower", () => {
     const itemOf = (name: string): StatusBarItem => new StatusBarItem(new StatusBarItemContribution(name, StatusBarSide.Left, GitStatusBar.stateOf(null, null)), () => undefined);
     const branch: StatusBarItem = itemOf("git.branch");
     const command: StatusBarItem = itemOf("git.lastCommand");
-    onTestFinished(GitStatusBar.provide(branch, itemOf("git.fetched"), command));
     const context = new FakeWindowPartContext();
+    onTestFinished(GitStatusBar.provide(context, branch, itemOf("git.fetched"), command));
     context.answer("log", () => undefined);
     GitFixtures.answerWith(context, answer);
     const shown: WritableSignal<string | null> = signal(folder);
