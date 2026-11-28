@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { RuntimeRequestException, type TimeFormatService } from "@noldova/desktop.window";
 import { HostingNames } from "@noldova/git.hosting.protocol";
 
@@ -24,7 +25,7 @@ export class GitHostFailure {
     if (!(error instanceof RuntimeRequestException))
       return new GitHostFailure(fallback, null);
     const until = error.details?.[HostingNames.rateLimitedUntilDetail];
-    return new GitHostFailure(error.message, typeof until === "number" && Number.isSafeInteger(until) ? until : null);
+    return new GitHostFailure(error.message, Object.isNumber(until) && Number.isSafeInteger(until) ? until : null);
   }
 
   public textOf(hostName: string, dates: TimeFormatService): string {
