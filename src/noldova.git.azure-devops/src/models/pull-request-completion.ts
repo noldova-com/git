@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { JsonReader } from "@noldova/context.json";
 import { HostReference } from "@noldova/git.hosting.protocol";
 
@@ -42,8 +43,8 @@ export class PullRequestCompletion {
     const deleteSourceBranch: boolean = reader.readBoolean(Resources.deleteSourceBranchField);
     const isFastForward: boolean = mergeType === Resources.fastForwardMergeType;
     const isValid: boolean = Resources.isOwnReference(reference) && Resources.commitIdPattern.test(sourceCommit) && targetBranch.trim().length > 0
-      && Resources.mergeTypes.includes(mergeType) && (message === null) === isFastForward
-      && (message === null || (message.trim().length > 0 && message.length <= Resources.maximumMergeMessageLength));
+      && Resources.mergeTypes.includes(mergeType) && (Object.isNull(message)) === isFastForward
+      && (Object.isNull(message) || (message.trim().length > 0 && message.length <= Resources.maximumMergeMessageLength));
     return isValid ? new PullRequestCompletion(reference, sourceCommit, targetBranch, mergeType, message, completeWorkItems, deleteSourceBranch) : null;
   }
 }

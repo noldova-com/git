@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -28,7 +29,7 @@ export class GitDiff {
     FieldCheck.requireCount(omittedFiles, Resources.omittedFilesField, reader);
     if (omittedFiles > 0 && !truncated)
       FieldCheck.fail(Resources.truncatedField, Resources.truncatedExpected, reader);
-    if (totals !== null && !truncated)
+    if (!Object.isNull(totals) && !truncated)
       FieldCheck.fail(Resources.totalsField, Resources.totalsExpected, reader);
 
     this.files = files;

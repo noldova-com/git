@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { SignInFailure } from "../enums/sign-in-failure.ts";
@@ -29,15 +30,15 @@ export class HostSignIn {
 
   public constructor(state: SignInState, deviceCode: DeviceCode | null, account: HostAccount | null, failure: SignInFailure | null, reader?: JsonReader,
     address: string | null = null) {
-    if ((state === SignInState.Waiting) !== (deviceCode !== null || address !== null))
-      FieldCheck.fail(deviceCode === null && address !== null ? Resources.addressField : Resources.deviceCodeField, Resources.deviceCodeExpected, reader);
-    if (deviceCode !== null && address !== null)
+    if ((state === SignInState.Waiting) !== (!Object.isNull(deviceCode) || !Object.isNull(address)))
+      FieldCheck.fail(Object.isNull(deviceCode) && !Object.isNull(address) ? Resources.addressField : Resources.deviceCodeField, Resources.deviceCodeExpected, reader);
+    if (!Object.isNull(deviceCode) && !Object.isNull(address))
       FieldCheck.fail(Resources.addressField, Resources.deviceCodeExpected, reader);
-    if (address !== null)
+    if (!Object.isNull(address))
       FieldCheck.requireHttps(address, Resources.addressField, reader);
-    if ((state === SignInState.SignedIn) !== (account !== null))
+    if ((state === SignInState.SignedIn) !== (!Object.isNull(account)))
       FieldCheck.fail(Resources.accountField, Resources.accountExpected, reader);
-    if (state !== SignInState.SignedOut && failure !== null)
+    if (state !== SignInState.SignedOut && !Object.isNull(failure))
       FieldCheck.fail(Resources.failureField, Resources.failureExpected, reader);
 
     this.state = state;
@@ -81,7 +82,7 @@ export class HostSignIn {
       [Resources.deviceCodeField]: this.deviceCode?.toJson() ?? null,
       [Resources.accountField]: this.account?.toJson() ?? null,
       [Resources.failureField]: this.failure,
-      ...this.address === null ? {} : { [Resources.addressField]: this.address }
+      ...Object.isNull(this.address) ? {} : { [Resources.addressField]: this.address }
     };
   }
 }

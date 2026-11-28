@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -17,7 +18,7 @@ export class GitAvatar {
   public readonly image: string | null;
 
   public constructor(image: string | null, reader?: JsonReader) {
-    if (image !== null && (image.length > Resources.maximumAvatarLength || !Resources.avatarImagePattern.test(image)))
+    if (!Object.isNull(image) && (image.length > Resources.maximumAvatarLength || !Resources.avatarImagePattern.test(image)))
       FieldCheck.fail(Resources.imageField, Resources.avatarImageExpected, reader);
 
     this.image = image;

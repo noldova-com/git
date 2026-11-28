@@ -10,6 +10,7 @@ import { chmod, mkdir, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, onTestFinished, test } from "vitest";
 
 import {
@@ -118,7 +119,7 @@ describe("PushWriter", () => {
     await chmod(file, 0o755);
   };
   const failsWith = (type: abstract new (...args: never[]) => GitFailureException, code: FailureCode, gitCode: GitCode | null, message?: string) => (error: unknown): boolean =>
-    error instanceof type && error.code === code && error.gitCode === gitCode && (message === undefined || error.message === message);
+    error instanceof type && error.code === code && error.gitCode === gitCode && (Object.isUndefined(message) || error.message === message);
 
   test("refuses a detached HEAD, a branch with no remote or no commit, nothing to push, and an upstream ahead of the branch", async () => {
     const write = new PushWriter(runner, hooks, branches);
@@ -386,7 +387,7 @@ describe("PushWriter", () => {
     await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
     onTestFinished(() => new Promise<void>(resolve => server.close(() => resolve())));
     const address = server.address();
-    assert.ok(address !== null && typeof address === "object");
+    assert.ok(Object.isObject(address));
     const sshAsync = async (errors: string): Promise<void> => {
       await repository.runGitAsync(["config", "core.sshCommand", `echo '${errors}' >&2; exit 255; :`]);
     };

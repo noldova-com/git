@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { ThreadStatus } from "../enums/thread-status.ts";
@@ -26,10 +27,10 @@ export class HostThread {
 
   public constructor(id: number, state: ThreadStatus, path: string | null, line: number | null, comments: readonly HostComment[], reader?: JsonReader) {
     FieldCheck.requirePositive(id, Resources.idField, reader);
-    if (path !== null)
+    if (!Object.isNull(path))
       FieldCheck.requireText(path, Resources.pathField, reader);
-    if (line !== null) {
-      if (path === null)
+    if (!Object.isNull(line)) {
+      if (Object.isNull(path))
         FieldCheck.fail(Resources.lineField, Resources.lineExpected, reader);
       FieldCheck.requirePositive(line, Resources.lineField, reader);
     }

@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { Failure, FailureCode as DesktopCode, ShellClients } from "@noldova/desktop.protocol";
 import { type IRuntimePart, type IRuntimePartContext, MethodFailureException, type Migration } from "@noldova/desktop.runtime";
 import {
@@ -125,7 +126,7 @@ export class RuntimePart implements IRuntimePart {
   public readonly migrations: readonly Migration[] = [WorktreeTable.migration];
 
   public get isActive(): boolean {
-    return this.context !== null;
+    return !Object.isNull(this.context);
   }
 
   public async activateAsync(context: IRuntimePartContext): Promise<void> {
@@ -254,7 +255,7 @@ export class RuntimePart implements IRuntimePart {
       handleAsync: request => RuntimePart.answerAsync(async () => {
         const params = GitFolderParams.fromJson(request.payload);
         const top = watches.remove(request.connection, request.window, params.folder);
-        if (top !== null)
+        if (!Object.isNull(top))
           monitor.unwatch(top);
         return null;
       })
@@ -277,7 +278,7 @@ export class RuntimePart implements IRuntimePart {
       write: (params: T) => IGitWrite): void =>
       context.registerMethod(name, {
         handleAsync: request => RuntimePart.answerAsync(async () => {
-          if (request.client !== ShellClients.mainProcess || request.window === null)
+          if (request.client !== ShellClients.mainProcess || Object.isNull(request.window))
             throw new MethodFailureException(new Failure(DesktopCode.Unauthorized, Resources.mainProcessOnly));
           const params = parse(request.payload);
           await writes.runAsync(await repositories.readAsync(params.folder), params.basedOn, write(params), null, request.signal);

@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { RemoteTransport } from "../enums/remote-transport.ts";
@@ -22,9 +23,9 @@ export class GitRemote {
 
   public constructor(name: string, host: string | null, path: string | null, transport: RemoteTransport, reader?: JsonReader) {
     FieldCheck.requireText(name, Resources.nameField, reader);
-    if (host !== null && (host.length === 0 || Resources.refusedHostPattern.test(host)))
+    if (!Object.isNull(host) && (host.length === 0 || Resources.refusedHostPattern.test(host)))
       FieldCheck.fail(Resources.hostField, Resources.hostExpected, reader);
-    if (path !== null && (Resources.refusedRemotePathPattern.test(path) || path.split(Resources.pathSeparatorPattern).some(t => Resources.refusedRemoteSegmentPattern.test(t))))
+    if (!Object.isNull(path) && (Resources.refusedRemotePathPattern.test(path) || path.split(Resources.pathSeparatorPattern).some(t => Resources.refusedRemoteSegmentPattern.test(t))))
       FieldCheck.fail(Resources.pathField, Resources.remotePathExpected, reader);
 
     this.name = name;

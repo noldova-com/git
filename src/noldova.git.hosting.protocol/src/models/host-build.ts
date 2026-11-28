@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { CheckState } from "../enums/check-state.ts";
@@ -28,17 +29,17 @@ export class HostBuild {
   public constructor(name: string, state: CheckState, url: string | null, startedAt: number | null, finishedAt: number | null, number: string | null = null,
     reader?: JsonReader) {
     FieldCheck.requireText(name, Resources.nameField, reader);
-    if (number !== null)
+    if (!Object.isNull(number))
       FieldCheck.requireText(number, Resources.numberField, reader);
-    if (url !== null)
+    if (!Object.isNull(url))
       FieldCheck.requireHttps(url, Resources.urlField, reader);
-    if (startedAt !== null)
+    if (!Object.isNull(startedAt))
       FieldCheck.requirePositive(startedAt, Resources.startedAtField, reader);
-    if (HostBuild.FINISHED.includes(state) !== (finishedAt !== null))
+    if (HostBuild.FINISHED.includes(state) !== (!Object.isNull(finishedAt)))
       FieldCheck.fail(Resources.finishedAtField, Resources.finishedAtExpected, reader);
-    if (finishedAt !== null) {
+    if (!Object.isNull(finishedAt)) {
       FieldCheck.requirePositive(finishedAt, Resources.finishedAtField, reader);
-      if (startedAt !== null && finishedAt < startedAt)
+      if (!Object.isNull(startedAt) && finishedAt < startedAt)
         FieldCheck.fail(Resources.finishedAtField, Resources.finishedAtExpected, reader);
     }
 

@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { RuntimeException, ToolContent, ToolFailure, ToolFailureCode, ToolFailureException } from "@noldova/desktop.runtime";
 import { FailureCode, GitCode, GitNames, ProtocolException } from "@noldova/git.protocol";
 
@@ -39,7 +40,7 @@ export class GitToolFailures {
       return isSent && (isStopped || error instanceof RuntimeException)
         ? GitToolFailures.fail(ToolFailureCode.OutcomeUncertain, Resources.outcomeUnknown, GitToolFailures.moduleCodeOf(GitCode.OutcomeUnknown))
         : error;
-    const content = error.output === null ? [] : [ToolContent.fromText(GitToolFailures.cut(MethodFailures.stripUserinfo(error.output.text)), GitToolFailures.originOf(error.output.source))];
+    const content = Object.isNull(error.output) ? [] : [ToolContent.fromText(GitToolFailures.cut(MethodFailures.stripUserinfo(error.output.text)), GitToolFailures.originOf(error.output.source))];
     return GitToolFailures.fail(isSent ? ToolFailureCode.OutcomeUncertain : GitToolFailures.codeOf(error), MethodFailures.stripUserinfo(error.message),
       GitToolFailures.moduleCodeOf(error.gitCode ?? error.code), content);
   }
@@ -49,7 +50,7 @@ export class GitToolFailures {
   }
 
   private static codeOf(error: GitFailureException): ToolFailureCode {
-    return error.gitCode !== null && GitToolFailures.UNAVAILABLE.includes(error.gitCode) ? ToolFailureCode.Unavailable : GitToolFailures.CODES[error.code];
+    return !Object.isNull(error.gitCode) && GitToolFailures.UNAVAILABLE.includes(error.gitCode) ? ToolFailureCode.Unavailable : GitToolFailures.CODES[error.code];
   }
 
   private static moduleCodeOf(code: string): string {

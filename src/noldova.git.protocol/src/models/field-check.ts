@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { JsonReader } from "@noldova/context.json";
 
 import { ProtocolFieldException } from "../exceptions/protocol-field.exception.ts";
@@ -23,12 +24,12 @@ export class FieldCheck {
   }
 
   public static readNullableMember<T extends string>(reader: JsonReader, field: string, members: readonly T[]): T | null {
-    return reader.readValue(field) === null ? null : reader.readOneOf(field, members);
+    return Object.isNull(reader.readValue(field)) ? null : reader.readOneOf(field, members);
   }
 
   public static readNullableModel<T>(reader: JsonReader, field: string, fromJson: (value: unknown, path: string) => T): T | null {
     const child: JsonReader | null = reader.readNullableObject(field);
-    return child === null ? null : fromJson(child.toJson(), child.path);
+    return Object.isNull(child) ? null : fromJson(child.toJson(), child.path);
   }
 
   public static readModel<T>(reader: JsonReader, field: string, fromJson: (value: unknown, path: string) => T): T {
@@ -51,7 +52,7 @@ export class FieldCheck {
   }
 
   public static requirePositive(value: number | null, field: string, reader?: JsonReader): void {
-    if (value === null || !Number.isSafeInteger(value) || value < 1)
+    if (Object.isNull(value) || !Number.isSafeInteger(value) || value < 1)
       FieldCheck.fail(field, Resources.positiveExpected, reader);
   }
 
@@ -61,12 +62,12 @@ export class FieldCheck {
   }
 
   public static requirePathBytes(value: string | undefined, field: string, reader?: JsonReader): void {
-    if (value !== undefined && (value.length === 0 || !Resources.base64Pattern.test(value)))
+    if (!Object.isUndefined(value) && (value.length === 0 || !Resources.base64Pattern.test(value)))
       FieldCheck.fail(field, Resources.pathBytesExpected, reader);
   }
 
   public static requireMode(value: string | null, field: string, reader?: JsonReader): void {
-    if (value !== null && !Resources.modePattern.test(value))
+    if (!Object.isNull(value) && !Resources.modePattern.test(value))
       FieldCheck.fail(field, Resources.modeExpected, reader);
   }
 
@@ -111,16 +112,16 @@ export class FieldCheck {
   }
 
   public static requireNull(value: unknown, field: string, reader?: JsonReader): void {
-    if (value !== null)
+    if (!Object.isNull(value))
       FieldCheck.fail(field, Resources.nullExpected, reader);
   }
 
   public static requireAbsent(value: unknown, field: string, reader?: JsonReader): void {
-    if (value !== undefined)
+    if (!Object.isUndefined(value))
       FieldCheck.fail(field, Resources.absentExpected, reader);
   }
 
   private static pathOf(field: string, reader?: JsonReader): string {
-    return reader === undefined ? field : Resources.formatFieldPath(reader.path, field);
+    return Object.isUndefined(reader) ? field : Resources.formatFieldPath(reader.path, field);
   }
 }

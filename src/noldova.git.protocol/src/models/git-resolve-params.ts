@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { ConflictResolution } from "../enums/conflict-resolution.ts";
@@ -25,7 +26,7 @@ export class GitResolveParams {
   public constructor(folder: string, path: string, resolution: ConflictResolution, text: string | null, basedOn: string, reader?: JsonReader) {
     FieldCheck.requireFolder(folder, Resources.folderField, reader);
     FieldCheck.requireRelativePath(path, Resources.pathField, reader);
-    if ((resolution === ConflictResolution.Text) !== (text !== null))
+    if ((resolution === ConflictResolution.Text) !== (!Object.isNull(text)))
       FieldCheck.fail(Resources.textField, Resources.resolutionTextExpected, reader);
     FieldCheck.requireText(basedOn, Resources.basedOnField, reader);
 

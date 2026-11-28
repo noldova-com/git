@@ -6,6 +6,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
+
 import { Resources } from "../resources.ts";
 
 export class AzureRepository {
@@ -21,13 +23,13 @@ export class AzureRepository {
 
   public static parse(host: string, path: string): AzureRepository | null {
     const full: string | null = AzureRepository.fullPathOf(host, path);
-    if (full === null || !Resources.fullPathPattern.test(full))
+    if (Object.isNull(full) || !Resources.fullPathPattern.test(full))
       return null;
     const first: number = full.indexOf(Resources.pathSeparator);
     const last: number = full.lastIndexOf(Resources.pathSeparator);
     const project: string | null = AzureRepository.decode(full.slice(first + 1, last));
     const name: string | null = AzureRepository.decode(full.slice(last + 1));
-    return project === null || name === null ? null : new AzureRepository(full.slice(0, first), project, name);
+    return Object.isNull(project) || Object.isNull(name) ? null : new AzureRepository(full.slice(0, first), project, name);
   }
 
   private static decode(text: string): string | null {

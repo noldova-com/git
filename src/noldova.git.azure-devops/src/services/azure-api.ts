@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { JsonException, JsonReader, type JsonValue } from "@noldova/context.json";
 import { Failure, FailureCode } from "@noldova/desktop.protocol";
 import { MethodFailureException } from "@noldova/desktop.runtime";
@@ -71,8 +72,8 @@ export class AzureApi {
       throw AzureApi.unreachable(error, signal);
     }
     signal.throwIfAborted();
-    if (text === null || !Resources.svgPattern.test(text)) {
-      dropped(text === null ? Resources.iconTooLarge : Resources.iconNotSvg);
+    if (Object.isNull(text) || !Resources.svgPattern.test(text)) {
+      dropped(Object.isNull(text) ? Resources.iconTooLarge : Resources.iconNotSvg);
       return null;
     }
     return text;
@@ -173,7 +174,7 @@ export class AzureApi {
       throw AzureApi.unreachable(error, signal);
     }
     signal.throwIfAborted();
-    if (text === null)
+    if (Object.isNull(text))
       throw AzureApi.failure(FailureCode.Unavailable, Resources.answerTooLargeMessage);
     return text;
   }

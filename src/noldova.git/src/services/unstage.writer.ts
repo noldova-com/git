@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { type IPermissionRequest, PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
 import { GitNames, type GitStatus, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
@@ -42,7 +43,7 @@ export class UnstageWriter implements IGitWrite {
 
   public async requestAsync(folders: RepositoryFolders, _status: GitStatus, _call: unknown, signal?: AbortSignal): Promise<IPermissionRequest | null> {
     const hooks = await this.hooks.readAsync(folders.top, Resources.indexHooks, signal);
-    if (hooks !== null && hooks.length === 0)
+    if (!Object.isNull(hooks) && hooks.length === 0)
       return null;
     return WritePermission.create(
       GitNames.unstageMethod,
@@ -57,7 +58,7 @@ export class UnstageWriter implements IGitWrite {
   }
 
   public async runAsync(folders: RepositoryFolders, status: GitStatus, signal?: AbortSignal): Promise<void> {
-    const gitArguments = status.head === null ? UnstageWriter.REMOVE : UnstageWriter.RESTORE;
+    const gitArguments = Object.isNull(status.head) ? UnstageWriter.REMOVE : UnstageWriter.RESTORE;
     for (const batch of PathBatches.split(this.paths)) {
       const run = ProgramRun.writeGit(gitArguments.withPaths(batch), folders.top, folders.gitFolder, folders.commonGitFolder, UnstageWriter.LIMITS, signal);
       const result = await this.runner.runAsync(run);

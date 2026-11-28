@@ -8,6 +8,7 @@
 
 import assert from "node:assert/strict";
 
+import "@noldova/context.core";
 import { JsonException } from "@noldova/context.json";
 import { HostingFieldException, HostReference } from "@noldova/git.hosting.protocol";
 import { describe, it } from "vitest";
@@ -28,7 +29,7 @@ describe("ThreadReply", () => {
 
     assert.deepEqual([...others.map(t => ThreadReply.fromJson({ ...reply, reference: t })), ThreadReply.fromJson({ ...reply, thread: 0 }),
       ThreadReply.fromJson({ ...reply, parent: 0 }), ThreadReply.fromJson({ ...reply, body: "x".repeat(150_001) })], [null, null, null, null, null, null]);
-    assert.ok(ThreadReply.fromJson({ ...reply, body: "x".repeat(150_000) }) !== null);
+    assert.ok(!Object.isNull(ThreadReply.fromJson({ ...reply, body: "x".repeat(150_000) })));
   });
 
   it("refuses a payload without a reference, a whole id or a text that isn't blank", () => {

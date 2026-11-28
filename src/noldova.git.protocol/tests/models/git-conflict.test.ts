@@ -8,6 +8,7 @@
 
 import assert from "node:assert/strict";
 
+import "@noldova/context.core";
 import { describe, it } from "vitest";
 
 import { ConflictKind } from "../../src/enums/conflict-kind.ts";
@@ -74,7 +75,7 @@ describe("GitConflict", () => {
       { kind: ConflictKind.DeletedByThem, base: "b", ours: "o", theirs: null }
     ];
     for (const { kind, base, ours, theirs } of cases) {
-      const merged = ours !== null && theirs !== null ? "m" : null;
+      const merged = !Object.isNull(ours) && !Object.isNull(theirs) ? "m" : null;
       const conflict = new GitConflict("a.ts", kind, null, base, ours, theirs, merged, "ours", "theirs", null, null, false, false);
 
       assert.deepEqual(GitConflict.fromJson(conflict.toJson()), conflict);

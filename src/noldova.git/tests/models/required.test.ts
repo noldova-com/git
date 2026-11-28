@@ -8,6 +8,7 @@
 
 import assert from "node:assert/strict";
 
+import "@noldova/context.core";
 import { describe, test } from "vitest";
 
 import { UnreadableOutputException } from "../../src/exceptions/unreadable-output.exception.ts";
@@ -20,7 +21,7 @@ describe("Required", () => {
 
   test("fails as unreadable output of the command when the index holds nothing", () => {
     const match = /(a)|(b)/v.exec("a");
-    assert.ok(match !== null);
+    assert.ok(!Object.isNull(match));
 
     assert.throws(() => Required.at(match, 2, "log", "commits"), (error: unknown) =>
       error instanceof UnreadableOutputException && error.name === "UnreadableOutputException" && error.command === "log" && error.part === "commits");

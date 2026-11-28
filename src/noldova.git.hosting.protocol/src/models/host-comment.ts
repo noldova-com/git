@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -24,7 +25,7 @@ export class HostComment {
 
   public constructor(id: number, parent: number | null, author: HostPerson, publishedAt: number, body: string, reader?: JsonReader) {
     FieldCheck.requirePositive(id, Resources.idField, reader);
-    if (parent !== null) {
+    if (!Object.isNull(parent)) {
       FieldCheck.requirePositive(parent, Resources.parentField, reader);
       if (parent === id)
         FieldCheck.fail(Resources.parentField, Resources.commentParentExpected, reader);

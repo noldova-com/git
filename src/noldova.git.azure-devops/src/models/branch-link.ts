@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -27,6 +28,6 @@ export class BranchLink {
     const repository: AzureRepository | null = AzureRepository.parse(reader.readString(Resources.hostField), reader.readString(Resources.pathField));
     const id: number = reader.readInteger(Resources.idField);
     const branch: string = reader.readNonBlankString(Resources.branchField);
-    return repository === null || id < 1 || branch.length > Resources.maximumBranchLength ? null : new BranchLink(repository, id, branch);
+    return Object.isNull(repository) || id < 1 || branch.length > Resources.maximumBranchLength ? null : new BranchLink(repository, id, branch);
   }
 }

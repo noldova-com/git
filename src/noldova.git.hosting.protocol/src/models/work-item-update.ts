@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -25,7 +26,7 @@ export class WorkItemUpdate {
     FieldCheck.requireName(host, Resources.hostField, reader);
     FieldCheck.requireName(organization, Resources.organizationField, reader);
     FieldCheck.requirePositive(id, Resources.idField, reader);
-    if (state !== null)
+    if (!Object.isNull(state))
       FieldCheck.requireText(state, Resources.stateField, reader);
     else if (!assignToMe)
       FieldCheck.fail(Resources.stateField, Resources.changeExpected, reader);

@@ -8,6 +8,7 @@
 
 import assert from "node:assert/strict";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
 import { UntrustedSource } from "@noldova/git.protocol";
@@ -60,9 +61,9 @@ describe("RefWriter", () => {
   const idOf = async (revision: string): Promise<string> => (await repository.runGitAsync(["rev-parse", revision])).trim();
 
   const branchOf = (gitArguments: readonly string[], taken: string | null = null): RefWriter =>
-    new RefWriter(runner, "git.renameBranch", gitArguments, "branch", taken === null ? null : new BranchExistsException(taken));
+    new RefWriter(runner, "git.renameBranch", gitArguments, "branch", Object.isNull(taken) ? null : new BranchExistsException(taken));
   const tagOf = (gitArguments: readonly string[], taken: string | null = null): RefWriter =>
-    new RefWriter(runner, "git.createTag", gitArguments, "update-ref", taken === null ? null : new TagExistsException(taken));
+    new RefWriter(runner, "git.createTag", gitArguments, "update-ref", Object.isNull(taken) ? null : new TagExistsException(taken));
   const refsOf = async (pattern: string): Promise<string> => (await repository.runGitAsync(["for-each-ref", "--format=%(refname:short)", pattern])).trim();
 
   test("renames a branch and deletes a merged one, keeping local changes and the current branch, and never asks", async () => {

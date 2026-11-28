@@ -11,6 +11,7 @@ import { readFileSync } from "node:fs";
 import { chmod, mkdir, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it, onTestFinished, vi } from "vitest";
 
 import { JsonReader } from "@noldova/context.json";
@@ -74,12 +75,12 @@ describe("RuntimePart", () => {
 
   const callAsync = async (name: string, payload: JsonValue): Promise<JsonValue> => {
     const handler = supervisor.methods.get(name);
-    assert.ok(handler !== undefined, name);
+    assert.ok(!Object.isUndefined(handler), name);
     return await handler.handleAsync(new RequestContext("test", payload, new AbortController().signal, 1));
   };
   const callFromAsync = async (name: string, payload: JsonValue, window: number): Promise<JsonValue> => {
     const handler = supervisor.methods.get(name);
-    assert.ok(handler !== undefined, name);
+    assert.ok(!Object.isUndefined(handler), name);
     return await handler.handleAsync(new RequestContext("test", payload, new AbortController().signal, 1, window));
   };
   const linesOf = (fake: FakeRuntimePartContext): string[] => fake.log.callsOf("write").map(t => String(t[0]));
@@ -469,7 +470,7 @@ describe("RuntimePart", () => {
     const watching = vi.spyOn(ChangeMonitor.prototype, "watch");
     onTestFinished(() => watching.mockRestore());
     const handler = supervisor.methods.get(GitNames.watchMethod);
-    assert.ok(handler !== undefined);
+    assert.ok(!Object.isUndefined(handler));
     const cancelled = new AbortController();
     cancelled.abort();
 
@@ -511,7 +512,7 @@ describe("RuntimePart", () => {
   describe("its write methods", () => {
     const writeAsync = async (name: string, payload: JsonValue, client: string = ShellClients.mainProcess, window: number | null = 2): Promise<JsonValue> => {
       const handler = supervisor.methods.get(name);
-      assert.ok(handler !== undefined, name);
+      assert.ok(!Object.isUndefined(handler), name);
       return await handler.handleAsync(new RequestContext(client, payload, new AbortController().signal, 1, window));
     };
     const basedOnAsync = async (): Promise<string> => GitStatus.fromJson(await callAsync(GitNames.statusMethod, { folder: repository.folder })).fingerprint;
@@ -704,7 +705,7 @@ describe("RuntimePart", () => {
       await writeAsync(GitNames.commitMethod, { folder: repository.folder, message: "Change a", basedOn: await basedOnAsync() });
       const journal = GitJournal.fromJson(await callAsync(GitNames.journalMethod, { folder: repository.folder }));
       const commit = journal.entries.find(t => t.method === GitNames.commitMethod);
-      assert.ok(commit !== undefined);
+      assert.ok(!Object.isUndefined(commit));
       assert.equal(journal.checkpoints, false);
 
       assert.equal(await writeAsync(GitNames.undoMethod, { folder: repository.folder, id: commit.id, basedOn: await basedOnAsync() }), null);
@@ -743,7 +744,7 @@ describe("RuntimePart", () => {
       await writeAsync(GitNames.discardMethod, { folder: repository.folder, paths: ["a.txt"], basedOn: await basedOnAsync() });
       const journal = GitJournal.fromJson(await callAsync(GitNames.journalMethod, { folder: repository.folder }));
       const discard = journal.entries.at(-1);
-      assert.ok(discard !== undefined);
+      assert.ok(!Object.isUndefined(discard));
       await writeAsync(GitNames.undoMethod, { folder: repository.folder, id: discard.id, basedOn: await basedOnAsync() });
 
       assert.deepEqual([journal.checkpoints, discard.undo, discard.paths], [true, UndoMode.Checkpoint, ["a.txt"]]);
@@ -766,7 +767,7 @@ describe("RuntimePart", () => {
       const status = await callAsync(GitNames.statusMethod, { folder: repository.folder });
       await writeAsync(GitNames.stageMethod, { folder: repository.folder, paths: ["a.txt"], basedOn: await basedOnAsync() });
 
-      assert.equal(typeof status, "object");
+      assert.ok(Object.isObject(status));
       assert.deepEqual(calls, ["observe", "observe", "notifyWriting", "notifyWritten"]);
     });
 

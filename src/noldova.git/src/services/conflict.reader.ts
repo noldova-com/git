@@ -10,6 +10,7 @@ import { lstat, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { GitConflict, type GitOperation, OperationKind, UntrustedSource } from "@noldova/git.protocol";
 
 import { ConflictGoneException } from "../exceptions/conflict-gone.exception.ts";
@@ -51,23 +52,23 @@ export class ConflictReader {
   public async readAsync(folders: RepositoryFolders, file: string, signal?: AbortSignal): Promise<GitConflict> {
     const stages = await this.stagesAsync(folders.top, file, signal);
     const kind = Resources.stageKinds.get([...stages.keys()].toSorted((a, b) => a - b).join(""));
-    if (kind === undefined)
+    if (Object.isUndefined(kind))
       throw new ConflictGoneException();
     const operation = await OperationReader.readAsync(folders.gitFolder);
     const [baseText, oursText, theirsText, labels] = await Promise.all([this.textAsync(folders.top, stages.get(ConflictReader.BASE), signal),
       this.textAsync(folders.top, stages.get(ConflictReader.OURS), signal), this.textAsync(folders.top, stages.get(ConflictReader.THEIRS), signal),
       this.labelsAsync(folders, operation, signal)]);
     const texts: ReadonlyMap<number, string | null> = new Map([[ConflictReader.BASE, baseText], [ConflictReader.OURS, oursText], [ConflictReader.THEIRS, theirsText]]);
-    const binary = [...stages.keys()].some(t => texts.get(t) === null);
+    const binary = [...stages.keys()].some(t => Object.isNull(texts.get(t)));
     const base = binary ? null : baseText;
     const ours = binary ? null : oursText;
     const theirs = binary ? null : theirsText;
     let merged: string | null = null;
     let reused = false;
-    if (ours !== null && theirs !== null) {
+    if (!Object.isNull(ours) && !Object.isNull(theirs)) {
       const worktree = await ConflictReader.worktreeTextAsync(path.join(folders.top, file));
-      reused = worktree !== null && !ConflictMarkers.has(worktree);
-      merged = worktree !== null && reused ? worktree : await this.mergeAsync(folders.top, base, ours, theirs, labels, signal);
+      reused = !Object.isNull(worktree) && !ConflictMarkers.has(worktree);
+      merged = !Object.isNull(worktree) && reused ? worktree : await this.mergeAsync(folders.top, base, ours, theirs, labels, signal);
     }
     return new GitConflict(file, kind, operation?.kind ?? null, base, ours, theirs, merged, labels.ours, labels.theirs, labels.oursCommit, labels.theirsCommit,
       binary, reused);
@@ -79,14 +80,14 @@ export class ConflictReader {
     const stages: Map<number, IStage> = new Map();
     for (const record of result.output.toString(Resources.utf8Encoding).split(Resources.nulCharacter)) {
       const match = Resources.unmergedRecordPattern.exec(record);
-      if (match?.[1] !== undefined && match[2] !== undefined && match[3] !== undefined && match[4] === file)
+      if (!Object.isUndefined(match?.[1]) && !Object.isUndefined(match[2]) && !Object.isUndefined(match[3]) && match[4] === file)
         stages.set(Number(match[3]), { mode: match[1], id: match[2] });
     }
     return stages;
   }
 
   private async textAsync(top: string, stage: IStage | undefined, signal?: AbortSignal): Promise<string | null> {
-    if (stage === undefined || !Resources.textModes.includes(stage.mode))
+    if (Object.isUndefined(stage) || !Resources.textModes.includes(stage.mode))
       return null;
     const result = await this.runner.runAsync(ProgramRun.readGit(new GitArguments(Resources.blobArguments).withRevisions([stage.id]), top,
       ConflictReader.BLOB_LIMITS, signal));
@@ -106,7 +107,7 @@ export class ConflictReader {
       const gitArguments = new GitArguments([...Resources.mergeFileArguments, Resources.labelOption, labels.ours, Resources.labelOption, Resources.conflictBaseLabel,
         Resources.labelOption, labels.theirs], [], [oursFile, baseFile, theirsFile]);
       const result = await this.runner.runAsync(ProgramRun.readGit(gitArguments, top, ConflictReader.MERGE_LIMITS, signal));
-      if (result.exit.code === null || result.exit.code >= Resources.gitFatalExitCode || result.isTruncated)
+      if (Object.isNull(result.exit.code) || result.exit.code >= Resources.gitFatalExitCode || result.isTruncated)
         throw new GitFailedException(Resources.mergeFileCommand, { text: result.errors.toString(Resources.utf8Encoding), source: UntrustedSource.Repository });
       return result.output.toString(Resources.utf8Encoding);
     } finally {
@@ -120,15 +121,15 @@ export class ConflictReader {
       for (const folder of Resources.rebaseFolders)
         onto ??= await OperationReader.readLineAsync(path.join(folders.gitFolder, folder, Resources.ontoFile));
       const replayed = await OperationReader.readLineAsync(path.join(folders.gitFolder, Resources.rebaseHeadFile));
-      const [ontoName, head] = await Promise.all([onto === null ? null : this.nameAsync(folders.top, onto, signal), this.headAsync(folders.top, signal)]);
+      const [ontoName, head] = await Promise.all([Object.isNull(onto) ? null : this.nameAsync(folders.top, onto, signal), this.headAsync(folders.top, signal)]);
       return new ConflictLabels(
-        ontoName === null ? Resources.currentLabel : Resources.formatOntoLabel(ontoName),
-        replayed === null ? Resources.incomingLabel : Resources.formatYourCommitLabel(replayed.slice(0, Resources.shortIdLength)),
+        Object.isNull(ontoName) ? Resources.currentLabel : Resources.formatOntoLabel(ontoName),
+        Object.isNull(replayed) ? Resources.incomingLabel : Resources.formatYourCommitLabel(replayed.slice(0, Resources.shortIdLength)),
         head.commit,
         ConflictReader.commitOf(replayed));
     }
     const from = operation?.from ?? null;
-    if (operation === null || from === null) {
+    if (Object.isNull(operation) || Object.isNull(from)) {
       const head = await this.headAsync(folders.top, signal);
       return new ConflictLabels(head.branch, Resources.incomingLabel, head.commit, null);
     }
@@ -155,7 +156,7 @@ export class ConflictReader {
   }
 
   private static commitOf(line: string | null): string | null {
-    return line !== null && Resources.objectIdPattern.test(line) ? line : null;
+    return !Object.isNull(line) && Resources.objectIdPattern.test(line) ? line : null;
   }
 
   private async nameAsync(top: string, id: string, signal?: AbortSignal): Promise<string> {

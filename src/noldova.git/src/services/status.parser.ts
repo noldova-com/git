@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { FileState, ProtocolException, StatusEntry, StatusUpstream, SubmoduleStatus } from "@noldova/git.protocol";
 
 import { UnreadableOutputException } from "../exceptions/unreadable-output.exception.ts";
@@ -52,9 +53,9 @@ export class StatusParser {
         }
         entries.push(StatusParser.readEntry(record, isRenamed ? Required.at(records, ++index, Resources.statusCommand, Resources.missingOriginalPart) : null));
       }
-      if ((head !== null && !Resources.objectIdPattern.test(head)) || branch === "")
+      if ((!Object.isNull(head) && !Resources.objectIdPattern.test(head)) || branch === "")
         throw StatusParser.unreadable(Resources.statusRefusedValuesPart);
-      const tracking = upstream === null ? null : new StatusUpstream(upstream, aheadBehind?.ahead ?? 0, aheadBehind?.behind ?? 0, aheadBehind === null);
+      const tracking = Object.isNull(upstream) ? null : new StatusUpstream(upstream, aheadBehind?.ahead ?? 0, aheadBehind?.behind ?? 0, Object.isNull(aheadBehind));
       return new ParsedStatus(branch, head, tracking, entries, truncated);
     } catch (error) {
       if (error instanceof ProtocolException)
@@ -76,7 +77,7 @@ export class StatusParser {
 
   private static readAheadBehind(value: string): AheadBehind {
     const match = Resources.aheadBehindValuePattern.exec(value);
-    if (match === null)
+    if (Object.isNull(match))
       throw StatusParser.unreadable(Resources.aheadBehindCountsPart);
     return new AheadBehind(Number(match[1]), Number(match[2]));
   }
@@ -84,12 +85,12 @@ export class StatusParser {
   private static readEntry(record: Buffer, original: Buffer | null): StatusEntry {
     const kind = record.toString(Resources.latin1Encoding, 0, 1);
     const count = Resources.statusFieldCounts.get(kind);
-    if (count === undefined)
+    if (Object.isUndefined(count))
       throw StatusParser.unreadable(Resources.unknownKindPart);
     const start = StatusParser.pathStart(record, count);
     const fields = record.toString(Resources.latin1Encoding, 0, start - 1).split(Resources.wordSeparator);
     const path = GitPath.fromBytes(record.subarray(start));
-    const originalPath = original === null ? null : GitPath.fromBytes(original);
+    const originalPath = Object.isNull(original) ? null : GitPath.fromBytes(original);
     if (kind === Resources.untrackedEntryKind || kind === Resources.ignoredEntryKind) {
       const state = kind === Resources.untrackedEntryKind ? FileState.Untracked : FileState.Ignored;
       return new StatusEntry(path.text, path.bytes, null, undefined, state, state, null, null, null, null);
@@ -98,13 +99,13 @@ export class StatusParser {
     const submoduleStatus = StatusParser.readSubmodule(Required.at(fields, 2, Resources.statusCommand, Resources.unknownSubmodulePart));
     if (kind === Resources.unmergedEntryKind) {
       const conflict = Resources.conflictKinds.get(states);
-      if (conflict === undefined)
+      if (Object.isUndefined(conflict))
         throw StatusParser.unreadable(Resources.unknownConflictPart);
       return new StatusEntry(path.text, path.bytes, null, undefined, FileState.Unmodified, FileState.Unmodified, conflict, submoduleStatus, null, null);
     }
     const index = Resources.statusStates.get(states.charAt(0));
     const worktree = Resources.statusStates.get(states.charAt(1));
-    if (index === undefined || worktree === undefined)
+    if (Object.isUndefined(index) || Object.isUndefined(worktree))
       throw StatusParser.unreadable(Resources.unknownStatePart);
     return new StatusEntry(path.text, path.bytes, originalPath?.text ?? null, originalPath?.bytes, index, worktree, null, submoduleStatus, null, null);
   }
@@ -124,7 +125,7 @@ export class StatusParser {
     if (value === Resources.notSubmodule)
       return null;
     const match = Resources.submodulePattern.exec(value);
-    if (match === null)
+    if (Object.isNull(match))
       throw StatusParser.unreadable(Resources.unknownSubmodulePart);
     return new SubmoduleStatus(match[1] === Resources.submoduleCommitChanged, match[2] === Resources.submoduleModified, match[3] === Resources.submoduleUntracked);
   }

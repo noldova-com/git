@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import type { IPermissionRequest } from "@noldova/desktop.runtime";
 import { GitNames, type GitStatus, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
@@ -38,7 +39,7 @@ export class FetchWriter implements IGitWrite {
   }
 
   public refuse(status: GitStatus): void {
-    if (!this.allRemotes && (status.branch === null || status.upstream === null || status.upstream.gone))
+    if (!this.allRemotes && (Object.isNull(status.branch) || Object.isNull(status.upstream) || status.upstream.gone))
       throw new FetchNoUpstreamException();
   }
 
@@ -54,7 +55,7 @@ export class FetchWriter implements IGitWrite {
     const errors = result.errors.toString(Resources.utf8Encoding);
     const output = { text: errors, source: UntrustedSource.Repository };
     const unsafe = Resources.unsafeRepositoryPattern.exec(errors)?.groups?.[Resources.folderGroup];
-    if (unsafe !== undefined)
+    if (!Object.isUndefined(unsafe))
       throw new UnsafeRepositoryException(LogReader.toLine(unsafe), output);
     if (Resources.hostKeyFailedPattern.test(errors))
       throw new HostKeyUnknownException(output);

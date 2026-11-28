@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -18,9 +19,9 @@ export class RepositoryAccount {
   public readonly isNamedByRemote: boolean;
 
   public constructor(account: number | null, reader?: JsonReader, isNamedByRemote: boolean = false) {
-    if (account !== null)
+    if (!Object.isNull(account))
       FieldCheck.requirePositive(account, Resources.accountField, reader);
-    if (account === null && isNamedByRemote)
+    if (Object.isNull(account) && isNamedByRemote)
       FieldCheck.fail(Resources.isNamedByRemoteField, Resources.namedAccountExpected, reader);
 
     this.account = account;

@@ -8,6 +8,7 @@
 
 import assert from "node:assert/strict";
 
+import "@noldova/context.core";
 import { JsonException } from "@noldova/context.json";
 import { describe, it } from "vitest";
 
@@ -16,7 +17,7 @@ import { BranchLink } from "../../src/models/branch-link.ts";
 
 function repositoryOf(path: string): AzureRepository {
   const repository = AzureRepository.parse("dev.azure.com", path);
-  if (repository === null)
+  if (Object.isNull(repository))
     throw new Error(`${path} isn't an Azure DevOps repository.`);
   return repository;
 }
@@ -35,7 +36,7 @@ describe("BranchLink", () => {
 
     assert.deepEqual([BranchLink.fromJson({ host: "github.com", path: "octocat/hello-world", id: 42, branch: "main" }),
       BranchLink.fromJson({ ...remote, id: 0, branch: "main" }), BranchLink.fromJson({ ...remote, id: 42, branch: "b".repeat(251) })], [null, null, null]);
-    assert.ok(BranchLink.fromJson({ ...remote, id: 42, branch: "b".repeat(250) }) !== null);
+    assert.ok(!Object.isNull(BranchLink.fromJson({ ...remote, id: 42, branch: "b".repeat(250) })));
   });
 
   it("refuses a payload without a host, a whole id or a branch name that isn't blank", () => {

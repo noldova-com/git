@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { chmod, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
 import { PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
@@ -86,7 +87,7 @@ describe("BranchSwitchWriter", () => {
   const call = { session: "session-1", requestPermissionAsync: () => Promise.reject(new Error("never raised here")), markSending: () => undefined };
   const always = [PermissionOption.AllowOnce, PermissionOption.AllowAlways, PermissionOption.Deny];
   const failsWith = (type: abstract new (...args: never[]) => GitFailureException, code: FailureCode, gitCode: GitCode | null, message?: string) => (error: unknown): boolean =>
-    error instanceof type && error.code === code && error.gitCode === gitCode && (message === undefined || error.message === message);
+    error instanceof type && error.code === code && error.gitCode === gitCode && (Object.isUndefined(message) || error.message === message);
 
   test("asks an agent's switch when the repository's hooks can't be read, saying so", async () => {
     const hook = path.join(repository.gitFolder, "hooks", "post-index-change");
@@ -253,7 +254,7 @@ describe("BranchSwitchWriter", () => {
     await repository.runGitAsync(["update-ref", "refs/remotes/stray/feature", "HEAD"]);
     const { folders, status } = await readAsync();
     const write = (name: string): BranchSwitchWriter => new BranchSwitchWriter(runner, risks, name);
-    const none = (error: unknown): boolean => error instanceof SwitchNoBranchException && error.branch === "feature" && error.code === FailureCode.Refused && error.gitCode === null
+    const none = (error: unknown): boolean => error instanceof SwitchNoBranchException && error.branch === "feature" && error.code === FailureCode.Refused && Object.isNull(error.gitCode)
       && error.message === "There is no branch named feature here or on a remote, so there is nothing to switch to. Check the name, or fetch first.";
 
     await assert.rejects(write("feature").requestAsync(folders, status, call), none);
@@ -266,7 +267,7 @@ describe("BranchSwitchWriter", () => {
     await assert.rejects(write("feature").requestAsync(folders, status, call), SwitchRemoteAmbiguousException);
     await repository.runGitAsync(["config", "checkout.defaultRemote", "stray"]);
     await assert.rejects(write("feature").requestAsync(folders, status, call), (error: unknown) => error instanceof SwitchRemoteAmbiguousException && error.branch === "feature"
-      && error.code === FailureCode.Refused && error.gitCode === null && error.remotes.join() === "origin,upstream"
+      && error.code === FailureCode.Refused && Object.isNull(error.gitCode) && error.remotes.join() === "origin,upstream"
       && error.message === "The remotes origin, upstream each have a branch named feature, and checkout.defaultRemote names none of them, so git can't tell which one a new branch would track. Set checkout.defaultRemote, or create the branch from the remote branch you want.");
     await assert.rejects(write("feature").runAsync(folders, status), GitFailedException);
     assert.equal(await currentAsync(), "main");

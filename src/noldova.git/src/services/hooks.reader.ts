@@ -8,6 +8,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
+
 import { HooksUnreadableException } from "../exceptions/hooks-unreadable.exception.ts";
 import { GitArguments } from "../models/git-arguments.ts";
 import { ProgramLimits } from "../models/program-limits.ts";
@@ -31,14 +33,14 @@ export class HooksReader {
       return null;
     const folder = path.resolve(top, result.output.toString(Resources.utf8Encoding).replace(Resources.lineEndPattern, ""));
     const found = await Promise.all(names.map(async t => ({ name: t, isRunnable: await HooksReader.isRunnableAsync(path.join(folder, t)) })));
-    if (found.some(t => t.isRunnable === null))
+    if (found.some(t => Object.isNull(t.isRunnable)))
       return null;
     return found.filter(t => t.isRunnable === true).map(t => t.name);
   }
 
   public async readKnownAsync(top: string, names: readonly string[], signal?: AbortSignal): Promise<readonly string[]> {
     const found = await this.readAsync(top, names, signal);
-    if (found === null)
+    if (Object.isNull(found))
       throw new HooksUnreadableException();
     return found;
   }

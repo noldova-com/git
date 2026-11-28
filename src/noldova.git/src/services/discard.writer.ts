@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { IPermissionRequest } from "@noldova/desktop.runtime";
 import { FileState, GitNames, type GitStatus, type StatusEntry, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
@@ -40,13 +41,13 @@ export class DiscardWriter implements IGitWrite {
   }
 
   public get undo(): UndoMode {
-    return this.checkpoint === null ? UndoMode.None : UndoMode.Checkpoint;
+    return Object.isNull(this.checkpoint) ? UndoMode.None : UndoMode.Checkpoint;
   }
 
   public refuse(status: GitStatus): void {
     for (const path of this.paths) {
       const entry = status.entries.find(t => t.path === path);
-      if (entry === undefined || entry.worktree === FileState.Unmodified || entry.submodule !== null)
+      if (Object.isUndefined(entry) || entry.worktree === FileState.Unmodified || !Object.isNull(entry.submodule))
         throw new DiscardRefusedException(path);
     }
   }
@@ -57,7 +58,7 @@ export class DiscardWriter implements IGitWrite {
 
   public async runAsync(folders: RepositoryFolders, status: GitStatus, signal?: AbortSignal): Promise<void> {
     const id = await this.checkpoints.captureAsync(folders.top, Resources.formatDiscardLabel(this.paths.length), signal);
-    this.checkpoint = id === null ? null : { id, paths: this.paths };
+    this.checkpoint = Object.isNull(id) ? null : { id, paths: this.paths };
     const untracked = new Set(status.entries.filter(t => DiscardWriter.isUntracked(t)).map(t => t.path));
     await this.runEachAsync(DiscardWriter.RESTORE, this.paths.filter(t => !untracked.has(t)), folders, signal);
     await this.runEachAsync(DiscardWriter.CLEAN, this.paths.filter(t => untracked.has(t)), folders, signal);

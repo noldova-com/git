@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -27,7 +28,7 @@ export class GitCommand {
       FieldCheck.fail(Resources.atField, Resources.dateTimeExpected, reader);
     FieldCheck.requireText(line, Resources.lineField, reader);
     FieldCheck.requireLine(line, Resources.lineField, reader);
-    if (exitCode !== null && !Number.isInteger(exitCode))
+    if (!Object.isNull(exitCode) && !Number.isInteger(exitCode))
       FieldCheck.fail(Resources.exitCodeField, Resources.exitCodeExpected, reader);
     FieldCheck.requireCount(milliseconds, Resources.millisecondsField, reader);
 

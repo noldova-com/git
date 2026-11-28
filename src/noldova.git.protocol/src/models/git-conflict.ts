@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { ConflictKind } from "../enums/conflict-kind.ts";
@@ -51,9 +52,9 @@ export class GitConflict {
     GitConflict.requireSide(base, sides.base, binary, Resources.baseField, reader);
     GitConflict.requireSide(ours, sides.ours, binary, Resources.oursField, reader);
     GitConflict.requireSide(theirs, sides.theirs, binary, Resources.theirsField, reader);
-    if ((merged !== null) !== (ours !== null && theirs !== null))
+    if ((!Object.isNull(merged)) !== (!Object.isNull(ours) && !Object.isNull(theirs)))
       FieldCheck.fail(Resources.mergedField, Resources.mergedTextExpected, reader);
-    if (reused && merged === null)
+    if (reused && Object.isNull(merged))
       FieldCheck.fail(Resources.reusedField, Resources.reusedExpected, reader);
     GitConflict.requireLabel(oursLabel, Resources.oursLabelField, reader);
     GitConflict.requireLabel(theirsLabel, Resources.theirsLabelField, reader);
@@ -118,7 +119,7 @@ export class GitConflict {
   }
 
   private static requireSide(value: string | null, has: boolean, binary: boolean, field: string, reader: JsonReader | undefined): void {
-    if ((value !== null) !== (has && !binary))
+    if ((!Object.isNull(value)) !== (has && !binary))
       FieldCheck.fail(field, binary ? Resources.binaryTextExpected : Resources.conflictStageExpected, reader);
   }
 
@@ -128,7 +129,7 @@ export class GitConflict {
   }
 
   private static requireCommit(commit: string | null, field: string, reader: JsonReader | undefined): void {
-    if (commit !== null)
+    if (!Object.isNull(commit))
       FieldCheck.requireObjectId(commit, field, reader);
   }
 }

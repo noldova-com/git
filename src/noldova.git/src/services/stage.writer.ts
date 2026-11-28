@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { type IPermissionRequest, PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
 import { GitNames, type GitStatus, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
@@ -45,7 +46,7 @@ export class StageWriter implements IGitWrite {
   public async requestAsync(folders: RepositoryFolders, _status: GitStatus, _call: unknown, signal?: AbortSignal): Promise<IPermissionRequest | null> {
     const hooks = await this.hooks.readAsync(folders.top, Resources.indexHooks, signal);
     const filters = await this.filters.namesAsync(folders.top, Resources.stageFilterKinds, signal);
-    if (hooks !== null && hooks.length === 0 && filters.length === 0)
+    if (!Object.isNull(hooks) && hooks.length === 0 && filters.length === 0)
       return null;
     return WritePermission.create(
       GitNames.stageMethod,

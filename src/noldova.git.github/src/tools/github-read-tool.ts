@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { JsonReader } from "@noldova/context.json";
 import { type IToolDescriptor, type IToolHandler, type ToolCall, ToolContent, ToolFailureCode, ToolResult, ToolRisk } from "@noldova/desktop.runtime";
 import { type HostItem, HostReference } from "@noldova/git.hosting.protocol";
@@ -57,7 +58,7 @@ export class GitHubReadTool implements IToolHandler {
     catch (error) {
       throw GitHubToolFailures.fromGitHub(error);
     }
-    if (item === null)
+    if (Object.isNull(item))
       throw this.tokens.signedIn.length === 0
         ? GitHubToolFailures.signedOut()
         : GitHubToolFailures.fail(ToolFailureCode.Unavailable, Resources.itemNotFoundMessage, Resources.notFoundToolCode);

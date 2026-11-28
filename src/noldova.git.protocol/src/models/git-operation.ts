@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { OperationKind } from "../enums/operation-kind.ts";
@@ -21,7 +22,7 @@ export class GitOperation {
 
   public constructor(kind: OperationKind, from: string | null, message: string | null, reader?: JsonReader) {
     for (const [value, field] of [[from, Resources.fromField], [message, Resources.messageField]] as const)
-      if (value !== null)
+      if (!Object.isNull(value))
         FieldCheck.requireText(value, field, reader);
 
     this.kind = kind;

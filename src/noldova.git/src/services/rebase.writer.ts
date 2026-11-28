@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type IPermissionRequest, PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
 import { FileState, GitNames, type GitStatus, RebaseAction, type RebaseStep, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
@@ -49,7 +50,7 @@ export class RebaseWriter implements IGitWrite {
   }
 
   public refuse(status: GitStatus): void {
-    if (status.entries.some(t => t.conflict !== null) || status.operation !== null)
+    if (status.entries.some(t => !Object.isNull(t.conflict)) || !Object.isNull(status.operation))
       throw new PickDuringOperationException();
     const changed = status.entries.filter(t => !RebaseWriter.UNCHANGED.has(t.index) || !RebaseWriter.UNCHANGED.has(t.worktree)).map(t => t.path);
     if (changed.length > 0)
@@ -109,9 +110,9 @@ export class RebaseWriter implements IGitWrite {
     const lines: string[] = [];
     let group: TodoGroup | null = null;
     const close = async (): Promise<void> => {
-      if (group === null)
+      if (Object.isNull(group))
         return;
-      if (group.message !== null)
+      if (!Object.isNull(group.message))
         lines.push(Resources.formatTodoLine(Resources.fixupMessageCommand, await this.commitMessageAsync(folders, group.last, group.message, signal)));
       lines.push(...group.ids.flatMap(t => stacked.get(t) ?? []).map(t => Resources.formatTodoLine(Resources.updateRefCommand, t)));
       group = null;
@@ -121,7 +122,7 @@ export class RebaseWriter implements IGitWrite {
         lines.push(Resources.formatTodoLine(Resources.dropCommand, step.id), ...(stacked.get(step.id) ?? []).map(t => Resources.formatTodoLine(Resources.updateRefCommand, t)));
         continue;
       }
-      if (group !== null && (step.action === RebaseAction.Squash || step.action === RebaseAction.Fixup)) {
+      if (!Object.isNull(group) && (step.action === RebaseAction.Squash || step.action === RebaseAction.Fixup)) {
         lines.push(Resources.formatTodoLine(Resources.fixupCommand, step.id));
         group.fold(step.id, step.message);
         continue;
@@ -145,7 +146,7 @@ export class RebaseWriter implements IGitWrite {
   private async readStackedAsync(top: string, branch: string | null, signal?: AbortSignal): Promise<Map<string, string[]>> {
     const result = await this.runner.runAsync(ProgramRun.readGit(new GitArguments(Resources.branchRefTipsArguments), top, RebaseWriter.READ_LIMITS, signal));
     RebaseWriter.requireSuccess(Resources.forEachRefCommand, result);
-    const current = branch === null ? null : Resources.formatBranchRef(branch);
+    const current = Object.isNull(branch) ? null : Resources.formatBranchRef(branch);
     const stacked = new Map<string, string[]>();
     for (const line of result.output.toString(Resources.utf8Encoding).split(Resources.lineEnd)) {
       const [id = "", name = ""] = line.split(Resources.space);

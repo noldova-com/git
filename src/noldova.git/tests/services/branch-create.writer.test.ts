@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { chmod, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
 import { PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
@@ -76,7 +77,7 @@ describe("BranchCreateWriter", () => {
   const call = { session: "session-1", requestPermissionAsync: () => Promise.reject(new Error("never raised here")), markSending: () => undefined };
   const always = [PermissionOption.AllowOnce, PermissionOption.AllowAlways, PermissionOption.Deny];
   const failsWith = (type: abstract new (...args: never[]) => GitFailureException, code: FailureCode, gitCode: GitCode | null, message?: string) => (error: unknown): boolean =>
-    error instanceof type && error.code === code && error.gitCode === gitCode && (message === undefined || error.message === message);
+    error instanceof type && error.code === code && error.gitCode === gitCode && (Object.isUndefined(message) || error.message === message);
 
   test("creates a branch at the current commit and switches to it, keeping the worktree, and never asks while no hook would run", async () => {
     const branches = new SessionBranches();

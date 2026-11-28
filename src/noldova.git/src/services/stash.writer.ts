@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { IPermissionRequest } from "@noldova/desktop.runtime";
 import { FileState, GitNames, type GitStatus, type StatusEntry, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
@@ -52,18 +53,18 @@ export class StashWriter implements IGitWrite {
     const values: string[] = [...Resources.stashPushArguments];
     if (this.includeUntracked)
       values.push(Resources.includeUntrackedOption);
-    if (this.message !== null)
+    if (!Object.isNull(this.message))
       values.push(Resources.stashMessageOption, this.message);
     values.push(...Resources.stashWholeFolder);
     await this.gitAsync(ProgramRun.writeGit(new GitArguments(values), folders.top, folders.gitFolder, folders.commonGitFolder, StashWriter.LIMITS, signal));
     const id: string | null = await this.readAsync(folders, StashWriter.STASH_ID, signal);
-    if (id === null || id === before || await this.readAsync(folders, new GitArguments(Resources.formatStashBaseArguments(id)), signal) !== status.head)
+    if (Object.isNull(id) || id === before || await this.readAsync(folders, new GitArguments(Resources.formatStashBaseArguments(id)), signal) !== status.head)
       throw new NothingToStashException();
     this.checkpoint = { id, paths: [] };
   }
 
   private takes(entry: StatusEntry): boolean {
-    if (entry.index === FileState.Unmodified && entry.submodule !== null && !entry.submodule.commitChanged)
+    if (entry.index === FileState.Unmodified && !Object.isNull(entry.submodule) && !entry.submodule.commitChanged)
       return false;
     return !StashWriter.LEFT_OUT.has(entry.index) || (this.includeUntracked && entry.index === FileState.Untracked);
   }

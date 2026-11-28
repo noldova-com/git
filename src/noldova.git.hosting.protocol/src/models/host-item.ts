@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { ReferenceKind } from "../enums/reference-kind.ts";
@@ -45,12 +46,12 @@ export class HostItem {
     FieldCheck.requireText(title, Resources.titleField, reader);
     FieldCheck.requireHttps(url, Resources.urlField, reader);
     FieldCheck.requirePositive(createdAt, Resources.createdAtField, reader);
-    if (HostItem.OPEN_STATES.includes(state) !== (closedAt === null))
+    if (HostItem.OPEN_STATES.includes(state) !== (Object.isNull(closedAt)))
       FieldCheck.fail(Resources.closedAtField, Resources.closedAtExpected, reader);
-    if (closedAt !== null)
+    if (!Object.isNull(closedAt))
       FieldCheck.requirePositive(closedAt, Resources.closedAtField, reader);
     FieldCheck.requireCount(comments, Resources.commentsField, reader);
-    if (isPullRequest !== (changes !== null))
+    if (isPullRequest !== (!Object.isNull(changes)))
       FieldCheck.fail(Resources.changesField, Resources.changesExpected, reader);
 
     this.reference = reference;

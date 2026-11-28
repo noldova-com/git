@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { FileChangeKind } from "../enums/file-change-kind.ts";
@@ -22,9 +23,9 @@ export class HostPullRequestFile {
 
   public constructor(path: string, kind: FileChangeKind, previousPath: string | null, reader?: JsonReader) {
     FieldCheck.requireText(path, Resources.pathField, reader);
-    if (previousPath !== null)
+    if (!Object.isNull(previousPath))
       FieldCheck.requireText(previousPath, Resources.previousPathField, reader);
-    if ((previousPath !== null) !== (kind === FileChangeKind.Renamed))
+    if ((!Object.isNull(previousPath)) !== (kind === FileChangeKind.Renamed))
       FieldCheck.fail(Resources.previousPathField, Resources.previousPathExpected, reader);
 
     this.path = path;

@@ -8,13 +8,14 @@
 
 import assert from "node:assert/strict";
 
+import "@noldova/context.core";
 import { describe, it } from "vitest";
 
 import { AzureRepository } from "../../src/models/azure-repository.ts";
 
 function partsOf(host: string, path: string): readonly string[] | null {
   const repository: AzureRepository | null = AzureRepository.parse(host, path);
-  return repository === null ? null : [repository.organization, repository.project, repository.name];
+  return Object.isNull(repository) ? null : [repository.organization, repository.project, repository.name];
 }
 
 interface IRemote {

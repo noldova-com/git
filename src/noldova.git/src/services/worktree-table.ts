@@ -8,6 +8,7 @@
 
 import type { SQLOutputValue } from "node:sqlite";
 
+import "@noldova/context.core";
 import { type IModuleDatabase, Migration } from "@noldova/desktop.runtime";
 import { WorktreeRecord } from "@noldova/git.protocol";
 
@@ -27,7 +28,7 @@ export class WorktreeTable {
 
   public find(key: string): StoredWorktree | null {
     const row = this.database.read(Resources.selectWorktree, key);
-    return row === undefined ? null : this.toStored(row);
+    return Object.isUndefined(row) ? null : this.toStored(row);
   }
 
   public readAll(): StoredWorktree[] {
@@ -67,7 +68,7 @@ export class WorktreeTable {
 
   private readText(row: Record<string, SQLOutputValue>, column: string): string {
     const value = row[column];
-    if (typeof value !== "string")
+    if (!Object.isString(value))
       throw new ColumnInvalidException(column);
     return value;
   }

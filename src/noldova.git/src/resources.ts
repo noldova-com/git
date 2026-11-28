@@ -9,6 +9,7 @@
 import type { BinaryToTextEncoding } from "node:crypto";
 import { constants } from "node:fs";
 
+import "@noldova/context.core";
 import { ConflictKind, ConflictResolution, FileChange, FileState, LineKind, OperationKind, ResetMode, SigningFormat, UndoMode } from "@noldova/git.protocol";
 
 import { TreeWatch } from "./enums/tree-watch.ts";
@@ -896,11 +897,11 @@ export class Resources {
   }
 
   public static formatCherryPickTitle(id: string, branch: string | null): string {
-    return branch === null ? `Cherry-pick ${id} onto the detached HEAD` : `Cherry-pick ${id} onto ${branch}`;
+    return Object.isNull(branch) ? `Cherry-pick ${id} onto the detached HEAD` : `Cherry-pick ${id} onto ${branch}`;
   }
 
   public static formatRevertTitle(id: string, branch: string | null): string {
-    return branch === null ? `Revert ${id} on the detached HEAD` : `Revert ${id} on ${branch}`;
+    return Object.isNull(branch) ? `Revert ${id} on the detached HEAD` : `Revert ${id} on ${branch}`;
   }
 
   public static formatPullTitle(upstream: string, branch: string): string {
@@ -978,11 +979,11 @@ export class Resources {
   }
 
   public static formatAmendTitle(count: number, branch: string | null): string {
-    return `Amend the last commit ${branch === null ? "on a detached HEAD" : `on ${branch}`}, adding ${Resources.formatCount(count, "file", "files")}`;
+    return `Amend the last commit ${Object.isNull(branch) ? "on a detached HEAD" : `on ${branch}`}, adding ${Resources.formatCount(count, "file", "files")}`;
   }
 
   public static formatCommitTitle(count: number, branch: string | null): string {
-    return `Commit ${Resources.formatCount(count, "file", "files")} ${branch === null ? "on a detached HEAD" : `to ${branch}`}`;
+    return `Commit ${Resources.formatCount(count, "file", "files")} ${Object.isNull(branch) ? "on a detached HEAD" : `to ${branch}`}`;
   }
 
   public static formatAuthor(ident: string): string {
@@ -1076,7 +1077,7 @@ export class Resources {
   }
 
   public static formatHookName(name: string, repository: string | null): string {
-    return repository === null ? name : `${name} (${repository})`;
+    return Object.isNull(repository) ? name : `${name} (${repository})`;
   }
 
   public static formatMessageOption(message: string): string {
@@ -1226,7 +1227,7 @@ export class Resources {
   }
 
   public static formatUndoCommitTitle(branch: string | null): string {
-    return branch === null ? "Undo the last commit on the detached HEAD" : `Undo the last commit on ${branch}`;
+    return Object.isNull(branch) ? "Undo the last commit on the detached HEAD" : `Undo the last commit on ${branch}`;
   }
 
   public static formatResetTitle(branch: string | null, id: string, mode: ResetMode): string {
@@ -1262,7 +1263,7 @@ export class Resources {
   public static readonly mergeBaseCommand: string = "merge-base";
 
   public static formatMergeTitle(id: string, branch: string | null): string {
-    return branch === null ? `Merge ${id} into the detached HEAD` : `Merge ${id} into ${branch}`;
+    return Object.isNull(branch) ? `Merge ${id} into the detached HEAD` : `Merge ${id} into ${branch}`;
   }
 
   public static formatMergeBaseOption(id: string): string {

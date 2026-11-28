@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import timers from "node:timers";
 
+import "@noldova/context.core";
 import { afterEach, beforeEach, describe, onTestFinished, test, vi } from "vitest";
 
 import { FailureCode } from "@noldova/git.protocol";
@@ -96,7 +97,7 @@ describe("ChangesDigest", () => {
     const original = timers.setTimeout;
     const timer = vi.spyOn(timers, "setTimeout").mockImplementation((...values: Parameters<typeof timers.setTimeout>) => {
       const [handler, delay] = values;
-      if (delay === Resources.changesDigestMilliseconds && typeof handler === "function")
+      if (delay === Resources.changesDigestMilliseconds && Object.isFunction(handler))
         handler();
       return original(...values);
     });

@@ -8,6 +8,7 @@
 
 import assert from "node:assert/strict";
 
+import "@noldova/context.core";
 import { JsonReader } from "@noldova/context.json";
 import { FailureCode } from "@noldova/desktop.protocol";
 import { MethodFailureException } from "@noldova/desktop.runtime";
@@ -83,9 +84,9 @@ function evaluation(status: string, name: string, isBlocking: boolean, type: str
   return { status, configuration: { isBlocking, type: { id: type, displayName: name } } };
 }
 
-function build(status: string, result: string | null, finished: boolean = result !== null, started: boolean = true): Record<string, unknown> {
+function build(status: string, result: string | null, finished: boolean = !Object.isNull(result), started: boolean = true): Record<string, unknown> {
   return {
-    status, ...result === null ? {} : { result }, definition: { name: "site-ci" }, _links: { web: { href: "https://dev.azure.com/fabrikam/web/_build/results?buildId=7" } },
+    status, ...Object.isNull(result) ? {} : { result }, definition: { name: "site-ci" }, _links: { web: { href: "https://dev.azure.com/fabrikam/web/_build/results?buildId=7" } },
     ...started ? { startTime: "2027-01-15T09:31:00Z" } : {}, ...finished ? { finishTime: "2027-01-15T09:41:00Z" } : {}
   };
 }
@@ -398,7 +399,7 @@ describe("AzureReads", () => {
       [-0.5, "Waiting for the author"], [-1, "Rejected"], [0.3, "Voted 3"]]);
     assert.deepEqual(read?.policies.map(t => t.state), [PolicyState.Queued, PolicyState.Running, PolicyState.Approved, PolicyState.Rejected,
       PolicyState.NotApplicable, PolicyState.Rejected]);
-    assert.deepEqual(read?.builds.map(t => [t.state, t.startedAt === null, t.finishedAt === null]), [[CheckState.Queued, true, true],
+    assert.deepEqual(read?.builds.map(t => [t.state, Object.isNull(t.startedAt), Object.isNull(t.finishedAt)]), [[CheckState.Queued, true, true],
       [CheckState.Running, false, true], [CheckState.Running, false, true], [CheckState.Succeeded, false, false], [CheckState.Neutral, false, false],
       [CheckState.Neutral, true, false], [CheckState.Failed, false, false], [CheckState.Failed, false, false]]);
     assert.deepEqual([read?.isAutoComplete, read?.description, read?.commitCount, read?.workItems], [false, "", 0, []]);
@@ -1477,7 +1478,7 @@ const childUrl = (id: number | string): string => `https://dev.azure.com/fabrika
 const commitLink: string = `vstfs:///Git/Commit/${projectId}%2F${repositoryId}%2F${commit}`;
 
 function batched(id: number, fields: Readonly<Record<string, unknown>> = {}, relations?: readonly Record<string, unknown>[]): Record<string, unknown> {
-  return { ...workItem(fields), id, ...relations === undefined ? {} : { relations } };
+  return { ...workItem(fields), id, ...Object.isUndefined(relations) ? {} : { relations } };
 }
 
 function relation(rel: string, url: string): Record<string, unknown> {

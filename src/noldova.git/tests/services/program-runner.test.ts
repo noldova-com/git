@@ -12,6 +12,7 @@ import { createServer, type Socket } from "node:net";
 import path from "node:path";
 import timers from "node:timers";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, onTestFinished, test, vi } from "vitest";
 
 import { ProcessStartFailedException } from "@noldova/desktop.runtime";
@@ -73,7 +74,7 @@ describe("ProgramRunner", () => {
     const original = timers.setTimeout;
     const timer = vi.spyOn(timers, "setTimeout").mockImplementation((...values: Parameters<typeof timers.setTimeout>) => {
       const [handler, delay] = values;
-      if (delay === limits.milliseconds && typeof handler === "function")
+      if (delay === limits.milliseconds && Object.isFunction(handler))
         clock.expire = () => handler();
       return original(...values);
     });
@@ -225,7 +226,7 @@ describe("ProgramRunner", () => {
     clock.expire();
 
     await assert.rejects(running, (error: unknown) =>
-      error instanceof ProgramTimedOutException && error.code === FailureCode.TimedOut && error.gitCode === null && error.milliseconds === 30_000 && error.message === "gh did not finish within 30000 ms, so it was stopped.");
+      error instanceof ProgramTimedOutException && error.code === FailureCode.TimedOut && Object.isNull(error.gitCode) && error.milliseconds === 30_000 && error.message === "gh did not finish within 30000 ms, so it was stopped.");
     assert.deepEqual(supervisor.events, ["start hang", "exit hang"]);
   });
 
@@ -257,7 +258,7 @@ describe("ProgramRunner", () => {
     });
     await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
     const address = server.address();
-    assert.ok(address !== null && typeof address === "object");
+    assert.ok(Object.isObject(address));
     const port = String(address.port);
 
     try {

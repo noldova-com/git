@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { chmod, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from "vitest";
 
 import { PermissionDecision, ToolFailure, ToolFailureCode, ToolResult, ToolRisk, type ToolSession } from "@noldova/desktop.runtime";
@@ -63,7 +64,7 @@ describe("The Git agent tools", () => {
     await cleanUps.runAsync();
   });
 
-  const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
+  const isRecord = (value: unknown): value is Record<string, unknown> => Object.isObject(value) && !Array.isArray(value);
   const callAsync = (name: string, input: JsonObject = {}, on: ToolSession = session): Promise<ToolResult | ToolFailure> => on.callAsync(name, input);
   const readAsync = async (name: string, input: JsonObject = {}): Promise<Record<string, unknown>> => {
     const outcome = await callAsync(name, input);
@@ -79,7 +80,7 @@ describe("The Git agent tools", () => {
     return { code: outcome.code, moduleCode: outcome.moduleCode };
   };
   const pathsOf = (value: unknown): string[] =>
-    (Array.isArray(value) ? value.map((t: unknown) => (typeof t === "object" && t !== null && "path" in t ? String(t.path) : "")) : []);
+    (Array.isArray(value) ? value.map((t: unknown) => (Object.isObject(t) && "path" in t ? String(t.path) : "")) : []);
   const subjectAsync = async (): Promise<string> => (await repository.runGitAsync(["log", "-1", "--format=%s"])).trim();
   const hookAsync = async (name: string): Promise<void> => {
     const file = path.join(repository.gitFolder, "hooks", name);

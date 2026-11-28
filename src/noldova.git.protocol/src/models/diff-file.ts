@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { FileChange } from "../enums/file-change.ts";
@@ -72,7 +73,7 @@ export class DiffFile {
       FieldCheck.requireNull(newMode, Resources.newModeField, reader);
     if (binary && hunks.length > 0)
       FieldCheck.fail(Resources.hunksField, Resources.binaryHunksExpected, reader);
-    if (similarity !== null && (!DiffFile.MOVED.includes(change) || !Number.isSafeInteger(similarity) || similarity < 0 || similarity > 100))
+    if (!Object.isNull(similarity) && (!DiffFile.MOVED.includes(change) || !Number.isSafeInteger(similarity) || similarity < 0 || similarity > 100))
       FieldCheck.fail(Resources.similarityField, Resources.similarityExpected, reader);
 
     this.path = path;
@@ -111,9 +112,9 @@ export class DiffFile {
   public toJson(): JsonObject {
     return {
       [Resources.pathField]: this.path,
-      ...this.pathBytes === undefined ? {} : { [Resources.pathBytesField]: this.pathBytes },
+      ...Object.isUndefined(this.pathBytes) ? {} : { [Resources.pathBytesField]: this.pathBytes },
       [Resources.oldPathField]: this.oldPath,
-      ...this.oldPathBytes === undefined ? {} : { [Resources.oldPathBytesField]: this.oldPathBytes },
+      ...Object.isUndefined(this.oldPathBytes) ? {} : { [Resources.oldPathBytesField]: this.oldPathBytes },
       [Resources.changeField]: this.change,
       [Resources.oldModeField]: this.oldMode,
       [Resources.newModeField]: this.newMode,
@@ -121,7 +122,7 @@ export class DiffFile {
       [Resources.submoduleField]: this.submodule?.toJson() ?? null,
       [Resources.hunksField]: this.hunks.map(t => t.toJson()),
       [Resources.truncatedField]: this.truncated,
-      ...this.similarity === null ? {} : { [Resources.similarityField]: this.similarity }
+      ...Object.isNull(this.similarity) ? {} : { [Resources.similarityField]: this.similarity }
     };
   }
 }

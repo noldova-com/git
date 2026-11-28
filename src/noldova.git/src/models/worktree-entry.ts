@@ -8,6 +8,8 @@
 
 import path from "node:path";
 
+import "@noldova/context.core";
+
 export class WorktreeEntry {
   public readonly path: string;
   public readonly head: string | null;
@@ -24,7 +26,7 @@ export class WorktreeEntry {
   }
 
   public get isLocked(): boolean {
-    return this.lockReason !== null;
+    return !Object.isNull(this.lockReason);
   }
 
   public isAt(folder: string): boolean {
@@ -32,6 +34,6 @@ export class WorktreeEntry {
   }
 
   public isLockedElsewhere(ownReason: string): boolean {
-    return this.lockReason !== null && this.lockReason !== ownReason;
+    return !Object.isNull(this.lockReason) && this.lockReason !== ownReason;
   }
 }

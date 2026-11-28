@@ -8,6 +8,7 @@
 
 import assert from "node:assert/strict";
 
+import "@noldova/context.core";
 import { JsonReader } from "@noldova/context.json";
 import { SecretFailureReason } from "@noldova/desktop.protocol";
 import { FakeAppWindows, FakeModuleLog, FakeModuleSecrets } from "@noldova/desktop.runtime/testing";
@@ -91,11 +92,11 @@ class Rig {
 
   public kept(): unknown {
     const value = this.store.values.get("git-github.signIn");
-    return value === undefined ? undefined : JSON.parse(value);
+    return Object.isUndefined(value) ? undefined : JSON.parse(value);
   }
 
   public states(): readonly string[] {
-    return this.changes.map(t => t.failure === null ? t.state : `${t.state} ${t.failure}`);
+    return this.changes.map(t => Object.isNull(t.failure) ? t.state : `${t.state} ${t.failure}`);
   }
 }
 

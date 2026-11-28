@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { access, chmod, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
 import { PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
@@ -118,7 +119,7 @@ describe("PickWriter", () => {
       && /CONFLICT/u.test(error.output.text));
 
     const { status } = await readAsync();
-    assert.deepEqual([await existsAsync("CHERRY_PICK_HEAD"), status.entries.some(t => t.conflict !== null)], [true, true]);
+    assert.deepEqual([await existsAsync("CHERRY_PICK_HEAD"), status.entries.some(t => !Object.isNull(t.conflict))], [true, true]);
     assert.throws(() => write.refuse(status), failsWith(PickDuringOperationException, GitCode.Conflict));
   });
 
@@ -176,7 +177,7 @@ describe("PickWriter", () => {
     await assert.rejects((await readAsync()).runAsync(write), failsWith(PickStoppedException, GitCode.Conflict));
 
     const { status } = await readAsync();
-    assert.deepEqual([await existsAsync("MERGE_HEAD"), status.entries.some(t => t.conflict !== null)], [true, true]);
+    assert.deepEqual([await existsAsync("MERGE_HEAD"), status.entries.some(t => !Object.isNull(t.conflict))], [true, true]);
     assert.throws(() => write.refuse(status), failsWith(PickDuringOperationException, GitCode.Conflict));
   });
 

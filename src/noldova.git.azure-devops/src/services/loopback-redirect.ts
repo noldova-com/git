@@ -10,6 +10,8 @@ import { timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 
+import "@noldova/context.core";
+
 import { RedirectAnswer } from "../models/redirect-answer.ts";
 import { Resources } from "../resources.ts";
 
@@ -39,7 +41,7 @@ export class LoopbackRedirect {
       redirect.server.listen(0, Resources.loopbackAddress, resolve);
     });
     const address: AddressInfo | string | null = redirect.server.address();
-    if (address === null || typeof address === "string") {
+    if (Object.isNull(address) || Object.isString(address)) {
       redirect.close();
       throw new Error(Resources.loopbackPortUnknownMessage);
     }
@@ -60,18 +62,18 @@ export class LoopbackRedirect {
 
   private handle(request: IncomingMessage, response: ServerResponse): void {
     const address = URL.parse(String(request.url), this.redirectUri);
-    if (address === null || request.method !== Resources.getMethod || address.pathname !== Resources.rootPath
+    if (Object.isNull(address) || request.method !== Resources.getMethod || address.pathname !== Resources.rootPath
       || !this.isState(address.searchParams.get(Resources.stateParameter))) {
       response.writeHead(Resources.notFoundStatus, Resources.redirectHeaders).end();
       return;
     }
     const code = address.searchParams.get(Resources.codeParameter);
     const error = address.searchParams.get(Resources.errorParameter);
-    if (code === null && error === null) {
+    if (Object.isNull(code) && Object.isNull(error)) {
       response.writeHead(Resources.notFoundStatus, Resources.redirectHeaders).end();
       return;
     }
-    response.writeHead(Resources.okStatus, Resources.redirectHeaders).end(code === null ? Resources.redirectNotSignedIn : Resources.redirectSignedIn);
+    response.writeHead(Resources.okStatus, Resources.redirectHeaders).end(Object.isNull(code) ? Resources.redirectNotSignedIn : Resources.redirectSignedIn);
     this.answer.resolve(new RedirectAnswer(code, error));
     this.close();
   }

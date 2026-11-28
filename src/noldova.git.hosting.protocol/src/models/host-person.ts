@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -21,11 +22,11 @@ export class HostPerson {
 
   public constructor(login: string, avatar: string | null, url: string | null, reader?: JsonReader, name: string | null = null) {
     FieldCheck.requireText(login, Resources.loginField, reader);
-    if (avatar !== null)
+    if (!Object.isNull(avatar))
       FieldCheck.requireAvatar(avatar, Resources.avatarField, reader);
-    if (url !== null)
+    if (!Object.isNull(url))
       FieldCheck.requireHttps(url, Resources.urlField, reader);
-    if (name !== null)
+    if (!Object.isNull(name))
       FieldCheck.requireText(name, Resources.nameField, reader);
 
     this.login = login;
@@ -43,6 +44,6 @@ export class HostPerson {
 
   public toJson(): JsonObject {
     const person: JsonObject = { [Resources.loginField]: this.login, [Resources.avatarField]: this.avatar, [Resources.urlField]: this.url };
-    return this.name === null ? person : { ...person, [Resources.nameField]: this.name };
+    return Object.isNull(this.name) ? person : { ...person, [Resources.nameField]: this.name };
   }
 }

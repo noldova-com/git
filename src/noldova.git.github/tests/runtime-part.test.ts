@@ -8,6 +8,7 @@
 
 import assert from "node:assert/strict";
 
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { FailureCode, SecretFailureReason, ShellClients } from "@noldova/desktop.protocol";
 import { MethodFailureException, RequestContext, ToolFailure, ToolFailureCode } from "@noldova/desktop.runtime";
@@ -31,7 +32,7 @@ const avatarUrl: string = "https://avatars.githubusercontent.com/u/583231";
 async function callAsync(context: RuntimeContext, name: string, payload: JsonValue = null, client: string = "git-github",
   window: number | null = null): Promise<JsonValue> {
   const handler = context.methods.get(name);
-  assert.ok(handler !== undefined, `${name} isn't registered.`);
+  assert.ok(!Object.isUndefined(handler), `${name} isn't registered.`);
   return handler.handleAsync(new RequestContext(client, payload, new AbortController().signal, 1, window));
 }
 

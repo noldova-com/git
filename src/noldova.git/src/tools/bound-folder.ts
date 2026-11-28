@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { type ToolCall, ToolContent, ToolFailureCode, ToolResult } from "@noldova/desktop.runtime";
 import { JsonException } from "@noldova/context.json";
 import { GitFolderBinding, ProtocolException, UntrustedSource } from "@noldova/git.protocol";
@@ -24,7 +25,7 @@ export class BoundFolder {
   }
 
   public static resultOf(text: string | null): ToolResult {
-    if (text === null)
+    if (Object.isNull(text))
       throw GitToolFailures.fail(ToolFailureCode.TooLarge, Resources.resultTooLarge, Resources.tooLargeToolCode);
     return new ToolResult([ToolContent.fromText(text, GitToolFailures.originOf(UntrustedSource.Repository))]);
   }

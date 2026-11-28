@@ -12,6 +12,7 @@ import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { afterAll, beforeAll, describe, test } from "vitest";
 
 import { FilePresence } from "../../src/services/file-presence.ts";
@@ -48,7 +49,7 @@ describe("FilePresence", () => {
   test("reads the entry at a path itself, a link whose target is gone included, and none where nothing is", async () => {
     const entries = await Promise.all(["a.txt", "link", "missing", path.join("a.txt", "b")].map(t => FilePresence.entryAsync(path.join(folder, t))));
 
-    assert.deepEqual(entries.map(t => t === null ? null : [t.isFile(), t.isSymbolicLink()]), [[true, false], [false, true], null, null]);
+    assert.deepEqual(entries.map(t => Object.isNull(t) ? null : [t.isFile(), t.isSymbolicLink()]), [[true, false], [false, true], null, null]);
   });
 
   test("tells only a missing path's error apart", () => {

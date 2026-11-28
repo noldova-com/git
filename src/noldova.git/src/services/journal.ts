@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { GitJournal, GitJournalEntry, UndoMode } from "@noldova/git.protocol";
 
@@ -25,13 +26,13 @@ export class Journal {
   }
 
   public static limitOf(value: JsonValue): number {
-    return typeof value === "number" && Number.isInteger(value) && value >= Resources.journalLimitMinimum && value <= Resources.journalLimitMaximum
+    return Object.isNumber(value) && Number.isInteger(value) && value >= Resources.journalLimitMinimum && value <= Resources.journalLimitMaximum
       ? value
       : Resources.journalLimit;
   }
 
   public record(commonGitFolder: string, gitFolder: string, method: string, undo: UndoMode, before: RefSnapshot, after: RefSnapshot, checkpoint: IWriteCheckpoint | null = null): GitJournalEntry {
-    const hasIndex = undo === UndoMode.Index && before.index !== null && after.index !== null;
+    const hasIndex = undo === UndoMode.Index && !Object.isNull(before.index) && !Object.isNull(after.index);
     const entry = new GitJournalEntry(
       String(this.next++),
       method,

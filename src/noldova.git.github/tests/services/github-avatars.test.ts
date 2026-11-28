@@ -8,6 +8,7 @@
 
 import assert from "node:assert/strict";
 
+import "@noldova/context.core";
 import { FakeModuleLog } from "@noldova/desktop.runtime/testing";
 import { afterEach, describe, it, vi } from "vitest";
 
@@ -24,7 +25,7 @@ function image(bytes: Uint8Array<ArrayBuffer> = pixel, type: string = "image/png
 }
 
 function redirect(location: string | null, status: number = 302, body: string | null = "Moved."): Response {
-  return new Response(body, { status, headers: location === null ? {} : { Location: location } });
+  return new Response(body, { status, headers: Object.isNull(location) ? {} : { Location: location } });
 }
 
 function dataOf(bytes: Uint8Array<ArrayBuffer> = pixel, type: string = "image/png"): string {
@@ -175,7 +176,7 @@ describe("GitHubAvatars", () => {
       "https://avatars.githubusercontent.com/u/2", "https://avatars.githubusercontent.com/u/3", "https://avatars.githubusercontent.com/u/11?s=64",
       "https://avatars.githubusercontent.com/u/12?s=64", "https://avatars.githubusercontent.com/u/13?s=64", "https://avatars.githubusercontent.com/u/4",
       "https://avatars.githubusercontent.com/u/5", "https://avatars.githubusercontent.com/u/6"]);
-    assert.ok(rig.github.requests.every(t => t.header("Authorization") === null && t.init.redirect === "manual"));
+    assert.ok(rig.github.requests.every(t => Object.isNull(t.header("Authorization")) && t.init.redirect === "manual"));
     assert.deepEqual(linesOf(rig.log), Array.from({ length: 3 }, () => "A GitHub avatar isn't shown: the avatar server redirected more than 3 times, or off its host."));
     assert.deepEqual([...redirects, ...elsewhere].map(t => t.bodyUsed), [true, false, true, true, true, true, true, true, true]);
   });

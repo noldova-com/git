@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { JsonReader, JsonValue } from "@noldova/context.json";
 import { FailureCode } from "@noldova/desktop.protocol";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
@@ -39,7 +40,7 @@ export class AzureWrites {
     const { organization, project, name } = link.repository;
     const token: AzureCredential = this.tokenFor(organization);
     const found: JsonReader | null = await this.askAsync(token, () => this.api.getAsync(Resources.formatRepositoryUrl(organization, project, name), token, signal));
-    if (found === null)
+    if (Object.isNull(found))
       throw AzureApi.failure(FailureCode.NotFound, Resources.repositoryNotFoundMessage);
     const artifact: string = AzureApi.read(() => Resources.formatBranchArtifact(found.readObject(Resources.projectField).readNonBlankString(Resources.idField),
       found.readNonBlankString(Resources.idField), link.branch));
@@ -51,7 +52,7 @@ export class AzureWrites {
   public async updateWorkItemAsync(update: WorkItemUpdate, signal: AbortSignal): Promise<HostWorkItemDetail> {
     const token: AzureCredential = this.tokenFor(update.host === AzureDevOpsNames.moduleId ? update.organization : null);
     const changes: JsonValue[] = [];
-    if (update.state !== null)
+    if (!Object.isNull(update.state))
       changes.push({ op: Resources.addOperation, path: Resources.statePath, value: update.state });
     if (update.assignToMe)
       changes.push({ op: Resources.addOperation, path: Resources.assignedToPath, value: await this.readLoginAsync(update.organization, token, signal) });
@@ -125,7 +126,7 @@ export class AzureWrites {
     const stale: string | null = AzureApi.read(() => pull.readString(Resources.statusField) !== Resources.activeStatus ? Resources.notActiveMessage
       : pull.readObject(Resources.lastMergeSourceCommitField).readString(Resources.commitIdField) === abandonment.sourceCommit ? null
         : Resources.abandonSourceChangedMessage);
-    if (stale !== null)
+    if (!Object.isNull(stale))
       throw AzureApi.failure(FailureCode.Conflict, stale);
     await this.writeAsync(token, () => this.api.updateAsync(url, token, { [Resources.statusField]: Resources.abandonedStatus }, signal),
       Resources.cannotChangePullRequestMessage, Resources.pullRequestNotFoundMessage);
@@ -133,7 +134,7 @@ export class AzureWrites {
 
   private async readPullAsync(url: string, token: AzureCredential, signal: AbortSignal): Promise<JsonReader> {
     const pull: JsonReader | null = await this.askAsync(token, () => this.api.getAsync(url, token, signal));
-    if (pull === null)
+    if (Object.isNull(pull))
       throw AzureApi.failure(FailureCode.NotFound, Resources.pullRequestNotFoundMessage);
     return pull;
   }
@@ -143,7 +144,7 @@ export class AzureWrites {
     const url: string = Resources.formatPullRequestUrl(owner, repository, number);
     const pull: JsonReader = await this.readPullAsync(url, token, signal);
     const stale: string | null = AzureApi.read(() => AzureWrites.staleOf(pull, completion, needsCleanMerge));
-    if (stale !== null)
+    if (!Object.isNull(stale))
       throw AzureApi.failure(FailureCode.Conflict, stale);
     const project: string = AzureApi.read(() => pull.readObject(Resources.repositoryField).readObject(Resources.projectField).readNonBlankString(Resources.idField));
     const allowed: readonly string[] = await this.askAsync(token, () => this.reads.readAllowedMergeTypesAsync(owner, project, number, token, signal));
@@ -157,14 +158,14 @@ export class AzureWrites {
     const token: AzureCredential = this.codeTokenFor(owner);
     const key: JsonReader | null = await this.askAsync(token, () => this.api.getAsync(Resources.formatStorageKeyUrl(owner, addition.descriptor), token, signal),
       Resources.cannotReadPeopleMessage);
-    if (key === null)
+    if (Object.isNull(key))
       throw AzureApi.failure(FailureCode.NotFound, Resources.personNotFoundMessage);
     const id: string = AzureApi.read(() => key.readNonBlankString(Resources.valueField));
     const answer: JsonReader = await this.writeAsync(token, () => this.api.createAsync(Resources.formatReviewersUrl(owner, repository, number), token,
       [{ [Resources.idField]: id }], signal), Resources.cannotAddReviewerMessage, Resources.pullRequestNotFoundMessage);
     return AzureApi.read(() => {
       const added: JsonReader | undefined = answer.readObjectArray(Resources.valueField).find(t => t.readString(Resources.idField).toLowerCase() === id.toLowerCase());
-      if (added === undefined)
+      if (Object.isUndefined(added))
         throw new SyntaxError(Resources.unreadableAnswerMessage);
       return AzureReads.reviewerOf(added);
     });
@@ -173,7 +174,7 @@ export class AzureWrites {
   private tokenFor(organization: string | null): AzureCredential {
     const token: AzureCredential | null = this.signIn.token;
     const signedIn: string | null = this.signIn.organization;
-    if (token === null || signedIn === null || organization === null || !Resources.isSameOrganization(signedIn, organization))
+    if (Object.isNull(token) || Object.isNull(signedIn) || Object.isNull(organization) || !Resources.isSameOrganization(signedIn, organization))
       throw AzureApi.failure(FailureCode.Unauthorized, Resources.signedOutMessage);
     return token;
   }
@@ -193,7 +194,7 @@ export class AzureWrites {
 
   private async readConnectionAsync(organization: string, token: AzureCredential, signal: AbortSignal): Promise<JsonReader> {
     const connection: JsonReader | null = await this.askAsync(token, () => this.api.getAsync(Resources.formatConnectionDataUrl(organization), token, signal));
-    if (connection === null)
+    if (Object.isNull(connection))
       throw AzureApi.failure(FailureCode.Unavailable, Resources.unreadableAnswerMessage);
     return connection;
   }
@@ -206,7 +207,7 @@ export class AzureWrites {
       if (!AzureApi.isUnauthorized(error))
         throw error;
       await this.signIn.refusedAsync(token);
-      throw cannotRead !== null && this.signIn.token === token ? AzureApi.failure(FailureCode.Unauthorized, cannotRead) : error;
+      throw !Object.isNull(cannotRead) && this.signIn.token === token ? AzureApi.failure(FailureCode.Unauthorized, cannotRead) : error;
     }
   }
 
@@ -221,7 +222,7 @@ export class AzureWrites {
       await this.signIn.refusedAsync(token);
       throw this.signIn.token === token ? AzureApi.failure(FailureCode.Unauthorized, cannotWrite) : error;
     }
-    if (written === null)
+    if (Object.isNull(written))
       throw AzureApi.failure(FailureCode.NotFound, missing);
     return written;
   }

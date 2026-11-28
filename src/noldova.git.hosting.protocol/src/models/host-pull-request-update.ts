@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -26,7 +27,7 @@ export class HostPullRequestUpdate {
     FieldCheck.requirePositive(number, Resources.numberField, reader);
     FieldCheck.requirePositive(createdAt, Resources.createdAtField, reader);
     FieldCheck.requireCommit(sourceCommit, Resources.sourceCommitField, reader);
-    if (commonCommit !== null)
+    if (!Object.isNull(commonCommit))
       FieldCheck.requireCommit(commonCommit, Resources.commonCommitField, reader);
 
     this.number = number;

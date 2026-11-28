@@ -8,6 +8,7 @@
 
 import assert from "node:assert/strict";
 
+import "@noldova/context.core";
 import { describe, it } from "vitest";
 
 import { AnswerText } from "../../src/services/answer-text.ts";
@@ -24,7 +25,7 @@ function streamOf(...chunks: readonly Uint8Array[]): IStreamedAnswer {
     pull(controller: ReadableStreamDefaultController<Uint8Array>): void {
       const next: Uint8Array | undefined = chunks[index];
       index += 1;
-      if (next === undefined)
+      if (Object.isUndefined(next))
         controller.close();
       else
         controller.enqueue(next);

@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { GitRefMove } from "@noldova/git.protocol";
 
 import { Resources } from "../resources.ts";
@@ -29,7 +30,7 @@ export class RefSnapshot {
   public static movesBetween(before: RefSnapshot, after: RefSnapshot): GitRefMove[] {
     const names = new Set([...before.refs.keys(), ...after.refs.keys()]);
     const moves = [...names].sort().filter(t => before.valueOf(t) !== after.valueOf(t)).map(t => new GitRefMove(t, before.valueOf(t), after.valueOf(t)));
-    if ((before.branch === null || after.branch === null) && before.head !== after.head)
+    if ((Object.isNull(before.branch) || Object.isNull(after.branch)) && before.head !== after.head)
       moves.unshift(new GitRefMove(Resources.headRevision, before.head, after.head));
     return moves;
   }

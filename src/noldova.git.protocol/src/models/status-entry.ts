@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { ConflictKind } from "../enums/conflict-kind.ts";
@@ -55,14 +56,14 @@ export class StatusEntry {
     reader?: JsonReader) {
     FieldCheck.requireText(path, Resources.pathField, reader);
     FieldCheck.requirePathBytes(pathBytes, Resources.pathBytesField, reader);
-    if ((StatusEntry.MOVED.includes(index) || StatusEntry.MOVED.includes(worktree)) !== (originalPath !== null))
+    if ((StatusEntry.MOVED.includes(index) || StatusEntry.MOVED.includes(worktree)) !== (!Object.isNull(originalPath)))
       FieldCheck.fail(Resources.originalPathField, Resources.originalPathExpected, reader);
-    if (originalPath === null)
+    if (Object.isNull(originalPath))
       FieldCheck.requireAbsent(originalPathBytes, Resources.originalPathBytesField, reader);
     else
       FieldCheck.requireText(originalPath, Resources.originalPathField, reader);
     FieldCheck.requirePathBytes(originalPathBytes, Resources.originalPathBytesField, reader);
-    if (conflict !== null)
+    if (!Object.isNull(conflict))
       for (const [state, field] of [[index, Resources.indexField], [worktree, Resources.worktreeField]] as const)
         if (state !== FileState.Unmodified)
           FieldCheck.fail(field, Resources.conflictStatesExpected, reader);
@@ -100,9 +101,9 @@ export class StatusEntry {
   public toJson(): JsonObject {
     return {
       [Resources.pathField]: this.path,
-      ...this.pathBytes === undefined ? {} : { [Resources.pathBytesField]: this.pathBytes },
+      ...Object.isUndefined(this.pathBytes) ? {} : { [Resources.pathBytesField]: this.pathBytes },
       [Resources.originalPathField]: this.originalPath,
-      ...this.originalPathBytes === undefined ? {} : { [Resources.originalPathBytesField]: this.originalPathBytes },
+      ...Object.isUndefined(this.originalPathBytes) ? {} : { [Resources.originalPathBytesField]: this.originalPathBytes },
       [Resources.indexField]: this.index,
       [Resources.worktreeField]: this.worktree,
       [Resources.conflictField]: this.conflict,

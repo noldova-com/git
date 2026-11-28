@@ -7,6 +7,7 @@
  */
 import assert from "node:assert/strict";
 
+import "@noldova/context.core";
 import { describe, test } from "vitest";
 
 import { DiffFile, FileChange, FileState, GitBranches, GitBranchTip, GitBranchTrack, GitCommit, GitDiff, GitLog, GitStatus, StatusEntry } from "@noldova/git.protocol";
@@ -15,9 +16,9 @@ import { ToolText } from "../../src/tools/tool-text.ts";
 
 describe("ToolText", () => {
   const limit = 250_000;
-  const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
+  const isRecord = (value: unknown): value is Record<string, unknown> => Object.isObject(value) && !Array.isArray(value);
   const parsed = (text: string | null): Record<string, unknown> => {
-    assert.ok(text !== null);
+    assert.ok(!Object.isNull(text));
     assert.ok(Buffer.byteLength(text) <= limit);
     const value: unknown = JSON.parse(text);
     assert.ok(isRecord(value));

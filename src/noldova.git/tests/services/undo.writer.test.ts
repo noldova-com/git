@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
 import { PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
@@ -111,7 +112,7 @@ describe("UndoWriter", () => {
     await writes.runAsync(folders, (await statuses.readAsync(folders)).fingerprint, write, null);
     const entries = journal.read(folders.commonGitFolder).entries;
     const entry = entries.at(-1);
-    assert.ok(entry !== undefined);
+    assert.ok(!Object.isUndefined(entry));
     return entry;
   };
   const undoAsync = async (entry: GitJournalEntry): Promise<void> => {
@@ -323,7 +324,7 @@ describe("UndoWriter", () => {
     const discarded = await statusOf();
     await repository.writeAsync("b.txt", "later\n");
     const fake = checkpoints;
-    assert.ok(fake !== null);
+    assert.ok(!Object.isNull(fake));
     fake.onRestore = async () => {
       await repository.writeAsync("a.txt", "edited\n");
       await repository.writeAsync("new.txt", "new\n");
@@ -383,7 +384,7 @@ describe("UndoWriter", () => {
     const otherFolders = await new RepositoryReader(runner, new GitVersionReader(runner)).readAsync(other);
     await writes.runAsync(otherFolders, (await statuses.readAsync(otherFolders)).fingerprint, new BranchAtWriter(runner, "side-copy", await idOf("HEAD")), null);
     const made = journal.read(otherFolders.commonGitFolder).entries.at(-1);
-    assert.ok(made !== undefined);
+    assert.ok(!Object.isUndefined(made));
     await repository.runGitAsync(["switch", "--quiet", "side-copy"]);
     const undoInOtherAsync = async (): Promise<void> => {
       await writes.runAsync(otherFolders, (await statuses.readAsync(otherFolders)).fingerprint, new UndoWriter(runner, snapshots, journal, store, made.id), null);

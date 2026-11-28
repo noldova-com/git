@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { WorkItemCategory } from "../enums/work-item-category.ts";
@@ -45,16 +46,16 @@ export class HostWorkItem {
     FieldCheck.requireText(title, Resources.titleField, reader);
     FieldCheck.requireText(state, Resources.stateField, reader);
     FieldCheck.requireHttps(url, Resources.urlField, reader);
-    if (iteration !== null)
+    if (!Object.isNull(iteration))
       FieldCheck.requireText(iteration, Resources.iterationField, reader);
-    if (area !== null)
+    if (!Object.isNull(area))
       FieldCheck.requireText(area, Resources.areaField, reader);
-    if (parent !== null) {
+    if (!Object.isNull(parent)) {
       FieldCheck.requirePositive(parent, Resources.parentField, reader);
       if (parent === id)
         FieldCheck.fail(Resources.parentField, Resources.parentExpected, reader);
     }
-    if (changedAt !== null)
+    if (!Object.isNull(changedAt))
       FieldCheck.requirePositive(changedAt, Resources.changedAtField, reader);
 
     this.host = host;

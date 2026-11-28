@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { CheckState } from "../enums/check-state.ts";
@@ -22,7 +23,7 @@ export class HostCheck {
 
   public constructor(name: string, state: CheckState, url: string | null, reader?: JsonReader) {
     FieldCheck.requireText(name, Resources.nameField, reader);
-    if (url !== null)
+    if (!Object.isNull(url))
       FieldCheck.requireHttps(url, Resources.urlField, reader);
 
     this.name = name;

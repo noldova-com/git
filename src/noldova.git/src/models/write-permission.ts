@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { type IPermissionDetail, type IPermissionRequest, PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
 
 import { RequestTooLargeException } from "../exceptions/request-too-large.exception.ts";
@@ -28,7 +29,7 @@ export class WritePermission {
   }
 
   public static hooksDetail(hooks: readonly string[] | null): IPermissionDetail {
-    if (hooks === null)
+    if (Object.isNull(hooks))
       return { label: Resources.hooksLabel, kind: PermissionDetailKind.Text, value: Resources.unknownHooks };
     return { label: Resources.hooksLabel, kind: PermissionDetailKind.Text, value: hooks.length === 0 ? Resources.noHooks : hooks.join(Resources.listSeparator) };
   }

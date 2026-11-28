@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { UndoMode } from "../enums/undo-mode.ts";
@@ -49,24 +50,24 @@ export class GitJournalEntry {
     FieldCheck.requireLine(method, Resources.methodField, reader);
     if (!Resources.dateTimePattern.test(at) || Number.isNaN(Date.parse(at)))
       FieldCheck.fail(Resources.atField, Resources.dateTimeExpected, reader);
-    if (branch !== null)
+    if (!Object.isNull(branch))
       FieldCheck.requireBranchName(branch, Resources.branchField, reader);
-    if (branchAfter !== null)
+    if (!Object.isNull(branchAfter))
       FieldCheck.requireBranchName(branchAfter, Resources.branchAfterField, reader);
-    if (indexBefore !== null)
+    if (!Object.isNull(indexBefore))
       FieldCheck.requireObjectId(indexBefore, Resources.indexBeforeField, reader);
-    if (indexAfter !== null)
+    if (!Object.isNull(indexAfter))
       FieldCheck.requireObjectId(indexAfter, Resources.indexAfterField, reader);
-    if ((undo === UndoMode.Index) !== (indexBefore !== null && indexAfter !== null) || (indexBefore === null) !== (indexAfter === null))
+    if ((undo === UndoMode.Index) !== (!Object.isNull(indexBefore) && !Object.isNull(indexAfter)) || (Object.isNull(indexBefore)) !== (Object.isNull(indexAfter)))
       FieldCheck.fail(Resources.indexAfterField, Resources.indexTreesExpected, reader);
-    if (checkpoint !== null) {
+    if (!Object.isNull(checkpoint)) {
       FieldCheck.requireText(checkpoint, Resources.checkpointField, reader);
       FieldCheck.requireLine(checkpoint, Resources.checkpointField, reader);
     }
     paths.forEach((path, index) => FieldCheck.requireRelativePath(path, Resources.formatItemField(Resources.pathsField, index), reader));
-    if ((undo === UndoMode.Checkpoint || undo === UndoMode.Stash) !== (checkpoint !== null) || (undo === UndoMode.Checkpoint) !== (paths.length > 0))
+    if ((undo === UndoMode.Checkpoint || undo === UndoMode.Stash) !== (!Object.isNull(checkpoint)) || (undo === UndoMode.Checkpoint) !== (paths.length > 0))
       FieldCheck.fail(Resources.checkpointField, Resources.checkpointExpected, reader);
-    if (undo === UndoMode.Stash && checkpoint !== null)
+    if (undo === UndoMode.Stash && !Object.isNull(checkpoint))
       FieldCheck.requireObjectId(checkpoint, Resources.checkpointField, reader);
 
     this.id = id;

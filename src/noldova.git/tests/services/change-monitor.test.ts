@@ -12,6 +12,7 @@ import { mkdir, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import timers from "node:timers";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test, vi } from "vitest";
 
 import { FakeModuleLog } from "@noldova/desktop.runtime/testing";
@@ -104,7 +105,7 @@ describe("ChangeMonitor", () => {
       const wait: IHeldWait = { milliseconds: delay, fire: (): void => handler(), timer: original(() => undefined, 2_147_483_647), isCleared: false, isTaken: false };
       waits.push(wait);
       const listener = asked.find(t => t.milliseconds === delay);
-      if (listener !== undefined) {
+      if (!Object.isUndefined(listener)) {
         asked = asked.filter(t => t !== listener);
         wait.isTaken = true;
         listener.resolve(wait);
@@ -145,7 +146,7 @@ describe("ChangeMonitor", () => {
   const cookiesAsync = async (): Promise<string[][]> => [(await readdir(repository.gitFolder)).filter(isCookie), (await readdir(branchesFolder())).filter(isCookie)];
   const nextWaitAsync = async (milliseconds: number): Promise<IHeldWait> => {
     const waiting = waits.find(t => t.milliseconds === milliseconds && !t.isTaken && !t.isCleared);
-    if (waiting !== undefined) {
+    if (!Object.isUndefined(waiting)) {
       waiting.isTaken = true;
       return waiting;
     }
@@ -161,7 +162,7 @@ describe("ChangeMonitor", () => {
     for (;;) {
       await new Promise<void>(resolve => timers.setImmediate(resolve));
       const waiting = waits.find(t => t.milliseconds === TOUCH && !t.isTaken && !t.isCleared);
-      if (waiting !== undefined) {
+      if (!Object.isUndefined(waiting)) {
         waiting.isTaken = true;
         waiting.fire();
         continue;
@@ -171,7 +172,7 @@ describe("ChangeMonitor", () => {
       asked.push(listener);
       const touch = await Promise.race([settled, promise]);
       asked = asked.filter(t => t !== listener);
-      if (touch === null)
+      if (Object.isNull(touch))
         return await work;
       touch.fire();
     }
@@ -192,7 +193,7 @@ describe("ChangeMonitor", () => {
   });
   const seenAsync = (watcher: FSWatcher, matches: (name: string) => boolean): Promise<void> => new Promise(resolve => {
     const listener = (_event: string, file: unknown): void => {
-      if (typeof file !== "string" || !matches(file))
+      if (!Object.isString(file) || !matches(file))
         return;
       watcher.off("change", listener);
       resolve();
@@ -251,7 +252,7 @@ describe("ChangeMonitor", () => {
     const earlier = vi.mocked(watch).mock.results.length;
     monitor.watch(KEY, repository.folder, folders());
     const [own, branches, packed] = watchersOf(earlier);
-    assert.ok(own !== undefined && branches !== undefined && packed !== undefined);
+    assert.ok(!Object.isUndefined(own) && !Object.isUndefined(branches) && !Object.isUndefined(packed));
     assert.equal(await startedAsync(), WatchStart.Seen);
     const lock = seenAsync(branches, t => t === "feature.lock");
     await writeFile(path.join(repository.gitFolder, "refs", "heads", "feature.lock"), "lock\n");
@@ -273,7 +274,7 @@ describe("ChangeMonitor", () => {
     const earlier = vi.mocked(watch).mock.results.length;
     monitor.watch(KEY, repository.folder, folders());
     const [own] = watchersOf(earlier);
-    assert.ok(own !== undefined);
+    assert.ok(!Object.isUndefined(own));
     await startedAsync();
     const other = seenAsync(own, t => t === "description");
     await writeFile(path.join(repository.gitFolder, "description"), "other\n");
@@ -292,7 +293,7 @@ describe("ChangeMonitor", () => {
     const earlier = vi.mocked(watch).mock.results.length;
     monitor.watch(KEY, repository.folder, folders());
     const [own] = watchersOf(earlier);
-    assert.ok(own !== undefined);
+    assert.ok(!Object.isUndefined(own));
     await startedAsync();
 
     own.emit("change", "rename", null);
@@ -472,7 +473,7 @@ describe("ChangeMonitor", () => {
     monitor.watch(KEY, repository.folder, folders());
     await startedAsync();
     const [watcher] = watchersOf(earlier);
-    assert.ok(watcher !== undefined);
+    assert.ok(!Object.isUndefined(watcher));
     const close = vi.spyOn(watcher, "close");
 
     watcher.emit("error", new Error("The folder went away."));
@@ -505,7 +506,7 @@ describe("ChangeMonitor", () => {
     const earlier = vi.mocked(watch).mock.results.length;
     monitor.watch(KEY, repository.folder, folders());
     const [own, branches] = watchersOf(earlier);
-    assert.ok(own !== undefined && branches !== undefined);
+    assert.ok(!Object.isUndefined(own) && !Object.isUndefined(branches));
     const heard: string[] = [];
     void seenAsync(own, isCookie).then(() => heard.push("git folder"));
     void seenAsync(branches, isCookie).then(() => heard.push("branches"));
@@ -524,7 +525,7 @@ describe("ChangeMonitor", () => {
     const earlier = vi.mocked(watch).mock.results.length;
     monitor.watch(KEY, repository.folder, folders());
     const [own, branches] = watchersOf(earlier);
-    assert.ok(own !== undefined && branches !== undefined);
+    assert.ok(!Object.isUndefined(own) && !Object.isUndefined(branches));
     own.removeAllListeners("change");
     await touchingAsync(seenAsync(branches, isCookie));
     const live = await cookiesAsync();
@@ -545,11 +546,11 @@ describe("ChangeMonitor", () => {
     const earlier = vi.mocked(watch).mock.calls.length;
     const writes = vi.mocked(writeFile).mock.calls.length;
     const cookieWrites = (): number => vi.mocked(writeFile).mock.calls.slice(writes)
-      .filter(([file]) => typeof file === "string" && file.startsWith(path.join(repository.gitFolder, "noldova-watch-"))).length;
+      .filter(([file]) => Object.isString(file) && file.startsWith(path.join(repository.gitFolder, "noldova-watch-"))).length;
     let lost = 0;
     vi.mocked(watch).mockImplementationOnce((folder: PathLike, _options: unknown, listener?: WatchListener<string>) =>
       realWatch(folder, { persistent: false }, (event, name) => {
-        if (name !== null && isCookie(name) && (lost === 0 || cookieWrites() < 2)) {
+        if (!Object.isNull(name) && isCookie(name) && (lost === 0 || cookieWrites() < 2)) {
           lost++;
           return;
         }
@@ -573,11 +574,11 @@ describe("ChangeMonitor", () => {
       const writes = vi.mocked(writeFile).mock.calls.length;
       monitor.watch(KEY, repository.folder, folders());
       const [own, branches] = watchersOf(earlier);
-      assert.ok(own !== undefined && branches !== undefined);
+      assert.ok(!Object.isUndefined(own) && !Object.isUndefined(branches));
       own.removeAllListeners("change");
       const touch = await nextWaitAsync(TOUCH);
       const branchCookie = vi.mocked(writeFile).mock.calls.slice(writes).map(([file]) => String(file)).find(t => path.dirname(t) === branchesFolder());
-      assert.ok(branchCookie !== undefined);
+      assert.ok(!Object.isUndefined(branchCookie));
       branches.emit("change", "rename", path.basename(branchCookie));
       return touch;
     };
@@ -609,7 +610,7 @@ describe("ChangeMonitor", () => {
     vi.mocked(writeFile).mockRejectedValueOnce(Object.assign(new Error("denied"), { code: "EACCES" }));
     monitor.watch(KEY, repository.folder, folders());
     const [, branches] = watchersOf(earlier);
-    assert.ok(branches !== undefined);
+    assert.ok(!Object.isUndefined(branches));
     await touchingAsync(seenAsync(branches, isCookie));
     await fireNextAsync(POLL);
     const denied = await startedAsync();
@@ -677,9 +678,9 @@ describe("ChangeMonitor", () => {
         untilAsync: matches => new Promise(resolve => {
           const look = (): boolean => {
             const found = seen.find(matches);
-            if (found !== undefined)
+            if (!Object.isUndefined(found))
               resolve(found);
-            return found !== undefined;
+            return !Object.isUndefined(found);
           };
           if (!look())
             listeners.push(look);
@@ -691,7 +692,7 @@ describe("ChangeMonitor", () => {
     const treeOf = (folder: string): FSWatcher | undefined => {
       const index = vi.mocked(watch).mock.calls.findLastIndex(t => {
         const options: unknown = t[1];
-        return t[0] === folder && typeof options === "object" && options !== null && "recursive" in options && options.recursive === true;
+        return t[0] === folder && Object.isObject(options) && "recursive" in options && options.recursive === true;
       });
       const result = vi.mocked(watch).mock.results[index];
       return result?.type === "return" ? result.value : undefined;
@@ -769,7 +770,7 @@ describe("ChangeMonitor", () => {
       monitor.watch(KEY, repository.folder, folders());
       await startedAsync();
       const tree = treeOf(repository.folder);
-      assert.ok(tree !== undefined);
+      assert.ok(!Object.isUndefined(tree));
       const quiet = quietWaits();
 
       const seen = seenAsync(tree, t => t.endsWith("a.txt"));
@@ -786,14 +787,14 @@ describe("ChangeMonitor", () => {
       const longest = vi.mocked(timers.setTimeout).mock.results.filter((_, i) => vi.mocked(timers.setTimeout).mock.calls[i]?.[1] === LONGEST).at(-1)?.value;
       monitor.unwatch(KEY);
 
-      assert.deepEqual([hidden, waiting > 0, longest !== undefined && vi.mocked(timers.clearTimeout).mock.calls.some(t => t[0] === longest), changes],
+      assert.deepEqual([hidden, waiting > 0, !Object.isUndefined(longest) && vi.mocked(timers.clearTimeout).mock.calls.some(t => t[0] === longest), changes],
         [0, true, true, [{ key: KEY, sequence: 1 }]]);
     });
 
     test("checks a shown worktree every few seconds when its files can't be watched, or once their watch fails, logging the folder", async () => {
       const { watch: realWatch } = await vi.importActual<typeof import("node:fs")>("node:fs");
       vi.mocked(watch).mockImplementation((folder: PathLike, options: unknown, listener?: WatchListener<string>) => {
-        const recursive = typeof options === "object" && options !== null && "recursive" in options && options.recursive === true;
+        const recursive = Object.isObject(options) && "recursive" in options && options.recursive === true;
         if (recursive && folder === path.join(repository.root, "unwatchable"))
           throw new Error("No watch of the whole tree.");
         return realWatch(folder, { persistent: false, recursive }, listener);
@@ -810,7 +811,7 @@ describe("ChangeMonitor", () => {
       monitor.watch(KEY, repository.folder, folders());
       await startedAsync();
       const tree = treeOf(repository.folder);
-      assert.ok(tree !== undefined);
+      assert.ok(!Object.isUndefined(tree));
       tree.emit("error", new Error("The tree went away."));
       monitor.setVisible(KEY, true);
       await fireNextAsync(DEBOUNCE);

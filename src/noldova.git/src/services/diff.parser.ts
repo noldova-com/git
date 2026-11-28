@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { DiffFile, DiffHunk, DiffLine, FileChange, LineKind, ProtocolException, SubmoduleChange } from "@noldova/git.protocol";
 
 import { UnreadableOutputException } from "../exceptions/unreadable-output.exception.ts";
@@ -51,7 +52,7 @@ export class DiffParser {
     let start = 0;
     while (output[start] === Resources.colonByte) {
       const { value: fields, next: pathsStart } = DiffParser.readToken(output, start);
-      if (fields === null)
+      if (Object.isNull(fields))
         return DiffParser.incomplete(entries, isCut);
       const text = fields.toString(Resources.latin1Encoding);
       const entry = text.startsWith(Resources.combinedEntryPrefix) ? DiffParser.readCombined(text) : DiffParser.readRaw(text);
@@ -59,7 +60,7 @@ export class DiffParser {
       start = pathsStart;
       while (paths.length < (DiffParser.MOVED.includes(entry.change) ? 2 : 1)) {
         const { value: path, next } = DiffParser.readToken(output, start);
-        if (path === null)
+        if (Object.isNull(path))
           return DiffParser.incomplete(entries, isCut);
         paths.push(path);
         start = next;
@@ -86,10 +87,10 @@ export class DiffParser {
 
   private static readRaw(fields: string): Omit<IRawDiffEntry, "oldPath" | "path"> {
     const match = Resources.rawEntryPattern.exec(fields);
-    if (match === null)
+    if (Object.isNull(match))
       throw DiffParser.unreadable(Resources.unknownEntryPart);
     const change = Resources.diffChanges.get(Required.at(match, 5, Resources.diffCommand, Resources.unknownEntryPart));
-    if (change === undefined)
+    if (Object.isUndefined(change))
       throw DiffParser.unreadable(Resources.unknownChangePart);
     return {
       isCombined: false,
@@ -104,7 +105,7 @@ export class DiffParser {
 
   private static readCombined(fields: string): Omit<IRawDiffEntry, "oldPath" | "path"> {
     const match = Resources.combinedEntryPattern.exec(fields);
-    if (match === null)
+    if (Object.isNull(match))
       throw DiffParser.unreadable(Resources.unknownEntryPart);
     return {
       isCombined: true,
@@ -178,7 +179,7 @@ export class DiffParser {
 
   private static escape(byte: number): string {
     const letter = Resources.cEscapes.get(byte);
-    if (letter !== undefined)
+    if (!Object.isUndefined(letter))
       return Resources.formatEscape(letter);
     return DiffParser.isUnprintable(byte) ? Resources.formatOctalEscape(byte) : String.fromCharCode(byte);
   }
@@ -214,7 +215,7 @@ export class DiffParser {
     let index = 0;
     while (index < lines.length) {
       const match = Resources.hunkPattern.exec(DiffParser.lineAt(lines, index++).toString(Resources.utf8Encoding));
-      if (match === null)
+      if (Object.isNull(match))
         continue;
       const oldStart = Number(match[1]);
       const oldCount = Number(match[2] ?? Resources.defaultHunkCount);
@@ -225,7 +226,7 @@ export class DiffParser {
       while (index < lines.length && (oldLeft > 0 || newLeft > 0 || DiffParser.lineAt(lines, index)[0] === Resources.backslashByte)) {
         const line = DiffParser.lineAt(lines, index++);
         const kind = Resources.lineKindBytes.get(Required.at(line, 0, Resources.diffCommand, Resources.unknownLinePart));
-        if (kind === undefined)
+        if (Object.isUndefined(kind))
           throw DiffParser.unreadable(Resources.unknownLinePart);
         const hasOld = DiffParser.WITH_OLD_NUMBER.includes(kind);
         const hasNew = DiffParser.WITH_NEW_NUMBER.includes(kind);

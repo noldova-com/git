@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { GitCommitSigning, SigningFormat, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
@@ -27,7 +28,7 @@ export class CommitSigningReader {
 
   public async readAsync(top: string, signal?: AbortSignal): Promise<GitCommitSigning> {
     const [signs, format] = await Promise.all([this.valueAsync(CommitSigningReader.SIGNS, top, signal), this.valueAsync(CommitSigningReader.FORMAT, top, signal)]);
-    return new GitCommitSigning(signs === Resources.configTrue, format === null ? SigningFormat.OpenPgp : Resources.signingFormats.get(format) ?? null);
+    return new GitCommitSigning(signs === Resources.configTrue, Object.isNull(format) ? SigningFormat.OpenPgp : Resources.signingFormats.get(format) ?? null);
   }
 
   private async valueAsync(gitArguments: GitArguments, top: string, signal?: AbortSignal): Promise<string | null> {

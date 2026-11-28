@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { type IToolDescriptor, type IToolHandler, type IToolsContext, type Registration, type ToolCall, ToolRisk } from "@noldova/desktop.runtime";
 import { DiffScope, DiffScopeKind, GitBranchParams, GitCommitParams, GitDiffPaths, GitNames, GitPathsParams, type JsonObject } from "@noldova/git.protocol";
 
@@ -82,7 +83,7 @@ export class GitTools {
         additionalProperties: false
       }, async (folders, call) => {
         const limit = call.arguments[Resources.limitArgument];
-        return ToolText.ofLog(await parts.logs.readAsync(folders.top, typeof limit === "number" ? limit : Resources.defaultLogLimit, call.signal));
+        return ToolText.ofLog(await parts.logs.readAsync(folders.top, Object.isNumber(limit) ? limit : Resources.defaultLogLimit, call.signal));
       }),
       GitTools.read(parts, GitNames.branchesTool, Resources.branchesToolTitle, Resources.branchesToolDescription, GitTools.NO_ARGUMENTS,
         async (folders, call) => ToolText.ofBranches(await parts.branchesReader.readAsync(folders.top, call.signal))),
@@ -165,7 +166,7 @@ export class GitTools {
 
   private static pathsOf(call: ToolCall): string[] {
     const paths = call.arguments[Resources.pathsArgument];
-    return Array.isArray(paths) ? paths.filter(t => typeof t === "string") : [];
+    return Array.isArray(paths) ? paths.filter(t => Object.isString(t)) : [];
   }
 
   private static textOf(call: ToolCall, name: string): string {

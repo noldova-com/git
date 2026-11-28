@@ -9,6 +9,7 @@
 import { lstat } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { UntrustedSource } from "@noldova/git.protocol";
 
 import { FilterNotSwitchableException } from "../exceptions/filter-not-switchable.exception.ts";
@@ -92,7 +93,7 @@ export class FilterOptionsReader {
       if (record.startsWith(Resources.gitlinkPrefix))
         paths.add(path.join(folder, record.slice(record.indexOf(Resources.tab) + 1)));
     const found = await Promise.all([...paths].map(async t => await FilterOptionsReader.isCheckedOutAsync(t) ? t : null));
-    return found.filter(t => t !== null);
+    return found.filter(t => !Object.isNull(t));
   }
 
   private static async isCheckedOutAsync(folder: string): Promise<boolean> {

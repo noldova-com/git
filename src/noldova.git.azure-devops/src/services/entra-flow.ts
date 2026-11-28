@@ -8,6 +8,7 @@
 
 import { createHash, randomBytes } from "node:crypto";
 
+import "@noldova/context.core";
 import { JsonReader } from "@noldova/context.json";
 import { FailureCode } from "@noldova/desktop.protocol";
 
@@ -81,11 +82,11 @@ export class EntraFlow {
       throw error;
     }
     signal.throwIfAborted();
-    if (text === null)
+    if (Object.isNull(text))
       throw AzureApi.failure(FailureCode.Unavailable, Resources.tokenAnswerTooLargeMessage);
     if (!response.ok) {
       const refusal: string | null = response.status === Resources.badRequestStatus ? EntraFlow.refusalOf(text) : null;
-      if (refusal !== null)
+      if (!Object.isNull(refusal))
         return refusal;
       throw AzureApi.failure(FailureCode.Unavailable, Resources.formatMicrosoftRefused(response.status));
     }

@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { UnansweredCallException } from "@noldova/desktop.protocol/testing";
 
 import type { GitFailureException } from "../../src/exceptions/git-failure.exception.ts";
@@ -27,9 +28,9 @@ export class PermissionGateFixture implements IPermissionGate {
       await new Promise<void>((_, reject) => signal?.addEventListener("abort", () => reject(new RequestWithdrawnException()), { once: true }));
     await this.beforeAnswerAsync();
     const answer = this.answers.shift();
-    if (answer === undefined)
+    if (Object.isUndefined(answer))
       throw new UnansweredCallException("requestAsync");
-    if (answer !== null)
+    if (!Object.isNull(answer))
       throw answer;
   }
 

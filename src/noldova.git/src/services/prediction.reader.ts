@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { GitPrediction, PredictionAction, PredictionOutcome } from "@noldova/git.protocol";
 
 import { GitArguments } from "../models/git-arguments.ts";
@@ -50,7 +51,7 @@ export class PredictionReader {
       return PredictionReader.UNAVAILABLE;
     const lines = await this.merges.readIdsAsync(top, [Resources.formatParentsRevision(id), Resources.formatTreeRevision(Resources.headRevision)], signal);
     const [parent] = lines;
-    if (lines.length < 2 || parent === undefined)
+    if (lines.length < 2 || Object.isUndefined(parent))
       return PredictionReader.UNAVAILABLE;
     const [base, theirs] = isRevert ? [id, parent] : [parent, id];
     const merged = await this.merges.mergeAsync(top, [Resources.formatMergeBaseOption(base)], [Resources.headRevision, theirs], signal);

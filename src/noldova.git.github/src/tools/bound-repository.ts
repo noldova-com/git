@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { JsonException } from "@noldova/context.json";
 import { ServiceAccessException, ToolFailureCode, type ToolCall } from "@noldova/desktop.runtime";
 import { GitFolderBinding, type GitRemote, type GitRepositories, type GitStatus, ProtocolException } from "@noldova/git.protocol";
@@ -46,9 +47,9 @@ export class BoundRepository {
     const host: string | null = origin?.host ?? null;
     const remotePath: string | null = origin?.path ?? null;
     const path: string | null = remotePath?.endsWith(Resources.gitSuffix) === true ? remotePath.slice(0, -Resources.gitSuffix.length) : remotePath;
-    if (host !== Resources.host || path === null || GitHubRepository.parse(path) === null)
+    if (host !== Resources.host || Object.isNull(path) || Object.isNull(GitHubRepository.parse(path)))
       throw GitHubToolFailures.fail(ToolFailureCode.Refused, Resources.notGitHubToolMessage, Resources.notGitHubToolCode);
-    if (status.branch === null)
+    if (Object.isNull(status.branch))
       throw GitHubToolFailures.fail(ToolFailureCode.Refused, Resources.detachedHeadToolMessage, Resources.detachedHeadToolCode);
     tokens.useUser(host, path, user);
     return new BoundRepository(host, path, status.branch, status.head);

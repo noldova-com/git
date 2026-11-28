@@ -8,6 +8,8 @@
 
 import { TextDecoder } from "node:util";
 
+import "@noldova/context.core";
+
 import { Resources } from "../resources.ts";
 
 export class GitPath {
@@ -23,7 +25,7 @@ export class GitPath {
   }
 
   public static toBytes(text: string, bytes: string | undefined): Buffer {
-    return bytes === undefined ? Buffer.from(text) : Buffer.from(bytes, Resources.base64Encoding);
+    return Object.isUndefined(bytes) ? Buffer.from(text) : Buffer.from(bytes, Resources.base64Encoding);
   }
 
   public static fromBytes(path: Uint8Array): GitPath {

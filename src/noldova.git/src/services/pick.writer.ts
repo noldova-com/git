@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type IPermissionRequest, PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
 import { GitNames, type GitStatus, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
@@ -63,7 +64,7 @@ export class PickWriter implements IGitWrite {
   }
 
   public refuse(status: GitStatus): void {
-    if (status.entries.some(t => t.conflict !== null) || status.operation !== null)
+    if (status.entries.some(t => !Object.isNull(t.conflict)) || !Object.isNull(status.operation))
       throw new PickDuringOperationException();
   }
 

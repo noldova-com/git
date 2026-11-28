@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { IModuleLog } from "@noldova/desktop.runtime";
 
 import { Resources } from "../resources.ts";
@@ -23,11 +24,11 @@ export class GitHubAvatars {
 
   public async readAsync(address: string | null, signal: AbortSignal): Promise<string | null> {
     const url: URL | null = GitHubAvatars.avatarUrlOf(address, undefined);
-    if (url === null)
+    if (Object.isNull(url))
       return null;
     url.searchParams.set(Resources.avatarSizeParameter, Resources.avatarSize);
     const avatar: string | null = this.kept.get(url.href) ?? await this.fetchWithinAsync(url, signal);
-    if (avatar !== null)
+    if (!Object.isNull(avatar))
       this.keep(url.href, avatar);
     return avatar;
   }
@@ -45,10 +46,10 @@ export class GitHubAvatars {
 
   private async fetchAsync(first: URL, signal: AbortSignal, within: AbortSignal): Promise<string | null> {
     let url: URL | null = first;
-    for (let hop: number = 0; url !== null && hop <= Resources.avatarRedirects; hop++) {
+    for (let hop: number = 0; !Object.isNull(url) && hop <= Resources.avatarRedirects; hop++) {
       const response: Response | null = await this.askAsync(url, signal, within);
-      if (response === null || !Resources.redirectStatuses.includes(response.status))
-        return response === null ? null : this.dataOfAsync(response, signal, within);
+      if (Object.isNull(response) || !Resources.redirectStatuses.includes(response.status))
+        return Object.isNull(response) ? null : this.dataOfAsync(response, signal, within);
       await response.body?.cancel();
       url = GitHubAvatars.avatarUrlOf(response.headers.get(Resources.locationHeader), url.href);
     }
@@ -93,20 +94,20 @@ export class GitHubAvatars {
   }
 
   private static avatarUrlOf(address: string | null, base: string | undefined): URL | null {
-    const url: URL | null = address === null ? null : URL.parse(address, base);
-    return url !== null && url.protocol === Resources.httpsProtocol && url.host === Resources.avatarHost && url.username.length === 0
+    const url: URL | null = Object.isNull(address) ? null : URL.parse(address, base);
+    return !Object.isNull(url) && url.protocol === Resources.httpsProtocol && url.host === Resources.avatarHost && url.username.length === 0
       && url.password.length === 0 ? url : null;
   }
 
   private async dataOfAsync(response: Response, signal: AbortSignal, within: AbortSignal): Promise<string | null> {
     const type: string = (response.headers.get(Resources.contentTypeHeader) ?? "").split(Resources.mediaTypeParameterSeparator, 1).join("").trim().toLowerCase();
     const body: ReadableStream<Uint8Array> | null = response.body;
-    if (!response.ok || !Resources.avatarTypes.includes(type) || body === null) {
+    if (!response.ok || !Resources.avatarTypes.includes(type) || Object.isNull(body)) {
       await body?.cancel();
       return this.drop(response.ok ? Resources.avatarNotImage : Resources.formatAvatarRefused(response.status));
     }
     const bytes: Buffer | null = await this.bytesOfAsync(body, signal, within);
-    return bytes === null ? null : Resources.formatDataUrl(type, bytes.toString(Resources.base64Encoding));
+    return Object.isNull(bytes) ? null : Resources.formatDataUrl(type, bytes.toString(Resources.base64Encoding));
   }
 
   private async bytesOfAsync(body: ReadableStream<Uint8Array>, signal: AbortSignal, within: AbortSignal): Promise<Buffer | null> {

@@ -11,6 +11,7 @@ import { type FSWatcher, type PathLike, type WatchListener, watch } from "node:f
 import { mkdir, readdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test, vi } from "vitest";
 
 import { Resources } from "../../src/resources.ts";
@@ -76,7 +77,7 @@ describe("FolderTreeWatch", () => {
     vi.mocked(watch).mockImplementation((folder: PathLike, _options: unknown, listener?: WatchListener<string>) => {
       const relative = path.relative(repository.folder, String(folder)).replaceAll("\\", "/");
       const code = refusing(relative);
-      if (code !== null)
+      if (!Object.isNull(code))
         throw failure(code);
       const watcher = realWatch(folder, { persistent: false }, listener);
       const entry: IOpened = { folder: relative, watcher, isClosed: false };
@@ -143,7 +144,7 @@ describe("FolderTreeWatch", () => {
   const live = (): string[] => opened.filter(t => !t.isClosed).map(t => t.folder).sort();
   const openedOf = (folder: string): IOpened => {
     const found = opened.findLast(t => t.folder === folder);
-    assert.ok(found !== undefined);
+    assert.ok(!Object.isUndefined(found));
     return found;
   };
   const failure = (code: string): Error => Object.assign(new Error(code), { code });
@@ -354,7 +355,7 @@ describe("FolderTreeWatch", () => {
     let code: string | null = "EPERM";
     let attempts = 0;
     refusing = folder => {
-      if (folder !== "src/deep" || code === null)
+      if (folder !== "src/deep" || Object.isNull(code))
         return null;
       attempts++;
       hear();

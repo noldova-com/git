@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
 
 import { Resources } from "../resources.ts";
@@ -16,14 +17,14 @@ export class RemoteUrl {
     if (Resources.urlSchemePattern.test(url))
       return RemoteUrl.fromUrl(name, url);
     const scp = Resources.drivePattern.test(url) ? null : Resources.scpPattern.exec(url);
-    if (scp === null)
+    if (Object.isNull(scp))
       return new GitRemote(name, null, null, RemoteTransport.File);
     return new GitRemote(name, RemoteUrl.hostOf(Required.at(scp, 1, Resources.remoteCommand, Resources.remoteUrlPart)), RemoteUrl.pathOf(Required.at(scp, 2, Resources.remoteCommand, Resources.remoteUrlPart)), RemoteTransport.Ssh);
   }
 
   public static userOf(url: string): string | null {
     const parsed: URL | null = Resources.urlSchemePattern.test(url) ? RemoteUrl.parse(url) : null;
-    if (parsed === null || !Resources.httpSchemes.includes(parsed.protocol.toLowerCase()) || parsed.username.length === 0)
+    if (Object.isNull(parsed) || !Resources.httpSchemes.includes(parsed.protocol.toLowerCase()) || parsed.username.length === 0)
       return null;
     let user: string;
     try {
@@ -48,7 +49,7 @@ export class RemoteUrl {
 
   private static fromUrl(name: string, url: string): GitRemote {
     const parsed: URL | null = RemoteUrl.parse(url);
-    if (parsed === null)
+    if (Object.isNull(parsed))
       return new GitRemote(name, null, null, RemoteTransport.Other);
     const scheme = parsed.protocol.toLowerCase();
     if (scheme === Resources.fileScheme)

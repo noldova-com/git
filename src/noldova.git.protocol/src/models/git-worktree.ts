@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -22,9 +23,9 @@ export class GitWorktree {
 
   public constructor(path: string, head: string | null, branch: string | null, locked: boolean, prunable: boolean, reader?: JsonReader) {
     FieldCheck.requireFolder(path, Resources.pathField, reader);
-    if (head !== null)
+    if (!Object.isNull(head))
       FieldCheck.requireObjectId(head, Resources.headField, reader);
-    if (branch !== null)
+    if (!Object.isNull(branch))
       FieldCheck.requireBranchName(branch, Resources.branchField, reader);
 
     this.path = path;

@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -17,7 +18,7 @@ export class HostAvatar {
   public readonly avatar: string | null;
 
   public constructor(avatar: string | null, reader?: JsonReader) {
-    if (avatar !== null)
+    if (!Object.isNull(avatar))
       FieldCheck.requireAvatar(avatar, Resources.avatarField, reader);
 
     this.avatar = avatar;

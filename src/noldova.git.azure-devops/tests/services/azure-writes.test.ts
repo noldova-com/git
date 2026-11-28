@@ -8,6 +8,7 @@
 
 import assert from "node:assert/strict";
 
+import "@noldova/context.core";
 import { FailureCode } from "@noldova/desktop.protocol";
 import { MethodFailureException } from "@noldova/desktop.runtime";
 import { FakeModuleLog } from "@noldova/desktop.runtime/testing";
@@ -30,7 +31,7 @@ import { FakeAzure, FakeToken } from "../fixtures/fake-azure.fixture.ts";
 
 function repositoryOf(path: string): AzureRepository {
   const repository = AzureRepository.parse("dev.azure.com", path);
-  if (repository === null)
+  if (Object.isNull(repository))
     throw new Error(`${path} isn't an Azure DevOps repository.`);
   return repository;
 }

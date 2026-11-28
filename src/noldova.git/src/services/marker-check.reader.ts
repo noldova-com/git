@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { GitMarkerCheck, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
@@ -27,7 +28,7 @@ export class MarkerCheckReader {
 
   public async readLinesAsync(top: string, signal?: AbortSignal): Promise<readonly string[]> {
     const result = await this.runner.runAsync(ProgramRun.readGit(MarkerCheckReader.ARGUMENTS, top, MarkerCheckReader.LIMITS, signal));
-    if (result.exit.code === null || result.exit.code >= Resources.gitFatalExitCode || result.isTruncated)
+    if (Object.isNull(result.exit.code) || result.exit.code >= Resources.gitFatalExitCode || result.isTruncated)
       throw new GitFailedException(Resources.diffCommand, { text: result.errors.toString(Resources.utf8Encoding), source: UntrustedSource.Repository });
     return result.output.toString(Resources.utf8Encoding).match(Resources.leftoverMarkerPattern) ?? [];
   }

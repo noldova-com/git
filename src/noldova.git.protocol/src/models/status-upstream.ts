@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -28,9 +29,9 @@ export class StatusUpstream {
       FieldCheck.fail(Resources.aheadField, Resources.upstreamGoneExpected, reader);
     if (gone && behind !== 0)
       FieldCheck.fail(Resources.behindField, Resources.upstreamGoneExpected, reader);
-    if (id !== null)
+    if (!Object.isNull(id))
       FieldCheck.requireObjectId(id, Resources.idField, reader);
-    if (gone && id !== null)
+    if (gone && !Object.isNull(id))
       FieldCheck.fail(Resources.idField, Resources.upstreamGoneIdExpected, reader);
 
     this.name = name;

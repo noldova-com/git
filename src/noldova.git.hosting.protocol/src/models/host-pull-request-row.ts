@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { CheckState } from "../enums/check-state.ts";
@@ -39,7 +40,7 @@ export class HostPullRequestRow {
     FieldCheck.requireCount(failing, Resources.failingField, reader);
     FieldCheck.requireCount(pending, Resources.pendingField, reader);
     FieldCheck.requireText(headBranch, Resources.headBranchField, reader);
-    if (baseBranch !== null)
+    if (!Object.isNull(baseBranch))
       FieldCheck.requireText(baseBranch, Resources.baseBranchField, reader);
 
     this.reference = reference;
