@@ -12,7 +12,7 @@ import type { JsonValue } from "@noldova/context.json";
 import { FailureCode, SecretFailureReason, ShellClients } from "@noldova/desktop.protocol";
 import { MethodFailureException, RequestContext } from "@noldova/desktop.runtime";
 import { AccountPick, AuthorQuery, BranchPullRequest, BranchQuery, CommitQuery, HostAccount, HostAvatar, HostCommitComments, HostPullRequestHeads, HostPullRequestList,
-  HostAccountList, HostReference, HostReviewRequestList, HostSignIn, HostWorkItem, HostWorkItemDetail, HostWorkItemType, PersonQuery, RepositoryQuery, SignInFailure,
+  HostAccountEntry, HostAccountList, HostReference, HostReviewRequestList, HostSignIn, HostWorkItem, HostWorkItemDetail, HostWorkItemType, PersonQuery, RepositoryQuery, SignInFailure,
   WorkItemCategory, WorkItemQuery, WorkItemScope, WorkItemsQuery, WorkItemUpdate } from "@noldova/git.hosting.protocol";
 import { afterEach, describe, it, vi } from "vitest";
 
@@ -147,7 +147,7 @@ describe("RuntimePart", () => {
     assert.deepEqual(accounts, { accounts: [{ id: 1, signIn: HostSignIn.signedOut().toJson() }] });
   });
 
-  it("starts a sign-in with Microsoft only from the app's main process acting for a window, for an organization's name, and cancels it", async () => {
+  it("starts a sign-in with Microsoft only from the app's main process acting for a window, for an organization's name, adds an account the same way, and cancels it", async () => {
     const azure = new FakeAzure();
     vi.stubGlobal("fetch", azure.fetch);
     const part = new RuntimePart();
@@ -160,14 +160,15 @@ describe("RuntimePart", () => {
     for (const payload of [null, { organization: 42 }, { organization: "fab/rikam" }, { organization: "" }])
       refusals.push(await callAsync(context, "git-azure-devops.startSignIn", payload, ShellClients.mainProcess, 1).then(() => null, failureOf));
     const waiting = HostSignIn.fromJson(await callAsync(context, "git-azure-devops.startSignIn", { organization: "fabrikam" }, ShellClients.mainProcess, 1));
+    const added = HostAccountEntry.fromJson(await callAsync(context, "git-azure-devops.addAccount", { organization: "contoso" }, ShellClients.mainProcess, 1));
     const cancelled = await callAsync(context, "git-azure-devops.cancelSignIn");
     await part.deactivateAsync();
 
     const unauthorized = [FailureCode.Unauthorized, "Only a person's sign-in in a window signs in to Azure DevOps."];
     const invalid = [FailureCode.InvalidParams, "The sign-in with Microsoft takes an organization's name, as { organization }."];
     assert.deepEqual([refusals, azure.requests.length], [[unauthorized, unauthorized, unauthorized, invalid, invalid, invalid, invalid], 0]);
-    assert.deepEqual([waiting.state, waiting.address?.startsWith("https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?"), cancelled],
-      ["Waiting", true, HostSignIn.signedOut().toJson()]);
+    assert.deepEqual([waiting.state, waiting.address?.startsWith("https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?"), added.id, added.signIn.state,
+      cancelled], ["Waiting", true, 2, "Waiting", HostSignIn.signedOut().toJson()]);
   });
 
   it("takes a token only from the app's main process acting for a window, and refuses a payload without one or a valid organization without repeating it", async () => {

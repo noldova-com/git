@@ -127,6 +127,32 @@ describe("AzureAccounts", () => {
     assert.deepEqual(rig.entries(), [[1, mona.login, "dev.azure.com/fabrikam"], [2, hubot.login, "dev.azure.com/contoso"], [3, octo.login, "dev.azure.com/fabrikam"]]);
   });
 
+  it("restores the first account once and each other account once, whatever the index repeats", async () => {
+    const rig = new Rig();
+    rig.keep([mona, hubot]);
+    rig.store.values.set("git-azure-devops.accounts", JSON.stringify({ accounts: [1, 2, 2].map(id => ({ id, organization: hubot.organization, login: hubot.login })), picks: [] }));
+
+    await rig.restoreAsync([mona, hubot]);
+
+    assert.deepEqual(rig.entries(), [[1, mona.login, "dev.azure.com/fabrikam"], [2, hubot.login, "dev.azure.com/contoso"]]);
+  });
+
+  it("logs an account already kept whose secret removal breaks, and still lets it leave the list", async () => {
+    const rig = new Rig();
+    const twin: Kept = new Kept(mona.login, "fabrikam");
+    rig.keep([mona, twin]);
+    rig.store.removeFailure = new RangeError("Unexpected.");
+    rig.azure.answer(profileOf(mona.login), profileOf(twin.login));
+
+    await rig.accounts.restoreAsync();
+    while (!rig.changes.includes("2 SignedOut AlreadyKept"))
+      await rig.changedAsync(rig.changes.length + 1);
+    await rig.savedAsync();
+
+    assert.deepEqual(rig.entries(), [[1, mona.login, "dev.azure.com/fabrikam"]]);
+    assert.ok(linesOf(rig.log).includes("The Azure DevOps sign-in stopped on an unexpected failure: RangeError: Unexpected."));
+  });
+
   it("drops an account the index names whose own secret is gone, and writes the index without it", async () => {
     const rig = new Rig();
     rig.keep([mona, hubot]);
