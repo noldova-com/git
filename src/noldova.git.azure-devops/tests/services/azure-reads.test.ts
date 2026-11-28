@@ -837,6 +837,24 @@ describe("AzureReads", () => {
     assert.deepEqual(azure.urls(), [listUrl, policiesUrl, buildsUrl]);
   });
 
+  it("notes the repository a pull request was read from, for a branch's, a commit's and a review request's, so its reference goes as that repository's account", async () => {
+    const azure = new FakeAzure();
+    const checks = (): Response[] => [FakeAzure.json({ value: [] }), FakeAzure.json({ value: [] })];
+    azure.answer(FakeAzure.json({ value: [pull()] }), ...checks(), FakeAzure.json({ queries: [], results: [{ [commit]: [{ pullRequestId: 12 }] }, {}] }),
+      FakeAzure.json(pull()), ...checks(), connection(), FakeAzure.json({ value: [asking(0)] }));
+    const reads = new AzureReads(new AzureApi(azure.fetch), new FakeToken(), new FakeModuleLog());
+    const noted: unknown[] = [reads.repositoryOf(reference)];
+
+    await reads.readBranchPullRequestAsync(new BranchQuery("dev.azure.com", "fabrikam/web/_git/branch", "feature/sign-in", null), signal);
+    noted.push(reads.repositoryOf(reference));
+    await reads.readCommitPullRequestAsync(new CommitQuery("dev.azure.com", "fabrikam/web/_git/commit", commit), signal);
+    noted.push(reads.repositoryOf(reference));
+    await reads.readReviewRequestsAsync(new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/review"), signal);
+    noted.push(reads.repositoryOf(reference));
+
+    assert.deepEqual(noted, [null, ["dev.azure.com", "fabrikam/web/_git/branch"], ["dev.azure.com", "fabrikam/web/_git/commit"], ["dev.azure.com", "fabrikam/web/_git/review"]]);
+  });
+
   it("asks for the token of the repository's account by its address for a repository's read, and by its organization alone for a reference's", async () => {
     const azure = new FakeAzure();
     azure.answer(FakeAzure.json({ value: [] }), new Response(null, { status: 404 }));

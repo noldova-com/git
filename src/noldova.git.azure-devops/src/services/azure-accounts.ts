@@ -35,6 +35,7 @@ export class AzureAccounts implements IAzureTokens {
   private picks: readonly AccountPick[] = [];
   private kept: string | null = null;
   private isIndexRead: boolean = false;
+  private reading: Promise<KeptAccounts | null> = Promise.resolve(null);
   private saving: Promise<void> = Promise.resolve();
   private unfollowWindows: (() => void) | null = null;
   private stopped: boolean = false;
@@ -61,7 +62,8 @@ export class AzureAccounts implements IAzureTokens {
   public async restoreAsync(): Promise<void> {
     if (this.stopped)
       return;
-    const kept: KeptAccounts | null = await this.readKeptAsync();
+    this.reading = this.readKeptAsync();
+    const kept: KeptAccounts | null = await this.reading;
     if (this.stopped)
       return;
     const named: readonly number[] = (kept?.accounts ?? []).map(t => t.id);
@@ -88,6 +90,7 @@ export class AzureAccounts implements IAzureTokens {
   }
 
   public async addAsync(signIn: (account: AzureSignIn) => Promise<HostSignIn>): Promise<HostAccountEntry> {
+    await this.reading;
     if (!this.isIndexRead)
       throw AzureApi.failure(FailureCode.Unavailable, Resources.accountsUnreadMessage);
     const id: number = Math.max(...this.entries.keys()) + 1;
