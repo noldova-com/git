@@ -10,8 +10,8 @@ import { JsonException, JsonReader } from "@noldova/context.json";
 import { Failure, FailureCode, ShellClients } from "@noldova/desktop.protocol";
 import { type EventChannel, type IRuntimePart, type IRuntimePartContext, MethodFailureException, type RequestContext } from "@noldova/desktop.runtime";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
-import { AuthorQuery, BranchQuery, CommitQuery, HostAvatar, HostingProtocolException, HostPullRequestThreads, HostReference, PersonQuery,
-  RepositoryQuery, WorkItemQuery, WorkItemsQuery, WorkItemUpdate } from "@noldova/git.hosting.protocol";
+import { AccountPick, AccountQuery, AuthorQuery, BranchQuery, CommitQuery, HostAvatar, HostingProtocolException, HostPullRequestThreads, HostReference,
+  type HostSignIn, PersonQuery, RepositoryAccount, RepositoryQuery, WorkItemQuery, WorkItemsQuery, WorkItemUpdate } from "@noldova/git.hosting.protocol";
 
 import { BranchLink } from "./models/branch-link.ts";
 import { PeopleQuery } from "./models/people-query.ts";
@@ -23,17 +23,20 @@ import { ThreadChange } from "./models/thread-change.ts";
 import { ThreadReply } from "./models/thread-reply.ts";
 import { TokenSignIn } from "./models/token-sign-in.ts";
 import { Resources } from "./resources.ts";
+import { AzureAccounts } from "./services/azure-accounts.ts";
 import { AzureApi } from "./services/azure-api.ts";
 import { AzureAvatars } from "./services/azure-avatars.ts";
 import { AzureReads } from "./services/azure-reads.ts";
-import { AzureSignIn } from "./services/azure-sign-in.ts";
+import type { AzureSignIn } from "./services/azure-sign-in.ts";
 import { AzureWrites } from "./services/azure-writes.ts";
 import { EntraFlow } from "./services/entra-flow.ts";
 import type { SignInMethod } from "./types/sign-in-method.ts";
 
 export class RuntimePart implements IRuntimePart {
+  private static readonly firstAccount: number = 1;
+
   private context: IRuntimePartContext | null = null;
-  private signIn: AzureSignIn | null = null;
+  private accounts: AzureAccounts | null = null;
 
   public get isActive(): boolean {
     return this.context !== null;
@@ -41,24 +44,43 @@ export class RuntimePart implements IRuntimePart {
 
   public async activateAsync(context: IRuntimePartContext): Promise<void> {
     const changed: EventChannel = context.declareEvent(AzureDevOpsNames.signInChangedEvent);
+    const accountsChanged: EventChannel = context.declareEvent(AzureDevOpsNames.accountsChangedEvent);
     const fetcher = (url: string, init: RequestInit): Promise<Response> => fetch(url, init);
     const api = new AzureApi(fetcher);
-    const signIn = new AzureSignIn(api, new EntraFlow(fetcher), context.secrets, context.appWindows, context.log, t => changed.publish(t.toJson()));
-    const reads = new AzureReads(api, signIn, context.log);
-    const writes = new AzureWrites(api, signIn, reads);
-    const avatars = new AzureAvatars(api, signIn, context.log);
+    const accounts: AzureAccounts = new AzureAccounts(api, new EntraFlow(fetcher), context.secrets, context.appWindows, context.log, (id, t) => {
+      if (id === RuntimePart.firstAccount)
+        changed.publish(t.toJson());
+      accountsChanged.publish(accounts.list.toJson());
+    });
+    const reads = new AzureReads(api, accounts, context.log);
+    const writes = new AzureWrites(api, accounts, reads);
+    const avatars = new AzureAvatars(api, accounts, context.log);
+    const signInOf = (request: RequestContext): AzureSignIn => accounts.signInOf(RuntimePart.accountOf(request));
     const methods: ReadonlyMap<string, SignInMethod> = new Map<string, SignInMethod>([
-      [AzureDevOpsNames.readSignInMethod, () => signIn.current],
-      [AzureDevOpsNames.startSignInMethod, request => signIn.startSignInAsync(RuntimePart.organizationOf(RuntimePart.fromWindow(request)))],
-      [AzureDevOpsNames.cancelSignInMethod, () => signIn.cancelSignIn()],
-      [AzureDevOpsNames.signInWithTokenMethod, request => {
-        const token: TokenSignIn = RuntimePart.tokenOf(RuntimePart.fromWindow(request));
-        return signIn.signInWithTokenAsync(token.token, token.organization, request.signal);
-      }],
-      [AzureDevOpsNames.signOutMethod, () => signIn.signOutAsync()]
+      [AzureDevOpsNames.readSignInMethod, request => signInOf(request).current],
+      [AzureDevOpsNames.startSignInMethod, request => RuntimePart.startOn(signInOf(RuntimePart.fromWindow(request)), request)],
+      [AzureDevOpsNames.cancelSignInMethod, request => signInOf(request).cancelSignIn()],
+      [AzureDevOpsNames.signInWithTokenMethod, request => RuntimePart.signInWithTokenOn(signInOf(RuntimePart.fromWindow(request)), request)],
+      [AzureDevOpsNames.signOutMethod, request => accounts.signOutAsync(RuntimePart.accountOf(request))]
     ]);
     for (const [name, run] of methods)
       context.registerMethod(name, { handleAsync: async request => (await run(request)).toJson() });
+    context.registerMethod(AzureDevOpsNames.readAccountsMethod, { handleAsync: () => Promise.resolve(accounts.list.toJson()) });
+    context.registerMethod(AzureDevOpsNames.addAccountMethod, {
+      handleAsync: async request => {
+        const isToken: boolean = RuntimePart.hasToken(RuntimePart.fromWindow(request));
+        return (await accounts.addAsync(t => isToken ? RuntimePart.signInWithTokenOn(t, request) : RuntimePart.startOn(t, request))).toJson();
+      }
+    });
+    context.registerMethod(AzureDevOpsNames.readRepositoryAccountMethod, {
+      handleAsync: request => {
+        const query: RepositoryQuery = RuntimePart.read(request, RepositoryQuery.fromJson);
+        return Promise.resolve(new RepositoryAccount(accounts.accountFor(query.host, query.path)).toJson());
+      }
+    });
+    context.registerMethod(AzureDevOpsNames.pickAccountMethod, {
+      handleAsync: request => Promise.resolve(new RepositoryAccount(accounts.pick(RuntimePart.read(request, AccountPick.fromJson))).toJson())
+    });
     context.registerMethod(AzureDevOpsNames.readReferenceMethod, {
       handleAsync: async request => (await reads.readReferenceAsync(RuntimePart.read(request, HostReference.fromJson), request.signal))?.toJson() ?? null
     });
@@ -176,13 +198,13 @@ export class RuntimePart implements IRuntimePart {
         Resources.reviewerExpectedMessage), request.signal)).toJson()
     });
     this.context = context;
-    this.signIn = signIn;
-    await signIn.restoreAsync();
+    this.accounts = accounts;
+    await accounts.restoreAsync();
   }
 
   public async deactivateAsync(): Promise<void> {
-    this.signIn?.dispose();
-    this.signIn = null;
+    this.accounts?.dispose();
+    this.accounts = null;
     this.context = null;
   }
 
@@ -190,6 +212,28 @@ export class RuntimePart implements IRuntimePart {
     if (request.window === null || request.client !== ShellClients.mainProcess)
       throw AzureApi.failure(FailureCode.Unauthorized, Resources.notFromWindowMessage);
     return request;
+  }
+
+  private static startOn(signIn: AzureSignIn, request: RequestContext): Promise<HostSignIn> {
+    return signIn.startSignInAsync(RuntimePart.organizationOf(request));
+  }
+
+  private static signInWithTokenOn(signIn: AzureSignIn, request: RequestContext): Promise<HostSignIn> {
+    const token: TokenSignIn = RuntimePart.tokenOf(request);
+    return signIn.signInWithTokenAsync(token.token, token.organization, request.signal);
+  }
+
+  private static hasToken(request: RequestContext): boolean {
+    return RuntimePart.read(request, t => JsonReader.fromValue(t)).hasField(Resources.tokenField);
+  }
+
+  private static accountOf(request: RequestContext): number {
+    if (request.payload === null)
+      return RuntimePart.firstAccount;
+    const reader: JsonReader = RuntimePart.read(request, t => JsonReader.fromValue(t));
+    return reader.hasField(Resources.accountField)
+      ? RuntimePart.read(request, () => new AccountQuery(reader.readInteger(Resources.accountField), reader).account)
+      : RuntimePart.firstAccount;
   }
 
   private static tokenOf(request: RequestContext): TokenSignIn {

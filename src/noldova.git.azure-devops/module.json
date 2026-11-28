@@ -18,9 +18,10 @@
       "git-azure-devops.searchPeople", "git-azure-devops.readCommitPullRequest", "git-azure-devops.addReviewer",
       "git-azure-devops.readReviewRequests", "git-azure-devops.readCommitComments",
       "git-azure-devops.readPullRequestCommits", "git-azure-devops.readPullRequestUpdates", "git-azure-devops.readPullRequestChanges",
-      "git-azure-devops.readPullRequestConflicts"],
+      "git-azure-devops.readPullRequestConflicts", "git-azure-devops.readAccounts", "git-azure-devops.addAccount",
+      "git-azure-devops.readRepositoryAccount", "git-azure-devops.pickAccount"],
     "notifications": ["git-azure-devops.noProject"],
-    "events": ["git-azure-devops.signInChanged"],
+    "events": ["git-azure-devops.signInChanged", "git-azure-devops.accountsChanged"],
     "views": ["git-azure-devops.workItemDetail", "git-azure-devops.pullRequestDetail"],
     "documents": ["git-azure-devops.pullRequest", "git-azure-devops.workItems"],
     "commands": ["git-azure-devops.openWorkItems"]

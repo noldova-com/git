@@ -45,7 +45,12 @@ export class AzureDevOpsNames {
   public static readonly abandonPullRequestMethod: string = "git-azure-devops.abandonPullRequest";
   public static readonly searchPeopleMethod: string = "git-azure-devops.searchPeople";
   public static readonly addReviewerMethod: string = "git-azure-devops.addReviewer";
+  public static readonly readAccountsMethod: string = HostingNames.nameOf(AzureDevOpsNames.moduleId, HostingNames.readAccountsMethod);
+  public static readonly addAccountMethod: string = HostingNames.nameOf(AzureDevOpsNames.moduleId, HostingNames.addAccountMethod);
+  public static readonly readRepositoryAccountMethod: string = HostingNames.nameOf(AzureDevOpsNames.moduleId, HostingNames.readRepositoryAccountMethod);
+  public static readonly pickAccountMethod: string = HostingNames.nameOf(AzureDevOpsNames.moduleId, HostingNames.pickAccountMethod);
   public static readonly signInChangedEvent: string = HostingNames.nameOf(AzureDevOpsNames.moduleId, HostingNames.signInChangedEvent);
+  public static readonly accountsChangedEvent: string = HostingNames.nameOf(AzureDevOpsNames.moduleId, HostingNames.accountsChangedEvent);
   public static readonly capabilities: HostCapabilities = new HostCapabilities([HostCapability.SignIn, HostCapability.ReadItem,
     HostCapability.BranchPullRequest, HostCapability.Checks, HostCapability.Votes, HostCapability.Policies, HostCapability.Builds,
     HostCapability.AutoComplete, HostCapability.WorkItems, HostCapability.AuthorAvatars, HostCapability.PullRequests]);

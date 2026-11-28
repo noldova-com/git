@@ -12,8 +12,6 @@ export class Resources {
   public static readonly httpsAddressExpected: string = "an https address with no user name or password";
   public static readonly positiveExpected: string = "a whole number above zero";
   public static readonly countExpected: string = "a whole number, zero or more";
-  public static readonly serverExpected: string = "a server's name in lowercase, such as github.example.com, with a port after a colon if it has one";
-  public static readonly serverPattern: RegExp = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*(?::[1-9][0-9]{0,4})?$/;
   public static readonly namedAccountExpected: string = "false while there is no account";
   public static readonly nameExpected: string = "a name of letters, digits, '.', '_' and '-', other than '.' and '..'";
   public static readonly pathExpected: string = "names of letters, digits, '.', '_', '-' and percent escapes such as '%20' but not of '/' or '\\' joined by '/', none of them '.' or '..', '%2e' counting as a dot";
@@ -81,6 +79,8 @@ export class Resources {
   public static readonly commitCommentsUrlExpected: string = "a page exactly when there are comments";
   public static readonly countsExpected: string = "zero counts when the host doesn't count them";
   public static readonly accountIdsExpected: string = "accounts with each id once";
+  public static readonly placeExpected: string = "a lowercase host name, with its port or a path if it has one, and no scheme, user name or trailing '/'";
+  public static readonly placePattern: RegExp = /^[a-z0-9-]+(?:\.[a-z0-9-]+)*(?::[0-9]+)?(?:\/[a-z0-9._-]+)*$/;
   public static readonly commentParentExpected: string = "a parent other than the comment itself";
   public static readonly lineExpected: string = "a line only on a thread that names a file";
   public static readonly commentsExpected: string = "at least one comment";
@@ -94,6 +94,7 @@ export class Resources {
   public static readonly remoteField: string = "remote";
   public static readonly accountsField: string = "accounts";
   public static readonly signInField: string = "signIn";
+  public static readonly placeField: string = "place";
   public static readonly failureField: string = "failure";
   public static readonly userCodeField: string = "userCode";
   public static readonly verificationUriField: string = "verificationUri";

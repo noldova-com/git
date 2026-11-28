@@ -24,7 +24,7 @@ import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 const SERVER: string = "ghe.example.com";
 const mona: HostAccount = new HostAccount("monalisa", "Mona", null, ["repo"]);
 const kim: HostSignIn = HostSignIn.signedIn(new HostAccount("kim", null, null, ["repo"]));
-const monaEntry: HostAccountEntry = new HostAccountEntry(2, HostSignIn.signedIn(mona), undefined, SERVER);
+const monaEntry: HostAccountEntry = new HostAccountEntry(2, HostSignIn.signedIn(mona), SERVER);
 const note: string = "Connect an account on your company's GitHub Enterprise server with a personal access token.";
 
 function listOf(...entries: HostAccountEntry[]): HostAccountList {
@@ -158,7 +158,7 @@ describe("GitHubEnterpriseComponent", () => {
 
   it("signs a chosen account out, then asks for a new token on its server", async () => {
     const page = new Page();
-    const unnamed = new HostAccountEntry(2, HostSignIn.signedIn(new HostAccount("monalisa", null, null, ["repo"])), undefined, SERVER);
+    const unnamed = new HostAccountEntry(2, HostSignIn.signedIn(new HostAccount("monalisa", null, null, ["repo"])), SERVER);
     page.requests.answer(GitHubNames.readAccountsMethod, listOf(unnamed).toJson());
     page.requests.answer(GitHubNames.signOutMethod, HostSignIn.signedOut().toJson());
     await page.openAsync("2");
@@ -186,9 +186,9 @@ describe("GitHubEnterpriseComponent", () => {
 
   it("shows why a chosen account was signed out, with its server filled in, and forgets it once a new token connects", async () => {
     const page = new Page();
-    const revoked = new HostAccountEntry(3, HostSignIn.signedOut(SignInFailure.Revoked), undefined, SERVER);
+    const revoked = new HostAccountEntry(3, HostSignIn.signedOut(SignInFailure.Revoked), SERVER);
     page.requests.answer(GitHubNames.readAccountsMethod, listOf(revoked).toJson());
-    page.requests.answer(GitHubNames.signInWithTokenMethod, new HostAccountEntry(4, HostSignIn.signedIn(mona), undefined, SERVER).toJson());
+    page.requests.answer(GitHubNames.signInWithTokenMethod, new HostAccountEntry(4, HostSignIn.signedIn(mona), SERVER).toJson());
     page.requests.answer(GitHubNames.signOutMethod, HostSignIn.signedOut().toJson());
     await page.openAsync("3");
     const shown = [page.alerts, page.server.value, page.texts(".nol-git-github-setting-note").includes(note)];
@@ -221,23 +221,24 @@ describe("GitHubEnterpriseComponent", () => {
       `The GitHub module's ${GitHubNames.signInWithTokenMethod} request failed: WindowFailure: Not connected.`]);
   });
 
-  it("says so when the account is already in the list, or the answer isn't a sign-in, and stays on the form", async () => {
+  it("says so when the module answers a second connect of an account as already kept, or the answer isn't a sign-in, keeping the chosen account", async () => {
     const page = new Page();
-    page.requests.answer(GitHubNames.readAccountsMethod, listOf().toJson());
-    page.requests.answer(GitHubNames.signInWithTokenMethod, new HostAccountEntry(5, HostSignIn.signedOut(SignInFailure.AlreadyKept), undefined, SERVER).toJson(),
-      new HostAccountEntry(6, HostSignIn.signedOut(), undefined, SERVER).toJson());
-    await page.openAsync();
-    await page.typeAsync(page.server, SERVER);
+    page.requests.answer(GitHubNames.readAccountsMethod, listOf(new HostAccountEntry(3, HostSignIn.signedOut(SignInFailure.Revoked), SERVER)).toJson());
+    page.requests.answer(GitHubNames.signInWithTokenMethod, { id: 4, signIn: HostSignIn.signedOut(SignInFailure.AlreadyKept).toJson(), place: SERVER },
+      new HostAccountEntry(5, HostSignIn.signedOut(), SERVER).toJson());
+    await page.openAsync("3");
     const shown: unknown[] = [];
 
     for (let i = 0; i < 2; i++) {
       await page.typeAsync(page.token, "ghp_x");
       await page.clickAsync("Connect");
-      shown.push([page.alerts, page.texts("h3")]);
+      shown.push([page.alerts, page.texts("h3"), page.server.value]);
     }
 
-    expect(shown).toEqual([[["This GitHub account is already in the list."], ["GitHub Enterprise account"]],
-      [["The GitHub module didn't answer the connect."], ["GitHub Enterprise account"]]]);
+    const revoked = "GitHub no longer accepts this computer's sign-in. Sign in again to restore it.";
+    expect(shown).toEqual([[[revoked, "This GitHub account is already in the list."], ["GitHub Enterprise account"], SERVER],
+      [[revoked, "The GitHub module didn't answer the connect."], ["GitHub Enterprise account"], SERVER]]);
+    expect(page.requests.methods).not.toContain(GitHubNames.signOutMethod);
   });
 
   it("sends nothing on Enter without a token or a server, or while a connect is on its way", async () => {

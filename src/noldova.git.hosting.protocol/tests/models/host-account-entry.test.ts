@@ -22,19 +22,27 @@ describe("HostAccountEntry", () => {
     assert.deepEqual(HostAccountEntry.fromJson(JSON.parse(JSON.stringify(entry.toJson()))), entry);
   });
 
-  it("names the server of an account on another server than the module's own, writing the field only then", () => {
-    const entry: HostAccountEntry = new HostAccountEntry(3, signedIn, undefined, "github.example.com:8443");
+  it("writes its place only when it has one, and reads JSON without it, with null or with a place", () => {
+    const placed: HostAccountEntry = new HostAccountEntry(2, signedIn, "dev.azure.com/fabrikam");
 
-    assert.deepEqual([entry.host, new HostAccountEntry(2, signedIn).host], ["github.example.com:8443", null]);
-    assert.deepEqual(entry.toJson(), { id: 3, signIn: signedIn.toJson(), host: "github.example.com:8443" });
-    assert.deepEqual(HostAccountEntry.fromJson(JSON.parse(JSON.stringify(entry.toJson()))), entry);
+    assert.deepEqual(placed.toJson(), { id: 2, signIn: signedIn.toJson(), place: "dev.azure.com/fabrikam" });
+    assert.deepEqual([
+      HostAccountEntry.fromJson({ id: 2, signIn: signedIn.toJson() }).place,
+      HostAccountEntry.fromJson({ id: 2, signIn: signedIn.toJson(), place: null }).place,
+      HostAccountEntry.fromJson(JSON.parse(JSON.stringify(placed.toJson()))).place,
+      HostAccountEntry.fromJson({ id: 2, signIn: signedIn.toJson(), place: "github.example.com:8443" }).place
+    ], [null, null, "dev.azure.com/fabrikam", "github.example.com:8443"]);
   });
 
-  it("refuses an id that isn't a positive whole number, or a server that isn't a lowercase name with an optional port, naming the parameter", () => {
+  it("refuses a place with a scheme, a user name, capitals or a trailing '/', naming the parameter or the field", () => {
+    for (const place of ["https://dev.azure.com/fabrikam", "user@dev.azure.com/fabrikam", "dev.azure.com/Fabrikam", "dev.azure.com/fabrikam/", ""])
+      assert.throws(() => new HostAccountEntry(2, signedIn, place), { name: "HostingArgumentException", parameterName: "place" }, place);
+    assert.throws(() => HostAccountEntry.fromJson({ id: 2, signIn: signedIn.toJson(), place: "dev.azure.com/" }, "$.entry"),
+      { name: "HostingFieldException", field: "$.entry.place" });
+  });
+
+  it("refuses an id that isn't a positive whole number, naming the parameter", () => {
     assert.throws(() => new HostAccountEntry(0, signedIn), { name: "HostingArgumentException", parameterName: "id" });
-    for (const host of ["", "GitHub.example.com", "https://github.example.com", "github.example.com/", "-github.example.com", "github.example.com:0",
-      "github..example.com"])
-      assert.throws(() => new HostAccountEntry(2, signedIn, undefined, host), { name: "HostingArgumentException", parameterName: "host" }, host);
   });
 
   it("refuses JSON with a field it doesn't define or out of its range, naming the field by its path", () => {
@@ -45,7 +53,5 @@ describe("HostAccountEntry", () => {
     assert.throws(() => HostAccountEntry.fromJson({ ...json, signIn: { ...signedIn.toJson(), account: null } }, "$.entry"),
       { name: "HostingFieldException", field: "$.entry.signIn.account" });
     assert.throws(() => HostAccountEntry.fromJson({ ...json, signIn: null }), { name: "JsonException", path: "$.signIn" });
-    assert.throws(() => HostAccountEntry.fromJson({ ...json, host: "a b" }, "$.entry"), { name: "HostingFieldException", field: "$.entry.host" });
-    assert.throws(() => HostAccountEntry.fromJson({ ...json, host: null }), { name: "JsonException", path: "$.host" });
   });
 });

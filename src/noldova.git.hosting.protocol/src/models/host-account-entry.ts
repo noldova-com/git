@@ -13,32 +13,34 @@ import { FieldCheck } from "./field-check.ts";
 import { HostSignIn } from "./host-sign-in.ts";
 
 export class HostAccountEntry {
-  private static readonly FIELDS: readonly string[] = [Resources.idField, Resources.signInField, Resources.hostField];
+  private static readonly FIELDS: readonly string[] = [Resources.idField, Resources.signInField, Resources.placeField];
 
   public readonly id: number;
   public readonly signIn: HostSignIn;
-  public readonly host: string | null;
+  public readonly place: string | null;
 
-  public constructor(id: number, signIn: HostSignIn, reader?: JsonReader, host: string | null = null) {
+  public constructor(id: number, signIn: HostSignIn, place: string | null = null, reader?: JsonReader) {
     FieldCheck.requirePositive(id, Resources.idField, reader);
-    if (host !== null)
-      FieldCheck.requireServer(host, Resources.hostField, reader);
+    if (place !== null)
+      FieldCheck.requirePlace(place, Resources.placeField, reader);
 
     this.id = id;
     this.signIn = signIn;
-    this.host = host;
+    this.place = place;
   }
 
   public static fromJson(value: unknown, path?: string): HostAccountEntry {
     const reader = JsonReader.fromValue(value, path);
     FieldCheck.refuseUnknownFields(reader, HostAccountEntry.FIELDS);
     const signIn = reader.readObject(Resources.signInField);
-    return new HostAccountEntry(reader.readInteger(Resources.idField), HostSignIn.fromJson(signIn.toJson(), signIn.path), reader,
-      reader.hasField(Resources.hostField) ? reader.readString(Resources.hostField) : null);
+    return new HostAccountEntry(reader.readInteger(Resources.idField), HostSignIn.fromJson(signIn.toJson(), signIn.path),
+      reader.hasField(Resources.placeField) ? reader.readNullableString(Resources.placeField) : null, reader);
   }
 
   public toJson(): JsonObject {
-    const json: JsonObject = { [Resources.idField]: this.id, [Resources.signInField]: this.signIn.toJson() };
-    return this.host === null ? json : { ...json, [Resources.hostField]: this.host };
+    return {
+      [Resources.idField]: this.id, [Resources.signInField]: this.signIn.toJson(),
+      ...(this.place === null ? {} : { [Resources.placeField]: this.place })
+    };
   }
 }

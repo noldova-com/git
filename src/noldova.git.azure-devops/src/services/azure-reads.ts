@@ -17,7 +17,7 @@ import { BranchPullRequest, type BranchQuery, CheckState, type CommitQuery, File
   HostWorkItemType, PolicyState, ReferenceKind, ReferenceState, type RepositoryQuery, ReviewDecision, ThreadStatus, WorkItemCategory, type WorkItemQuery,
   WorkItemScope, type WorkItemsQuery } from "@noldova/git.hosting.protocol";
 
-import type { IAzureToken } from "../interfaces/i-azure-token.ts";
+import type { IAzureTokens } from "../interfaces/i-azure-tokens.ts";
 import type { AzureCredential } from "../models/azure-credential.ts";
 import { AzureRepository } from "../models/azure-repository.ts";
 import { ChangeCounts } from "../models/change-counts.ts";
@@ -34,21 +34,22 @@ import { AzureApi } from "./azure-api.ts";
 
 export class AzureReads {
   private readonly api: AzureApi;
-  private readonly signIn: IAzureToken;
+  private readonly signIn: IAzureTokens;
   private readonly log: IModuleLog;
   private static readonly unstopped: AbortSignal = new AbortController().signal;
   private readonly types: Map<string, Promise<WorkItemTypeStates>> = new Map();
   private typesToken: AzureCredential | null = null;
   private reviewer: KnownReviewer | null = null;
+  private readonly repositories: Map<string, readonly [string, string]> = new Map();
 
-  public constructor(api: AzureApi, signIn: IAzureToken, log: IModuleLog) {
+  public constructor(api: AzureApi, signIn: IAzureTokens, log: IModuleLog) {
     this.api = api;
     this.signIn = signIn;
     this.log = log;
   }
 
   public async readReferenceAsync(reference: HostReference, signal: AbortSignal): Promise<HostItem | null> {
-    const token: AzureCredential | null = Resources.isOwnReference(reference) ? this.tokenFor(reference.owner) : null;
+    const token: AzureCredential | null = this.tokenOf(reference);
     if (token === null)
       return null;
     const item: HostItem | null = await this.askAsync(token, async () => {
@@ -60,11 +61,11 @@ export class AzureReads {
       const counts: ChangeCounts | null = await this.readCountsAsync(reference, project, token, signal);
       return AzureApi.read(() => AzureReads.itemOf(reference.owner, pull, counts));
     });
-    return this.signIn.token === token ? item : null;
+    return this.signIn.holds(token) ? item : null;
   }
 
   public async readPullRequestAsync(reference: HostReference, signal: AbortSignal): Promise<HostPullRequest | null> {
-    const token: AzureCredential | null = Resources.isOwnReference(reference) ? this.tokenFor(reference.owner) : null;
+    const token: AzureCredential | null = this.tokenOf(reference);
     if (token === null)
       return null;
     const pullRequest: HostPullRequest | null = await this.askAsync(token, async () => {
@@ -83,11 +84,11 @@ export class AzureReads {
         pull.hasField(Resources.descriptionField) ? pull.readString(Resources.descriptionField) : "", commitCount, workItems,
         AzureReads.autoCompleteMergeTypeOf(pull)));
     });
-    return this.signIn.token === token ? pullRequest : null;
+    return this.signIn.holds(token) ? pullRequest : null;
   }
 
   public async readMergeTypesAsync(reference: HostReference, signal: AbortSignal): Promise<readonly string[] | null> {
-    const token: AzureCredential | null = Resources.isOwnReference(reference) ? this.tokenFor(reference.owner) : null;
+    const token: AzureCredential | null = this.tokenOf(reference);
     if (token === null)
       return null;
     const types: readonly string[] | null = await this.askAsync(token, async () => {
@@ -98,7 +99,7 @@ export class AzureReads {
       const project: string = AzureApi.read(() => pull.readObject(Resources.repositoryField).readObject(Resources.projectField).readNonBlankString(Resources.idField));
       return this.readAllowedMergeTypesAsync(reference.owner, project, reference.number, token, signal);
     });
-    return this.signIn.token === token ? types : null;
+    return this.signIn.holds(token) ? types : null;
   }
 
   public async readAllowedMergeTypesAsync(organization: string, project: string, number: number, token: AzureCredential,
@@ -108,7 +109,7 @@ export class AzureReads {
   }
 
   public async readPullRequestThreadsAsync(reference: HostReference, signal: AbortSignal): Promise<readonly HostThread[]> {
-    const token: AzureCredential | null = Resources.isOwnReference(reference) ? this.tokenFor(reference.owner) : null;
+    const token: AzureCredential | null = this.tokenOf(reference);
     if (token === null)
       return [];
     const threads: readonly HostThread[] = await this.askAsync(token, async () => {
@@ -116,12 +117,12 @@ export class AzureReads {
         token, signal);
       return answer === null ? [] : AzureApi.read(() => answer.readObjectArray(Resources.valueField).flatMap(AzureReads.threadOf));
     });
-    return this.signIn.token === token ? threads : [];
+    return this.signIn.holds(token) ? threads : [];
   }
 
   public async readPullRequestCommitsAsync(reference: HostReference, signal: AbortSignal): Promise<HostPullRequestCommits> {
     const none: HostPullRequestCommits = new HostPullRequestCommits([], false);
-    const token: AzureCredential | null = Resources.isOwnReference(reference) ? this.tokenFor(reference.owner) : null;
+    const token: AzureCredential | null = this.tokenOf(reference);
     if (token === null)
       return none;
     const commits: HostPullRequestCommits = await this.askAsync(token, async () => {
@@ -132,12 +133,12 @@ export class AzureReads {
       const read: readonly HostPullRequestCommit[] = AzureApi.read(() => answer.readObjectArray(Resources.valueField).map(AzureReads.pullRequestCommitOf));
       return new HostPullRequestCommits(read.slice(0, HostPullRequestCommits.maximumCount), read.length > HostPullRequestCommits.maximumCount);
     });
-    return this.signIn.token === token ? commits : none;
+    return this.signIn.holds(token) ? commits : none;
   }
 
   public async readPullRequestUpdatesAsync(reference: HostReference, signal: AbortSignal): Promise<HostPullRequestUpdates> {
     const none: HostPullRequestUpdates = new HostPullRequestUpdates([], false);
-    const token: AzureCredential | null = Resources.isOwnReference(reference) ? this.tokenFor(reference.owner) : null;
+    const token: AzureCredential | null = this.tokenOf(reference);
     if (token === null)
       return none;
     const updates: HostPullRequestUpdates = await this.askAsync(token, async () => {
@@ -148,16 +149,16 @@ export class AzureReads {
       const read: readonly HostPullRequestUpdate[] = AzureApi.read(() => answer.readObjectArray(Resources.valueField).map(AzureReads.pullRequestUpdateOf)).reverse();
       return new HostPullRequestUpdates(read.slice(0, HostPullRequestUpdates.maximumCount), read.length > HostPullRequestUpdates.maximumCount);
     });
-    return this.signIn.token === token ? updates : none;
+    return this.signIn.holds(token) ? updates : none;
   }
 
   public async readPullRequestChangesAsync(reference: HostReference, signal: AbortSignal): Promise<HostPullRequestFiles> {
     const none: HostPullRequestFiles = new HostPullRequestFiles(null, null, [], false);
-    const token: AzureCredential | null = Resources.isOwnReference(reference) ? this.tokenFor(reference.owner) : null;
+    const token: AzureCredential | null = this.tokenOf(reference);
     if (token === null)
       return none;
     const files: HostPullRequestFiles | null = await this.askAsync(token, () => this.readFilesAsync(reference, token, signal));
-    return this.signIn.token === token && files !== null ? files : none;
+    return this.signIn.holds(token) && files !== null ? files : none;
   }
 
   private async readFilesAsync(reference: HostReference, token: AzureCredential, signal: AbortSignal): Promise<HostPullRequestFiles | null> {
@@ -263,7 +264,7 @@ export class AzureReads {
 
   public async readPullRequestConflictsAsync(reference: HostReference, signal: AbortSignal): Promise<HostPullRequestConflicts> {
     const none: HostPullRequestConflicts = new HostPullRequestConflicts([], false);
-    const token: AzureCredential | null = Resources.isOwnReference(reference) ? this.tokenFor(reference.owner) : null;
+    const token: AzureCredential | null = this.tokenOf(reference);
     if (token === null)
       return none;
     const conflicts: HostPullRequestConflicts = await this.askAsync(token, async () => {
@@ -275,11 +276,11 @@ export class AzureReads {
         .map(t => AzureReads.repositoryPathOf(t.readString(Resources.conflictPathField))));
       return new HostPullRequestConflicts(read.slice(0, HostPullRequestConflicts.maximumCount), read.length > HostPullRequestConflicts.maximumCount);
     });
-    return this.signIn.token === token ? conflicts : none;
+    return this.signIn.holds(token) ? conflicts : none;
   }
 
   public async searchPeopleAsync(query: PeopleQuery, signal: AbortSignal): Promise<readonly FoundPerson[]> {
-    const token: AzureCredential | null = this.tokenFor(query.reference.owner);
+    const token: AzureCredential | null = this.signIn.tokenFor(query.reference.owner);
     if (token === null)
       return [];
     const found: readonly FoundPerson[] = await this.askAsync(token, async () => {
@@ -289,68 +290,68 @@ export class AzureReads {
         .map(t => new FoundPerson(t.readNonBlankString(Resources.descriptorField), t.readNonBlankString(Resources.displayNameField),
           t.readNonBlankString(Resources.principalNameField), t.readNonBlankString(Resources.subjectKindField).toLowerCase() === Resources.groupKind.toLowerCase())));
     }, Resources.cannotReadPeopleMessage);
-    return this.signIn.token === token ? found : [];
+    return this.signIn.holds(token) ? found : [];
   }
 
   public async readBranchPullRequestAsync(query: BranchQuery, signal: AbortSignal): Promise<BranchPullRequest> {
     const none: BranchPullRequest = new BranchPullRequest(null, []);
     const repository: AzureRepository | null = AzureRepository.parse(query.host, query.path);
-    const token: AzureCredential | null = repository === null ? null : this.tokenFor(repository.organization);
+    const token: AzureCredential | null = repository === null ? null : this.signIn.tokenFor(repository.organization, query.host, query.path);
     if (token === null || repository === null)
       return none;
     const answer: BranchPullRequest = await this.askAsync(token, async () => {
       const list: JsonReader | null = await this.api.getAsync(Resources.formatBranchPullRequestsUrl(repository.organization, repository.project,
         repository.name, query.branch), token, signal);
       const pull: JsonReader | undefined = list === null ? undefined : AzureApi.read(() => list.readObjectArray(Resources.valueField))[0];
-      return pull === undefined ? none : await this.answerOfAsync(repository.organization, pull, token, signal);
+      return pull === undefined ? none : await this.answerOfAsync(query, repository.organization, pull, token, signal);
     });
-    return this.signIn.token === token ? answer : none;
+    return this.signIn.holds(token) ? answer : none;
   }
 
   public async readCommitPullRequestAsync(query: CommitQuery, signal: AbortSignal): Promise<BranchPullRequest> {
     const none: BranchPullRequest = new BranchPullRequest(null, []);
     const repository: AzureRepository | null = AzureRepository.parse(query.host, query.path);
-    const token: AzureCredential | null = repository === null ? null : this.tokenFor(repository.organization);
+    const token: AzureCredential | null = repository === null ? null : this.signIn.tokenFor(repository.organization, query.host, query.path);
     if (token === null || repository === null)
       return none;
     const answer: BranchPullRequest = await this.askAsync(token, async () => {
       const pull: JsonReader | null = await this.readCommitPullAsync(repository, query.commit, token, signal);
-      return pull === null ? none : await this.answerOfAsync(repository.organization, pull, token, signal);
+      return pull === null ? none : await this.answerOfAsync(query, repository.organization, pull, token, signal);
     });
-    return this.signIn.token === token ? answer : none;
+    return this.signIn.holds(token) ? answer : none;
   }
 
   public async readCommitCommentsAsync(query: CommitQuery, signal: AbortSignal): Promise<HostCommitComments> {
     const none: HostCommitComments = HostCommitComments.none();
     const repository: AzureRepository | null = AzureRepository.parse(query.host, query.path);
-    const token: AzureCredential | null = repository === null ? null : this.tokenFor(repository.organization);
+    const token: AzureCredential | null = repository === null ? null : this.signIn.tokenFor(repository.organization, query.host, query.path);
     if (token === null || repository === null)
       return none;
     const answer: HostCommitComments = await this.askAsync(token, async () => {
       const pull: JsonReader | null = await this.readCommitPullAsync(repository, query.commit, token, signal);
       if (pull === null)
         return none;
-      const item: HostItem = AzureApi.read(() => AzureReads.itemOf(repository.organization, pull));
+      const item: HostItem = this.noted(query.host, query.path, AzureApi.read(() => AzureReads.itemOf(repository.organization, pull)));
       const [iterations, threads] = await Promise.all([
         this.api.getAsync(Resources.formatPullRequestIterationsUrl(repository.organization, item.reference.repository, item.reference.number), token, signal),
         this.api.getAsync(Resources.formatPullRequestThreadsUrl(repository.organization, item.reference.repository, item.reference.number), token, signal)]);
       return iterations === null || threads === null ? none : AzureApi.read(() => AzureReads.commitCommentsOf(query.commit, item.url,
         iterations.readObjectArray(Resources.valueField), threads.readObjectArray(Resources.valueField)));
     });
-    return this.signIn.token === token ? answer : none;
+    return this.signIn.holds(token) ? answer : none;
   }
 
   public async readPullRequestsAsync(query: RepositoryQuery, signal: AbortSignal): Promise<HostPullRequestList> {
-    if (this.signIn.token === null)
+    if (!this.signIn.isSignedIn)
       return HostPullRequestList.signedOut();
     const repository: AzureRepository | null = AzureRepository.parse(query.host, query.path);
-    const token: AzureCredential | null = repository === null ? null : this.tokenFor(repository.organization);
+    const token: AzureCredential | null = repository === null ? null : this.signIn.tokenFor(repository.organization, query.host, query.path);
     if (token === null || repository === null)
       return new HostPullRequestList([], false);
     const list: HostPullRequestList = await this.askAsync(token, async () => {
       const read: readonly JsonReader[] = await this.readActiveAsync(repository, HostPullRequestList.maximumRows, token, signal);
       const rows: HostPullRequestRow[] = await Promise.all(read.slice(0, HostPullRequestList.maximumRows).map(async pull => {
-        const item: HostItem = AzureApi.read(() => AzureReads.itemOf(repository.organization, pull));
+        const item: HostItem = this.noted(query.host, query.path, AzureApi.read(() => AzureReads.itemOf(repository.organization, pull)));
         const checks: readonly HostCheck[] = await this.readChecksAsync(item, pull, token, signal);
         return HostPullRequestRow.of(item.reference, item.title, item.url, item.state === ReferenceState.Draft,
           AzureReads.votesOf(pull).filter(t => t > 0).length, checks, AzureApi.read(() => AzureReads.branchOf(pull.readString(Resources.sourceRefNameField))),
@@ -358,25 +359,25 @@ export class AzureReads {
       }));
       return new HostPullRequestList(rows, read.length > HostPullRequestList.maximumRows);
     });
-    return this.signIn.token === token ? list : HostPullRequestList.signedOut();
+    return this.signIn.holds(token) ? list : HostPullRequestList.signedOut();
   }
 
   public async readPullRequestHeadsAsync(query: RepositoryQuery, signal: AbortSignal): Promise<HostPullRequestHeads> {
-    if (this.signIn.token === null)
+    if (!this.signIn.isSignedIn)
       return HostPullRequestHeads.signedOut();
     const repository: AzureRepository | null = AzureRepository.parse(query.host, query.path);
-    const token: AzureCredential | null = repository === null ? null : this.tokenFor(repository.organization);
+    const token: AzureCredential | null = repository === null ? null : this.signIn.tokenFor(repository.organization, query.host, query.path);
     if (token === null || repository === null)
       return new HostPullRequestHeads([], false);
     const heads: HostPullRequestHeads = await this.askAsync(token, async () => {
       const read: readonly JsonReader[] = await this.readActiveAsync(repository, HostPullRequestHeads.maximumRows, token, signal);
       return new HostPullRequestHeads(AzureApi.read(() => read.slice(0, HostPullRequestHeads.maximumRows).map(pull => {
-        const item: HostItem = AzureReads.itemOf(repository.organization, pull);
+        const item: HostItem = this.noted(query.host, query.path, AzureReads.itemOf(repository.organization, pull));
         return new HostPullRequestHead(item.reference, item.title, item.url, AzureReads.branchOf(pull.readString(Resources.sourceRefNameField)),
           AzureReads.branchOf(pull.readString(Resources.targetRefNameField)));
       })), read.length > HostPullRequestHeads.maximumRows);
     });
-    return this.signIn.token === token ? heads : HostPullRequestHeads.signedOut();
+    return this.signIn.holds(token) ? heads : HostPullRequestHeads.signedOut();
   }
 
   private async readActiveAsync(repository: AzureRepository, limit: number, token: AzureCredential, signal: AbortSignal): Promise<readonly JsonReader[]> {
@@ -386,10 +387,10 @@ export class AzureReads {
   }
 
   public async readReviewRequestsAsync(query: RepositoryQuery, signal: AbortSignal): Promise<HostReviewRequestList> {
-    if (this.signIn.token === null)
+    if (!this.signIn.isSignedIn)
       return HostReviewRequestList.signedOut();
     const repository: AzureRepository | null = AzureRepository.parse(query.host, query.path);
-    const token: AzureCredential | null = repository === null ? null : this.tokenFor(repository.organization);
+    const token: AzureCredential | null = repository === null ? null : this.signIn.tokenFor(repository.organization, query.host, query.path);
     if (token === null || repository === null)
       return new HostReviewRequestList([], false);
     const list: HostReviewRequestList = await this.askAsync(token, async () => {
@@ -398,15 +399,15 @@ export class AzureReads {
         reviewer), token, signal);
       const read: readonly JsonReader[] = pulls === null ? [] : AzureApi.read(() => pulls.readObjectArray(Resources.valueField));
       const asked: readonly HostReviewRequest[] = AzureApi.read(() => read.filter(t => AzureReads.waitsOn(t, reviewer))
-        .map(t => AzureReads.reviewRequestOf(repository.organization, t)));
+        .map(t => this.noted(query.host, query.path, AzureReads.reviewRequestOf(repository.organization, t))));
       return new HostReviewRequestList(asked.slice(0, HostReviewRequestList.maximumRows).toSorted((a, b) => b.createdAt - a.createdAt),
         read.length > HostReviewRequestList.maximumRows);
     });
-    return this.signIn.token === token ? list : HostReviewRequestList.signedOut();
+    return this.signIn.holds(token) ? list : HostReviewRequestList.signedOut();
   }
 
   public async readWorkItemAsync(query: WorkItemQuery, signal: AbortSignal): Promise<HostWorkItem | null> {
-    const token: AzureCredential | null = query.host === AzureDevOpsNames.moduleId ? this.tokenFor(query.organization) : null;
+    const token: AzureCredential | null = query.host === AzureDevOpsNames.moduleId ? this.signIn.tokenFor(query.organization) : null;
     if (token === null || !Resources.organizationPattern.test(query.organization))
       return null;
     const workItem: HostWorkItem | null = await this.askAsync(token, async () => {
@@ -419,11 +420,11 @@ export class AzureReads {
       const type = await this.readTypeAsync(query.organization, project, typeName, token, signal);
       return AzureApi.read(() => AzureReads.workItemOf(query.organization, query.id, project, fields, type));
     });
-    return this.signIn.token === token ? workItem : null;
+    return this.signIn.holds(token) ? workItem : null;
   }
 
   public async readWorkItemsAsync(query: WorkItemsQuery, signal: AbortSignal): Promise<HostWorkItemList> {
-    const token: AzureCredential | null = query.host === AzureDevOpsNames.moduleId ? this.tokenFor(query.organization) : null;
+    const token: AzureCredential | null = query.host === AzureDevOpsNames.moduleId ? this.signIn.tokenFor(query.organization) : null;
     if (token === null || !Resources.organizationPattern.test(query.organization))
       return new HostWorkItemList([], false);
     const list: HostWorkItemList = await this.askAsync(token, async () => {
@@ -435,7 +436,7 @@ export class AzureReads {
         details.push(await this.detailOfAsync(query.organization, item, token, signal));
       return new HostWorkItemList(AzureReads.treeOf(details), queried.isTruncated);
     });
-    return this.signIn.token === token ? list : new HostWorkItemList([], false);
+    return this.signIn.holds(token) ? list : new HostWorkItemList([], false);
   }
 
   public async readDetailAsync(organization: string, answer: JsonReader, token: AzureCredential, signal: AbortSignal): Promise<HostWorkItemDetail> {
@@ -599,8 +600,9 @@ export class AzureReads {
       : await this.api.getAsync(Resources.formatProjectPullRequestUrl(repository.organization, repository.project, number), token, signal);
   }
 
-  private async answerOfAsync(organization: string, pull: JsonReader, token: AzureCredential, signal: AbortSignal): Promise<BranchPullRequest> {
-    const item: HostItem = AzureApi.read(() => AzureReads.itemOf(organization, pull));
+  private async answerOfAsync(query: CommitQuery | BranchQuery, organization: string, pull: JsonReader, token: AzureCredential,
+    signal: AbortSignal): Promise<BranchPullRequest> {
+    const item: HostItem = this.noted(query.host, query.path, AzureApi.read(() => AzureReads.itemOf(organization, pull)));
     const votes: readonly number[] = AzureReads.votesOf(pull);
     return new BranchPullRequest(item, await this.readChecksAsync(item, pull, token, signal), AzureReads.decisionOf(votes), votes.filter(t => t > 0).length);
   }
@@ -613,14 +615,9 @@ export class AzureReads {
     if (connection === null)
       throw AzureApi.failure(FailureCode.Unavailable, Resources.unreadableAnswerMessage);
     const id: string = AzureApi.read(() => connection.readObject(Resources.authenticatedUserField).readNonBlankString(Resources.idField));
-    if (this.signIn.token === token)
+    if (this.signIn.holds(token))
       this.reviewer = new KnownReviewer(token, id);
     return id;
-  }
-
-  private tokenFor(organization: string): AzureCredential | null {
-    const signedIn: string | null = this.signIn.organization;
-    return signedIn !== null && Resources.isSameOrganization(signedIn, organization) ? this.signIn.token : null;
   }
 
   private async askAsync<T>(token: AzureCredential, ask: () => Promise<T>, cannotRead: string | null = null): Promise<T> {
@@ -632,7 +629,7 @@ export class AzureReads {
       if (!AzureApi.isUnauthorized(error))
         throw error;
       await this.signIn.refusedAsync(token);
-      throw cannotRead !== null && this.signIn.token === token ? AzureApi.failure(FailureCode.Unauthorized, cannotRead) : error;
+      throw cannotRead !== null && this.signIn.holds(token) ? AzureApi.failure(FailureCode.Unauthorized, cannotRead) : error;
     }
   }
 
@@ -644,6 +641,24 @@ export class AzureReads {
   private static reviewRequestOf(organization: string, pull: JsonReader): HostReviewRequest {
     const item: HostItem = AzureReads.itemOf(organization, pull);
     return new HostReviewRequest(item.reference, item.title, item.url, item.state === ReferenceState.Draft, item.createdAt);
+  }
+
+  public repositoryOf(reference: HostReference): readonly [string, string] | null {
+    return this.repositories.get(AzureReads.keyOf(reference)) ?? null;
+  }
+
+  private tokenOf(reference: HostReference): AzureCredential | null {
+    const [host, path] = this.repositoryOf(reference) ?? [null, null];
+    return Resources.isOwnReference(reference) ? this.signIn.tokenFor(reference.owner, host, path) : null;
+  }
+
+  private noted<T extends { readonly reference: HostReference }>(host: string, path: string, read: T): T {
+    this.repositories.set(AzureReads.keyOf(read.reference), [host, path]);
+    return read;
+  }
+
+  private static keyOf(reference: HostReference): string {
+    return [reference.owner, reference.repository].join(Resources.pathSeparator).toLowerCase();
   }
 
   private static itemOf(organization: string, pull: JsonReader, counts: ChangeCounts | null = null): HostItem {

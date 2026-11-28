@@ -41,6 +41,36 @@ export declare class AzureDevOpsNames {
   public static readonly readSignInMethod: string;
 
   /**
+   * The method that answers every Azure DevOps account kept on this computer as `HostAccountList` JSON, the first account first, each entry's
+   * `place` naming its organization as `dev.azure.com/<organization>`, lowercase, while it signs in or is signed in.
+   * The sign-in methods act on the first account when their payload names none: `readSignInMethod`, `cancelSignInMethod` and `signOutMethod` take
+   * nothing or `AccountQuery` JSON, and `startSignInMethod` and `signInWithTokenMethod` take an `account` beside their fields. Signing out an account
+   * other than the first removes it from the list.
+   */
+  public static readonly readAccountsMethod: string;
+
+  /**
+   * The method that adds an account: it takes what `startSignInMethod` or `signInWithTokenMethod` takes, `{ "organization": string }` or
+   * `{ "token": string, "organization": string }`, signs the new account in that way and answers it as `HostAccountEntry` JSON, waiting in the
+   * browser or signed in. An added account that ends signed out leaves the list; one that signs in to an organization as an account already kept
+   * there ends signed out with `AlreadyKept` and leaves too. It fails as those methods do.
+   */
+  public static readonly addAccountMethod: string;
+
+  /**
+   * The method that takes a `RepositoryQuery` as JSON and answers the account the module reads the repository with as `RepositoryAccount` JSON:
+   * the one the person chose for it while it is signed in to the repository's organization, else the first account signed in to that organization,
+   * else none. A read through a reference, which names the repository by its id, takes the account last chosen in the organization instead.
+   */
+  public static readonly readRepositoryAccountMethod: string;
+
+  /**
+   * The method that takes an `AccountPick` as JSON, remembers the account for the repository on this computer, at most 200 repositories, and
+   * answers the account the module now reads it with as `RepositoryAccount` JSON; it fails with `NotFound` for an account it doesn't keep.
+   */
+  public static readonly pickAccountMethod: string;
+
+  /**
    * The method that takes `{ "organization": string }`, starts a sign-in with Microsoft for that organization and answers the sign-in waiting with
    * the https address the window opens in the person's browser; the browser comes back to a listener on this computer, which then asks the
    * organization who signed in, keeps the sign-in on this computer and publishes it signed in.
@@ -312,6 +342,11 @@ export declare class AzureDevOpsNames {
    * The event that carries the sign-in as `HostSignIn` JSON each time it changes.
    */
   public static readonly signInChangedEvent: string;
+
+  /**
+   * The event that carries every account as `HostAccountList` JSON each time one is added, signs in, signs out or leaves.
+   */
+  public static readonly accountsChangedEvent: string;
 
   /**
    * What the module offers today: a sign-in, reading a pull request and a branch's pull request, checks, votes, policies, builds, a pull

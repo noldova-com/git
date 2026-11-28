@@ -34,7 +34,11 @@ describe("AzureDevOpsNames", () => {
         AzureDevOpsNames.searchPeopleMethod, AzureDevOpsNames.readCommitPullRequestMethod,
         AzureDevOpsNames.addReviewerMethod, AzureDevOpsNames.readReviewRequestsMethod, AzureDevOpsNames.readCommitCommentsMethod,
         AzureDevOpsNames.readPullRequestCommitsMethod, AzureDevOpsNames.readPullRequestUpdatesMethod, AzureDevOpsNames.readPullRequestChangesMethod,
-        AzureDevOpsNames.readPullRequestConflictsMethod]);
+        AzureDevOpsNames.readPullRequestConflictsMethod, AzureDevOpsNames.readAccountsMethod, AzureDevOpsNames.addAccountMethod,
+        AzureDevOpsNames.readRepositoryAccountMethod, AzureDevOpsNames.pickAccountMethod]);
+    assert.deepEqual([AzureDevOpsNames.readAccountsMethod, AzureDevOpsNames.addAccountMethod, AzureDevOpsNames.readRepositoryAccountMethod,
+      AzureDevOpsNames.pickAccountMethod, AzureDevOpsNames.accountsChangedEvent], ["git-azure-devops.readAccounts", "git-azure-devops.addAccount",
+      "git-azure-devops.readRepositoryAccount", "git-azure-devops.pickAccount", "git-azure-devops.accountsChanged"]);
     assert.deepEqual([AzureDevOpsNames.readPullRequestsMethod, AzureDevOpsNames.readReviewRequestsMethod, AzureDevOpsNames.readCommitCommentsMethod],
       ["git-azure-devops.readPullRequests", "git-azure-devops.readReviewRequests", "git-azure-devops.readCommitComments"]);
     assert.deepEqual([AzureDevOpsNames.readPullRequestThreadsMethod, AzureDevOpsNames.readPullRequestHeadsMethod],
@@ -49,7 +53,7 @@ describe("AzureDevOpsNames", () => {
       "git-azure-devops.setAutoComplete", "git-azure-devops.cancelAutoComplete", "git-azure-devops.abandonPullRequest"]);
     assert.deepEqual([AzureDevOpsNames.searchPeopleMethod, AzureDevOpsNames.addReviewerMethod], ["git-azure-devops.searchPeople", "git-azure-devops.addReviewer"]);
     assert.equal(AzureDevOpsNames.readCommitPullRequestMethod, "git-azure-devops.readCommitPullRequest");
-    assert.deepEqual(contributes.readStringArray("events"), [AzureDevOpsNames.signInChangedEvent]);
+    assert.deepEqual(contributes.readStringArray("events"), [AzureDevOpsNames.signInChangedEvent, AzureDevOpsNames.accountsChangedEvent]);
     assert.equal(AzureDevOpsNames.signInWithTokenMethod, "git-azure-devops.signInWithToken");
     assert.deepEqual([AzureDevOpsNames.startSignInMethod, AzureDevOpsNames.cancelSignInMethod], ["git-azure-devops.startSignIn", "git-azure-devops.cancelSignIn"]);
     assert.equal(AzureDevOpsNames.readWorkItemMethod, "git-azure-devops.readWorkItem");

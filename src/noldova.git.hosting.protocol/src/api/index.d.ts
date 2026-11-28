@@ -5208,7 +5208,7 @@ export declare class AccountQuery {
 }
 
 /**
- * One account a module keeps: its id and its sign-in.
+ * One account a module keeps: its id, its sign-in and, for a host that has several, where it signs in.
  *
  * @example
  * ```ts
@@ -5229,18 +5229,19 @@ export declare class HostAccountEntry {
   public readonly signIn: HostSignIn;
 
   /**
-   * The server of an account on another server than the module's own, such as a GitHub Enterprise server's `github.example.com`, or null for the module's own.
+   * Where the account signs in, as a remote's address is matched against it: a lowercase host name, with its port or a path if it has one, and no
+   * scheme, user name or trailing `/`, such as `dev.azure.com/fabrikam` for an Azure DevOps organization or `github.example.com` for a GitHub
+   * Enterprise server; null for a host with one place, such as github.com. It never holds a token or a user name.
    */
-  public readonly host: string | null;
+  public readonly place: string | null;
 
   /**
    * Makes the entry from its parts.
    *
    * @param id The account's id, a positive whole number.
    * @param signIn The account's sign-in.
+   * @param place Where the account signs in, or null, the default, for a host with one place.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
-   * @param host The server of an account on another server than the module's own: a lowercase name with an optional port, such as `github.example.com:8443`; null,
-   * by default, for the module's own.
    * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `account`.
    * @throws {HostingFieldException} With a reader, when a part is out of its range, naming the field by its path, such as `$.account`.
    * @example
@@ -5250,7 +5251,7 @@ export declare class HostAccountEntry {
    * const entry = new HostAccountEntry(1, HostSignIn.signedIn(new HostAccount("octocat", null, null, ["repo"])));
    * ```
    */
-  public constructor(id: number, signIn: HostSignIn, reader?: JsonReader, host?: string | null);
+  public constructor(id: number, signIn: HostSignIn, place?: string | null, reader?: JsonReader);
 
   /**
    * Reads it from its JSON.
@@ -5270,7 +5271,7 @@ export declare class HostAccountEntry {
   public static fromJson(value: unknown, path?: string): HostAccountEntry;
 
   /**
-   * Writes it as JSON: `id` and `signIn`, and `host` only when the account is on another server.
+   * Writes it as JSON: `id` and `signIn`, and `place` when it isn't null.
    *
    * @returns The JSON.
    * @example

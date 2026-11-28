@@ -83,7 +83,7 @@ describe("GitHubAccountsComponent", () => {
   it("leaves GitHub Enterprise accounts out of GitHub's, from the read and from a change", async () => {
     const page = new Page();
     const enterprise = (list: HostAccountList): HostAccountList => new HostAccountList([...list.accounts,
-      new HostAccountEntry(3, HostSignIn.signedIn(new HostAccount("mona", null, null, ["repo"])), undefined, "ghe.example.com")]);
+      new HostAccountEntry(3, HostSignIn.signedIn(new HostAccount("mona", null, null, ["repo"])), "ghe.example.com")]);
     page.requests.answer(GitHubNames.readAccountsMethod, enterprise(listOf(kim)).toJson());
     page.requests.always(GitHubNames.readSignInMethod, kim.toJson());
     await page.openAsync();

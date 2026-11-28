@@ -15,6 +15,7 @@ import { FakeAppWindows, FakeModuleLog, FakeModuleSecrets } from "@noldova/deskt
 import { HostAccount, HostSignIn, type HostWorkItem, SignInFailure, WorkItemQuery } from "@noldova/git.hosting.protocol";
 import { afterEach, describe, it, vi } from "vitest";
 
+import type { IAzureTokens } from "../../src/interfaces/i-azure-tokens.ts";
 import { AzureCredential } from "../../src/models/azure-credential.ts";
 import { AzureApi } from "../../src/services/azure-api.ts";
 import { AzureReads } from "../../src/services/azure-reads.ts";
@@ -33,6 +34,15 @@ const refused = (): Response => new Response(null, { status: 401 });
 const failed = (): Response => new Response(null, { status: 500 });
 const signal: AbortSignal = new AbortController().signal;
 const basic = (token: string): string => `Basic ${Buffer.from(`:${token}`).toString("base64")}`;
+const tokensOf = (signIn: AzureSignIn): IAzureTokens => ({
+  get isSignedIn(): boolean {
+    return signIn.token !== null;
+  },
+  tokenFor: () => signIn.token,
+  holds: t => signIn.token === t,
+  refusedAsync: t => signIn.refusedAsync(t),
+  readyAsync: () => signIn.readyAsync()
+});
 
 function heldOf(signIn: AzureSignIn): AzureCredential {
   const token = signIn.token;
@@ -103,6 +113,47 @@ class Rig {
 describe("AzureSignIn", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("keeps each kind of sign-in under the secret name it was given for it, and restores from either", async () => {
+    const rig = new Rig();
+    const added = new AzureSignIn(new AzureApi(rig.azure.fetch), new EntraFlow(rig.azure.fetch), rig.secrets, rig.appWindows, rig.log, () => undefined,
+      "git-azure-devops.account2", "git-azure-devops.microsoftAccount2");
+    rig.azure.answer(profile());
+    await added.signInWithTokenAsync("azure-token", "fabrikam", signal);
+    const kept: readonly string[] = [...rig.store.values.keys()];
+    rig.store.values.set("git-azure-devops.microsoftAccount2", JSON.stringify({ kind: "microsoft", token: "refresh", organization: "fabrikam", account: account.toJson() }));
+    rig.store.values.delete("git-azure-devops.account2");
+    const restored = new AzureSignIn(new AzureApi(rig.azure.fetch), new EntraFlow(rig.azure.fetch), rig.secrets, rig.appWindows, rig.log, () => undefined,
+      "git-azure-devops.account2", "git-azure-devops.microsoftAccount2");
+    rig.azure.answer(failed());
+    await restored.restoreAsync();
+    const organization: string | null = restored.organization;
+    added.dispose();
+    restored.dispose();
+
+    assert.deepEqual([kept, restored.current, organization], [["git-azure-devops.account2"], HostSignIn.signedIn(account), "fabrikam"]);
+  });
+
+  it("names where it signs in, lowercase, from the organization it signs in to, and nothing before", async () => {
+    const rig = new Rig();
+    const before: string | null = rig.signIn.place;
+    rig.azure.answer(refused());
+    await rig.signIn.signInWithTokenAsync("azure-token", "Fabrikam", signal);
+
+    assert.deepEqual([before, rig.signIn.place, rig.signIn.current.failure], [null, "dev.azure.com/fabrikam", SignInFailure.Refused]);
+  });
+
+  it("ends a signed-in sign-in as already kept, forgetting its token, and leaves one signed out as it is", async () => {
+    const rig = new Rig();
+    await rig.signIn.alreadyKeptAsync();
+    const signedOut: number = rig.changes.length;
+    rig.azure.answer(profile());
+    await rig.signIn.signInWithTokenAsync("azure-token", "fabrikam", signal);
+
+    await rig.signIn.alreadyKeptAsync();
+
+    assert.deepEqual([signedOut, rig.states(), rig.kept(), rig.signIn.token], [0, ["SignedIn", "SignedOut AlreadyKept"], undefined, null]);
   });
 
   it("reads who the token is in its organization, keeps the token with the organization and account and signs in, logging the account and never the token", async () => {
@@ -726,7 +777,7 @@ describe("AzureSignIn with Microsoft", () => {
     const rig = new Rig();
     rig.keepMicrosoft("refresh-1");
     rig.azure.answer(grant("access-1", "refresh-2"), profile(), new Response(null, { status: 404 }));
-    const reads = new AzureReads(new AzureApi(rig.azure.fetch), rig.signIn, rig.log);
+    const reads = new AzureReads(new AzureApi(rig.azure.fetch), tokensOf(rig.signIn), rig.log);
 
     await rig.signIn.restoreAsync();
     rig.disposeLater();

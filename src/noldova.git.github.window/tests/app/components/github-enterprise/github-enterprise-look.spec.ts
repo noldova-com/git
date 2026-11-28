@@ -35,7 +35,7 @@ import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 class DialogBodyComponent {
 }
 
-const mona: HostAccountEntry = new HostAccountEntry(2, HostSignIn.signedIn(new HostAccount("monalisa", "Mona", null, ["repo"])), undefined, "ghe.example.com");
+const mona: HostAccountEntry = new HostAccountEntry(2, HostSignIn.signedIn(new HostAccount("monalisa", "Mona", null, ["repo"])), "ghe.example.com");
 const screenshots: string = "../../../../../../_build/github-window/screenshots";
 
 async function openAsync(mode: ThemeMode, chosen: string | null): Promise<ComponentFixture<DialogBodyComponent>> {
