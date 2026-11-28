@@ -89,8 +89,8 @@ export class GitHubAccounts implements IGitHubTokens {
         this.entries.set(account.id, this.make(account.id, account.host));
     }
     this.picks = kept?.picks ?? [];
-    const restoring: readonly [number, GitHubSignIn][] = [...this.entries].filter(([id]) => id === GitHubAccounts.firstId || named.includes(id));
-    await Promise.all(restoring.map(([, t]) => t.restoreAsync()));
+    const restoring: readonly GitHubSignIn[] = [...this.entries.keys()].filter(id => id === GitHubAccounts.firstId || named.includes(id)).map(id => this.signInOf(id));
+    await Promise.all(restoring.map(t => t.restoreAsync()));
     for (const [id, signIn] of this.entries) {
       if (id !== GitHubAccounts.firstId && named.includes(id) && signIn.current.state === SignInState.SignedOut && signIn.current.failure === null
         && !signIn.keptUnreadable)

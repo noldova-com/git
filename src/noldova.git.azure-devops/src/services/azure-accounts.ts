@@ -72,8 +72,8 @@ export class AzureAccounts implements IAzureTokens {
         this.entries.set(id, this.make(id));
     }
     this.picks = kept?.picks ?? [];
-    const restoring: readonly [number, AzureSignIn][] = [...this.entries].filter(([id]) => id === AzureAccounts.firstId || named.includes(id));
-    await Promise.all(restoring.map(([, t]) => t.restoreAsync()));
+    const restoring: readonly AzureSignIn[] = [...this.entries.keys()].filter(id => id === AzureAccounts.firstId || named.includes(id)).map(id => this.signInOf(id));
+    await Promise.all(restoring.map(t => t.restoreAsync()));
     for (const [id, signIn] of this.entries) {
       if (id !== AzureAccounts.firstId && named.includes(id) && signIn.current.state === SignInState.SignedOut && signIn.current.failure === null
         && !signIn.keptUnreadable)
