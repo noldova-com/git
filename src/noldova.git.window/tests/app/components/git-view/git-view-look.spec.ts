@@ -147,6 +147,31 @@ describe("GitViewComponent in the kit's look", () => {
     await page.screenshot({ element: view.element, path: `${screenshots}/git-view-${mode}.png` });
   });
 
+  it.each(AppearanceFixture.modes)("keeps a file row's counts and letter where they rest when it is focused or hovered, its actions drawn over the name's end on the row's fill, in %s mode",
+    async mode => {
+      AppearanceFixture.apply(DefaultTheme.theme, mode);
+      const view: GitViewFixture = await GitViewFixture.renderAsync({ ...GitFixtures.watching, "git.status": status.toJson() });
+      view.state.fileLayout.set(GitFileLayout.List);
+      await view.fixture.whenStable();
+      view.element.style.width = "25rem";
+      const row: HTMLElement = view.find("nol-git-file-group:nth-of-type(3) .file");
+      const ends = (): number[] => [".counts", ".state"].map(t => rem(box(row.querySelector(t)).right));
+      const rest: number[] = ends();
+
+      row.querySelector<HTMLElement>(".name")?.focus();
+      await view.fixture.whenStable();
+      const focused: number[] = ends();
+      const focusedFill: string = getComputedStyle(row.querySelector(".actions") ?? row).backgroundColor;
+      row.querySelector<HTMLElement>(".name")?.blur();
+      await PointerFixture.hoverAsync(row);
+      const hovered: number[] = ends();
+      const actions: HTMLElement = row.querySelector<HTMLElement>(".actions") ?? row;
+
+      expect([focused, hovered]).toEqual([rest, rest]);
+      expect([getComputedStyle(actions).display, getComputedStyle(actions).backgroundColor, focusedFill]).toEqual(["flex", resolve("var(--nol-hover)"), resolve("var(--nol-hover)")]);
+      expect(RightEdge.missesOf(row, RightEdge.insideOf(view.element, 0.75), [".move"])).toEqual([]);
+    });
+
   it.each(AppearanceFixture.modes)("ends the amend row with the signing note in the kit's muted label type, at the card's edge and centred on the box, in %s mode", async mode => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
     const view: GitViewFixture = await GitViewFixture.renderAsync({
