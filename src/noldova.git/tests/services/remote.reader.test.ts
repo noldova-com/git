@@ -76,6 +76,15 @@ describe("RemoteReader", () => {
     assert.equal(await reader.readNamedAsync(repository.folder, ""), null);
   });
 
+  test("reads a named remote's user name, after git's insteadOf rewrites, and none for a remote without one, a name no remote has or no remote at all", async () => {
+    const before = await reader.readNamedUserAsync(repository.folder, "origin");
+    await configureAsync('[url "https://kim@github.com/"]', "	insteadOf = gh:", '[remote "origin"]', "	url = gh:owner/repo", '[remote "plain"]', "	url = https://host/a/b",
+      '[remote "ssh"]', "	url = git@host:a/b");
+
+    assert.deepEqual([before, await reader.readNamedUserAsync(repository.folder, "origin"), await reader.readNamedUserAsync(repository.folder, "plain"),
+      await reader.readNamedUserAsync(repository.folder, "ssh"), await reader.readNamedUserAsync(repository.folder, "fork")], [null, "kim", null, null, null]);
+  });
+
   test("reads a remote's URL with git's insteadOf rewrites applied, as git fetches from it", async () => {
     await configureAsync('[url "git@github.com:"]', "\tinsteadOf = gh:", '[remote "origin"]', "\turl = gh:owner/repo", '[branch "main"]', "\tremote = origin");
     const expected = { name: "origin", host: "github.com", path: "owner/repo", transport: RemoteTransport.Ssh };

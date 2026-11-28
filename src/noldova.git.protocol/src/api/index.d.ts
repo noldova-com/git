@@ -1710,6 +1710,28 @@ export declare abstract class GitRepositories {
    * ```
    */
   public abstract readRemoteAsync(folder: string, name: string, signal: AbortSignal): Promise<GitRemote | null>;
+
+  /**
+   * Reads the user name in the address of one remote of the repository that holds a folder, such as `kim` in `https://kim@github.com/octocat/hello-world.git`,
+   * after git's `insteadOf` rules, so a hosting module can pick the account the person's Git already uses there.
+   * It is a person's name on a host: keep it in the main process, never in a window, a model's context, an answer or a log.
+   * @param folder The folder; absolute, at most 4096 characters, untrusted.
+   * @param name The remote's name, matched exactly.
+   * @param signal Stops the read, which then rejects with the signal's reason.
+   * @returns The decoded user name of an `http` or `https` address, or `null` for any other address, an address with no user name or one that isn't a
+   * single line of at most 256 characters without a colon or slash, a repository with no remote of that name, or git's configuration that can't be read
+   * in full; a password in the address is never read.
+   * @throws {MethodFailureException} As {@link readStatusAsync} does.
+   * @example
+   * ```ts
+   * import type { GitRepositories } from "@noldova/git.protocol";
+   *
+   * export function originUserAsync(repositories: GitRepositories, folder: string): Promise<string | null> {
+   *   return repositories.readRemoteUserAsync(folder, "origin", new AbortController().signal);
+   * }
+   * ```
+   */
+  public abstract readRemoteUserAsync(folder: string, name: string, signal: AbortSignal): Promise<string | null>;
 }
 
 /**

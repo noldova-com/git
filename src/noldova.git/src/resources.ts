@@ -623,6 +623,7 @@ export class Resources {
   public static readonly scpPattern: RegExp = /^(?:[^@\/:]+@)?([^@\/:]+):(?!\/\/)(.+)$/v;
   public static readonly drivePattern: RegExp = /^[A-Za-z]:[\\\/]/v;
   public static readonly refusedHostPattern: RegExp = /[@:\/?#\s]/v;
+  public static readonly remoteUserPattern: RegExp = /^[^\s\p{Cc}:\/]{1,256}$/v;
   public static readonly refusedPathPattern: RegExp = /:\/\/|[@?#]/v;
   public static readonly refusedSegmentPattern: RegExp = /^(?:\.|%2e){0,2}$/iv;
   public static readonly pathSegmentPattern: RegExp = /[\\\/]/v;

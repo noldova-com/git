@@ -39,7 +39,7 @@ export class GitHubPrChecksTool implements IToolHandler {
   }
 
   public async handleAsync(call: ToolCall): Promise<ToolResult> {
-    const repository: BoundRepository = await BoundRepository.readAsync(call, this.repositories);
+    const repository: BoundRepository = await BoundRepository.readAsync(call, this.repositories, this.tokens);
     if (this.tokens.signedIn.length === 0)
       throw GitHubToolFailures.signedOut();
     let answer: BranchPullRequest;

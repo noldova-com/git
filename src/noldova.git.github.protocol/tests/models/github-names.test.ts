@@ -29,9 +29,10 @@ describe("GitHubNames", () => {
         GitHubNames.readReferenceMethod, GitHubNames.readBranchPullRequestMethod, GitHubNames.createPullRequestMethod,
         GitHubNames.readAuthorAvatarMethod, GitHubNames.readPullRequestsMethod, GitHubNames.readReviewRequestsMethod, GitHubNames.readCommitCommentsMethod,
         GitHubNames.readPullRequestMethod, GitHubNames.readPullRequestThreadsMethod, GitHubNames.readCommitPullRequestMethod, GitHubNames.readAccountsMethod,
-        GitHubNames.addAccountMethod, GitHubNames.readRepositoryAccountMethod, GitHubNames.pickAccountMethod]);
-    assert.deepEqual([GitHubNames.readAccountsMethod, GitHubNames.addAccountMethod, GitHubNames.readRepositoryAccountMethod, GitHubNames.pickAccountMethod],
-      ["git-github.readAccounts", "git-github.addAccount", "git-github.readRepositoryAccount", "git-github.pickAccount"]);
+        GitHubNames.addAccountMethod, GitHubNames.readRepositoryAccountMethod, GitHubNames.pickAccountMethod, GitHubNames.useFolderMethod]);
+    assert.deepEqual([GitHubNames.readAccountsMethod, GitHubNames.addAccountMethod, GitHubNames.readRepositoryAccountMethod, GitHubNames.pickAccountMethod,
+      GitHubNames.useFolderMethod], ["git-github.readAccounts", "git-github.addAccount", "git-github.readRepositoryAccount", "git-github.pickAccount",
+      "git-github.useFolder"]);
     assert.deepEqual([GitHubNames.readPullRequestsMethod, GitHubNames.readReviewRequestsMethod, GitHubNames.readCommitCommentsMethod],
       ["git-github.readPullRequests", "git-github.readReviewRequests", "git-github.readCommitComments"]);
     assert.deepEqual([GitHubNames.readPullRequestMethod, GitHubNames.readPullRequestThreadsMethod, GitHubNames.readCommitPullRequestMethod],

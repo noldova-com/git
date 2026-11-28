@@ -10,6 +10,7 @@ import type { SignedInAccount } from "../models/signed-in-account.ts";
 
 export interface IGitHubTokens {
   readonly signedIn: readonly SignedInAccount[];
+  useUser(host: string, path: string, user: string | null): void;
   tokenForAsync(host: string, path: string, signal: AbortSignal): Promise<string | null>;
   holds(token: string): boolean;
   refusedAsync(token: string): Promise<void>;
