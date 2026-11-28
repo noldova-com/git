@@ -20,7 +20,7 @@ describe("NoOperationException", () => {
     const error = new NoOperationException();
 
     assert.equal(error.name, "NoOperationException");
-    assert.equal(error.message, "No merge, rebase, cherry-pick or revert is in progress, so there is nothing to continue or abort.");
+    assert.equal(error.message, "No merge, rebase, cherry-pick or revert is in progress, so there is nothing to continue, skip or abort.");
     assert.equal(error.code, FailureCode.Stale);
     assert.equal(error.gitCode, null);
     assert.equal(error.output, null);
