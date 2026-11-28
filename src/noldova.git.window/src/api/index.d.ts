@@ -6,10 +6,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import type { Injector, InputSignal, OutputEmitterRef, Signal, Type, WritableSignal, ɵɵComponentDeclaration, ɵɵFactoryDeclaration } from "@angular/core";
+import type { InjectionToken, Injector, InputSignal, OutputEmitterRef, Signal, Type, WritableSignal, ɵɵComponentDeclaration, ɵɵFactoryDeclaration } from "@angular/core";
 import { Exception, type ExceptionOptions } from "@noldova/context.exceptions";
 import type { IWindowPart, IWindowPartContext } from "@noldova/desktop.window";
-import type { HostChanges, HostPullRequestFiles, HostReference } from "@noldova/git.hosting.protocol";
+import type { HostAccount, HostChanges, HostPullRequestFiles, HostReference } from "@noldova/git.hosting.protocol";
 import type { DiffScope, GitRemote } from "@noldova/git.protocol";
 import type { ILinkReferenceSource, LinkOpenEvent } from "@noldova/ui.components.angular";
 
@@ -453,10 +453,18 @@ export declare class GitPullRequestRow {
    * whose base is another open pull request's head as stacked on it.
    */
   public readonly baseBranch: string | null;
+  /**
+   * The name of the host account it was listed for, such as "kim", or `null` when the host signs in one account; Needs you names it after the
+   * repository on a review request.
+   */
+  public readonly account: string | null;
 
-  /** @param baseBranch The branch it merges into, or `null`, the default, when the host doesn't say. */
+  /**
+   * @param baseBranch The branch it merges into, or `null`, the default, when the host doesn't say.
+   * @param account The host account it was listed for, or `null`, the default, when the host signs in one account.
+   */
   public constructor(key: string, label: string, title: string, url: string, isDraft: boolean, approvals: number, passed: number, failing: number, pending: number,
-    headBranch: string, baseBranch?: string | null);
+    headBranch: string, baseBranch?: string | null, account?: string | null);
 }
 
 /**
@@ -639,7 +647,7 @@ export declare enum GitHostCardState {
  * ```ts
  * import { GitHostCard, GitHostCardState } from "@noldova/git.window";
  *
- * export const signedIn: GitHostCard = new GitHostCard("GitHub · kim", "Device sign-in", GitHostCardState.SignedIn, "Signed in");
+ * export const signedIn: GitHostCard = new GitHostCard("kim", "Device sign-in", GitHostCardState.SignedIn, "Signed in");
  * ```
  */
 export declare class GitHostCard {
@@ -656,13 +664,27 @@ export declare class GitHostCard {
   public readonly label: string;
 
   /**
+   * The host's id for the card's account, or `null` for a host with one account; the card's button opens the host's dialog with it as
+   * {@link GitHostAccounts.chosenAccount}.
+   */
+  public readonly account: string | null;
+
+  /**
+   * The signed-in account the card shows, drawn in place of the host's mark as its picture, or its initial when it has none; `null` for a card
+   * without one, which shows the host's mark.
+   */
+  public readonly person: HostAccount | null;
+
+  /**
    * Creates a card.
    * @param title The card's title.
    * @param detail The line under the title.
    * @param state The card's state.
    * @param label The chip's text, or the button's while it asks to sign in.
+   * @param account The host's id for the card's account, or `null`, the default, for a host with one account.
+   * @param person The signed-in account the card shows, or `null`, the default, for the host's mark.
    */
-  public constructor(title: string, detail: string, state: GitHostCardState, label: string);
+  public constructor(title: string, detail: string, state: GitHostCardState, label: string, account?: string | null, person?: HostAccount | null);
 
   /** Whether the card ends with a button that opens the host's sign-in rather than a chip: while it is signed out or its sign-in failed. */
   public get asksToSignIn(): boolean;
@@ -690,7 +712,10 @@ export interface IGitHostAccount {
   /** The host's cards, one per account or sign-in, which the page follows as they change. */
   readonly cards: Signal<readonly GitHostCard[]>;
 
-  /** The component the host's dialog shows, which draws its own sign-in, account and sign-out, with the providing part's context as `WindowPartTokens.context`. */
+  /**
+   * The component the host's dialog shows, which draws its own sign-in, account and sign-out, with the providing part's context as `WindowPartTokens.context`
+   * and the account it opened on as {@link GitHostAccounts.chosenAccount}.
+   */
   readonly signIn: Type<unknown>;
 
   /** The features the host has, each once; the table shows the others as missing. */
@@ -836,6 +861,12 @@ export declare class GitHostRows {
 export declare class GitHostAccounts {
   /** The added hosts, in the order they were added. */
   public static readonly accounts: Signal<readonly IProvidedGitHostAccount[]>;
+
+  /**
+   * The account the host's dialog opened on, which its sign-in component injects: the {@link GitHostCard.account} of the card whose button opened
+   * it, or `null` when the card has none or the dialog opened from Add an account.
+   */
+  public static readonly chosenAccount: InjectionToken<string | null>;
 
   /**
    * Adds a host, which the page shows after those added before it, and Settings search finds by its row.

@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { type Signal, signal, type WritableSignal } from "@angular/core";
+import { InjectionToken, type Signal, signal, type WritableSignal } from "@angular/core";
 import type { IWindowPartContext } from "@noldova/desktop.window";
 
 import type { IGitHostAccount } from "../interfaces/i-git-host-account.ts";
@@ -17,6 +17,7 @@ export class GitHostAccounts {
   private static readonly listeners: Set<(accounts: readonly IProvidedGitHostAccount[]) => void> = new Set();
 
   public static readonly accounts: Signal<readonly IProvidedGitHostAccount[]> = GitHostAccounts.provided.asReadonly();
+  public static readonly chosenAccount: InjectionToken<string | null> = new InjectionToken<string | null>("GitHostAccounts.chosenAccount");
 
   public static provide(context: IWindowPartContext, account: IGitHostAccount): () => void {
     const provided: IProvidedGitHostAccount = { context, account };

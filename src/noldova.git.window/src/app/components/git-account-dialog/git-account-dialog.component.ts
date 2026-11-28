@@ -12,6 +12,7 @@ import { WindowPartTokens } from "@noldova/desktop.window";
 import { DialogComponent } from "@noldova/ui.components.angular";
 
 import type { IProvidedGitHostAccount } from "../../interfaces/i-provided-git-host-account.ts";
+import { GitHostAccounts } from "../../services/git-host-accounts.ts";
 
 @Component({
   selector: "nol-git-account-dialog",
@@ -22,9 +23,11 @@ export class GitAccountDialogComponent {
   private readonly injector: Injector = inject(Injector);
 
   protected readonly hostInjector: Signal<Injector> = computed(() =>
-    Injector.create({ providers: [{ provide: WindowPartTokens.context, useValue: this.account().context }], parent: this.injector }));
+    Injector.create({ providers: [{ provide: WindowPartTokens.context, useValue: this.account().context },
+      { provide: GitHostAccounts.chosenAccount, useValue: this.chosen() }], parent: this.injector }));
 
   public readonly account: InputSignal<IProvidedGitHostAccount> = input.required<IProvidedGitHostAccount>();
   public readonly title: InputSignal<string> = input.required<string>();
+  public readonly chosen: InputSignal<string | null> = input<string | null>(null);
   public readonly closed: OutputEmitterRef<void> = output<void>();
 }

@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { CheckState, type ReferenceKind, type ReferenceState, SignInFailure } from "@noldova/git.hosting.protocol";
+import { CheckState, type HostAccount, type ReferenceKind, type ReferenceState, SignInFailure } from "@noldova/git.hosting.protocol";
 import type { IconName } from "@noldova/ui.components.angular";
 
 export class Resources {
@@ -22,6 +22,10 @@ export class Resources {
   public static readonly waiting: string = "Waiting for the code";
   public static readonly signInAction: string = "Sign in";
   public static readonly accountTitle: string = "Account";
+  public static readonly firstAccount: number = 1;
+  public static readonly addAccount: string = "Add another GitHub account";
+  public static readonly addAccountIcon: IconName = "person_add";
+  public static readonly addAccountUnanswered: string = "GitHub didn't add the account.";
   public static readonly signedOutNote: string = "Sign in to see pull requests, their checks, and issue and pull request links in replies. Git works without it.";
   public static readonly signIn: string = "Sign in to GitHub";
   public static readonly signInIcon: IconName = "login";
@@ -94,6 +98,8 @@ export class Resources {
   public static readonly noPullRequest: string = "No pull request for this branch";
   public static readonly unanswered: string = "GitHub didn't answer. Try again to read this branch's pull request.";
   public static readonly hostRowSignInUnanswered: string = "GitHub's sign-in didn't answer. Try again.";
+  public static readonly accountNotSwitched: string = "GitHub didn't switch the account. Try again.";
+  public static readonly switchAccount: string = "Switch account";
   public static readonly hostRowLinkNotOpened: string = "The page couldn't be opened; the app's log has the details.";
   public static readonly signInUnanswered: string = "GitHub's sign-in didn't answer.";
   public static readonly linkNotOpened: string = "The page couldn't be opened.";
@@ -178,8 +184,13 @@ export class Resources {
     return `color-mix(in srgb, ${color} ${percent}%, transparent)`;
   }
 
-  public static formatAccountTitle(login: string): string {
-    return `${Resources.hostName} · ${login}`;
+  public static formatRepositoryAccount(login: string): string {
+    return `Account: ${login}`;
+  }
+
+  public static formatAccountDetail(account: HostAccount): string {
+    const access: string = Resources.formatAccess(account.scopes);
+    return Object.isNull(account.name) ? access : `${account.login} · ${access}`;
   }
 
   public static formatAccess(scopes: readonly string[]): string {
