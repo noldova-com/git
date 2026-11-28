@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -17,7 +18,7 @@ export class RepositoryAccount {
   public readonly account: number | null;
 
   public constructor(account: number | null, reader?: JsonReader) {
-    if (account !== null)
+    if (!Object.isNull(account))
       FieldCheck.requirePositive(account, Resources.accountField, reader);
 
     this.account = account;

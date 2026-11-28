@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -18,11 +19,11 @@ export class SubmoduleChange {
   public readonly newCommit: string | null;
 
   public constructor(oldCommit: string | null, newCommit: string | null, reader?: JsonReader) {
-    if (oldCommit === null && newCommit === null)
+    if (Object.isNull(oldCommit) && Object.isNull(newCommit))
       FieldCheck.fail(Resources.oldCommitField, Resources.submoduleCommitsExpected, reader);
-    if (oldCommit !== null)
+    if (!Object.isNull(oldCommit))
       FieldCheck.requireObjectId(oldCommit, Resources.oldCommitField, reader);
-    if (newCommit !== null)
+    if (!Object.isNull(newCommit))
       FieldCheck.requireObjectId(newCommit, Resources.newCommitField, reader);
 
     this.oldCommit = oldCommit;

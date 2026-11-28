@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { DiffScopeKind } from "../enums/diff-scope-kind.ts";
@@ -21,9 +22,9 @@ export class DiffScope {
 
   public constructor(kind: DiffScopeKind, from?: string, to?: string, reader?: JsonReader) {
     for (const [value, field] of [[from, Resources.fromField], [to, Resources.toField]] as const) {
-      if ((kind === DiffScopeKind.Range) !== (value !== undefined) || value === "")
+      if ((kind === DiffScopeKind.Range) !== (!Object.isUndefined(value)) || value === "")
         FieldCheck.fail(field, Resources.scopeRevisionExpected, reader);
-      if (value !== undefined)
+      if (!Object.isUndefined(value))
         FieldCheck.requireNoNul(value, field, reader);
     }
 
@@ -45,8 +46,8 @@ export class DiffScope {
   public toJson(): JsonObject {
     return {
       [Resources.kindField]: this.kind,
-      ...this.from === undefined ? {} : { [Resources.fromField]: this.from },
-      ...this.to === undefined ? {} : { [Resources.toField]: this.to }
+      ...Object.isUndefined(this.from) ? {} : { [Resources.fromField]: this.from },
+      ...Object.isUndefined(this.to) ? {} : { [Resources.toField]: this.to }
     };
   }
 }

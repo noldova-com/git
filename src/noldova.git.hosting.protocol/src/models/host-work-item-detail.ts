@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -36,9 +37,9 @@ export class HostWorkItemDetail {
     HostWorkItemDetail.requireAmount(points, Resources.pointsField, reader);
     HostWorkItemDetail.requireAmount(remaining, Resources.remainingField, reader);
     HostWorkItemDetail.requireAmount(completed, Resources.completedField, reader);
-    if (order !== null && !Number.isFinite(order))
+    if (!Object.isNull(order) && !Number.isFinite(order))
       FieldCheck.fail(Resources.orderField, Resources.finiteExpected, reader);
-    if (acceptance !== null)
+    if (!Object.isNull(acceptance))
       FieldCheck.requireText(acceptance, Resources.acceptanceField, reader);
     for (const child of children)
       FieldCheck.requirePositive(child, Resources.childrenField, reader);
@@ -76,7 +77,7 @@ export class HostWorkItemDetail {
       reader.readObjectArray(Resources.pullRequestsField).map(t => HostReference.fromJson(t.toJson(), t.path)),
       reader.readInteger(Resources.commitsField),
       reader.readStringArray(Resources.branchesField),
-      reader.readValue(Resources.isWaitingField) === null ? null : reader.readBoolean(Resources.isWaitingField),
+      Object.isNull(reader.readValue(Resources.isWaitingField)) ? null : reader.readBoolean(Resources.isWaitingField),
       reader);
   }
 
@@ -97,11 +98,11 @@ export class HostWorkItemDetail {
   }
 
   private static requireAmount(value: number | null, field: string, reader?: JsonReader): void {
-    if (value !== null && (!Number.isFinite(value) || value < 0))
+    if (!Object.isNull(value) && (!Number.isFinite(value) || value < 0))
       FieldCheck.fail(field, Resources.amountExpected, reader);
   }
 
   private static readAmount(reader: JsonReader, field: string): number | null {
-    return reader.readValue(field) === null ? null : reader.readNumber(field);
+    return Object.isNull(reader.readValue(field)) ? null : reader.readNumber(field);
   }
 }

@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -17,9 +18,9 @@ export class GitMergedBranches {
   public readonly branches: readonly string[];
 
   public constructor(base: string | null, branches: readonly string[], reader?: JsonReader) {
-    if (base === null && branches.length > 0)
+    if (Object.isNull(base) && branches.length > 0)
       FieldCheck.fail(Resources.branchesField, Resources.mergedBaseExpected, reader);
-    if (base !== null)
+    if (!Object.isNull(base))
       FieldCheck.requireBranchName(base, Resources.baseField, reader);
     branches.forEach((name, index) => FieldCheck.requireText(name, Resources.formatItemField(Resources.branchesField, index), reader));
 

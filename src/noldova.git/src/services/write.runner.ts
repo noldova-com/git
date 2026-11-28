@@ -7,6 +7,7 @@
  */
 import { isDeepStrictEqual } from "node:util";
 
+import "@noldova/context.core";
 import { type IPermissionRequest, PermissionDecision, type PermissionOutcome } from "@noldova/desktop.runtime";
 import { FailureCode, type GitStatus, UndoMode } from "@noldova/git.protocol";
 
@@ -43,10 +44,10 @@ export class WriteRunner {
   }
 
   public async runAsync(folders: RepositoryFolders, basedOn: string, write: IGitWrite, call: IWriteCall | null, signal?: AbortSignal): Promise<void> {
-    const asked = call === null ? null : { call, request: await this.askAsync(folders, basedOn, write, call, signal) };
+    const asked = Object.isNull(call) ? null : { call, request: await this.askAsync(folders, basedOn, write, call, signal) };
     await this.queue.runAsync(folders.commonGitFolder, async () => {
       const status = await this.readAsync(folders, basedOn, write, signal);
-      if (asked !== null && !isDeepStrictEqual(await write.requestAsync(folders, status, asked.call, signal), asked.request))
+      if (!Object.isNull(asked) && !isDeepStrictEqual(await write.requestAsync(folders, status, asked.call, signal), asked.request))
         throw new RequestMovedException();
       const before = await this.snapshots.readAsync(folders, write.undo === UndoMode.Index, signal);
       call?.markSending();
@@ -83,7 +84,7 @@ export class WriteRunner {
     call: IWriteCall,
     signal?: AbortSignal): Promise<IPermissionRequest | null> {
     const request = await write.requestAsync(folders, await this.readAsync(folders, basedOn, write, signal), call, signal);
-    if (request !== null)
+    if (!Object.isNull(request))
       WriteRunner.requireAllowed(await call.requestPermissionAsync(request));
     return request;
   }

@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { Fake, UnansweredCallException } from "@noldova/desktop.protocol/testing";
 import { type IPermissionAnswerer, type IPermissionRequest, type PermissionDecision, PermissionQuestion } from "@noldova/desktop.runtime";
 
@@ -17,7 +18,7 @@ export class FakeAnswerer extends Fake<IPermissionAnswerer> implements IPermissi
     super();
     this.answer("answerAsync", () => {
       const decision = this.decisions.shift();
-      return decision === undefined ? Promise.reject(new UnansweredCallException("answerAsync")) : Promise.resolve(decision);
+      return Object.isUndefined(decision) ? Promise.reject(new UnansweredCallException("answerAsync")) : Promise.resolve(decision);
     });
   }
 

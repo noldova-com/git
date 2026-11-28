@@ -5,6 +5,8 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
+
 import type { IWatchOwner } from "../interfaces/i-watch-owner.ts";
 import { ClientWatch } from "../models/client-watch.ts";
 import { PendingWatch } from "../models/pending-watch.ts";
@@ -28,7 +30,7 @@ export class WatchTable {
     this.repositories.set(top, clients);
     const key = WatchTable.keyOf(watch.connection, watch.window, watch.folder);
     const counted = clients.get(key);
-    if (counted === undefined)
+    if (Object.isUndefined(counted))
       clients.set(key, new ClientWatch(watch.connection, watch.window, watch.folder));
     else
       counted.count += 1;
@@ -47,7 +49,7 @@ export class WatchTable {
     const key = WatchTable.keyOf(connection, window, folder);
     for (const [top, clients] of this.repositories) {
       const counted = clients.get(key);
-      if (counted === undefined)
+      if (Object.isUndefined(counted))
         continue;
       counted.count -= 1;
       if (counted.count === 0)
@@ -55,7 +57,7 @@ export class WatchTable {
       return this.dropIfUnwatched(top, clients) ? top : null;
     }
     const waiting = [...this.pending].find(t => !t.isCancelled && WatchTable.keyOf(t.connection, t.window, t.folder) === key);
-    if (waiting !== undefined)
+    if (!Object.isUndefined(waiting))
       waiting.isCancelled = true;
     return null;
   }
@@ -87,7 +89,7 @@ export class WatchTable {
   }
 
   private static isOf(watch: IWatchOwner, connection: number, window: number | null): boolean {
-    return watch.connection === connection && (window === null || watch.window === window);
+    return watch.connection === connection && (Object.isNull(window) || watch.window === window);
   }
 
   private static keyOf(connection: number, window: number | null, folder: string): string {

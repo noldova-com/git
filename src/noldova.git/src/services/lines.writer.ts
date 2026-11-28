@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { IPermissionRequest } from "@noldova/desktop.runtime";
 import { FileChange, GitNames, type GitStatus, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
@@ -76,8 +77,8 @@ export class LinesWriter implements IGitWrite {
       throw new GitFailedException(Resources.diffCommand, { text: result.errors.toString(Resources.utf8Encoding), source: UntrustedSource.Repository });
     const files = DiffParser.parse(result.output, result.isTruncated).files;
     const file = files[0];
-    if (files.length !== 1 || file === undefined || file.change !== FileChange.Modified || file.binary || file.truncated || file.submodule !== null
-      || file.pathBytes !== undefined || file.oldMode !== file.newMode)
+    if (files.length !== 1 || Object.isUndefined(file) || file.change !== FileChange.Modified || file.binary || file.truncated || !Object.isNull(file.submodule)
+      || !Object.isUndefined(file.pathBytes) || file.oldMode !== file.newMode)
       throw new LinesRefusedException(Resources.linesUnsupported);
     return result.output;
   }
@@ -88,7 +89,7 @@ export class LinesWriter implements IGitWrite {
     let index = 0;
     for (const line of LinesWriter.split(body)) {
       const header = Resources.hunkPattern.exec(line.toString(Resources.latin1Encoding));
-      if (header === null)
+      if (Object.isNull(header))
         this.add(Required.at(hunks, hunks.length - 1, Resources.applyCommand, Resources.unknownLinePart), line, this.lines.has(index++));
       else
         hunks.push({

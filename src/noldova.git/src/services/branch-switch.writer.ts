@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { type IPermissionRequest, PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
 import { FileState, GitNames, type GitStatus, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
@@ -47,7 +48,7 @@ export class BranchSwitchWriter implements IGitWrite {
   }
 
   public refuse(status: GitStatus): void {
-    if (status.operation !== null)
+    if (!Object.isNull(status.operation))
       throw new SwitchDuringOperationException();
     if (status.branch === this.name)
       throw new AlreadyOnBranchException(this.name);
@@ -62,7 +63,7 @@ export class BranchSwitchWriter implements IGitWrite {
     return WritePermission.create(
       GitNames.switchBranchMethod,
       folders.top,
-      tracked === null ? Resources.formatSwitchTitle(status.branch, this.name) : Resources.formatSwitchNewTitle(status.branch, this.name, tracked),
+      Object.isNull(tracked) ? Resources.formatSwitchTitle(status.branch, this.name) : Resources.formatSwitchNewTitle(status.branch, this.name, tracked),
       [
         { label: Resources.changesLabel, kind: PermissionDetailKind.Text, value: Resources.formatUnstagedStay(unstaged, status.truncated) },
         WritePermission.hooksDetail(risks.hooks),
@@ -81,7 +82,7 @@ export class BranchSwitchWriter implements IGitWrite {
     const names = remotes.filter(t => found.includes(Resources.formatRemoteBranchRef(t, this.name)));
     const preferred = names.length > 1 ? await this.readDefaultRemoteAsync(top, signal) : null;
     const chosen = names.length > 1 ? names.find(t => t === preferred) : names.at(0);
-    if (chosen === undefined)
+    if (Object.isUndefined(chosen))
       throw names.length === 0 ? new SwitchNoBranchException(this.name) : new SwitchRemoteAmbiguousException(this.name, names);
     return `${Resources.formatRemotePrefix(chosen)}${this.name}`;
   }
@@ -126,7 +127,7 @@ export class BranchSwitchWriter implements IGitWrite {
     const errors = result.errors.toString(Resources.utf8Encoding);
     const output = { text: errors, source: UntrustedSource.Repository };
     const overwritten = Resources.overwrittenByCheckoutPattern.exec(errors.replaceAll(Resources.crlf, Resources.lineEnd));
-    if (overwritten !== null) {
+    if (!Object.isNull(overwritten)) {
       const paths = Required.at(overwritten, 1, Resources.switchCommand, Resources.overwrittenPathsPart).split(Resources.lineEnd).filter(t => t.length > 0).map(t => LogReader.toLine(t.slice(1)));
       throw new SwitchChangesInTheWayException(paths, output);
     }

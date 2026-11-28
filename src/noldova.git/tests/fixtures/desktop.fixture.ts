@@ -14,6 +14,7 @@ import { Writable } from "node:stream";
 
 import { DataDirectory, EventChannel, type IMethodHandler, ModuleDatabase, type OwnedProcess, OwnershipLock, PermissionCenter, ProcessRequest, ProcessSupervisor, ShellDatabase,
   ShellMigrations, ToolDescriptor, ToolRegistry } from "@noldova/desktop.runtime";
+import "@noldova/context.core";
 import { FakeRuntimePartContext } from "@noldova/desktop.runtime/testing";
 import type { JsonValue } from "@noldova/git.protocol";
 
@@ -145,7 +146,7 @@ export class DesktopFixture {
 
   private publish(name: string, connection: number | undefined, window: number | null | undefined, payload: JsonValue): void {
     this.published.push([name, connection, window, payload]);
-    if (typeof window !== "number")
+    if (!Object.isNumber(window))
       return;
     this.publishing.get(window)?.resolve();
     this.publishing.delete(window);
@@ -157,9 +158,9 @@ export class DesktopFixture {
 
   private static readTools(): readonly string[] {
     const declaration: unknown = JSON.parse(readFileSync(new URL("../../module.json", import.meta.url), "utf8"));
-    const contributes: unknown = typeof declaration === "object" && declaration !== null && "contributes" in declaration ? declaration.contributes : null;
-    const tools: unknown = typeof contributes === "object" && contributes !== null && "tools" in contributes ? contributes.tools : null;
-    if (!Array.isArray(tools) || !tools.every(t => typeof t === "string"))
+    const contributes: unknown = Object.isObject(declaration) && "contributes" in declaration ? declaration.contributes : null;
+    const tools: unknown = Object.isObject(contributes) && "tools" in contributes ? contributes.tools : null;
+    if (!Array.isArray(tools) || !tools.every(t => Object.isString(t)))
       throw new TypeError("module.json names no contributed tools.");
     return tools;
   }

@@ -7,6 +7,7 @@
  */
 import assert from "node:assert/strict";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
 import {
@@ -58,7 +59,7 @@ class RecordingWrite implements IGitWrite {
   }
 
   public refuse(): void {
-    if (this.refusal !== null)
+    if (!Object.isNull(this.refusal))
       throw this.refusal;
   }
 
@@ -70,7 +71,7 @@ class RecordingWrite implements IGitWrite {
   public async runAsync(_folders: RepositoryFolders, status: GitStatus): Promise<void> {
     this.ran.push(status);
     await this.onRun();
-    if (this.failure !== null)
+    if (!Object.isNull(this.failure))
       throw this.failure;
   }
 }

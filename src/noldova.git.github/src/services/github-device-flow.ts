@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { JsonException, type JsonObject, JsonReader } from "@noldova/context.json";
 import { DeviceCode, HostAccount, HostingProtocolException } from "@noldova/git.hosting.protocol";
 import { GitHubNames } from "@noldova/git.github.protocol";
@@ -86,7 +87,7 @@ export class GitHubDeviceFlow {
   public async withAvatarAsync(read: AccountRead, signal: AbortSignal): Promise<HostAccount> {
     const avatar: string | null = await this.avatars.readAsync(read.avatarUrl, signal);
     const { login, name, scopes } = read.account;
-    return avatar === null ? read.account : new HostAccount(login, name, avatar, scopes);
+    return Object.isNull(avatar) ? read.account : new HostAccount(login, name, avatar, scopes);
   }
 
   private async postAsync(url: string, body: JsonObject, signal: AbortSignal): Promise<JsonReader> {
@@ -125,7 +126,7 @@ export class GitHubDeviceFlow {
       throw GitHubDeviceFlow.unreachable(url, error, signal);
     }
     signal.throwIfAborted();
-    if (text === null)
+    if (Object.isNull(text))
       throw new SignInAnswerTooLargeException(url);
     return GitHubDeviceFlow.read(() => JsonReader.parse(text));
   }

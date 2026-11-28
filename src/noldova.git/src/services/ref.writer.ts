@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { IPermissionRequest } from "@noldova/desktop.runtime";
 import { type GitStatus, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
@@ -48,7 +49,7 @@ export class RefWriter implements IGitWrite {
     if (result.exit.code === 0)
       return;
     const text = result.errors.toString(Resources.utf8Encoding);
-    if (this.taken !== null && Resources.branchExistsPattern.test(text))
+    if (!Object.isNull(this.taken) && Resources.branchExistsPattern.test(text))
       throw this.taken;
     throw new GitFailedException(this.command, { text, source: UntrustedSource.Repository });
   }

@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
 import { FailureCode, GitNames, UndoMode } from "@noldova/git.protocol";
@@ -70,7 +71,7 @@ describe("LinesWriter", () => {
     await repository.runGitAsync(["commit", "--quiet", "-m", `Add ${file}`]);
   };
   const failed = (command: string) => (error: unknown): boolean =>
-    error instanceof GitFailedException && error.command === command && error.output !== null && error.output.text.length > 0;
+    error instanceof GitFailedException && error.command === command && !Object.isNull(error.output) && error.output.text.length > 0;
   class BreakingRunner extends ProgramRunner {
     private readonly breaks: (run: ProgramRun) => boolean;
     private broken: boolean = false;
@@ -89,7 +90,7 @@ describe("LinesWriter", () => {
     }
   }
   const refused = (message: string) => (error: unknown): boolean =>
-    error instanceof LinesRefusedException && error.code === FailureCode.Refused && error.gitCode === null && error.output === null && error.message === message;
+    error instanceof LinesRefusedException && error.code === FailureCode.Refused && Object.isNull(error.gitCode) && Object.isNull(error.output) && error.message === message;
   const unsupported = refused("Lines can be staged or unstaged only in a changed text file that keeps its name and mode. Stage or unstage the whole file. Nothing changed.");
   const notChosen = refused("None of the chosen lines is an added or removed line of that file's changes, so nothing changed. Choose the lines again.");
 

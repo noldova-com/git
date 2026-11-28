@@ -8,6 +8,7 @@
 
 import assert from "node:assert/strict";
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 import { ToolFailure, ToolFailureCode, ToolResult, ToolRisk, type ToolSession } from "@noldova/desktop.runtime";
 import { FakeModuleLog } from "@noldova/desktop.runtime/testing";
@@ -45,7 +46,7 @@ class Rig {
   }
 
   public readAsync(value: JsonObject = input, signal?: AbortSignal): Promise<ToolResult | ToolFailure> {
-    return this.session.callAsync("git_github_read", value, signal === undefined ? {} : { signal });
+    return this.session.callAsync("git_github_read", value, Object.isUndefined(signal) ? {} : { signal });
   }
 }
 

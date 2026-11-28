@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -21,7 +22,7 @@ export class GitStashParams {
 
   public constructor(folder: string, message: string | null, includeUntracked: boolean, basedOn: string, reader?: JsonReader) {
     FieldCheck.requireFolder(folder, Resources.folderField, reader);
-    if (message !== null) {
+    if (!Object.isNull(message)) {
       FieldCheck.requireText(message, Resources.messageField, reader);
       FieldCheck.requireLine(message, Resources.messageField, reader);
     }

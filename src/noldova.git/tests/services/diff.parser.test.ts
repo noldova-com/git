@@ -8,6 +8,7 @@
 
 import assert from "node:assert/strict";
 
+import "@noldova/context.core";
 import { describe, test, vi } from "vitest";
 
 import { FailureCode, FileChange, GitCode, LineKind } from "@noldova/git.protocol";
@@ -211,10 +212,10 @@ describe("DiffParser", () => {
       scanned = spy.mock.calls.reduce((sum: number, [needle, from]: readonly unknown[], index: number): number => {
         const searched: unknown = spy.mock.contexts[index];
         const result = spy.mock.results[index];
-        const at: number = result?.type === "return" && typeof result.value === "number" ? result.value : -1;
-        const start: number = typeof from === "number" ? from : 0;
+        const at: number = result?.type === "return" && Object.isNumber(result.value) ? result.value : -1;
+        const start: number = Object.isNumber(from) ? from : 0;
         const length: number = searched instanceof Uint8Array ? searched.length : 0;
-        const size: number = typeof needle === "string" || needle instanceof Uint8Array ? needle.length : 1;
+        const size: number = Object.isString(needle) || needle instanceof Uint8Array ? needle.length : 1;
         return sum + (at < 0 ? length - start : at - start + size);
       }, 0);
     } finally {

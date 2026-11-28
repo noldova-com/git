@@ -8,6 +8,7 @@
 import { lstat, open } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { FileState, LineCounts, StatusEntry, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
@@ -44,7 +45,7 @@ export class LineCountsReader {
     for (const entry of entries) {
       const untracked = entry.worktree === FileState.Untracked;
       const worktreeCounts = untracked
-        ? entry.pathBytes === undefined ? await LineCountsReader.countFileAsync(path.join(top, entry.path), budget) : null
+        ? Object.isUndefined(entry.pathBytes) ? await LineCountsReader.countFileAsync(path.join(top, entry.path), budget) : null
         : LineCountsReader.isCounted(entry.worktree) ? worktree.get(entry.path) ?? null : null;
       const indexCounts = !untracked && LineCountsReader.isCounted(entry.index) ? index.get(entry.path) ?? null : null;
       counted.push(new StatusEntry(entry.path, entry.pathBytes, entry.originalPath, entry.originalPathBytes, entry.index, entry.worktree, entry.conflict,
@@ -64,7 +65,7 @@ export class LineCountsReader {
         throw LineCountsReader.unreadable();
       const isMoved = second + 1 === record.length;
       const target = isMoved ? records[index + 2] : record.subarray(second + 1);
-      if (target === undefined)
+      if (Object.isUndefined(target))
         throw LineCountsReader.unreadable();
       if (isMoved)
         index += 2;
@@ -101,7 +102,7 @@ export class LineCountsReader {
       if (!(await lstat(file)).isFile())
         return null;
       const content: Buffer | null = await LineCountsReader.readCappedAsync(file, Math.min(Resources.lineCountFileBytes, budget.remainingBytes));
-      if (content === null)
+      if (Object.isNull(content))
         return null;
       budget.remainingBytes -= content.length;
       if (content.includes(Resources.nulByte))

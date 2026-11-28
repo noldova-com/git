@@ -8,6 +8,7 @@
 
 import assert from "node:assert/strict";
 
+import "@noldova/context.core";
 import { JsonReader } from "@noldova/context.json";
 import { FailureCode, SecretFailureReason } from "@noldova/desktop.protocol";
 import { MethodFailureException } from "@noldova/desktop.runtime";
@@ -67,7 +68,7 @@ class Rig {
 
   public index(): unknown {
     const value = this.store.values.get("git-github.accounts");
-    return value === undefined ? undefined : JSON.parse(value);
+    return Object.isUndefined(value) ? undefined : JSON.parse(value);
   }
 
   public async savedAsync(): Promise<void> {

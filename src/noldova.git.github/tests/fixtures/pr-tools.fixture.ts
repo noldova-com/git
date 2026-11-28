@@ -8,6 +8,7 @@
 
 import assert from "node:assert/strict";
 
+import "@noldova/context.core";
 import { JsonException, type JsonObject, JsonReader, type JsonValue } from "@noldova/context.json";
 import { Failure, type FailureCode } from "@noldova/desktop.protocol";
 import { MethodFailureException, ToolFailure, type ToolFailureCode, ToolResult, type ToolSession } from "@noldova/desktop.runtime";
@@ -52,7 +53,7 @@ export class PrToolsRig {
   }
 
   public createAsync(value: JsonObject = draft, signal?: AbortSignal): Promise<ToolResult | ToolFailure> {
-    return this.session.callAsync("git_github_pr_create", value, signal === undefined ? {} : { signal });
+    return this.session.callAsync("git_github_pr_create", value, Object.isUndefined(signal) ? {} : { signal });
   }
 }
 
@@ -85,7 +86,7 @@ export function failTitle(failure: Error): void {
     if (name === "title")
       throw failure;
     const value: JsonValue = this.readValue(name);
-    if (typeof value !== "string")
+    if (!Object.isString(value))
       throw new JsonException("expected a string", `${this.path}.${name}`);
     return value;
   });

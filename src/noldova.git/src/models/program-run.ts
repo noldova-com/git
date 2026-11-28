@@ -8,6 +8,8 @@
 
 import path from "node:path";
 
+import "@noldova/context.core";
+
 import { Access } from "../enums/access.ts";
 import { Program } from "../enums/program.ts";
 import { FolderNotAbsoluteException } from "../exceptions/folder-not-absolute.exception.ts";
@@ -48,7 +50,7 @@ export class ProgramRun {
     this.gitFolder = gitFolder;
     this.commonGitFolder = commonGitFolder;
     this.limits = limits;
-    if (signal !== undefined)
+    if (!Object.isUndefined(signal))
       this.signal = signal;
     this.input = input;
     this.isLogged = isLogged;
@@ -83,7 +85,7 @@ export class ProgramRun {
   }
 
   private static requireAbsolute(name: string, folder: string | null): void {
-    if (folder !== null && !path.isAbsolute(folder))
+    if (!Object.isNull(folder) && !path.isAbsolute(folder))
       throw new FolderNotAbsoluteException(name, folder);
   }
 }

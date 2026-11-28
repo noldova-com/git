@@ -10,6 +10,8 @@ import { type FSWatcher, watch } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
+
 import { Resources } from "../resources.ts";
 import type { IgnoredPaths } from "./ignored-paths.ts";
 
@@ -110,14 +112,14 @@ export class FolderTreeWatch {
   private note(folder: string, watcher: FSWatcher, event: string, name: string | null): void {
     if (this.stop.signal.aborted)
       return;
-    if (name !== null && path.isAbsolute(name)) {
+    if (!Object.isNull(name) && path.isAbsolute(name)) {
       if (this.watchers.get(folder) === watcher) {
         this.forget(folder);
         this.follow(this.serially(() => this.settleAsync(folder)));
       }
       return;
     }
-    if (name === null) {
+    if (Object.isNull(name)) {
       this.onChange(null);
       return;
     }

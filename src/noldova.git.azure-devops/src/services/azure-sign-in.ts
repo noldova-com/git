@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { JsonException, JsonReader } from "@noldova/context.json";
 import { SecretFailureReason, SecretFailures } from "@noldova/desktop.protocol";
 import { type IAppWindows, type IModuleLog, type IModuleSecrets, MethodFailureException } from "@noldova/desktop.runtime";
@@ -76,11 +77,11 @@ export class AzureSignIn implements IAzureToken {
         throw error;
       if (SecretFailures.reasonOf(error.failure) !== SecretFailureReason.NotConnected)
         this.log.write(Resources.formatKeptSignInUnread(error.failure.message));
-      else if (this.unfollowWindows === null)
+      else if (Object.isNull(this.unfollowWindows))
         this.unfollowWindows = this.appWindows.onChanged(() => this.restoreOnceConnected());
       return;
     }
-    if (kept === null)
+    if (Object.isNull(kept))
       return;
     let restored: KeptSignIn;
     try {
@@ -126,7 +127,7 @@ export class AzureSignIn implements IAzureToken {
   }
 
   public cancelSignIn(): HostSignIn {
-    if (this.waiting === null)
+    if (Object.isNull(this.waiting))
       return this.signIn;
     this.waiting.abort();
     this.waiting = null;
@@ -157,7 +158,7 @@ export class AzureSignIn implements IAzureToken {
   public async refusedAsync(token: AzureCredential): Promise<void> {
     const held = this.held;
     const kept = this.kept;
-    if (held?.token !== token || kept === null)
+    if (held?.token !== token || Object.isNull(kept))
       return;
     await this.recheckOnceAsync(token, held.organization, kept);
   }
@@ -194,7 +195,7 @@ export class AzureSignIn implements IAzureToken {
         throw error;
       return ended(SignInFailure.Unreachable);
     }
-    if (account === null)
+    if (Object.isNull(account))
       return ended(SignInFailure.Refused);
     const kept = new KeptSignIn(SignInKind.Token, token, organization, account);
     if (!await this.saveAsync(kept))
@@ -219,14 +220,14 @@ export class AzureSignIn implements IAzureToken {
     };
     try {
       const answer: RedirectAnswer = await Promise.race([redirect.answered, AzureSignIn.abortedAsync(signal)]);
-      if (answer.code === null)
+      if (Object.isNull(answer.code))
         return ended(answer.error === Resources.accessDeniedError ? SignInFailure.Denied : SignInFailure.Refused);
       const grant = await this.flow.redeemAsync(answer.code, redirect.redirectUri, verifier, signal);
-      if (grant === null)
+      if (Object.isNull(grant))
         return ended(SignInFailure.Refused);
       const credential = AzureCredential.ofAccess(grant.accessToken);
       const account = await this.readAccountAsync(credential, organization, signal);
-      if (account === null)
+      if (Object.isNull(account))
         return ended(SignInFailure.Refused);
       const kept = new KeptSignIn(SignInKind.Microsoft, grant.refreshToken, organization, account);
       if (!await this.saveAsync(kept))
@@ -279,7 +280,7 @@ export class AzureSignIn implements IAzureToken {
     }
     if (generation !== this.generation)
       return false;
-    if (grant === null) {
+    if (Object.isNull(grant)) {
       await this.forgetAsync(SignInFailure.Expired);
       return false;
     }
@@ -323,7 +324,7 @@ export class AzureSignIn implements IAzureToken {
         return null;
       throw error;
     }
-    return connection === null ? null : AzureApi.read(() => AzureSignIn.accountOf(connection.readObject(Resources.authenticatedUserField)));
+    return Object.isNull(connection) ? null : AzureApi.read(() => AzureSignIn.accountOf(connection.readObject(Resources.authenticatedUserField)));
   }
 
   private static accountOf(user: JsonReader): HostAccount | null {
@@ -347,7 +348,7 @@ export class AzureSignIn implements IAzureToken {
     }
     if (this.signIn.state !== SignInState.SignedIn || this.generation !== generation)
       return;
-    if (account === null)
+    if (Object.isNull(account))
       await this.forgetAsync(SignInFailure.Revoked);
     else
       this.set(HostSignIn.signedIn(account));
@@ -391,7 +392,7 @@ export class AzureSignIn implements IAzureToken {
     const removals = await Promise.allSettled(names.map(t => this.secrets.removeAsync(t)));
     const failures: unknown[] = removals.flatMap(t => t.status === Resources.rejectedStatus ? [t.reason] : []);
     const unexpected = failures.find(t => !(t instanceof MethodFailureException));
-    if (unexpected !== undefined)
+    if (!Object.isUndefined(unexpected))
       throw unexpected;
     if (failures.length === 0)
       return true;
@@ -400,7 +401,7 @@ export class AzureSignIn implements IAzureToken {
   }
 
   private isBusy(): boolean {
-    return this.isSigningIn || this.waiting !== null || this.signIn.state !== SignInState.SignedOut || this.stopped.signal.aborted;
+    return this.isSigningIn || !Object.isNull(this.waiting) || this.signIn.state !== SignInState.SignedOut || this.stopped.signal.aborted;
   }
 
   private set(signIn: HostSignIn): void {

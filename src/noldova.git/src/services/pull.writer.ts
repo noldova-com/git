@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { type IPermissionRequest, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
 import { GitNames, type GitStatus, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
@@ -66,12 +67,12 @@ export class PullWriter implements IGitWrite {
     const errors = result.errors.toString(Resources.utf8Encoding);
     const output = { text: errors, source: UntrustedSource.Repository };
     const files = Resources.overwrittenByMergePattern.exec(errors.replaceAll(Resources.crlf, Resources.lineEnd))?.groups?.[Resources.filesGroup];
-    if (files !== undefined) {
+    if (!Object.isUndefined(files)) {
       const paths = files.split(Resources.lineEnd).filter(t => t.length > 0).map(t => LogReader.toLine(t.slice(1)));
       throw new PullChangesInTheWayException(paths, output);
     }
     const unsafe = Resources.unsafeRepositoryPattern.exec(errors)?.groups?.[Resources.folderGroup];
-    if (unsafe !== undefined)
+    if (!Object.isUndefined(unsafe))
       throw new UnsafeRepositoryException(LogReader.toLine(unsafe), output);
     if (Resources.hostKeyFailedPattern.test(errors))
       throw new HostKeyUnknownException(output);
@@ -85,11 +86,11 @@ export class PullWriter implements IGitWrite {
   }
 
   private static pulledOf(status: GitStatus): PulledBranch {
-    if (status.branch === null)
+    if (Object.isNull(status.branch))
       throw new PullDetachedException();
-    if (status.upstream === null || status.upstream.gone)
+    if (Object.isNull(status.upstream) || status.upstream.gone)
       throw new PullNoUpstreamException();
-    if (status.operation !== null || status.entries.some(t => t.conflict !== null))
+    if (!Object.isNull(status.operation) || status.entries.some(t => !Object.isNull(t.conflict)))
       throw new PullConflictsException();
     if (status.upstream.ahead > 0 && status.upstream.behind > 0)
       throw new PullDivergedException();
@@ -99,6 +100,6 @@ export class PullWriter implements IGitWrite {
   private async hasDivergedAsync(top: string, signal?: AbortSignal): Promise<boolean> {
     const result = await this.runner.runAsync(ProgramRun.readGit(PullWriter.COUNTS, top, PullWriter.COUNT_LIMITS, signal));
     const counts = result.exit.code === 0 ? Resources.aheadBehindPattern.exec(result.output.toString(Resources.utf8Encoding))?.groups : undefined;
-    return counts !== undefined && Number(counts[Resources.aheadGroup]) > 0 && Number(counts[Resources.behindGroup]) > 0;
+    return !Object.isUndefined(counts) && Number(counts[Resources.aheadGroup]) > 0 && Number(counts[Resources.behindGroup]) > 0;
   }
 }

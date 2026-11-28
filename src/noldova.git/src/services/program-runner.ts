@@ -10,6 +10,7 @@ import { addAbortListener } from "node:events";
 import type { Readable } from "node:stream";
 import timers from "node:timers";
 
+import "@noldova/context.core";
 import { type IRuntimePartContext, type OwnedProcess, ProgramNotFoundException } from "@noldova/desktop.runtime";
 
 import { Program } from "../enums/program.ts";
@@ -38,7 +39,7 @@ export class ProgramRunner {
 
   public async runAsync(run: ProgramRun): Promise<ProgramResult> {
     const commonGitFolder = run.commonGitFolder;
-    if (commonGitFolder === null)
+    if (Object.isNull(commonGitFolder))
       return await this.startAsync(run);
     return await this.writes.runAsync(commonGitFolder, async () => {
       const finish = run.isLogged ? this.commands?.start(commonGitFolder, run.arguments) : undefined;
@@ -56,7 +57,7 @@ export class ProgramRunner {
   private async startAsync(run: ProgramRun): Promise<ProgramResult> {
     const limit = new AbortController();
     const timer: NodeJS.Timeout = timers.setTimeout(() => limit.abort(), run.limits.milliseconds);
-    const signal = run.signal === undefined ? limit.signal : AbortSignal.any([run.signal, limit.signal]);
+    const signal = Object.isUndefined(run.signal) ? limit.signal : AbortSignal.any([run.signal, limit.signal]);
     const request = new ProgramRequest(run, signal);
     try {
       const process = await this.startProcessAsync(run, request, limit.signal);
@@ -131,6 +132,6 @@ export class ProgramRunner {
   }
 
   private static isIndexLocked(run: ProgramRun, result: ProgramResult): boolean {
-    return run.gitFolder !== null && result.exit.code === Resources.gitFatalExitCode && Resources.indexLockedPattern.test(result.errors.toString(Resources.utf8Encoding));
+    return !Object.isNull(run.gitFolder) && result.exit.code === Resources.gitFatalExitCode && Resources.indexLockedPattern.test(result.errors.toString(Resources.utf8Encoding));
   }
 }

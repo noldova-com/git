@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { SignInState } from "@noldova/git.hosting.protocol";
 import { GitHubAccessGrant, GitHubAccessRefusal, type IGitHubAccess } from "@noldova/git.github.protocol";
 
@@ -34,13 +35,13 @@ export class GitHubAccess implements IGitHubAccess {
   public async accessForAsync(repository: { readonly host: string; readonly path: string }, signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal> {
     signal.throwIfAborted();
     const id: number | null = await this.accounts.accountForAsync(repository.host, repository.path, signal);
-    return GitHubAccess.answerOf(id === null ? this.accounts.first : this.accounts.signInOf(id));
+    return GitHubAccess.answerOf(Object.isNull(id) ? this.accounts.first : this.accounts.signInOf(id));
   }
 
   private static answerOf(signIn: AccessSignIn): GitHubAccessGrant | GitHubAccessRefusal {
     const current = signIn.current;
     const token = signIn.token;
-    if (current.account !== null && token !== null)
+    if (!Object.isNull(current.account) && !Object.isNull(token))
       return new GitHubAccessGrant(token, current.account.login, Resources.host);
     if (current.state === SignInState.Waiting)
       return new GitHubAccessRefusal(Resources.accessWaitingReason);

@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
 
 import { Resources } from "../resources.ts";
@@ -16,7 +17,7 @@ export class RemoteUrl {
     if (Resources.urlSchemePattern.test(url))
       return RemoteUrl.fromUrl(name, url);
     const scp = Resources.drivePattern.test(url) ? null : Resources.scpPattern.exec(url);
-    if (scp === null)
+    if (Object.isNull(scp))
       return new GitRemote(name, null, null, RemoteTransport.File);
     return new GitRemote(name, RemoteUrl.hostOf(Required.at(scp, 1, Resources.remoteCommand, Resources.remoteUrlPart)), RemoteUrl.pathOf(Required.at(scp, 2, Resources.remoteCommand, Resources.remoteUrlPart)), RemoteTransport.Ssh);
   }

@@ -6,10 +6,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
+
 export class AnswerText {
   public static async readAsync(response: Response, limit: number): Promise<string | null> {
     const body: ReadableStream<Uint8Array> | null = response.body;
-    if (body === null)
+    if (Object.isNull(body))
       return "";
     const reader: ReadableStreamDefaultReader<Uint8Array> = body.getReader();
     const decoder: TextDecoder = new TextDecoder();

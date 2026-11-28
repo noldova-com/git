@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -26,7 +27,7 @@ export class HostPullRequestHead {
     FieldCheck.requireText(title, Resources.titleField, reader);
     FieldCheck.requireHttps(url, Resources.urlField, reader);
     FieldCheck.requireText(headBranch, Resources.headBranchField, reader);
-    if (baseBranch !== null)
+    if (!Object.isNull(baseBranch))
       FieldCheck.requireText(baseBranch, Resources.baseBranchField, reader);
 
     this.reference = reference;

@@ -8,6 +8,7 @@
 
 import { createHash } from "node:crypto";
 
+import "@noldova/context.core";
 import type { IModuleLog } from "@noldova/desktop.runtime";
 
 import { Resources } from "../resources.ts";
@@ -27,13 +28,13 @@ export class GravatarReader {
   public async readAsync(email: string, signal: AbortSignal): Promise<string | null> {
     const hash: string = createHash(Resources.digestAlgorithm).update(email.trim().toLowerCase()).digest(Resources.hexEncoding);
     const kept: string | null | undefined = this.kept.get(hash);
-    if (kept !== undefined)
+    if (!Object.isUndefined(kept))
       return kept;
     const url = new URL(Resources.gravatarAddress + hash);
     url.searchParams.set(Resources.gravatarSizeParameter, Resources.gravatarSize);
     url.searchParams.set(Resources.gravatarDefaultParameter, Resources.gravatarNoDefault);
     const read: string | null | undefined = await this.readWithinAsync(url, signal);
-    if (read === undefined)
+    if (Object.isUndefined(read))
       return null;
     this.keep(hash, read);
     return read;
@@ -67,7 +68,7 @@ export class GravatarReader {
   private async imageOfAsync(response: Response): Promise<string | null | undefined> {
     const type: string = (response.headers.get(Resources.contentTypeHeader) ?? "").split(Resources.mediaTypeParameterSeparator, 1).join("").trim().toLowerCase();
     const body: ReadableStream<Uint8Array> | null = response.body;
-    if (response.status === Resources.notFoundStatus || !response.ok || !Resources.gravatarTypes.includes(type) || body === null) {
+    if (response.status === Resources.notFoundStatus || !response.ok || !Resources.gravatarTypes.includes(type) || Object.isNull(body)) {
       await body?.cancel();
       if (response.status === Resources.notFoundStatus)
         return null;

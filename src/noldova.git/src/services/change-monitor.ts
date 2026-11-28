@@ -12,6 +12,7 @@ import { readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import timers from "node:timers";
 
+import "@noldova/context.core";
 import type { IModuleLog } from "@noldova/desktop.runtime";
 
 import { TreeWatch } from "../enums/tree-watch.ts";
@@ -61,7 +62,7 @@ export class ChangeMonitor {
     this.addWatcher(watched, folders.commonGitFolder, t => t === Resources.packedRefsFile, undefined);
     if (this.treeWatch === TreeWatch.Whole)
       this.addTreeWatcher(watched);
-    watched.started = this.startAsync(watched, cookies.filter(t => t !== undefined));
+    watched.started = this.startAsync(watched, cookies.filter(t => !Object.isUndefined(t)));
     this.track(watched.started.then(() => undefined, () => undefined));
   }
 
@@ -71,7 +72,7 @@ export class ChangeMonitor {
 
   public unwatch(key: string): void {
     const watched = this.worktrees.get(key);
-    if (watched === undefined)
+    if (Object.isUndefined(watched))
       return;
     this.worktrees.delete(key);
     watched.stop.abort();
@@ -83,9 +84,9 @@ export class ChangeMonitor {
 
   public setVisible(key: string, isVisible: boolean): void {
     const watched = this.worktrees.get(key);
-    if (watched === undefined)
+    if (Object.isUndefined(watched))
       return;
-    if (watched.poll !== null) {
+    if (!Object.isNull(watched.poll)) {
       if (!isVisible) {
         watched.poll.abort();
         watched.poll = null;
@@ -105,7 +106,7 @@ export class ChangeMonitor {
 
   public notifyWriting(key: string): void {
     const watched = this.worktrees.get(key);
-    if (watched === undefined)
+    if (Object.isUndefined(watched))
       return;
     watched.writing += 1;
     watched.generation += 1;
@@ -113,7 +114,7 @@ export class ChangeMonitor {
 
   public notifyWritten(key: string): void {
     const watched = this.worktrees.get(key);
-    if (watched === undefined)
+    if (Object.isUndefined(watched))
       return;
     watched.writing = Math.max(0, watched.writing - 1);
     watched.generation += 1;
@@ -127,7 +128,7 @@ export class ChangeMonitor {
 
   public observe(key: string, generation: number, fingerprint: string): void {
     const watched = this.worktrees.get(key);
-    if (watched !== undefined && watched.writing === 0 && watched.generation === generation && watched.fingerprint === null)
+    if (!Object.isUndefined(watched) && watched.writing === 0 && watched.generation === generation && Object.isNull(watched.fingerprint))
       watched.fingerprint = fingerprint;
   }
 
@@ -139,12 +140,12 @@ export class ChangeMonitor {
   }
 
   private addWatcher(watched: WatchedWorktree, folder: string, accepts: (name: string) => boolean, cookieExtension: string | undefined): WatchCookie | undefined {
-    const cookie = cookieExtension === undefined ? undefined : new WatchCookie(folder, Resources.formatWatchCookie(randomUUID(), cookieExtension));
+    const cookie = Object.isUndefined(cookieExtension) ? undefined : new WatchCookie(folder, Resources.formatWatchCookie(randomUUID(), cookieExtension));
     try {
       const watcher = watch(folder, { persistent: false }, (_event, name) => {
-        if (cookie !== undefined && name === cookie.name)
+        if (!Object.isUndefined(cookie) && name === cookie.name)
           cookie.markSeen();
-        else if (name === null || accepts(name))
+        else if (Object.isNull(name) || accepts(name))
           this.schedule(watched);
       });
       watcher.on("error", (error: Error) => {
@@ -208,14 +209,14 @@ export class ChangeMonitor {
   }
 
   private noteTreeChange(watched: WatchedWorktree, name: string | null): void {
-    if (watched.poll === null)
+    if (Object.isNull(watched.poll))
       return;
-    if (name === null) {
+    if (Object.isNull(name)) {
       this.schedule(watched);
       return;
     }
     watched.changed.add(name);
-    if (watched.treeQuiet !== null)
+    if (!Object.isNull(watched.treeQuiet))
       timers.clearTimeout(watched.treeQuiet);
     const check = (): void => this.checkTree(watched);
     watched.treeQuiet = timers.setTimeout(check, Resources.treeQuietMilliseconds);
@@ -239,7 +240,7 @@ export class ChangeMonitor {
 
   private static endTreeWaits(watched: WatchedWorktree): void {
     for (const timer of [watched.treeQuiet, watched.treeLongest])
-      if (timer !== null)
+      if (!Object.isNull(timer))
         timers.clearTimeout(timer);
     watched.treeQuiet = null;
     watched.treeLongest = null;

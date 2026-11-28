@@ -9,6 +9,7 @@
 import { lstat } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { type GitStatus, type StatusUpstream, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
@@ -67,7 +68,7 @@ export class StatusReader {
   }
 
   private async readFingerprintAsync(folders: RepositoryFolders, output: Buffer, parsed: ParsedStatus, signal?: AbortSignal): Promise<string> {
-    const heads = await Promise.all(parsed.entries.filter(t => t.submodule !== null).map(async t => {
+    const heads = await Promise.all(parsed.entries.filter(t => !Object.isNull(t.submodule)).map(async t => {
       const result = await this.runner.runAsync(ProgramRun.readGit(StatusReader.SUBMODULE_HEAD, path.join(folders.top, t.path), StatusReader.UPSTREAM_LIMITS, signal));
       return Buffer.concat([Buffer.from(`${result.exit.code}${Resources.recordSeparator}`), result.output]);
     }));
@@ -86,7 +87,7 @@ export class StatusReader {
   }
 
   private async readUpstreamIdAsync(top: string, upstream: StatusUpstream | null, signal?: AbortSignal): Promise<string | null> {
-    if (upstream === null || upstream.gone)
+    if (Object.isNull(upstream) || upstream.gone)
       return null;
     const result = await this.runner.runAsync(ProgramRun.readGit(StatusReader.UPSTREAM, top, StatusReader.UPSTREAM_LIMITS, signal));
     if (result.exit.code === Resources.refMissingExitCode)

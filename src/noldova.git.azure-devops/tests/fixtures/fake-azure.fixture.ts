@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { Failure, FailureCode, type SecretFailureReason, SecretFailures } from "@noldova/desktop.protocol";
 import { Fake, UnansweredCallException } from "@noldova/desktop.protocol/testing";
 import { MethodFailureException } from "@noldova/desktop.runtime";
@@ -49,7 +50,7 @@ export class FakeAzure {
       waiter.resolve();
     }
     const answer = this.answers.shift();
-    if (answer === undefined)
+    if (Object.isUndefined(answer))
       return Promise.reject(new UnansweredCallException("fetch"));
     const signal = init.signal;
     return new Promise<Response>((resolve, reject) => {
@@ -143,25 +144,25 @@ export class KeptSecrets {
   private async saveAsync(name: string, value: string): Promise<void> {
     const gate: Promise<void> | null = this.saveGate;
     this.saveGate = null;
-    if (this.saveFailure === null)
+    if (Object.isNull(this.saveFailure))
       this.values.set(name, value);
     for (const saved of this.saving.splice(0))
       saved();
     await gate;
-    if (this.saveFailure !== null)
+    if (!Object.isNull(this.saveFailure))
       throw this.saveFailure;
   }
 
   private async readAsync(name: string): Promise<string | null> {
     await this.readGate;
-    if (this.readFailure !== null)
+    if (!Object.isNull(this.readFailure))
       throw this.readFailure;
     return this.values.get(name) ?? null;
   }
 
   private async removeAsync(name: string): Promise<void> {
     await this.removeGate;
-    if (this.removeFailure !== null && (this.removeFailureName === null || this.removeFailureName === name))
+    if (!Object.isNull(this.removeFailure) && (Object.isNull(this.removeFailureName) || this.removeFailureName === name))
       throw this.removeFailure;
     this.values.delete(name);
   }
@@ -185,9 +186,9 @@ export class FakeToken extends Fake<IAzureToken> implements IAzureToken {
   public constructor(token: string | null = "azure-token", organization: string | null = "fabrikam") {
     super();
     this.raw = token;
-    this.credential = token === null ? null : AzureCredential.ofToken(token);
+    this.credential = Object.isNull(token) ? null : AzureCredential.ofToken(token);
     this.answer("token", this.credential);
-    this.answer("organization", token === null ? null : organization);
+    this.answer("organization", Object.isNull(token) ? null : organization);
     this.answer("refusedAsync", () => Promise.resolve());
     this.answer("readyAsync", () => Promise.resolve());
   }

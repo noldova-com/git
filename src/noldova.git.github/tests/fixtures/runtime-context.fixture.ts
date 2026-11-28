@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
 import { EventChannel, type IMethodHandler, ServiceMissingException, ServiceTypeMismatchException } from "@noldova/desktop.runtime";
 import { FakeRuntimePartContext } from "@noldova/desktop.runtime/testing";
@@ -30,7 +31,7 @@ export class RuntimeContext {
     });
     this.fake.answer("getService", (name, type) => {
       const service: object | undefined = this.services.get(name);
-      if (service === undefined)
+      if (Object.isUndefined(service))
         throw new ServiceMissingException(name);
       if (!(service instanceof type))
         throw new ServiceTypeMismatchException(name, type.name);

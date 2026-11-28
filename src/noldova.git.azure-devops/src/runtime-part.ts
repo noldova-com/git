@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { JsonException, JsonReader } from "@noldova/context.json";
 import { Failure, FailureCode, ShellClients } from "@noldova/desktop.protocol";
 import { type EventChannel, type IRuntimePart, type IRuntimePartContext, MethodFailureException, type RequestContext } from "@noldova/desktop.runtime";
@@ -36,7 +37,7 @@ export class RuntimePart implements IRuntimePart {
   private signIn: AzureSignIn | null = null;
 
   public get isActive(): boolean {
-    return this.context !== null;
+    return !Object.isNull(this.context);
   }
 
   public async activateAsync(context: IRuntimePartContext): Promise<void> {
@@ -187,7 +188,7 @@ export class RuntimePart implements IRuntimePart {
   }
 
   private static fromWindow(request: RequestContext): RequestContext {
-    if (request.window === null || request.client !== ShellClients.mainProcess)
+    if (Object.isNull(request.window) || request.client !== ShellClients.mainProcess)
       throw AzureApi.failure(FailureCode.Unauthorized, Resources.notFromWindowMessage);
     return request;
   }
@@ -232,7 +233,7 @@ export class RuntimePart implements IRuntimePart {
     catch {
       throw AzureApi.failure(FailureCode.InvalidParams, expected);
     }
-    if (write === null)
+    if (Object.isNull(write))
       throw AzureApi.failure(FailureCode.InvalidParams, expected);
     return write;
   }

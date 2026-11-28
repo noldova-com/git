@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -21,7 +22,7 @@ export class GitRebaseCommit {
   public constructor(id: string, message: string, fixupOf: string | null, reader?: JsonReader) {
     FieldCheck.requireObjectId(id, Resources.idField, reader);
     FieldCheck.requireNoNul(message, Resources.messageField, reader);
-    if (fixupOf !== null)
+    if (!Object.isNull(fixupOf))
       FieldCheck.requireObjectId(fixupOf, Resources.fixupOfField, reader);
 
     this.id = id;

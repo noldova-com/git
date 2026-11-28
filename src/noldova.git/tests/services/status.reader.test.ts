@@ -12,6 +12,7 @@ import { existsSync } from "node:fs";
 import { chmod, lstat, mkdir, rm, utimes, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test, vi } from "vitest";
 
 import { ConflictKind, FailureCode, FileState, type GitStatus, OperationKind, RemoteTransport, type StatusEntry, UntrustedSource } from "@noldova/git.protocol";
@@ -232,7 +233,7 @@ describe("StatusReader", () => {
     await mkdir(outside);
 
     await assert.rejects(reader.readAsync(new RepositoryFolders(outside, path.join(outside, ".git"), path.join(outside, ".git"))), (error: unknown) => {
-      assert.ok(error instanceof GitFailedException && error.output !== null);
+      assert.ok(error instanceof GitFailedException && !Object.isNull(error.output));
       assert.deepEqual({ ...error }, { name: "GitFailedException", code: FailureCode.Unavailable, gitCode: null, command: "status", output: { text: error.output.text, source: UntrustedSource.Repository } });
       assert.equal(error.message, "git status failed; its output comes with the failure as untrusted text.");
       assert.match(error.output.text, /not a git repository/v);
@@ -376,7 +377,7 @@ describe("StatusReader", () => {
     const before = supervisor.requests.length;
 
     const status = await readAsync();
-    const runs = supervisor.requests.slice(before).map(t => t.arguments.find(u => u === "check-attr" || u === "cat-file")).filter(t => t !== undefined);
+    const runs = supervisor.requests.slice(before).map(t => t.arguments.find(u => u === "check-attr" || u === "cat-file")).filter(t => !Object.isUndefined(t));
 
     assert.deepEqual([status.entries.length, status.uncheckedLfsFiles, runs], [0, 0, ["check-attr", "cat-file", "cat-file"]]);
   });

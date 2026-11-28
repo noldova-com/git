@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -52,13 +53,13 @@ export class GitStatus {
     uncheckedLfsFiles: number = 0,
     fetchedAt: string | null = null,
     reader?: JsonReader) {
-    if (branch !== null)
+    if (!Object.isNull(branch))
       FieldCheck.requireText(branch, Resources.branchField, reader);
-    if (head !== null)
+    if (!Object.isNull(head))
       FieldCheck.requireObjectId(head, Resources.headField, reader);
     FieldCheck.requireText(fingerprint, Resources.fingerprintField, reader);
     FieldCheck.requireCount(uncheckedLfsFiles, Resources.uncheckedLfsFilesField, reader);
-    if (fetchedAt !== null && (!Resources.dateTimePattern.test(fetchedAt) || Number.isNaN(Date.parse(fetchedAt))))
+    if (!Object.isNull(fetchedAt) && (!Resources.dateTimePattern.test(fetchedAt) || Number.isNaN(Date.parse(fetchedAt))))
       FieldCheck.fail(Resources.fetchedAtField, Resources.dateTimeExpected, reader);
 
     this.branch = branch;

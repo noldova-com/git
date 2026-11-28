@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { type IPermissionRequest, PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
 import { GitNames, type GitStatus, ResetMode, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
@@ -37,18 +38,18 @@ export class ResetWriter implements IGitWrite {
 
   public constructor(runner: ProgramRunner, mode: ResetMode, id: string | null) {
     this.runner = runner;
-    this.mode = id === null ? ResetMode.Soft : mode;
+    this.mode = Object.isNull(id) ? ResetMode.Soft : mode;
     this.id = id;
-    this.method = id === null ? GitNames.undoCommitMethod : GitNames.resetMethod;
+    this.method = Object.isNull(id) ? GitNames.undoCommitMethod : GitNames.resetMethod;
     this.undo = ResetWriter.UNDO[this.mode];
   }
 
   public refuse(status: GitStatus): void {
-    if (status.entries.some(t => t.conflict !== null) || status.operation !== null)
+    if (status.entries.some(t => !Object.isNull(t.conflict)) || !Object.isNull(status.operation))
       throw new ResetDuringOperationException();
-    if (status.head === null)
+    if (Object.isNull(status.head))
       throw new ResetNoCommitException();
-    if (this.id === null && status.upstream !== null && !status.upstream.gone && status.upstream.ahead === 0)
+    if (Object.isNull(this.id) && !Object.isNull(status.upstream) && !status.upstream.gone && status.upstream.ahead === 0)
       throw new UndoCommitPushedException();
   }
 
@@ -59,7 +60,7 @@ export class ResetWriter implements IGitWrite {
     return WritePermission.create(
       this.method,
       folders.top,
-      this.id === null ? Resources.formatUndoCommitTitle(status.branch) : Resources.formatResetTitle(status.branch, shortId, this.mode),
+      Object.isNull(this.id) ? Resources.formatUndoCommitTitle(status.branch) : Resources.formatResetTitle(status.branch, shortId, this.mode),
       [{ label: Resources.commitSubjectLabel, kind: PermissionDetailKind.Text, value: Resources.formatCommitLine(shortId, LogReader.toLine(subject)) }],
       ToolRisk.High,
       ResetWriter.OPTIONS);
@@ -74,7 +75,7 @@ export class ResetWriter implements IGitWrite {
   }
 
   private async targetAsync(top: string, signal?: AbortSignal): Promise<string> {
-    if (this.id !== null)
+    if (!Object.isNull(this.id))
       return this.id;
     const gitArguments = new GitArguments(Resources.parentArguments);
     const result = await this.runner.runAsync(ProgramRun.readGit(gitArguments, top, ResetWriter.READ_LIMITS, signal));

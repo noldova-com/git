@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { PolicyState } from "../enums/policy-state.ts";
@@ -24,9 +25,9 @@ export class HostPolicy {
 
   public constructor(name: string, state: PolicyState, isBlocking: boolean, url: string | null, buildNumber: string | null = null, reader?: JsonReader) {
     FieldCheck.requireText(name, Resources.nameField, reader);
-    if (url !== null)
+    if (!Object.isNull(url))
       FieldCheck.requireHttps(url, Resources.urlField, reader);
-    if (buildNumber !== null)
+    if (!Object.isNull(buildNumber))
       FieldCheck.requireText(buildNumber, Resources.buildNumberField, reader);
 
     this.name = name;

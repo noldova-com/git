@@ -8,6 +8,7 @@
 
 import timers from "node:timers/promises";
 
+import "@noldova/context.core";
 import { JsonException, JsonReader } from "@noldova/context.json";
 import { SecretFailureReason, SecretFailures } from "@noldova/desktop.protocol";
 import { type IAppWindows, type IModuleLog, type IModuleSecrets, MethodFailureException } from "@noldova/desktop.runtime";
@@ -79,12 +80,12 @@ export class GitHubSignIn {
         this.unreadable = true;
         this.log.write(Resources.formatKeptSignInUnread(error.failure.message));
       }
-      else if (this.unfollowWindows === null)
+      else if (Object.isNull(this.unfollowWindows))
         this.unfollowWindows = this.appWindows.onChanged(() => this.restoreOnceConnected());
       return;
     }
     this.unreadable = false;
-    if (kept === null)
+    if (Object.isNull(kept))
       return;
     let restored: KeptSignIn;
     try {
@@ -105,7 +106,7 @@ export class GitHubSignIn {
   }
 
   public async startAsync(): Promise<HostSignIn> {
-    if (this.signIn.state !== SignInState.SignedOut || this.waiting !== null || this.stopped.signal.aborted)
+    if (this.signIn.state !== SignInState.SignedOut || !Object.isNull(this.waiting) || this.stopped.signal.aborted)
       return this.signIn;
     const waiting = new AbortController();
     this.waiting = waiting;
@@ -122,7 +123,7 @@ export class GitHubSignIn {
   }
 
   public cancel(): HostSignIn {
-    if (this.waiting === null)
+    if (Object.isNull(this.waiting))
       return this.signIn;
     this.waiting.abort();
     this.waiting = null;
@@ -171,7 +172,7 @@ export class GitHubSignIn {
         if (expiry.signal.aborted)
           throw new SignInExpiredException();
         const poll = await this.flow.pollAsync(grant.deviceCode, signal);
-        if (poll.token !== null) {
+        if (!Object.isNull(poll.token)) {
           await this.keepAsync(poll.token, signal);
           return;
         }
@@ -189,7 +190,7 @@ export class GitHubSignIn {
 
   private async keepAsync(token: string, signal: AbortSignal): Promise<void> {
     const read = await this.flow.readAccountAsync(token, signal);
-    if (read === null)
+    if (Object.isNull(read))
       throw new SignInTokenRefusedException();
     const { account } = read;
     const save: number = ++this.saves;
@@ -230,7 +231,7 @@ export class GitHubSignIn {
     }
     if (this.signIn.state !== SignInState.SignedIn || this.generation !== generation)
       return;
-    if (read === null) {
+    if (Object.isNull(read)) {
       await this.forgetAsync(SignInFailure.Revoked);
       return;
     }

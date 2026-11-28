@@ -6,6 +6,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
+
 export class Resources {
   public static readonly deviceCodeUrl: string = "https://github.com/login/device/code";
   public static readonly accessTokenUrl: string = "https://github.com/login/oauth/access_token";
@@ -370,7 +372,7 @@ export class Resources {
   }
 
   public static formatAccountAvatar(id: string | null, login: string): string {
-    return id === null ? `https://${Resources.avatarHost}/${login}` : `https://${Resources.avatarHost}/u/${id}?v=4`;
+    return Object.isNull(id) ? `https://${Resources.avatarHost}/${login}` : `https://${Resources.avatarHost}/u/${id}?v=4`;
   }
 
   public static formatIssueCommentsPath(number: number, page: number): string {

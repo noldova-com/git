@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { JsonException, JsonReader } from "@noldova/context.json";
 import { Failure, FailureCode } from "@noldova/desktop.protocol";
 import { MethodFailureException } from "@noldova/desktop.runtime";
@@ -27,21 +28,21 @@ export class GitHubApi {
 
   public async getAsync(path: string, token: string, signal: AbortSignal): Promise<JsonReader | null> {
     let answers: Map<string, CachedAnswer> | undefined = this.answers.get(token);
-    if (answers === undefined) {
+    if (Object.isUndefined(answers)) {
       answers = new Map();
       this.answers.set(token, answers);
     }
     const url: string = Resources.apiUrl + path;
     const cached: CachedAnswer | undefined = answers.get(url);
     const now: number = Date.now();
-    if (cached !== undefined && now - cached.readAt < Resources.freshFor)
+    if (!Object.isUndefined(cached) && now - cached.readAt < Resources.freshFor)
       return this.reuse(url, cached, cached.readAt, token);
     const headers: Record<string, string> = GitHubApi.headersOf(token);
     const tag: string | null = cached?.tag ?? null;
-    if (tag !== null)
+    if (!Object.isNull(tag))
       headers[Resources.ifNoneMatchHeader] = tag;
     const response: Response = await this.followAsync(url, { headers }, signal);
-    if (response.status === Resources.notModifiedStatus && cached !== undefined)
+    if (response.status === Resources.notModifiedStatus && !Object.isUndefined(cached))
       return this.reuse(url, cached, now, token);
     if (response.status === Resources.notFoundStatus) {
       await GitHubApi.dropBodyAsync(response);
@@ -107,7 +108,7 @@ export class GitHubApi {
 
   private keep(url: string, answer: CachedAnswer, token: string): void {
     const answers: Map<string, CachedAnswer> | undefined = this.answers.get(token);
-    if (answers === undefined)
+    if (Object.isUndefined(answers))
       return;
     answers.delete(url);
     if (answer.body.length > Resources.maximumKeptLength)
@@ -144,7 +145,7 @@ export class GitHubApi {
         return response;
       await GitHubApi.dropBodyAsync(response);
       const next: URL | null = GitHubApi.apiUrlOf(response.headers.get(Resources.locationHeader), url);
-      if (next === null)
+      if (Object.isNull(next))
         break;
       url = next.href;
     }
@@ -152,8 +153,8 @@ export class GitHubApi {
   }
 
   private static apiUrlOf(address: string | null, base: string): URL | null {
-    const url: URL | null = address === null ? null : URL.parse(address, base);
-    return url !== null && url.origin === Resources.apiUrl && url.username.length === 0 && url.password.length === 0 ? url : null;
+    const url: URL | null = Object.isNull(address) ? null : URL.parse(address, base);
+    return !Object.isNull(url) && url.origin === Resources.apiUrl && url.username.length === 0 && url.password.length === 0 ? url : null;
   }
 
   private static headersOf(token: string): Record<string, string> {
@@ -184,7 +185,7 @@ export class GitHubApi {
       throw GitHubApi.unreachable(error, signal);
     }
     signal.throwIfAborted();
-    if (body === null)
+    if (Object.isNull(body))
       throw GitHubApi.failure(FailureCode.Unavailable, Resources.answerTooLargeMessage);
     return body;
   }

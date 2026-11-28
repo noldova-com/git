@@ -9,6 +9,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 
+import "@noldova/context.core";
 import { JsonReader } from "@noldova/context.json";
 import { SecretFailureReason } from "@noldova/desktop.protocol";
 import { FakeAppWindows, FakeModuleLog, FakeModuleSecrets } from "@noldova/desktop.runtime/testing";
@@ -36,7 +37,7 @@ const basic = (token: string): string => `Basic ${Buffer.from(`:${token}`).toStr
 
 function heldOf(signIn: AzureSignIn): AzureCredential {
   const token = signIn.token;
-  if (token === null)
+  if (Object.isNull(token))
     throw new Error("Nothing is signed in.");
   return token;
 }
@@ -84,11 +85,11 @@ class Rig {
 
   public kept(): unknown {
     const value = this.store.values.get("git-azure-devops.signIn") ?? this.store.values.get("git-azure-devops.microsoftSignIn");
-    return value === undefined ? undefined : JSON.parse(value);
+    return Object.isUndefined(value) ? undefined : JSON.parse(value);
   }
 
   public states(): readonly string[] {
-    return this.changes.map(t => t.failure === null ? t.state : `${t.state} ${t.failure}`);
+    return this.changes.map(t => Object.isNull(t.failure) ? t.state : `${t.state} ${t.failure}`);
   }
 
   private change(signIn: HostSignIn): void {

@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
 import { PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
@@ -116,7 +117,7 @@ describe("OperationWriter", () => {
     await writeAsync(continuing());
 
     const { status: stopped } = await readAsync();
-    assert.deepEqual([stopped.operation?.kind, stopped.entries.find(t => t.path === "a.txt")?.conflict !== null], [OperationKind.Rebase, true]);
+    assert.deepEqual([stopped.operation?.kind, !Object.isNull(stopped.entries.find(t => t.path === "a.txt")?.conflict)], [OperationKind.Rebase, true]);
     await resolveAsync("one\nrebased 2\nthree\n");
     await writeAsync(continuing());
     assert.deepEqual([await existsAsync("rebase-merge"), (await repository.runGitAsync(["log", "-3", "--format=%s"])).trim().split("\n")],
@@ -171,7 +172,7 @@ describe("OperationWriter", () => {
 
     await pick();
 
-    assert.deepEqual([await worktreeAsync(), (await readAsync()).status.entries.find(t => t.path === "a.txt")?.conflict !== null], ["one\nboth\nthree\n", true]);
+    assert.deepEqual([await worktreeAsync(), !Object.isNull((await readAsync()).status.entries.find(t => t.path === "a.txt")?.conflict)], ["one\nboth\nthree\n", true]);
   });
 
   test("fails with git's output as untrusted text when a continue, an abort or the marker check fails otherwise", async () => {

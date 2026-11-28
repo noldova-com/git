@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { type GitRemote, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
@@ -26,17 +27,17 @@ export class RemoteReader {
 
   public async readAsync(top: string, branch: string | null, signal?: AbortSignal): Promise<GitRemote | null> {
     const output: string | null = await this.readConfigAsync(top, signal);
-    return output === null ? null : this.readChosenAsync(top, output, RemoteReader.choose(output, branch), signal);
+    return Object.isNull(output) ? null : this.readChosenAsync(top, output, RemoteReader.choose(output, branch), signal);
   }
 
   public async readNamedAsync(top: string, name: string, signal?: AbortSignal): Promise<GitRemote | null> {
     const output: string | null = await this.readConfigAsync(top, signal);
-    return output === null ? null : this.readChosenAsync(top, output, name, signal);
+    return Object.isNull(output) ? null : this.readChosenAsync(top, output, name, signal);
   }
 
   private async readChosenAsync(top: string, output: string, name: string | null, signal?: AbortSignal): Promise<GitRemote | null> {
-    const configured: string | undefined = name === null ? undefined : RemoteReader.urlsOf(output).get(name);
-    return name === null || configured === undefined ? null : await this.readUrlAsync(top, name, configured, signal);
+    const configured: string | undefined = Object.isNull(name) ? undefined : RemoteReader.urlsOf(output).get(name);
+    return Object.isNull(name) || Object.isUndefined(configured) ? null : await this.readUrlAsync(top, name, configured, signal);
   }
 
   private async readConfigAsync(top: string, signal?: AbortSignal): Promise<string | null> {
@@ -56,7 +57,7 @@ export class RemoteReader {
 
   private static choose(output: string, branch: string | null): string | null {
     const names: readonly string[] = [...RemoteReader.urlsOf(output).keys()];
-    const named: string | null = branch === null ? null : RemoteReader.valueOf(output, Resources.formatBranchRemoteKey(branch));
+    const named: string | null = Object.isNull(branch) ? null : RemoteReader.valueOf(output, Resources.formatBranchRemoteKey(branch));
     const chosen: string | undefined = names.find(t => t === named) ?? (names.length === 1 ? names[0] : undefined);
     return chosen ?? null;
   }
@@ -74,7 +75,7 @@ export class RemoteReader {
 
   private static valueOf(output: string, key: string): string | null {
     const record: string | undefined = output.split(Resources.recordSeparator).findLast(t => RemoteReader.keyOf(t) === key);
-    return record === undefined ? null : record.slice(key.length + 1);
+    return Object.isUndefined(record) ? null : record.slice(key.length + 1);
   }
 
   private static keyOf(record: string): string {

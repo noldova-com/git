@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { GitWorktree, GitWorktrees, ProtocolException, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
@@ -34,7 +35,7 @@ export class WorktreesReader {
       throw new WorktreeListTruncatedException();
     try {
       return new GitWorktrees(WorktreeListParser.parse(result.output).map(t =>
-        new GitWorktree(t.path, t.head === null || Resources.zeroIdPattern.test(t.head) ? null : t.head, t.branch, t.isLocked, t.isPrunable)));
+        new GitWorktree(t.path, Object.isNull(t.head) || Resources.zeroIdPattern.test(t.head) ? null : t.head, t.branch, t.isLocked, t.isPrunable)));
     } catch (error) {
       if (error instanceof ProtocolException)
         throw new UnreadableOutputException(Resources.worktreeListCommand, Resources.worktreesPart, error);

@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, onTestFinished, test } from "vitest";
 
 import { FailureCode, GitCode, GitNames, UndoMode, UntrustedSource } from "@noldova/git.protocol";
@@ -163,7 +164,7 @@ describe("FetchWriter", () => {
     await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
     onTestFinished(() => new Promise<void>(resolve => server.close(() => resolve())));
     const address = server.address();
-    assert.ok(address !== null && typeof address === "object");
+    assert.ok(Object.isObject(address));
 
     await repository.runGitAsync(["remote", "set-url", "origin", "ssh://git@example.invalid/team/repo.git"]);
     await sshAsync("Host key verification failed.");

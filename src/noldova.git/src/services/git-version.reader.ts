@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
@@ -54,7 +55,7 @@ export class GitVersionReader {
 
   private static isAtLeast(output: string, oldest: GitVersion): boolean {
     const match = Resources.versionPattern.exec(output);
-    if (match === null)
+    if (Object.isNull(match))
       return false;
     return oldest.isReachedBy(Number(match[1]), Number(match[2]));
   }

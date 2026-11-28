@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { GitBranches, GitBranchParams, GitBranchTip, GitBranchTrack, GitMergedBranches, GitRemoteTracks, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
@@ -63,7 +64,7 @@ export class BranchesReader {
     const heads: ReadonlySet<string> = new Set(BranchesReader.refsOf(remoteHeads, Resources.remoteRefsPrefix));
     const remote: string | undefined = remotes.split(Resources.linePattern)
       .find(t => GitBranchParams.isBranchName(t) && heads.has(`${t}${Resources.remoteHeadSuffix}`));
-    if (remote === undefined)
+    if (Object.isUndefined(remote))
       return new GitMergedBranches(null, []);
     const ref: string = Resources.formatRemoteHeadRef(remote);
     const [base, merged] = await Promise.all([
@@ -122,9 +123,9 @@ export class BranchesReader {
 
   private static remoteTrackOf(record: string): readonly GitBranchTrack[] {
     const [, branch, ahead, behind] = Resources.remoteTrackPattern.exec(record) ?? [];
-    if (branch === undefined)
+    if (Object.isUndefined(branch))
       throw new UnreadableOutputException(Resources.forEachRefCommand, Resources.refsPart);
-    return ahead === undefined ? [] : [new GitBranchTrack(branch, Number(ahead), Number(behind))];
+    return Object.isUndefined(ahead) ? [] : [new GitBranchTrack(branch, Number(ahead), Number(behind))];
   }
 
   private static countOf(track: string, pattern: RegExp): number {

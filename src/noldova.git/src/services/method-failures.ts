@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { Failure, FailureCode as DesktopCode } from "@noldova/desktop.protocol";
 import { MethodFailureException } from "@noldova/desktop.runtime";
 import { FailureCode, GitCode, GitFailure, ProtocolException } from "@noldova/git.protocol";
@@ -27,7 +28,7 @@ export class MethodFailures {
       return MethodFailures.fail(new GitFailure(FailureCode.Refused, null, MethodFailures.stripUserinfo(error.message), null));
     if (!(error instanceof GitFailureException))
       return error;
-    const code = error.gitCode !== null && MethodFailures.MISSING_GIT.includes(error.gitCode) ? FailureCode.Unavailable : error.code;
+    const code = !Object.isNull(error.gitCode) && MethodFailures.MISSING_GIT.includes(error.gitCode) ? FailureCode.Unavailable : error.code;
     const gitVersion = error instanceof GitTooOldException ? error.gitVersion : null;
     return MethodFailures.fail(new GitFailure(code, error.gitCode, MethodFailures.stripUserinfo(error.message), gitVersion));
   }

@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { appendFile, chmod, mkdir, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
 import { FailureCode } from "@noldova/git.protocol";
@@ -137,6 +138,6 @@ describe("HooksReader", () => {
 
     await breakConfigurationAsync();
     await assert.rejects(hooks.readKnownAsync(repository.folder, names), (error: unknown) => error instanceof HooksUnreadableException
-      && error.code === FailureCode.Unavailable && error.gitCode === null && error.message === "The repository's hooks couldn't be read.");
+      && error.code === FailureCode.Unavailable && Object.isNull(error.gitCode) && error.message === "The repository's hooks couldn't be read.");
   });
 });

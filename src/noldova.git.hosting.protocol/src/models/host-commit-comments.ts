@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -26,9 +27,9 @@ export class HostCommitComments {
       FieldCheck.fail(Resources.countField, Resources.commitCommentsExpected, reader);
     if (isCapped && count === 0)
       FieldCheck.fail(Resources.isCappedField, Resources.commitCommentsCappedExpected, reader);
-    if ((count === 0) !== (url === null))
+    if ((count === 0) !== (Object.isNull(url)))
       FieldCheck.fail(Resources.urlField, Resources.commitCommentsUrlExpected, reader);
-    if (url !== null)
+    if (!Object.isNull(url))
       FieldCheck.requireHttps(url, Resources.urlField, reader);
 
     this.count = count;

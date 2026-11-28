@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { type IPermissionRequest, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
 import { GitNames, type GitStatus, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
@@ -44,7 +45,7 @@ export class BranchCreateWriter implements IGitWrite {
 
   public async requestAsync(folders: RepositoryFolders, _status: GitStatus, _call: unknown, signal?: AbortSignal): Promise<IPermissionRequest | null> {
     const hooks = await this.hooks.readAsync(folders.top, Resources.checkoutHooks, signal);
-    if (hooks !== null && hooks.length === 0)
+    if (!Object.isNull(hooks) && hooks.length === 0)
       return null;
     return WritePermission.create(
       GitNames.createBranchMethod,
@@ -56,12 +57,12 @@ export class BranchCreateWriter implements IGitWrite {
   }
 
   public async runAsync(folders: RepositoryFolders, _status: GitStatus, signal?: AbortSignal): Promise<void> {
-    const onRemote = this.session === null ? false : await this.isOnRemoteAsync(folders.top, signal);
+    const onRemote = Object.isNull(this.session) ? false : await this.isOnRemoteAsync(folders.top, signal);
     const gitArguments = new GitArguments([...Resources.createBranchArguments, this.name]);
     const result = await this.runner.runAsync(ProgramRun.writeGit(gitArguments, folders.top, folders.gitFolder, folders.commonGitFolder, BranchCreateWriter.LIMITS, signal));
     if (result.exit.code !== 0)
       throw BranchCreateWriter.failure(Resources.formatGitCommand(gitArguments.options), result.errors);
-    if (this.session !== null && !onRemote)
+    if (!Object.isNull(this.session) && !onRemote)
       this.branches.add(this.session, folders.top, this.name);
   }
 

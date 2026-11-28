@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { type IPermissionRequest, PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
 import { FileState, GitNames, type GitStatus, type StatusEntry, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
@@ -52,12 +53,12 @@ export class CommitWriter implements IGitWrite {
   }
 
   public refuse(status: GitStatus): void {
-    if (status.entries.some(t => t.conflict !== null))
+    if (status.entries.some(t => !Object.isNull(t.conflict)))
       throw new CommitConflictsException();
     if (this.amend) {
-      if (status.head === null)
+      if (Object.isNull(status.head))
         throw new AmendNoCommitException();
-      if (status.upstream !== null && !status.upstream.gone && status.upstream.ahead === 0)
+      if (!Object.isNull(status.upstream) && !status.upstream.gone && status.upstream.ahead === 0)
         throw new AmendPushedException();
       return;
     }
@@ -68,7 +69,7 @@ export class CommitWriter implements IGitWrite {
   public async requestAsync(folders: RepositoryFolders, status: GitStatus, _call: unknown, signal?: AbortSignal): Promise<IPermissionRequest | null> {
     if (status.truncated)
       throw new RequestTooLargeException();
-    if (status.operation !== null)
+    if (!Object.isNull(status.operation))
       throw new CommitDuringOperationException();
     const ident = await this.runner.runAsync(ProgramRun.readGit(CommitWriter.IDENT, folders.top, CommitWriter.IDENT_LIMITS, signal));
     if (ident.exit.code !== 0)
@@ -96,7 +97,7 @@ export class CommitWriter implements IGitWrite {
       return;
     const output = { text: result.errors.toString(Resources.utf8Encoding), source: UntrustedSource.Repository };
     const refusing = await this.hooks.readAsync(folders.top, Resources.refusingCommitHooks, signal);
-    if (refusing !== null && refusing.length > 0 && CommitWriter.isHookRefusal(result, output.text))
+    if (!Object.isNull(refusing) && refusing.length > 0 && CommitWriter.isHookRefusal(result, output.text))
       throw new CommitHookFailedException(output);
     throw new GitFailedException(Resources.commitCommand, output);
   }
@@ -106,12 +107,12 @@ export class CommitWriter implements IGitWrite {
   }
 
   private static isStaged(entry: StatusEntry): boolean {
-    return entry.conflict === null && !CommitWriter.UNSTAGED.includes(entry.index);
+    return Object.isNull(entry.conflict) && !CommitWriter.UNSTAGED.includes(entry.index);
   }
 
   private static lineOf(entry: StatusEntry): string {
     const letter = Resources.stateLetters[entry.index];
     const target = LogReader.withoutControls(entry.path);
-    return entry.originalPath === null ? Resources.formatStagedLine(letter, target) : Resources.formatRenamedLine(letter, LogReader.withoutControls(entry.originalPath), target);
+    return Object.isNull(entry.originalPath) ? Resources.formatStagedLine(letter, target) : Resources.formatRenamedLine(letter, LogReader.withoutControls(entry.originalPath), target);
   }
 }

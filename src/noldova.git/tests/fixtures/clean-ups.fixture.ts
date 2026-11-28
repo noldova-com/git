@@ -6,6 +6,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
+
 export class CleanUps {
   private readonly steps: (() => Promise<void> | void)[] = [];
 
@@ -23,7 +25,7 @@ export class CleanUps {
         failure ??= { error };
       }
     }
-    if (failure !== undefined)
+    if (!Object.isUndefined(failure))
       throw failure.error;
   }
 }

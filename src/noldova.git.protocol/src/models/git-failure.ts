@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { FailureCode } from "../enums/failure-code.ts";
@@ -23,7 +24,7 @@ export class GitFailure {
 
   public constructor(code: FailureCode, gitCode: GitCode | null, message: string, gitVersion: string | null, reader?: JsonReader) {
     FieldCheck.requireText(message, Resources.messageField, reader);
-    if (gitVersion !== null && (gitCode !== GitCode.GitTooOld || !Resources.gitVersionPattern.test(gitVersion)))
+    if (!Object.isNull(gitVersion) && (gitCode !== GitCode.GitTooOld || !Resources.gitVersionPattern.test(gitVersion)))
       FieldCheck.fail(Resources.gitVersionField, Resources.gitVersionExpected, reader);
 
     this.code = code;

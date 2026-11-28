@@ -10,6 +10,7 @@ import { type BigIntStats, createReadStream } from "node:fs";
 import { lstat } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { FileState, StatusEntry, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
@@ -38,7 +39,7 @@ export class LfsPointerReader {
   }
 
   public async cleanAsync(top: string, entries: readonly StatusEntry[], signal?: AbortSignal): Promise<LfsCheck> {
-    const candidates = entries.filter(t => t.worktree === FileState.Modified && t.conflict === null && t.submodule === null && t.pathBytes === undefined)
+    const candidates = entries.filter(t => t.worktree === FileState.Modified && Object.isNull(t.conflict) && Object.isNull(t.submodule) && Object.isUndefined(t.pathBytes))
       .map(t => t.path);
     if (candidates.length === 0)
       return new LfsCheck([...entries], 0);
@@ -54,12 +55,12 @@ export class LfsPointerReader {
     let unchecked = tracked.length - named.length;
     for (const [file, blob] of blobs) {
       const pointer = this.pointers.get(blob.id);
-      if (pointer === undefined && blob.size <= Resources.lfsPointerBytes)
+      if (Object.isUndefined(pointer) && blob.size <= Resources.lfsPointerBytes)
         unchecked++;
-      if (pointer === undefined || pointer === null)
+      if (Object.isUndefined(pointer) || Object.isNull(pointer))
         continue;
       const matches = await this.matchesAsync(path.join(top, file), blob.id, pointer, budget, signal);
-      if (matches === null)
+      if (Object.isNull(matches))
         unchecked++;
       else if (matches)
         unchanged.add(file);
@@ -76,7 +77,7 @@ export class LfsPointerReader {
     const tracked: string[] = [];
     for (let index = 0; index + 2 < fields.length; index += 3) {
       const file = fields[index];
-      if (file !== undefined && fields[index + 2] === Resources.lfsFilterName)
+      if (!Object.isUndefined(file) && fields[index + 2] === Resources.lfsFilterName)
         tracked.push(file);
     }
     return tracked;
@@ -88,7 +89,7 @@ export class LfsPointerReader {
     const blobs = new Map<string, IndexBlob>();
     files.forEach((file, index) => {
       const match = Resources.indexRecordPattern.exec(lines[index] ?? "");
-      if (match?.[1] !== undefined && match[2] !== undefined)
+      if (!Object.isUndefined(match?.[1]) && !Object.isUndefined(match[2]))
         blobs.set(file, new IndexBlob(match[1], Number(match[2])));
     });
     return blobs;
@@ -103,7 +104,7 @@ export class LfsPointerReader {
     while (offset < output.length) {
       const headerEnd = output.indexOf(Resources.lineEnd, offset);
       const match = headerEnd < 0 ? null : Resources.blobHeaderPattern.exec(output.toString(Resources.utf8Encoding, offset, headerEnd));
-      if (match?.[1] === undefined || match[2] === undefined)
+      if (Object.isUndefined(match?.[1]) || Object.isUndefined(match[2]))
         return;
       const size = Number(match[2]);
       LfsPointerReader.remember(this.pointers, match[1], LfsPointer.parse(output.subarray(headerEnd + 1, headerEnd + 1 + size)));
@@ -124,7 +125,7 @@ export class LfsPointerReader {
       return false;
     const key = [file, blob, stats.size, stats.mtimeNs, stats.ctimeNs].join(Resources.nulCharacter);
     const known = this.answers.get(key);
-    if (known !== undefined)
+    if (!Object.isUndefined(known))
       return known;
     const size = Number(stats.size);
     if (size !== pointer.size)

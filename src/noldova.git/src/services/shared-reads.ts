@@ -6,6 +6,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
+
 import type { KeyQueue } from "./key-queue.ts";
 
 interface IWaitingRead<T> {
@@ -26,7 +28,7 @@ export class SharedReads<T> {
     signal.throwIfAborted();
     const shared: string = `${lane}\u0000${key}`;
     let waiting: IWaitingRead<T> | undefined = this.waiting.get(shared);
-    if (waiting === undefined) {
+    if (Object.isUndefined(waiting)) {
       const controller: AbortController = new AbortController();
       const promise: Promise<T> = this.queue.runAsync(lane, () => {
         if (this.waiting.get(shared) === waiting)

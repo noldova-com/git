@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { JsonReader } from "@noldova/context.json";
 import { type IPermissionDetail, type IPermissionRequest, type IToolDescriptor, type IToolHandler, PermissionDetailKind, PermissionOption,
   type PermissionOutcome, type ToolCall, ToolContent, ToolFailureCode, ToolResult, ToolRisk } from "@noldova/desktop.runtime";
@@ -61,7 +62,7 @@ export class GitHubPrCreateTool implements IToolHandler {
     const draft: PullRequestDraft = GitHubPrCreateTool.draftOf(call, repository);
     const token: string | null = await this.tokens.tokenForAsync(draft.host, draft.path, call.signal);
     const account: SignedInAccount | undefined = this.tokens.signedIn.find(t => t.token === token);
-    if (account === undefined)
+    if (Object.isUndefined(account))
       throw GitHubToolFailures.signedOut();
     const request: IPermissionRequest = {
       action: GitHubNames.createPullRequestMethod,

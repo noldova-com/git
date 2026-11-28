@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { RebaseAction } from "../enums/rebase-action.ts";
@@ -21,9 +22,9 @@ export class RebaseStep {
 
   public constructor(id: string, action: RebaseAction, message: string | null, reader?: JsonReader) {
     FieldCheck.requireObjectId(id, Resources.idField, reader);
-    if ((action === RebaseAction.Reword || action === RebaseAction.Squash) !== (message !== null))
+    if ((action === RebaseAction.Reword || action === RebaseAction.Squash) !== (!Object.isNull(message)))
       FieldCheck.fail(Resources.messageField, Resources.rebaseMessageExpected, reader);
-    if (message !== null) {
+    if (!Object.isNull(message)) {
       FieldCheck.requireText(message.trim(), Resources.messageField, reader);
       FieldCheck.requireNoNul(message, Resources.messageField, reader);
     }
@@ -47,7 +48,7 @@ export class RebaseStep {
     const ids: ReadonlySet<string> = new Set(steps.map(t => t.id));
     const first: RebaseStep | undefined = steps.find(t => t.action !== RebaseAction.Drop);
     if (steps.length === 0 || steps.length > Resources.maximumRebaseSteps || ids.size !== steps.length
-      || (first !== undefined && (first.action === RebaseAction.Squash || first.action === RebaseAction.Fixup)))
+      || (!Object.isUndefined(first) && (first.action === RebaseAction.Squash || first.action === RebaseAction.Fixup)))
       FieldCheck.fail(Resources.stepsField, Resources.rebaseStepsExpected, reader);
   }
 

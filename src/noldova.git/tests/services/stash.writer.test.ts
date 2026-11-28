@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import { access, mkdir, symlink, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
 import { PermissionDetailKind } from "@noldova/desktop.runtime";
@@ -80,7 +81,7 @@ describe("StashWriter", () => {
   const stashAsync = async (message: string | null, includeUntracked: boolean): Promise<GitJournalEntry> => {
     await writes.runAsync(folders, await fingerprintAsync(), new StashWriter(runner, message, includeUntracked), null);
     const entry = journal.read(folders.commonGitFolder).entries.at(-1);
-    assert.ok(entry !== undefined);
+    assert.ok(!Object.isUndefined(entry));
     return entry;
   };
   const undoAsync = async (entry: GitJournalEntry): Promise<void> =>

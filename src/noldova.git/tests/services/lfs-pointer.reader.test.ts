@@ -11,6 +11,7 @@ import { createHash } from "node:crypto";
 import { lstat, mkdir, unlink } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test, vi } from "vitest";
 
 import { ProcessExit } from "@noldova/desktop.runtime";
@@ -34,7 +35,7 @@ class RewritingRunner extends ProgramRunner {
     const result = await super.runAsync(run);
     const command = run.arguments.join(" ");
     const rewrite = [...this.rewrites].find(([ending]) => command.endsWith(ending))?.[1];
-    return rewrite === undefined ? result : rewrite(result.output);
+    return Object.isUndefined(rewrite) ? result : rewrite(result.output);
   }
 }
 

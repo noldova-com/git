@@ -11,6 +11,7 @@ import { access, appendFile, readdir, realpath, rename, rm, truncate, utimes, wr
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, test } from "vitest";
 
+import "@noldova/context.core";
 import { DiffScope, DiffScopeKind, FailureCode, FileChange, GitCode, RiskLevel, UntrustedSource, WorktreeRecord } from "@noldova/git.protocol";
 
 import { BranchKeptException } from "../../src/exceptions/branch-kept.exception.ts";
@@ -82,7 +83,7 @@ describe("WorktreeService", () => {
   const listAsync = async (): Promise<string[][]> =>
     (await repository.runGitAsync(["worktree", "list", "--porcelain", "-z"])).split("\0\0").filter(t => t.length > 0).map(t => t.split("\0"));
   const entryOf = async (folder: string): Promise<string[] | undefined> =>
-    (await listAsync()).find(t => t[0] !== undefined && path.resolve(t[0].slice("worktree ".length)) === path.resolve(folder));
+    (await listAsync()).find(t => !Object.isUndefined(t[0]) && path.resolve(t[0].slice("worktree ".length)) === path.resolve(folder));
   const branchesAsync = async (): Promise<string[]> =>
     (await repository.runGitAsync(["branch", "--format=%(refname:short)"])).split("\n").filter(t => t.length > 0);
   const headAsync = async (revision: string): Promise<string> => (await repository.runGitAsync(["rev-parse", revision])).trim();

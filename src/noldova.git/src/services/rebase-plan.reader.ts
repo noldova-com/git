@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { GitRebaseCommit, GitRebasePlan, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
@@ -42,7 +43,7 @@ export class RebasePlanReader {
     const ids: ReadonlySet<string> = new Set(commits.map(t => t.id));
     const stacked = (await this.readBranchTipsAsync(top, signal)).filter(t => ids.has(t.id) && t.name !== branch).map(t => t.name);
     const oldest = commits[0];
-    const pushed = branch !== null && oldest !== undefined && await this.isPushedAsync(top, branch, oldest.id, signal);
+    const pushed = !Object.isNull(branch) && !Object.isUndefined(oldest) && await this.isPushedAsync(top, branch, oldest.id, signal);
     return new GitRebasePlan(branch, onto, base, ontoAhead, commits, stacked, pushed);
   }
 

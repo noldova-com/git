@@ -6,6 +6,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
+
 import { Resources } from "../resources.ts";
 
 export class ChangedPathsParser {
@@ -24,7 +26,7 @@ export class ChangedPathsParser {
       }
       const kind = entry.toString(Resources.latin1Encoding, 0, 1);
       const fields = Resources.statusFieldCounts.get(kind);
-      if (fields === undefined)
+      if (Object.isUndefined(fields))
         continue;
       paths.push(entry.subarray(ChangedPathsParser.pathStart(entry, fields)));
       isOriginalPath = kind === Resources.renamedEntryKind;

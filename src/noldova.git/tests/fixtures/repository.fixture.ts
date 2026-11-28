@@ -12,6 +12,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 
+import "@noldova/context.core";
+
 import type { GitVersion } from "../../src/models/git-version.ts";
 import { FilePresence } from "../../src/services/file-presence.ts";
 
@@ -74,7 +76,7 @@ export class RepositoryFixture {
     await writeFile(`${fixture.prompt}.js`, RepositoryFixture.PROMPT_SCRIPT);
     await writeFile(fixture.prompt, `#!/bin/sh\nexec "${process.execPath.replaceAll("\\", "/")}" "${fixture.prompt.replaceAll("\\", "/")}.js" "$@"\n`);
     await chmod(fixture.prompt, 0o755);
-    if (template !== undefined) {
+    if (!Object.isUndefined(template)) {
       await cp(template.folder, fixture.folder, { recursive: true });
       return fixture;
     }
@@ -102,14 +104,14 @@ export class RepositoryFixture {
     });
     running.child.stdin?.end(input);
     return (await running.finally(() => {
-      if (inputFailure !== null)
+      if (!Object.isNull(inputFailure))
         throw inputFailure;
     })).stdout;
   }
 
   public async hasGitAsync(version: GitVersion): Promise<boolean> {
     const [found, foundMajor, foundMinor] = /^git version (\d+)\.(\d+)/v.exec(await this.runGitAsync(["version"])) ?? [];
-    return found !== undefined && version.isReachedBy(Number(foundMajor), Number(foundMinor));
+    return !Object.isUndefined(found) && version.isReachedBy(Number(foundMajor), Number(foundMinor));
   }
 
   public supervisorEnvironment(searchPath: string = process.env["PATH"] ?? ""): Record<string, string> {
@@ -163,7 +165,7 @@ export class RepositoryFixture {
     const environment: Record<string, string> = {};
     for (const name of ["SystemRoot", "windir", "PATHEXT", "ComSpec"]) {
       const value = process.env[name];
-      if (value !== undefined)
+      if (!Object.isUndefined(value))
         environment[name] = value;
     }
     return environment;

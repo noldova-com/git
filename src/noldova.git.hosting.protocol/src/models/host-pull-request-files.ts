@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -23,11 +24,11 @@ export class HostPullRequestFiles {
   public readonly hasMore: boolean;
 
   public constructor(sourceCommit: string | null, commonCommit: string | null, files: readonly HostPullRequestFile[], hasMore: boolean, reader?: JsonReader) {
-    if (sourceCommit !== null)
+    if (!Object.isNull(sourceCommit))
       FieldCheck.requireCommit(sourceCommit, Resources.sourceCommitField, reader);
-    if (commonCommit !== null)
+    if (!Object.isNull(commonCommit))
       FieldCheck.requireCommit(commonCommit, Resources.commonCommitField, reader);
-    if (sourceCommit === null && (commonCommit !== null || files.length > 0 || hasMore))
+    if (Object.isNull(sourceCommit) && (!Object.isNull(commonCommit) || files.length > 0 || hasMore))
       FieldCheck.fail(Resources.sourceCommitField, Resources.pullRequestFilesCommitExpected, reader);
     if (files.length > Resources.maximumPullRequestFiles)
       FieldCheck.fail(Resources.filesField, Resources.pullRequestFilesExpected, reader);

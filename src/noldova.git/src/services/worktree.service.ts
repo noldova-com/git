@@ -10,6 +10,7 @@ import { randomBytes } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import type { IRuntimePartContext } from "@noldova/desktop.runtime";
 import { type DiffScope, type GitDiff, type GitStatus, UntrustedSource, WorktreeRecord } from "@noldova/git.protocol";
 
@@ -136,14 +137,14 @@ export class WorktreeService {
   private async createAsync(key: string, options: ICreateWorktreeOptions, progress: CallProgress): Promise<WorktreeRecord> {
     const folders = await this.repositories.readAsync(options.repository);
     const existing = await this.findAsync(key, progress);
-    if (existing !== null) {
+    if (!Object.isNull(existing)) {
       if (existing.repository !== folders.top)
         throw new KeyInOtherRepositoryException();
       return existing;
     }
     const base = await this.readCommitAsync(folders, options.base ?? Resources.headRevision);
     const id = randomBytes(Resources.worktreeIdBytes).toString(Resources.hexEncoding);
-    if (options.branch !== undefined)
+    if (!Object.isUndefined(options.branch))
       await this.requireNewBranchAsync(folders, options.branch);
     const branch = options.branch ?? Resources.formatBranch(id);
     const folder = path.join(await realpath(await this.context.getWorkFolderAsync()), id);
@@ -162,14 +163,14 @@ export class WorktreeService {
 
   private async requireAsync(key: string): Promise<WorktreeRecord> {
     const record = await this.findWorktreeAsync(key);
-    if (record === null)
+    if (Object.isNull(record))
       throw new WorktreeMissingException();
     return record;
   }
 
   private async findAsync(key: string, progress: CallProgress): Promise<WorktreeRecord | null> {
     const stored = this.table.find(key);
-    if (stored === null)
+    if (Object.isNull(stored))
       return null;
     const folders = await this.repositories.readAsync(stored.record.repository);
     const entry = (await this.listAsync(folders)).find(t => t.isAt(stored.record.path));
@@ -182,12 +183,12 @@ export class WorktreeService {
 
   private async removeAsync(key: string, options: IRemoveWorktreeOptions, progress: CallProgress): Promise<void> {
     const stored = this.table.find(key);
-    if (stored === null)
+    if (Object.isNull(stored))
       return;
     const { record } = stored;
     const folders = await this.repositories.readAsync(record.repository);
     const entry = (await this.listAsync(folders)).find(t => t.isAt(record.path));
-    if (entry !== undefined && entry.isLockedElsewhere(Resources.lockReason))
+    if (!Object.isUndefined(entry) && entry.isLockedElsewhere(Resources.lockReason))
       throw new LockedElsewhereException(record.path);
     if (!stored.isPending && await this.isPresentAsync(record, entry))
       await this.askIfChangedAsync(record, options, progress);
@@ -223,7 +224,7 @@ export class WorktreeService {
 
   private async clearAsync(record: WorktreeRecord, folders: RepositoryFolders, entry: WorktreeEntry | undefined, progress: CallProgress): Promise<void> {
     progress.startWriting();
-    if (entry !== undefined && !entry.isLockedElsewhere(Resources.lockReason)) {
+    if (!Object.isUndefined(entry) && !entry.isLockedElsewhere(Resources.lockReason)) {
       if (entry.isLocked)
         await this.writeOrThrowAsync(folders, WorktreeService.UNLOCK.withRevisions([record.path]));
       await this.writeOrThrowAsync(folders, WorktreeService.REMOVE.withRevisions([record.path]));
@@ -291,7 +292,7 @@ export class WorktreeService {
   }
 
   private async isPresentAsync(record: WorktreeRecord, entry: WorktreeEntry | undefined): Promise<boolean> {
-    if (entry === undefined || entry.isPrunable)
+    if (Object.isUndefined(entry) || entry.isPrunable)
       return false;
     return await FilePresence.existsAsync(record.path);
   }
@@ -322,7 +323,7 @@ export class WorktreeService {
   }
 
   private async finishAsync<T>(work: Promise<T>, progress: CallProgress, signal?: AbortSignal): Promise<T> {
-    if (signal === undefined)
+    if (Object.isUndefined(signal))
       return await work;
     const cancelled = Promise.withResolvers<never>();
     const cancel = (): void => cancelled.reject(progress.cancelFailure(signal.reason));

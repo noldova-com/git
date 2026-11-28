@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -26,7 +27,7 @@ export class GitBranches {
 
   public constructor(current: string | null, branches: readonly string[], remotes: readonly string[], remoteBranches: readonly string[],
     tracks: readonly GitBranchTrack[] = [], tips: readonly GitBranchTip[] = [], reader?: JsonReader) {
-    if (current !== null)
+    if (!Object.isNull(current))
       FieldCheck.requireText(current, Resources.currentField, reader);
     for (const [names, field] of [[branches, Resources.branchesField], [remotes, Resources.remotesField]] as const)
       names.forEach((name, index) => FieldCheck.requireText(name, Resources.formatItemField(field, index), reader));

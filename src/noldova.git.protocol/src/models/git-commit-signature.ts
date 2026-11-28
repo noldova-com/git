@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { SignatureState } from "../enums/signature-state.ts";
@@ -43,7 +44,7 @@ export class GitCommitSignature {
   }
 
   private static requireSigned(value: string | null, field: string, state: SignatureState, reader?: JsonReader): void {
-    if (value === null)
+    if (Object.isNull(value))
       return;
     if (state === SignatureState.None)
       FieldCheck.fail(field, Resources.unsignedNullExpected, reader);

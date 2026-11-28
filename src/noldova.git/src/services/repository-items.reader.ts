@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { GitRepositoryItems, GitStash, GitSubmodule, GitTag, ProtocolException, UntrustedSource } from "@noldova/git.protocol";
 
 import { GitFailedException } from "../exceptions/git-failed.exception.ts";
@@ -58,7 +59,7 @@ export class RepositoryItemsReader {
     const result = await this.runner.runAsync(ProgramRun.readGit(RepositoryItemsReader.SUBMODULES, top, RepositoryItemsReader.LIMITS, signal));
     RepositoryItemsReader.requireSuccess(result, Resources.lsFilesCommand);
     const records = result.output.toString(Resources.utf8Encoding).split(Resources.nulCharacter)
-      .map(t => Resources.submoduleRecordPattern.exec(t)).filter(t => t !== null);
+      .map(t => Resources.submoduleRecordPattern.exec(t)).filter(t => !Object.isNull(t));
     const kept = RepositoryItemsReader.kept(records.map(([, id = "", path = ""]) => `${id}${Resources.nulCharacter}${path}`), record => {
       const [id = "", path = ""] = record.split(Resources.nulCharacter);
       return new GitSubmodule(path, id);

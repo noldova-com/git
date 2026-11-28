@@ -9,6 +9,7 @@
 import { realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { type IPermissionDetail, type IPermissionRequest, PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
 import { ConflictKind, ConflictResolution, GitNames, type GitStatus, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
@@ -54,11 +55,11 @@ export class ResolveConflictWriter implements IGitWrite {
 
   public refuse(status: GitStatus): void {
     const kind = status.entries.find(t => t.path === this.file)?.conflict ?? null;
-    if (kind === null)
+    if (Object.isNull(kind))
       throw new ConflictGoneException();
     if (!Resources.offeredResolutions[kind].includes(this.resolution))
       throw new ResolutionNotOfferedException();
-    if (this.text !== null && ConflictMarkers.has(this.text))
+    if (!Object.isNull(this.text) && ConflictMarkers.has(this.text))
       throw new ResolutionMarkersLeftException();
   }
 

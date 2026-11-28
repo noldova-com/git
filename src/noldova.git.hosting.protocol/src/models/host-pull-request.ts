@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { ReferenceKind } from "../enums/reference-kind.ts";
@@ -38,9 +39,9 @@ export class HostPullRequest {
     hasConflicts: boolean | null = null, reader?: JsonReader) {
     if (item.kind !== ReferenceKind.PullRequest)
       FieldCheck.fail(Resources.itemField, Resources.pullRequestExpected, reader);
-    if (commitCount !== null)
+    if (!Object.isNull(commitCount))
       FieldCheck.requireCount(commitCount, Resources.commitCountField, reader);
-    if (autoCompleteMergeType !== null)
+    if (!Object.isNull(autoCompleteMergeType))
       FieldCheck.requireText(autoCompleteMergeType, Resources.autoCompleteMergeTypeField, reader);
 
     this.item = item;
@@ -69,7 +70,7 @@ export class HostPullRequest {
       reader.readNullableInteger(Resources.commitCountField),
       reader.readObjectArray(Resources.workItemsField).map(t => HostWorkItemLink.fromJson(t.toJson(), t.path)),
       reader.readNullableString(Resources.autoCompleteMergeTypeField),
-      reader.readValue(Resources.hasConflictsField) === null ? null : reader.readBoolean(Resources.hasConflictsField),
+      Object.isNull(reader.readValue(Resources.hasConflictsField)) ? null : reader.readBoolean(Resources.hasConflictsField),
       reader);
   }
 

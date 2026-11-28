@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type IPermissionDetail, type IPermissionRequest, PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
 import { GitNames, type GitStatus, type OperationKind, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
@@ -44,9 +45,9 @@ export class OperationWriter implements IGitWrite {
   }
 
   public refuse(status: GitStatus): void {
-    if (status.operation === null)
+    if (Object.isNull(status.operation))
       throw new NoOperationException();
-    if (this.isContinue && status.entries.some(t => t.conflict !== null))
+    if (this.isContinue && status.entries.some(t => !Object.isNull(t.conflict)))
       throw new CommitConflictsException();
   }
 
@@ -86,7 +87,7 @@ export class OperationWriter implements IGitWrite {
   }
 
   private static kindOf(status: GitStatus): OperationKind {
-    if (status.operation === null)
+    if (Object.isNull(status.operation))
       throw new NoOperationException();
     return status.operation.kind;
   }

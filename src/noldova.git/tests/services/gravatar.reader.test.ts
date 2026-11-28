@@ -9,6 +9,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 
+import "@noldova/context.core";
 import { FakeModuleLog } from "@noldova/desktop.runtime/testing";
 import { afterEach, describe, it, vi } from "vitest";
 
@@ -45,7 +46,7 @@ class Rig {
   public readonly reader: GravatarReader = new GravatarReader(async (url, init) => {
     this.asked.push({ url, init });
     const answer: Answer | undefined = this.answers.shift();
-    if (answer === undefined)
+    if (Object.isUndefined(answer))
       throw new Error("No answer is left.");
     if (answer instanceof Error)
       throw answer;

@@ -7,6 +7,7 @@
  */
 import path from "node:path";
 
+import "@noldova/context.core";
 import { type IPermissionDetail, type IPermissionRequest, PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
 import { GitNames, type GitJournalEntry, type GitRefMove, type GitStatus, UndoMode, UntrustedSource } from "@noldova/git.protocol";
 
@@ -57,7 +58,7 @@ export class UndoWriter implements IGitWrite {
   }
 
   public refuse(status: GitStatus): void {
-    if (status.entries.some(t => t.conflict !== null) || status.operation !== null)
+    if (status.entries.some(t => !Object.isNull(t.conflict)) || !Object.isNull(status.operation))
       throw new UndoDuringOperationException();
   }
 
@@ -84,7 +85,7 @@ export class UndoWriter implements IGitWrite {
     }
     const rename = UndoWriter.renameBackOf(entry);
     const head = UndoWriter.headMoveOf(entry);
-    const rest = rename !== null ? []
+    const rest = !Object.isNull(rename) ? []
       : entry.undo === UndoMode.Mixed || entry.undo === UndoMode.Keep ? entry.moves.filter(t => t !== head)
       : entry.undo === UndoMode.Switch ? entry.moves.filter(t => t.name !== Resources.headRevision)
       : entry.moves;
@@ -93,7 +94,7 @@ export class UndoWriter implements IGitWrite {
       await this.runGitAsync(folders, [...Resources.readTreeArguments, String(entry.indexBefore)], signal);
     if (entry.undo === UndoMode.Checkpoint)
       await this.checkpoints.restoreAsync(folders.top, String(entry.checkpoint), entry.paths, signal);
-    if (rename !== null)
+    if (!Object.isNull(rename))
       await this.runGitAsync(folders, rename, signal);
     else if (entry.undo === UndoMode.Mixed || entry.undo === UndoMode.Keep)
       await this.runGitAsync(folders, [...Resources.resetArguments, Resources.resetOptionOf(entry.undo), UndoWriter.resetTargetOf(head)], signal);
@@ -110,7 +111,7 @@ export class UndoWriter implements IGitWrite {
       return;
     const here = path.resolve(folders.top);
     for (const worktree of (await this.worktrees.readAsync(folders.top, signal)).worktrees)
-      if (worktree.branch !== null && branches.includes(worktree.branch) && path.relative(path.resolve(worktree.path), here) !== "")
+      if (!Object.isNull(worktree.branch) && branches.includes(worktree.branch) && path.relative(path.resolve(worktree.path), here) !== "")
         throw new UndoBranchCheckedOutException(worktree.branch, worktree.path);
   }
 
@@ -141,7 +142,7 @@ export class UndoWriter implements IGitWrite {
   private static async isTakenAsync(top: string, file: string): Promise<boolean> {
     for (let at = file; at.length > top.length; at = path.dirname(at)) {
       const entry = await FilePresence.entryAsync(at);
-      if (entry !== null)
+      if (!Object.isNull(entry))
         return at === file || !entry.isDirectory();
     }
     return false;
@@ -158,7 +159,7 @@ export class UndoWriter implements IGitWrite {
 
   private entryOf(folders: RepositoryFolders): GitJournalEntry {
     const entry = this.journal.find(folders.commonGitFolder, this.id);
-    if (entry === null)
+    if (Object.isNull(entry))
       throw new UndoUnknownException();
     if (entry.undo === UndoMode.None)
       throw new UndoNotPossibleException();
@@ -186,21 +187,21 @@ export class UndoWriter implements IGitWrite {
   }
 
   private static headMoveOf(entry: GitJournalEntry): GitRefMove | null {
-    const name = entry.branchAfter === null ? Resources.headRevision : Resources.formatBranchRef(entry.branchAfter);
+    const name = Object.isNull(entry.branchAfter) ? Resources.headRevision : Resources.formatBranchRef(entry.branchAfter);
     return entry.moves.find(t => t.name === name) ?? null;
   }
 
   private static resetTargetOf(head: GitRefMove | null): string {
-    if (head === null || head.before === null)
+    if (Object.isNull(head) || Object.isNull(head.before))
       throw new UndoNotPossibleException();
     return head.before;
   }
 
   private static switchBackOf(entry: GitJournalEntry, now: RefSnapshot): readonly string[] {
-    if (entry.branch !== null)
+    if (!Object.isNull(entry.branch))
       return [...Resources.switchBackArguments, Resources.endOfOptions, entry.branch];
     const detached = entry.moves.find(t => t.name === Resources.headRevision)?.before ?? now.head;
-    if (detached === null)
+    if (Object.isNull(detached))
       throw new UndoNotPossibleException();
     return [...Resources.switchBackArguments, Resources.detachOption, Resources.endOfOptions, detached];
   }
@@ -208,17 +209,17 @@ export class UndoWriter implements IGitWrite {
   private static renameBackOf(entry: GitJournalEntry): readonly string[] | null {
     if (entry.method !== GitNames.renameBranchMethod)
       return null;
-    const from = entry.moves.find(t => t.before === null && t.name.startsWith(Resources.branchRefsPrefix));
-    const to = entry.moves.find(t => t.after === null && t.name.startsWith(Resources.branchRefsPrefix));
-    if (from === undefined || to === undefined)
+    const from = entry.moves.find(t => Object.isNull(t.before) && t.name.startsWith(Resources.branchRefsPrefix));
+    const to = entry.moves.find(t => Object.isNull(t.after) && t.name.startsWith(Resources.branchRefsPrefix));
+    if (Object.isUndefined(from) || Object.isUndefined(to))
       return null;
     return [...Resources.renameBranchArguments, from.name.slice(Resources.branchRefsPrefix.length), to.name.slice(Resources.branchRefsPrefix.length)];
   }
 
   private static commandOf(move: GitRefMove): string {
-    if (move.before === null)
+    if (Object.isNull(move.before))
       return Resources.formatDeleteRefCommand(move.name, String(move.after));
-    if (move.after === null)
+    if (Object.isNull(move.after))
       return Resources.formatCreateRefCommand(move.name, move.before);
     return Resources.formatUpdateRefCommand(move.name, move.before, move.after);
   }

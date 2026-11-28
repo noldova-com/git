@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -21,9 +22,9 @@ export class GitRefMove {
     if (!Resources.fullRefPattern.test(name))
       FieldCheck.fail(Resources.nameField, Resources.fullRefExpected, reader);
     FieldCheck.requireLine(name, Resources.nameField, reader);
-    if (before !== null)
+    if (!Object.isNull(before))
       FieldCheck.requireObjectId(before, Resources.beforeField, reader);
-    if (after !== null)
+    if (!Object.isNull(after))
       FieldCheck.requireObjectId(after, Resources.afterField, reader);
     if (before === after)
       FieldCheck.fail(Resources.afterField, Resources.refMoveExpected, reader);

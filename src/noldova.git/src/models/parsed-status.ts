@@ -5,6 +5,7 @@
  * This source code is licensed under the license found in the
  * LICENSE file in the root directory of this source tree.
  */
+import "@noldova/context.core";
 import { type GitOperation, type GitRemote, GitStatus, type StatusEntry, StatusUpstream } from "@noldova/git.protocol";
 
 export class ParsedStatus {
@@ -30,7 +31,7 @@ export class ParsedStatus {
     uncheckedLfsFiles: number,
     upstreamId: string | null,
     fetchedAt: string | null): GitStatus {
-    const upstream = this.upstream === null ? null : new StatusUpstream(this.upstream.name, this.upstream.ahead, this.upstream.behind, this.upstream.gone, upstreamId);
+    const upstream = Object.isNull(this.upstream) ? null : new StatusUpstream(this.upstream.name, this.upstream.ahead, this.upstream.behind, this.upstream.gone, upstreamId);
     return new GitStatus(this.branch, this.head, upstream, entries, this.truncated, fingerprint, operation, remote, uncheckedLfsFiles, fetchedAt);
   }
 }

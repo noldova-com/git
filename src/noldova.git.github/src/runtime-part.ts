@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { JsonException } from "@noldova/context.json";
 import { Failure, FailureCode, ShellClients } from "@noldova/desktop.protocol";
 import { type EventChannel, type IRuntimePart, type IRuntimePartContext, MethodFailureException, type RequestContext } from "@noldova/desktop.runtime";
@@ -32,7 +33,7 @@ export class RuntimePart implements IRuntimePart {
   private tools: GitHubTools | null = null;
 
   public get isActive(): boolean {
-    return this.context !== null;
+    return !Object.isNull(this.context);
   }
 
   public async activateAsync(context: IRuntimePartContext): Promise<void> {
@@ -56,7 +57,7 @@ export class RuntimePart implements IRuntimePart {
     ];
     for (const method of methods) {
       context.registerMethod(method.name, {
-        handleAsync: async request => (await method.run(request.payload === null ? RuntimePart.firstAccount : RuntimePart.read(request, AccountQuery.fromJson).account)).toJson()
+        handleAsync: async request => (await method.run(Object.isNull(request.payload) ? RuntimePart.firstAccount : RuntimePart.read(request, AccountQuery.fromJson).account)).toJson()
       });
     }
     context.registerMethod(GitHubNames.readReferenceMethod, {
@@ -119,7 +120,7 @@ export class RuntimePart implements IRuntimePart {
   }
 
   private static fromWindow(request: RequestContext): RequestContext {
-    if (request.window === null || request.client !== ShellClients.mainProcess)
+    if (Object.isNull(request.window) || request.client !== ShellClients.mainProcess)
       throw GitHubApi.failure(FailureCode.Unauthorized, Resources.notFromWindowMessage);
     return request;
   }

@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -23,7 +24,7 @@ export class BranchQuery {
     FieldCheck.requireText(host, Resources.hostField, reader);
     FieldCheck.requirePath(path, Resources.pathField, reader);
     FieldCheck.requireText(branch, Resources.branchField, reader);
-    if (headCommit !== null)
+    if (!Object.isNull(headCommit))
       FieldCheck.requireCommit(headCommit, Resources.headCommitField, reader);
 
     this.host = host;

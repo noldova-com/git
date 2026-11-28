@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { CheckState } from "../enums/check-state.ts";
@@ -28,16 +29,16 @@ export class BranchPullRequest {
   public readonly approvals: number | null;
 
   public constructor(pullRequest: HostItem | null, checks: readonly HostCheck[],
-    reviewDecision: ReviewDecision | null = pullRequest === null ? null : ReviewDecision.Waiting, approvals: number | null = null, reader?: JsonReader) {
-    if (pullRequest !== null && pullRequest.kind !== ReferenceKind.PullRequest)
+    reviewDecision: ReviewDecision | null = Object.isNull(pullRequest) ? null : ReviewDecision.Waiting, approvals: number | null = null, reader?: JsonReader) {
+    if (!Object.isNull(pullRequest) && pullRequest.kind !== ReferenceKind.PullRequest)
       FieldCheck.fail(Resources.pullRequestField, Resources.pullRequestExpected, reader);
-    if (pullRequest === null && checks.length > 0)
+    if (Object.isNull(pullRequest) && checks.length > 0)
       FieldCheck.fail(Resources.checksField, Resources.checksExpected, reader);
-    if ((pullRequest === null) !== (reviewDecision === null))
+    if ((Object.isNull(pullRequest)) !== (Object.isNull(reviewDecision)))
       FieldCheck.fail(Resources.reviewDecisionField, Resources.reviewDecisionExpected, reader);
-    if (pullRequest === null && approvals !== null)
+    if (Object.isNull(pullRequest) && !Object.isNull(approvals))
       FieldCheck.fail(Resources.approvalsField, Resources.approvalsExpected, reader);
-    if (approvals !== null)
+    if (!Object.isNull(approvals))
       FieldCheck.requireCount(approvals, Resources.approvalsField, reader);
 
     this.pullRequest = pullRequest;
@@ -58,7 +59,7 @@ export class BranchPullRequest {
       pullRequest,
       reader.readObjectArray(Resources.checksField).map(t => HostCheck.fromJson(t.toJson(), t.path)),
       reader.hasField(Resources.reviewDecisionField) ? FieldCheck.readNullableMember(reader, Resources.reviewDecisionField, BranchPullRequest.DECISIONS)
-        : pullRequest === null ? null : ReviewDecision.Waiting,
+        : Object.isNull(pullRequest) ? null : ReviewDecision.Waiting,
       reader.hasField(Resources.approvalsField) ? reader.readNullableInteger(Resources.approvalsField) : null,
       reader);
   }

@@ -10,6 +10,7 @@ import { chmod, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
 
+import "@noldova/context.core";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, onTestFinished, test } from "vitest";
 
 import { PermissionDetailKind, PermissionOption, ToolRisk } from "@noldova/desktop.runtime";
@@ -377,7 +378,7 @@ describe("PullWriter", () => {
     await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
     onTestFinished(() => new Promise<void>(resolve => server.close(() => resolve())));
     const address = server.address();
-    assert.ok(address !== null && typeof address === "object");
+    assert.ok(Object.isObject(address));
 
     await repository.runGitAsync(["remote", "set-url", "origin", "ssh://git@example.invalid/team/repo.git"]);
     await sshAsync("Host key verification failed.");

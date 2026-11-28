@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { Fake, UnansweredCallException } from "@noldova/desktop.protocol/testing";
 import { type IPermissionAnswerer, type IPermissionRequest, type PermissionDecision, PermissionQuestion } from "@noldova/desktop.runtime";
 import { GitRemote, GitRepositories, GitStatus, RemoteTransport } from "@noldova/git.protocol";
@@ -13,7 +14,7 @@ import { GitRemote, GitRepositories, GitStatus, RemoteTransport } from "@noldova
 export const HEAD: string = "6dcb09b5b57875f334f61aebed695e2e4193db5e";
 
 export function statusOf(branch: string | null, host: string | null = "github.com", path: string | null = "octocat/hello-world.git"): GitStatus {
-  const remote: GitRemote | null = host === null && path === null ? null : new GitRemote("origin", host, path, RemoteTransport.Https);
+  const remote: GitRemote | null = Object.isNull(host) && Object.isNull(path) ? null : new GitRemote("origin", host, path, RemoteTransport.Https);
   return new GitStatus(branch, HEAD, null, [], false, "f1", null, remote);
 }
 
@@ -43,12 +44,12 @@ export class FakeAnswerer extends Fake<IPermissionAnswerer> implements IPermissi
   public constructor() {
     super();
     this.answer("answerAsync", () => {
-      if (this.asked !== null) {
+      if (!Object.isNull(this.asked)) {
         this.asked();
         return new Promise<PermissionDecision>(() => undefined);
       }
       const decision: PermissionDecision | undefined = this.decisions.shift();
-      return decision === undefined ? Promise.reject(new UnansweredCallException("answerAsync")) : Promise.resolve(decision);
+      return Object.isUndefined(decision) ? Promise.reject(new UnansweredCallException("answerAsync")) : Promise.resolve(decision);
     });
   }
 

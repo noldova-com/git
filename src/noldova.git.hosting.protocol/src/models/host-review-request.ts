@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -28,7 +29,7 @@ export class HostReviewRequest {
     FieldCheck.requireText(title, Resources.titleField, reader);
     FieldCheck.requireHttps(url, Resources.urlField, reader);
     FieldCheck.requirePositive(createdAt, Resources.createdAtField, reader);
-    if (account !== null)
+    if (!Object.isNull(account))
       FieldCheck.requireText(account, Resources.accountField, reader);
 
     this.reference = reference;
@@ -60,7 +61,7 @@ export class HostReviewRequest {
       [Resources.urlField]: this.url,
       [Resources.isDraftField]: this.isDraft,
       [Resources.createdAtField]: this.createdAt,
-      ...(this.account === null ? {} : { [Resources.accountField]: this.account })
+      ...(Object.isNull(this.account) ? {} : { [Resources.accountField]: this.account })
     };
   }
 }

@@ -6,6 +6,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
 import { type JsonObject, JsonReader } from "@noldova/context.json";
 
 import { Resources } from "../resources.ts";
@@ -24,7 +25,7 @@ export class HostWorkItemType {
     if (!Resources.colorPattern.test(color))
       FieldCheck.fail(Resources.colorField, Resources.colorExpected, reader);
     FieldCheck.requireName(icon, Resources.iconField, reader);
-    if (image !== null && (image.length > Resources.maximumImageLength || !Resources.svgPattern.test(image)))
+    if (!Object.isNull(image) && (image.length > Resources.maximumImageLength || !Resources.svgPattern.test(image)))
       FieldCheck.fail(Resources.imageField, Resources.imageExpected, reader);
 
     this.name = name;
