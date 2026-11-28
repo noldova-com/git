@@ -83,14 +83,17 @@ export class GitHubAccounts implements IGitHubTokens {
     const kept: KeptAccounts | null = await this.reading;
     if (this.stopped)
       return;
+    const named: readonly number[] = (kept?.accounts ?? []).map(t => t.id);
     for (const account of kept?.accounts ?? []) {
       if (!this.entries.has(account.id))
         this.entries.set(account.id, this.make(account.id, account.host));
     }
     this.picks = kept?.picks ?? [];
-    await Promise.all([...this.entries.values()].map(t => t.restoreAsync()));
+    const restoring: readonly GitHubSignIn[] = [...this.entries.keys()].filter(id => id === GitHubAccounts.firstId || named.includes(id)).map(id => this.signInOf(id));
+    await Promise.all(restoring.map(t => t.restoreAsync()));
     for (const [id, signIn] of this.entries) {
-      if (id !== GitHubAccounts.firstId && signIn.current.state === SignInState.SignedOut && signIn.current.failure === null && !signIn.keptUnreadable)
+      if (id !== GitHubAccounts.firstId && named.includes(id) && signIn.current.state === SignInState.SignedOut && signIn.current.failure === null
+        && !signIn.keptUnreadable)
         this.leave(id);
     }
     this.save();
@@ -104,6 +107,9 @@ export class GitHubAccounts implements IGitHubTokens {
   }
 
   public async addAsync(): Promise<HostAccountEntry> {
+    await this.reading;
+    if (!this.isIndexRead)
+      throw GitHubApi.failure(FailureCode.Unavailable, Resources.accountsUnreadMessage);
     const id: number = Math.max(...this.entries.keys()) + 1;
     const signIn: GitHubSignIn = this.make(id);
     this.entries.set(id, signIn);
@@ -351,7 +357,7 @@ export class GitHubAccounts implements IGitHubTokens {
         accounts.push(new KeptAccount(id, signIn.host, login));
     }
     const value: string = JSON.stringify(new KeptAccounts(accounts, this.picks).toJson());
-    if (this.stopped || value === this.kept || (this.kept === null && accounts.length === 0 && this.picks.length === 0))
+    if (this.stopped || !this.isIndexRead || value === this.kept || (this.kept === null && accounts.length === 0 && this.picks.length === 0))
       return;
     this.kept = value;
     this.saving = this.saving.then(() => this.secrets.saveAsync(Resources.accountsSecret, value)).catch((error: unknown) =>
