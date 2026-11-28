@@ -9,6 +9,7 @@
 import { signal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import "@noldova/context.core";
+import { DatePattern } from "@noldova/desktop.protocol";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { HostPullRequestCommit, HostPullRequestCommits, HostReference } from "@noldova/git.hosting.protocol";
@@ -18,6 +19,7 @@ import { GitPullRequestCommitsComponent } from "../../../../src/app/components/g
 import { GitFolder } from "../../../../src/app/services/git-folder.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { TestPullRequestHost } from "../../../fixtures/test-pull-request-host.fixture.ts";
+import { TimeFormatsFixture } from "../../../fixtures/time-formats.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
@@ -112,10 +114,24 @@ describe("GitPullRequestCommitsComponent", () => {
       new HostPullRequestCommit(SECOND, "", "Hubot", OLD)], false).toJson());
     await tab.openAsync();
 
-    const old: string = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(OLD);
+    const old: string = DatePattern.format(new Date(OLD), "MMM d");
     expect([tab.requests.methods, tab.requests.payloads]).toEqual([[TestPullRequestHost.commitsMethod], [reference.toJson()]]);
     expect(tab.texts(".row")).toEqual(["9fceb02 Fix the sign-in Mona Lisa · 5 min", `0123456 Hubot · ${old}`]);
     expect([tab.texts(".cap"), tab.counts]).toEqual([[], ["2"]]);
+  });
+
+  it("shows an older commit's date by the date and time format setting, and again when it changes", async () => {
+    pinNow();
+    const tab = new Tab();
+    tab.requests.answer(TestPullRequestHost.commitsMethod, new HostPullRequestCommits([new HostPullRequestCommit(SECOND, "", "Hubot", OLD)], false).toJson());
+    await tab.openAsync();
+    const before: string[] = tab.texts(".row");
+    onTestFinished(() => TimeFormatsFixture.reset());
+    TimeFormatsFixture.use24Hour();
+    await tab.settleAsync();
+
+    expect([before, tab.texts(".row")]).toEqual([[`0123456 Hubot · ${DatePattern.format(new Date(OLD), "MMM d")}`],
+      [`0123456 Hubot · ${DatePattern.format(new Date(OLD), "d MMM")}`]]);
   });
 
   it("says when the host has more than the 250 it shows, and when there are none", async () => {
@@ -216,7 +232,7 @@ describe("GitPullRequestCommitsComponent", () => {
     expect([tab.texts("[role=alert]"), tab.logs, tab.counts]).toEqual([["error Example didn't answer. Try again to read the commits. Try again"],
       ["The Example module's git-example.readPullRequestCommits request failed: WindowFailure: The runtime stopped."], []]);
     await tab.clickAsync("[role=alert] button");
-    expect([tab.texts(".row"), tab.counts]).toEqual([[`9fceb02 Step Mona Lisa · ${new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(OLD)}`], ["1"]]);
+    expect([tab.texts(".row"), tab.counts]).toEqual([[`9fceb02 Step Mona Lisa · ${DatePattern.format(new Date(OLD), "MMM d")}`], ["1"]]);
   });
 
   it("drops an answer or a failure for a pull request it left", async () => {

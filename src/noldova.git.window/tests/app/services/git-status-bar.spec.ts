@@ -6,7 +6,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import { DatePattern } from "@noldova/desktop.protocol";
 import { StatusBarItem, StatusBarItemContribution, StatusBarItemState, StatusBarSide } from "@noldova/desktop.window";
+import { FakeTimeFormats, FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitCommand, StatusUpstream } from "@noldova/git.protocol";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 
@@ -19,6 +21,7 @@ describe("GitStatusBar", () => {
   const fetchedAt: string = "2026-11-22T18:05:00Z";
   const after = (milliseconds: number): Date => new Date(Date.parse(fetchedAt) + milliseconds);
   const minute: number = 60_000;
+  const dates = new FakeTimeFormats().service;
 
   it("shows the branch with how far it is ahead of and behind its upstream, opening the folder's history", () => {
     const state: StatusBarItemState = GitStatusBar.stateOf("/work/site", GitFixtures.status([], new StatusUpstream("origin/main", 3, 1, false), { branch: "feature/graph" }));
@@ -47,8 +50,8 @@ describe("GitStatusBar", () => {
   it("updates the item it was given, keeps a newer item when an older one is let go, and shows nothing once none is given", () => {
     const first: StatusBarItem = itemOf();
     const second: StatusBarItem = itemOf();
-    const withdrawFirst: () => void = GitStatusBar.provide(first, itemOf("git.fetched"), itemOf("git.lastCommand"));
-    const withdrawSecond: () => void = GitStatusBar.provide(second, itemOf("git.fetched"), itemOf("git.lastCommand"));
+    const withdrawFirst: () => void = GitStatusBar.provide(new FakeWindowPartContext(), first, itemOf("git.fetched"), itemOf("git.lastCommand"));
+    const withdrawSecond: () => void = GitStatusBar.provide(new FakeWindowPartContext(), second, itemOf("git.fetched"), itemOf("git.lastCommand"));
     onTestFinished(withdrawSecond);
 
     withdrawFirst();
@@ -62,20 +65,20 @@ describe("GitStatusBar", () => {
   it("says how long ago the repository fetched, in minutes, hours and days, with the time itself as the tooltip", () => {
     const status = GitFixtures.status([], null, { fetchedAt });
     const texts: string[] = [0, 59_999, minute, 2 * minute, 59 * minute, 60 * minute, 23 * 60 * minute, 24 * 60 * minute, 3 * 24 * 60 * minute, -5 * minute]
-      .map(t => GitStatusBar.fetchedStateOf("/work/site", status, after(t)).text);
+      .map(t => GitStatusBar.fetchedStateOf("/work/site", status, after(t), dates).text);
 
     expect(texts).toEqual([
       "Fetched just now", "Fetched just now", "Fetched 1 minute ago", "Fetched 2 minutes ago", "Fetched 59 minutes ago", "Fetched 1 hour ago", "Fetched 23 hours ago",
       "Fetched 1 day ago", "Fetched 3 days ago", "Fetched just now"
     ]);
-    expect(GitStatusBar.fetchedStateOf("/work/site", status, after(0)).tooltip).toBe(`Last fetched ${new Date(fetchedAt).toLocaleString("en-US")}`);
+    expect(GitStatusBar.fetchedStateOf("/work/site", status, after(0), dates).tooltip).toBe(`Last fetched ${DatePattern.format(new Date(fetchedAt), "MMM d, yyyy, h:mm a")}`);
   });
 
   it("hides the fetch item without a repository, without a status, or before the repository's first fetch", () => {
     expect([
-      GitStatusBar.fetchedStateOf(null, GitFixtures.status([], null, { fetchedAt }), after(0)).isHidden,
-      GitStatusBar.fetchedStateOf("/work/site", null, after(0)).isHidden,
-      GitStatusBar.fetchedStateOf("/work/site", GitFixtures.status(), after(0)).isHidden
+      GitStatusBar.fetchedStateOf(null, GitFixtures.status([], null, { fetchedAt }), after(0), dates).isHidden,
+      GitStatusBar.fetchedStateOf("/work/site", null, after(0), dates).isHidden,
+      GitStatusBar.fetchedStateOf("/work/site", GitFixtures.status(), after(0), dates).isHidden
     ]).toEqual([true, true, true]);
   });
 
@@ -99,7 +102,7 @@ describe("GitStatusBar", () => {
 
   it("updates the command item it was given, and keeps the last command shown when the status moves", () => {
     const command: StatusBarItem = itemOf("git.lastCommand");
-    const withdraw: () => void = GitStatusBar.provide(itemOf(), itemOf("git.fetched"), command);
+    const withdraw: () => void = GitStatusBar.provide(new FakeWindowPartContext(), itemOf(), itemOf("git.fetched"), command);
     onTestFinished(withdraw);
 
     GitStatusBar.showCommand("/work/site", new GitCommand("1", fetchedAt, "git add -- a.txt", 0, 40));
@@ -110,13 +113,35 @@ describe("GitStatusBar", () => {
     expect([shown, command.state().isHidden]).toEqual(["git add -- a.txt", true]);
   });
 
+  it("shows the fetch time in the tooltip by the time and date format settings, again when either changes, and stops listening once the items are let go", () => {
+    const context = new FakeWindowPartContext();
+    const fetched: StatusBarItem = itemOf("git.fetched");
+    const withdraw: () => void = GitStatusBar.provide(context, itemOf(), fetched, itemOf("git.lastCommand"));
+    onTestFinished(withdraw);
+    GitStatusBar.show("/work/site", GitFixtures.status([], null, { fetchedAt }));
+    const shown: string | null = fetched.state().tooltip;
+    context.formats.use("HH:mm", "d MMM yyyy, HH:mm");
+    context.raiseSettingChanged("desktop.dateTimeFormat", "d MMM yyyy, HH:mm", null, true);
+    const changed: string | null = fetched.state().tooltip;
+    withdraw();
+    const next = new FakeWindowPartContext();
+    const later: StatusBarItem = itemOf("git.fetched");
+    onTestFinished(GitStatusBar.provide(next, itemOf(), later, itemOf("git.lastCommand")));
+    GitStatusBar.show("/work/site", GitFixtures.status([], null, { fetchedAt }));
+    next.formats.use("h:mm a", "yyyy-MM-dd h:mm a");
+    context.raiseSettingChanged("desktop.timeFormat", "h:mm a", null, true);
+
+    expect([shown, changed, later.state().tooltip]).toEqual([`Last fetched ${DatePattern.format(new Date(fetchedAt), "MMM d, yyyy, h:mm a")}`,
+      `Last fetched ${DatePattern.format(new Date(fetchedAt), "d MMM yyyy, HH:mm")}`, `Last fetched ${DatePattern.format(new Date(fetchedAt), "MMM d, yyyy, h:mm a")}`]);
+  });
+
   it("moves the fetch age on each minute while the items are given, and stops once they are let go", () => {
     vi.useFakeTimers({ now: after(0) });
     onTestFinished(() => {
       vi.useRealTimers();
     });
     const fetched: StatusBarItem = itemOf("git.fetched");
-    const withdraw: () => void = GitStatusBar.provide(itemOf(), fetched, itemOf("git.lastCommand"));
+    const withdraw: () => void = GitStatusBar.provide(new FakeWindowPartContext(), itemOf(), fetched, itemOf("git.lastCommand"));
     onTestFinished(withdraw);
 
     GitStatusBar.show("/work/site", GitFixtures.status([], null, { fetchedAt }));

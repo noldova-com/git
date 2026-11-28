@@ -116,7 +116,7 @@ LICENSE file in the root directory of this source tree.
             {{ row.checks() }}
           </span>
           <span role="cell" class="small open" [title]="row.openTitle()">{{ row.open() }}</span>
-          <span role="cell" class="small muted fetched">{{ row.fetched() }}</span>
+          <span role="cell" class="small muted fetched">{{ fetchedOf(row) }}</span>
         </div>
       }
       @empty {

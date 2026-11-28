@@ -9,6 +9,7 @@
 import { ApplicationRef, computed, ErrorHandler } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import "@noldova/context.core";
+import { DatePattern } from "@noldova/desktop.protocol";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import type { JsonValue } from "@noldova/context.json";
@@ -480,7 +481,7 @@ describe("GitViewComponent", () => {
       "git.status": GitFixtures.status().toJson()
     });
     const rows = (): readonly HTMLElement[] => [...document.querySelectorAll<HTMLElement>("button[nol-menu-item]")];
-    const time: string = new Date(at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+    const time: string = DatePattern.format(new Date(at), "MMM d, h:mm a");
     const openAsync = async (count: number): Promise<readonly (readonly unknown[])[]> => {
       await view.clickAsync(".title-undo .recent");
       await view.untilAsync(() => rows().length === count);

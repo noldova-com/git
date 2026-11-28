@@ -7,7 +7,9 @@
  */
 
 import { signal } from "@angular/core";
+import { TestBed } from "@angular/core/testing";
 import "@noldova/context.core";
+import { TimeFormatService } from "@noldova/desktop.window";
 import { ConflictKind, FileState, type GitStatus, type StatusEntry, StatusUpstream } from "@noldova/git.protocol";
 import { describe, expect, it } from "vitest";
 
@@ -79,11 +81,11 @@ describe("GitWorkspaceRow", () => {
 
   it("says how long ago the repository fetched, or that it never has, once a read shows it", () => {
     const now: Date = new Date("2026-11-22T12:10:00Z");
-    const fetched = (fetchedAt: string | null): string => GitWorkspaceRow.fetchedOf(summaryOf(GitFixtures.status([], null, { fetchedAt })), now);
-    const row: GitWorkspaceRow = new GitWorkspaceRow(folder, signal(summaryOf(GitFixtures.status([], null, { fetchedAt: null }))), signal(undefined), signal(false));
+    const dates: TimeFormatService = TestBed.inject(TimeFormatService);
+    const fetched = (fetchedAt: string | null): string => GitWorkspaceRow.fetchedOf(summaryOf(GitFixtures.status([], null, { fetchedAt })), now, dates);
 
-    expect([fetched("2026-11-22T12:08:00Z"), fetched("2026-11-22T12:09:30Z"), fetched(null), row.fetched()]).toEqual(["2 min ago", "now", "Never", "Never"]);
-    expect([GitWorkspaceRow.fetchedOf(null, now), GitWorkspaceRow.fetchedOf(summaryOf(null), now)]).toEqual(["", ""]);
+    expect([fetched("2026-11-22T12:08:00Z"), fetched("2026-11-22T12:09:30Z"), fetched(null)]).toEqual(["2 min ago", "now", "Never"]);
+    expect([GitWorkspaceRow.fetchedOf(null, now, dates), GitWorkspaceRow.fetchedOf(summaryOf(null), now, dates)]).toEqual(["", ""]);
   });
 
   it("shows the current branch's pull request in any state, in the host's own word when it gives one, an open one that waits for its reviews as Review, with the worst of its checks, opening it from the row", () => {

@@ -126,9 +126,9 @@ export class GitWindowPart implements IWindowPart {
     this.unfollowAccounts = GitHostAccounts.follow(accounts => {
       context.setSettingsRows(Resources.accountsPage, GitWindowPart.accountRowsOf(accounts));
     });
-    this.withdrawStatusBar = GitStatusBar.provide(
+    this.withdrawStatusBar = GitStatusBar.provide(context,
       context.registerStatusBarItem(new StatusBarItemContribution(Resources.statusBarItemName, StatusBarSide.Left, GitStatusBar.stateOf(null, null))),
-      context.registerStatusBarItem(new StatusBarItemContribution(Resources.fetchedItemName, StatusBarSide.Left, GitStatusBar.fetchedStateOf(null, null, new Date()))),
+      context.registerStatusBarItem(new StatusBarItemContribution(Resources.fetchedItemName, StatusBarSide.Left, GitStatusBar.fetchedStateOf(null, null, new Date(), context.timeFormats))),
       context.registerStatusBarItem(new StatusBarItemContribution(Resources.commandItemName, StatusBarSide.Right, GitStatusBar.commandStateOf(null, null))));
     this.unfollowStatus = GitStatusFollower.follow(context);
     this.withdrawUndo = GitLastWriteUndo.provide(context);

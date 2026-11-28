@@ -166,7 +166,7 @@ export class GitHubPullRequests implements IGitPullRequests {
         throw error;
       this.context.log(Resources.formatRequestFailed(GitHubNames.readReviewRequestsMethod, String(error)));
       if (this.reviewReads.get(key) === read)
-        list.set(GitPullRequestList.failed(error instanceof RuntimeRequestException ? error.message : Resources.pullRequestsUnanswered, shown));
+        list.set(GitPullRequestList.failedBy(error, Resources.pullRequestsUnanswered, shown));
     }
   }
 
@@ -253,7 +253,7 @@ export class GitHubPullRequests implements IGitPullRequests {
         throw error;
       this.context.log(Resources.formatRequestFailed(GitHubNames.readPullRequestsMethod, String(error)));
       if (this.reads.get(key) === read)
-        list.set(GitPullRequestList.failed(error instanceof RuntimeRequestException ? error.message : Resources.pullRequestsUnanswered));
+        list.set(GitPullRequestList.failedBy(error, Resources.pullRequestsUnanswered));
     }
   }
 

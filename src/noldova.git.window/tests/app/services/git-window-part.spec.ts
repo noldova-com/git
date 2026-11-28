@@ -56,6 +56,7 @@ describe("GitWindowPart", () => {
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
     context.allow("onEvent");
+    context.allow("onSettingChanged");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
     context.allow("registerView");
@@ -74,8 +75,8 @@ describe("GitWindowPart", () => {
     expect(context.calls.map(t => t.member)).toEqual(["registerView", "registerView", "registerView", "registerDocument", "registerDocument", "registerDocument", "registerView",
       "registerView", "registerView", "registerView", "onViewClosed", "onViewClosed", "registerCommand", "registerCommand", "registerCommand", "onViewClosed",
       "registerDocument", "registerDocument", "registerCommand", "registerCommand", "registerSettingsPage", "setSettingsRows", "registerStatusBarItem",
-      "registerStatusBarItem", "registerStatusBarItem", "onEvent", "provideUndo", "onEvent"]);
-    expect([context.activeCallsOf("onEvent").length, context.activeCallsOf("provideUndo").length]).toEqual([0, 0]);
+      "registerStatusBarItem", "registerStatusBarItem", "onSettingChanged", "onSettingChanged", "onEvent", "provideUndo", "onEvent"]);
+    expect([context.activeCallsOf("onEvent").length, context.activeCallsOf("provideUndo").length, context.activeCallsOf("onSettingChanged").length]).toEqual([0, 0, 0]);
   });
 
   it("registers only the views, documents and commands its module declares, Across repositories as a document and no longer as a view, so the app keeps a saved layout's old dock tab of it hidden", async () => {
@@ -97,6 +98,7 @@ describe("GitWindowPart", () => {
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
     context.allow("onEvent");
+    context.allow("onSettingChanged");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -137,6 +139,7 @@ describe("GitWindowPart", () => {
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
     context.allow("onEvent");
+    context.allow("onSettingChanged");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -164,6 +167,7 @@ describe("GitWindowPart", () => {
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
     context.allow("onEvent");
+    context.allow("onSettingChanged");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -190,6 +194,7 @@ describe("GitWindowPart", () => {
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
     context.allow("onEvent");
+    context.allow("onSettingChanged");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -216,6 +221,7 @@ describe("GitWindowPart", () => {
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
     context.allow("onEvent");
+    context.allow("onSettingChanged");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -242,6 +248,7 @@ describe("GitWindowPart", () => {
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
     context.allow("onEvent");
+    context.allow("onSettingChanged");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -269,6 +276,7 @@ describe("GitWindowPart", () => {
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
     context.allow("onEvent");
+    context.allow("onSettingChanged");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -296,6 +304,7 @@ describe("GitWindowPart", () => {
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
     context.allow("onEvent");
+    context.allow("onSettingChanged");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -329,6 +338,7 @@ describe("GitWindowPart", () => {
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
     context.allow("onEvent");
+    context.allow("onSettingChanged");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -361,6 +371,7 @@ describe("GitWindowPart", () => {
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
     context.allow("onEvent");
+    context.allow("onSettingChanged");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
     onTestFinished(() => localStorage.clear());
@@ -397,6 +408,7 @@ describe("GitWindowPart", () => {
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
     context.allow("onEvent");
+    context.allow("onSettingChanged");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -458,6 +470,7 @@ describe("GitWindowPart", () => {
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
     context.allow("onEvent");
+    context.allow("onSettingChanged");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -536,6 +549,7 @@ describe("GitWindowPart", () => {
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
     context.allow("onEvent");
+    context.allow("onSettingChanged");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 
@@ -560,6 +574,7 @@ describe("GitWindowPart", () => {
     context.allow("setSettingsRows");
     context.allow("onViewClosed");
     context.allow("onEvent");
+    context.allow("onSettingChanged");
     context.beStrict();
     context.answer("registerStatusBarItem", t => new StatusBarItem(t, () => undefined));
 

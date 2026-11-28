@@ -884,6 +884,13 @@ export declare class HostingNames {
   public static readonly readPullRequestThreadsMethod: string;
 
   /**
+   * The field of a method failure's `details` that holds, as milliseconds since the epoch, when the host's rate limit for the account resets, on a
+   * failure because that limit is used up. A window writes that time by the person's time and date format settings; the failure's message names it
+   * too, for logs and agent tools.
+   */
+  public static readonly rateLimitedUntilDetail: string;
+
+  /**
    * A member's full name in a module.
    *
    * @param moduleId The host module's id, such as `git-github`.

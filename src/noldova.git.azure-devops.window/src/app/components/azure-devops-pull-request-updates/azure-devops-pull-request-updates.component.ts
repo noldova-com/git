@@ -8,7 +8,7 @@
 
 import { NgTemplateOutlet } from "@angular/common";
 import { Component, effect, inject, input, type InputSignal, output, type OutputEmitterRef, PendingTasks, signal, untracked, type WritableSignal } from "@angular/core";
-import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
+import { type IWindowPartContext, TimeFormatService, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
 import { type HostPullRequestUpdate, HostPullRequestUpdates, type HostReference } from "@noldova/git.hosting.protocol";
 import { GitHistorySelection } from "@noldova/git.window";
@@ -28,7 +28,7 @@ export class AzureDevOpsPullRequestUpdatesComponent {
   private readonly tasks: PendingTasks = inject(PendingTasks);
   private readonly attempt: WritableSignal<number> = signal<number>(0);
   private isFirstRead: boolean = true;
-  private readonly dates: Intl.DateTimeFormat = new Intl.DateTimeFormat(undefined, Resources.linkedCommitDateFormat);
+  private readonly dates: TimeFormatService = inject(TimeFormatService);
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly secondary: ButtonVariant = ButtonVariant.Secondary;
@@ -74,7 +74,7 @@ export class AzureDevOpsPullRequestUpdatesComponent {
   }
 
   protected ageOf(update: HostPullRequestUpdate): string {
-    return Resources.formatCommitAge(Date.now() - update.createdAt) ?? this.dates.format(update.createdAt);
+    return Resources.formatCommitAge(Date.now() - update.createdAt) ?? this.dates.shortDate(update.createdAt);
   }
 
   protected open(folder: string, update: HostPullRequestUpdate): void {

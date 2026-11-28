@@ -34,6 +34,7 @@ export class HostingNames {
   public static readonly readReviewRequestsMethod: string = "readReviewRequests";
   public static readonly readCommitCommentsMethod: string = "readCommitComments";
   public static readonly readPullRequestThreadsMethod: string = "readPullRequestThreads";
+  public static readonly rateLimitedUntilDetail: string = "rateLimitedUntil";
 
   public static nameOf(moduleId: string, member: string): string {
     return Resources.formatMemberName(moduleId, member);

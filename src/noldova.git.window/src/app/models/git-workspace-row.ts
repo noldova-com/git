@@ -8,6 +8,7 @@
 
 import { computed, type Signal, signal } from "@angular/core";
 import "@noldova/context.core";
+import type { TimeFormatService } from "@noldova/desktop.window";
 
 import { GitPullRequestState } from "../enums/git-pull-request-state.ts";
 import { GitPullRequestsState } from "../enums/git-pull-requests-state.ts";
@@ -26,7 +27,6 @@ export class GitWorkspaceRow {
   public readonly branch: Signal<string>;
   public readonly sync: Signal<string>;
   public readonly changes: Signal<string>;
-  public readonly fetched: Signal<string>;
   public readonly failure: Signal<string | null>;
   public readonly isRepository: Signal<boolean>;
   public readonly conflicts: Signal<number>;
@@ -56,7 +56,6 @@ export class GitWorkspaceRow {
     this.branch = computed(() => GitWorkspaceRow.branchOf(summary()));
     this.sync = computed(() => GitWorkspaceRow.syncOf(summary()));
     this.changes = computed(() => GitWorkspaceRow.changesOf(summary()));
-    this.fetched = computed(() => GitWorkspaceRow.fetchedOf(summary(), new Date()));
     this.pullRequest = computed(() => pullRequest()?.pullRequest ?? null);
     this.openList = openList;
     this.stackedOn = computed(() => GitWorkspaceRow.stackedOnOf(this.pullRequest(), openList()));
@@ -169,10 +168,10 @@ export class GitWorkspaceRow {
     return summary.gone ? Resources.upstreamGone : Resources.formatSync(summary.ahead, summary.behind);
   }
 
-  public static fetchedOf(summary: GitRepositorySummary | null, now: Date): string {
+  public static fetchedOf(summary: GitRepositorySummary | null, now: Date, dates: TimeFormatService): string {
     if (Object.isNull(summary) || summary.isUnread)
       return "";
-    return Object.isNull(summary.fetchedAt) ? Resources.neverFetched : CommitLabels.ageOf(summary.fetchedAt, now);
+    return Object.isNull(summary.fetchedAt) ? Resources.neverFetched : CommitLabels.ageOf(summary.fetchedAt, now, dates);
   }
 
   public static changesOf(summary: GitRepositorySummary | null): string {

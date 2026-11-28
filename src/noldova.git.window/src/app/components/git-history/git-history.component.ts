@@ -12,7 +12,7 @@ import {
   viewChild, type WritableSignal
 } from "@angular/core";
 import "@noldova/context.core";
-import { type IWindowPartContext, LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
+import { type IWindowPartContext, LinkPlace, TimeFormatService, WindowPartTokens } from "@noldova/desktop.window";
 import { type GitGraph, type GitGraphCommit, type GitPrediction, type GitRepositoryScan, type GitStatus, PredictionAction } from "@noldova/git.protocol";
 import {
   DialogService, MenuComponent, MenuItemComponent, MenuSeparatorComponent, MenuTriggerDirective, ToolbarButtonComponent, ToolbarDirective, ToolbarItemDirective, TooltipDirective
@@ -86,6 +86,7 @@ export class GitHistoryComponent {
   private readonly field: Signal<ElementRef<HTMLElement>> = viewChild.required<ElementRef<HTMLElement>>("field");
   private readonly fitting: WritableSignal<number> = signal(Resources.historyToolbars.length);
   private readonly injector: Injector = inject(Injector);
+  private readonly dates: TimeFormatService = inject(TimeFormatService);
   private readonly jumped: WritableSignal<GitBranchView | null> = signal<GitBranchView | null>(null);
   private dragged: GitChipDrag | null = null;
   private static lists = 0;
@@ -116,7 +117,7 @@ export class GitHistoryComponent {
   protected readonly hiddenToolbars: Signal<typeof Resources.historyToolbars> = computed(() => this.toolbars().slice(this.fitting()));
   protected readonly rows: Signal<readonly GitHistoryRow[]> = computed(() =>
     GitHistoryRows.rowsOf(GitHistoryRows.switchedTo(this.commits(), this.held()),
-      this.status()?.entries.length ?? 0, this.filter(), new Date()));
+      this.status()?.entries.length ?? 0, this.filter(), new Date(), this.dates));
   protected readonly lanes: Signal<number> = computed(() => Math.min(Resources.graphMaximumLanes, Math.max(1, ...this.rows().map(t => t.graph.width))));
   protected readonly graphPixels: Signal<number> = computed(() =>
     Math.max(Resources.graphMinimumPixels, Resources.graphLaneOffsetPixels * 2 + (this.lanes() - 1) * Resources.graphLanePixels));
