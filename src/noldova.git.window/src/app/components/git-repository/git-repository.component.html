@@ -125,16 +125,29 @@ LICENSE file in the root directory of this source tree.
               }
             </button>
           } @else {
-            <button type="button" class="row" [class.sel]="isViewed(row.branch, true)" [style.padding-left.rem]="indentOf(row)" [title]="row.key" (click)="view(path, row.branch, true)">
-              <svg class="octicon" viewBox="0 0 16 16" aria-hidden="true"><path [attr.d]="resources.branchIconPath" /></svg><span class="grow">{{ row.name }}</span>
-              @let remoteCounts = remoteCountsOf(row.branch);
-              @if (remoteCounts.ahead > 0) {
-                <span class="small count ahead" [title]="resources.formatRemoteAheadTitle(remoteCounts.ahead)"><span class="arrow" aria-hidden="true">{{ resources.aheadArrow }}</span>{{ remoteCounts.ahead }}</span>
-              }
-              @if (remoteCounts.behind > 0) {
-                <span class="small count behind" [title]="resources.formatRemoteBehindTitle(remoteCounts.behind)"><span class="arrow" aria-hidden="true">{{ resources.behindArrow }}</span>{{ remoteCounts.behind }}</span>
-              }
-            </button>
+            @let local = localNameOf(row.branch);
+            <div class="remote">
+              <button type="button" class="row" [class.sel]="isViewed(row.branch, true)" [style.padding-left.rem]="indentOf(row)" [title]="row.key" (click)="view(path, row.branch, true)"
+                (dblclick)="switchTo(path, local)" [nolContextMenuTriggerFor]="remoteMenu">
+                <svg class="octicon" viewBox="0 0 16 16" aria-hidden="true"><path [attr.d]="resources.branchIconPath" /></svg><span class="grow">{{ row.name }}</span>
+                @let remoteCounts = remoteCountsOf(row.branch);
+                @if (remoteCounts.ahead > 0) {
+                  <span class="small count ahead" [title]="resources.formatRemoteAheadTitle(remoteCounts.ahead)"><span class="arrow" aria-hidden="true">{{ resources.aheadArrow }}</span>{{ remoteCounts.ahead }}</span>
+                }
+                @if (remoteCounts.behind > 0) {
+                  <span class="small count behind" [title]="resources.formatRemoteBehindTitle(remoteCounts.behind)"><span class="arrow" aria-hidden="true">{{ resources.behindArrow }}</span>{{ remoteCounts.behind }}</span>
+                }
+              </button>
+              <span class="actions">
+                <button type="button" nol-icon-button class="switch" [icon]="resources.switchIcon" [label]="resources.formatSwitchToBranch(local)" [nolTooltip]="resources.switchLabel"
+                  [disabled]="switchable() === null || local === current()" (click)="switchTo(path, local)"></button>
+              </span>
+            </div>
+            <ng-template #remoteMenu>
+              <nol-menu>
+                <button nol-menu-item [label]="resources.switchLabel" [icon]="resources.switchIcon" [disabled]="switchable() === null || local === current()" (triggered)="switchTo(path, local)"></button>
+              </nol-menu>
+            </ng-template>
           }
         }
       }

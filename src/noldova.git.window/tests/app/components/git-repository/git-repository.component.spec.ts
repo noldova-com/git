@@ -26,6 +26,7 @@ import { GitPullRequestRow } from "../../../../src/app/models/git-pull-request-r
 import { GitAgents } from "../../../../src/app/services/git-agents.ts";
 import { GitPullRequests } from "../../../../src/app/services/git-pull-requests.ts";
 import { GitRepositoryLinks } from "../../../../src/app/services/git-repository-links.ts";
+import { GitViewOptions } from "../../../../src/app/services/git-view-options.ts";
 import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
@@ -538,6 +539,63 @@ describe("GitRepositoryComponent", () => {
       await domAsync(() => requested(context, "git.switchBranch").length === 1);
 
       expect([forCurrent, requested(context, "git.switchBranch")]).toEqual([true, [{ folder: GitFixtures.folder, name: "feature/graph", basedOn: GitFixtures.status().fingerprint }]]);
+    });
+
+    const openRemoteAsync = async (element: HTMLElement, rows: number): Promise<void> => {
+      [...element.querySelectorAll<HTMLElement>("button.toggle")].find(t => t.textContent?.includes("Remotes"))?.click();
+      await domAsync(() => !Object.isNull(element.querySelector("[title='origin/']")));
+      element.querySelector<HTMLElement>("[title='origin/']")?.click();
+      await domAsync(() => element.querySelectorAll(".remote").length === rows);
+    };
+    const remoteRowOf = (element: HTMLElement, branch: string): HTMLElement => element.querySelector<HTMLElement>(`.remote:has(> [title='${branch}'])`) ?? element;
+
+    it.each([true, false])("switches to a branch only on the remote by its local name from its Remotes row's Switch to branch and by a double-click, with the branch card shown %s", async shown => {
+      GitViewOptions.showsBranch.set(shown);
+      onTestFinished(() => GitViewOptions.showsBranch.set(true));
+      const { element, context } = await renderWithAsync({ "git.switchBranch": null, "git.branches": GitFixtures.branches("main", ["main"], ["origin/main", "origin/team/colleague"]).toJson() });
+      await openRemoteAsync(element, 1);
+      element.querySelector<HTMLElement>("[title='origin/team/']")?.click();
+      await domAsync(() => element.querySelectorAll(".remote").length === 2);
+      const action: HTMLButtonElement | null = remoteRowOf(element, "origin/team/colleague").querySelector<HTMLButtonElement>(".switch");
+      const named: readonly unknown[] = [action?.getAttribute("aria-label"), action?.disabled];
+
+      action?.click();
+      await domAsync(() => requested(context, "git.switchBranch").length === 1);
+      await domAsync(() => element.querySelector<HTMLButtonElement>("[title='origin/team/colleague']")?.disabled !== true && Object.isNull(element.querySelector(".spin")));
+      remoteRowOf(element, "origin/team/colleague").querySelector("[title='origin/team/colleague']")?.dispatchEvent(new MouseEvent("dblclick"));
+      await domAsync(() => requested(context, "git.switchBranch").length === 2);
+
+      const call: unknown = { folder: GitFixtures.folder, name: "team/colleague", basedOn: GitFixtures.status().fingerprint };
+      expect([named, requested(context, "git.switchBranch")]).toEqual([["Switch to branch team/colleague", false], [call, call]]);
+    });
+
+    it("offers Switch to branch in a remote branch's menu, and neither in the menu nor at the row's end for the current branch's own", async () => {
+      const { element, context } = await renderWithAsync({ "git.switchBranch": null, "git.branches": GitFixtures.branches("main", ["main"], ["origin/main", "origin/next"]).toJson() });
+      await openRemoteAsync(element, 2);
+      const forCurrent: readonly boolean[] = (await menuOf(element.querySelector<HTMLElement>("[title='origin/main']") ?? element)).map(isOff);
+      document.querySelector("[nol-menu-item]")?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true, cancelable: true }));
+      await domAsync(() => Object.isNull(document.querySelector("[nol-menu-item]")));
+      const actionForCurrent: boolean | undefined = remoteRowOf(element, "origin/main").querySelector<HTMLButtonElement>(".switch")?.disabled;
+
+      await choose(element.querySelector<HTMLElement>("[title='origin/next']") ?? element, "Switch to branch");
+      await domAsync(() => requested(context, "git.switchBranch").length === 1);
+
+      expect([forCurrent, actionForCurrent, requested(context, "git.switchBranch")])
+        .toEqual([[true], true, [{ folder: GitFixtures.folder, name: "next", basedOn: GitFixtures.status().fingerprint }]]);
+    });
+
+    it("keeps the current branch and says why when Git refuses a remote branch's switch", async () => {
+      const { element } = await renderWithAsync({
+        "git.switchBranch": GitFixtures.failure(FailureCode.Git, GitCode.ChangesInTheWay, "Your local changes to package-lock.json would be overwritten by checkout."),
+        "git.branches": GitFixtures.branches("main", ["main"], ["origin/main", "origin/next"]).toJson()
+      });
+      await openRemoteAsync(element, 2);
+
+      remoteRowOf(element, "origin/next").querySelector<HTMLButtonElement>(".switch")?.click();
+      await domAsync(() => !Object.isNull(element.querySelector("[role=alert]")) && Object.isNull(element.querySelector(".spin")));
+
+      expect(currentOf(element)).toEqual(["check", "main"]);
+      expect((element.querySelector("[role=alert]")?.textContent ?? "").trim()).toBe("Your local changes to package-lock.json would be overwritten by checkout.");
     });
   });
 

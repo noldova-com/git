@@ -163,6 +163,20 @@ describe("UndoWriter", () => {
     assert.equal(await repository.runGitAsync(["branch", "--list", "at-side"]), "");
   });
 
+  test("undoes a switch to a branch only on a remote by switching back and deleting the tracking branch it made, keeping the remote's branch", async () => {
+    await repository.runGitAsync(["remote", "add", "origin", repository.folder]);
+    const tip = await idOf("side");
+    await repository.runGitAsync(["update-ref", "refs/remotes/origin/colleague", tip]);
+    const switched = await writeAsync(new BranchSwitchWriter(runner, new CheckoutRisksReader(hooks, filters), "colleague"));
+    const made = [await branchOf(), (await repository.runGitAsync(["rev-parse", "--abbrev-ref", "colleague@{upstream}"])).trim(), await idOf("colleague")];
+
+    await undoAsync(switched);
+
+    assert.deepEqual(made, ["colleague", "origin/colleague", tip]);
+    assert.deepEqual([await branchOf(), (await repository.runGitAsync(["branch", "--list", "colleague"])).trim(), await idOf("refs/remotes/origin/colleague"), await statusOf()],
+      ["main", "", tip, ""]);
+  });
+
   test("undoes a cherry-pick by resetting back keeping local changes, and a mixed reset by resetting forward with its index", async () => {
     const first = await idOf("HEAD");
     const pick = await writeAsync(new PickWriter(runner, hooks, GitNames.cherryPickMethod, await idOf("side~1")));

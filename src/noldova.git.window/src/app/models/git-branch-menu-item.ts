@@ -42,7 +42,7 @@ export class GitBranchMenuItem {
     return items;
   }
 
-  private static localNameOf(branch: string, remotes: readonly string[]): string {
+  public static localNameOf(branch: string, remotes: readonly string[]): string {
     const remote: string | undefined = remotes.find(t => branch.startsWith(`${t}${Resources.slash}`));
     return Object.isUndefined(remote) ? branch : branch.slice(remote.length + 1);
   }

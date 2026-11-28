@@ -825,6 +825,10 @@ export class Resources {
   public static readonly tagHereTitle: string = "Make a tag at this commit";
   public static readonly tagNameLabel: string = "New tag name";
   public static readonly switchLabel: string = "Switch to branch";
+
+  public static formatSwitchToBranch(name: string): string {
+    return `${Resources.switchLabel} ${name}`;
+  }
   public static readonly switchIcon: IconName = "swap_horiz";
   public static readonly openInBrowserLabel: string = "Open in browser";
   public static readonly copyLinkLabel: string = "Copy link";
