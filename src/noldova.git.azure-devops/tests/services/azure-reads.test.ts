@@ -837,6 +837,18 @@ describe("AzureReads", () => {
     assert.deepEqual(azure.urls(), [listUrl, policiesUrl, buildsUrl]);
   });
 
+  it("asks for the token of the repository's account by its address for a repository's read, and by its organization alone for a reference's", async () => {
+    const azure = new FakeAzure();
+    azure.answer(FakeAzure.json({ value: [] }), new Response(null, { status: 404 }));
+    const token = new FakeToken();
+    const reads = new AzureReads(new AzureApi(azure.fetch), token, new FakeModuleLog());
+
+    await reads.readBranchPullRequestAsync(new BranchQuery("dev.azure.com", "fabrikam/web/_git/site", "feature/sign-in", null), signal);
+    await reads.readPullRequestAsync(new HostReference("git-azure-devops", "Fabrikam", "3411ebc1-d5aa-464f-9615-0b527bc66719", 12), signal);
+
+    assert.deepEqual(token.asked, [["fabrikam", "dev.azure.com", "fabrikam/web/_git/site"], ["Fabrikam", null, null]]);
+  });
+
   it("reads a branch's completed pull request as merged and its abandoned one as closed, each at its closing time", async () => {
     const azure = new FakeAzure();
     for (const status of ["completed", "abandoned"])

@@ -30,6 +30,14 @@ export class Resources {
   public static readonly repositoryIdPattern: RegExp = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   public static readonly signInSecret: string = "git-azure-devops.signIn";
   public static readonly microsoftSignInSecret: string = "git-azure-devops.microsoftSignIn";
+  public static readonly accountsSecret: string = "git-azure-devops.accounts";
+  public static readonly picksCap: number = 200;
+  public static readonly unknownAccountMessage: string = "This Azure DevOps account isn't kept on this computer any more.";
+  public static readonly keptAccountsUnreadable: string = "The Azure DevOps accounts kept on this computer couldn't be read; only the first account was restored.";
+  public static readonly accountAlreadyKept: string = "An added Azure DevOps account signed in to an organization as an account already kept there, so its token was forgotten and it ended signed out as already kept.";
+  public static readonly accountsNotKept: string = "The Azure DevOps accounts couldn't be kept on this computer; added accounts and chosen accounts last until the app closes.";
+  public static readonly accountsField: string = "accounts";
+  public static readonly picksField: string = "picks";
   public static readonly rejectedStatus: "rejected" = "rejected";
   public static readonly entraClientId: string = "a1e591a3-da4c-47be-995b-3bc71493bf84";
   public static readonly entraAuthorizeUrl: string = "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize";
@@ -641,6 +649,22 @@ export class Resources {
 
   public static formatSignInNotChecked(reason: string): string {
     return `The kept Azure DevOps sign-in couldn't be checked now, so it stays: ${reason}`;
+  }
+
+  public static formatAccountSecret(id: number): string {
+    return `git-azure-devops.account${id}`;
+  }
+
+  public static formatMicrosoftAccountSecret(id: number): string {
+    return `git-azure-devops.microsoftAccount${id}`;
+  }
+
+  public static formatKeptAccountsUnread(reason: string): string {
+    return `The Azure DevOps accounts kept on this computer couldn't be read: ${reason}`;
+  }
+
+  public static formatPlace(organization: string): string {
+    return `${Resources.host}${Resources.pathSeparator}${organization.toLowerCase()}`;
   }
 
 }

@@ -8,9 +8,10 @@
 
 import type { AzureCredential } from "../models/azure-credential.ts";
 
-export interface IAzureToken {
-  readonly token: AzureCredential | null;
-  readonly organization: string | null;
+export interface IAzureTokens {
+  readonly isSignedIn: boolean;
+  tokenFor(organization: string, host?: string | null, path?: string | null): AzureCredential | null;
+  holds(token: AzureCredential): boolean;
   refusedAsync(token: AzureCredential): Promise<void>;
   readyAsync(): Promise<void>;
 }

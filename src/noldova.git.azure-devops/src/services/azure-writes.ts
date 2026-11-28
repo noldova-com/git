@@ -11,7 +11,7 @@ import { FailureCode } from "@noldova/desktop.protocol";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
 import type { HostComment, HostReference, HostReviewer, HostWorkItemDetail, WorkItemUpdate } from "@noldova/git.hosting.protocol";
 
-import type { IAzureToken } from "../interfaces/i-azure-token.ts";
+import type { IAzureTokens } from "../interfaces/i-azure-tokens.ts";
 import type { AzureCredential } from "../models/azure-credential.ts";
 import type { BranchLink } from "../models/branch-link.ts";
 import type { PullRequestAbandonment } from "../models/pull-request-abandonment.ts";
@@ -26,10 +26,10 @@ import { AzureReads } from "./azure-reads.ts";
 
 export class AzureWrites {
   private readonly api: AzureApi;
-  private readonly signIn: IAzureToken;
+  private readonly signIn: IAzureTokens;
   private readonly reads: AzureReads;
 
-  public constructor(api: AzureApi, signIn: IAzureToken, reads: AzureReads) {
+  public constructor(api: AzureApi, signIn: IAzureTokens, reads: AzureReads) {
     this.api = api;
     this.signIn = signIn;
     this.reads = reads;
@@ -171,9 +171,8 @@ export class AzureWrites {
   }
 
   private tokenFor(organization: string | null): AzureCredential {
-    const token: AzureCredential | null = this.signIn.token;
-    const signedIn: string | null = this.signIn.organization;
-    if (token === null || signedIn === null || organization === null || !Resources.isSameOrganization(signedIn, organization))
+    const token: AzureCredential | null = organization === null ? null : this.signIn.tokenFor(organization);
+    if (token === null)
       throw AzureApi.failure(FailureCode.Unauthorized, Resources.signedOutMessage);
     return token;
   }
@@ -206,7 +205,7 @@ export class AzureWrites {
       if (!AzureApi.isUnauthorized(error))
         throw error;
       await this.signIn.refusedAsync(token);
-      throw cannotRead !== null && this.signIn.token === token ? AzureApi.failure(FailureCode.Unauthorized, cannotRead) : error;
+      throw cannotRead !== null && this.signIn.holds(token) ? AzureApi.failure(FailureCode.Unauthorized, cannotRead) : error;
     }
   }
 
@@ -219,7 +218,7 @@ export class AzureWrites {
       if (!AzureApi.isUnauthorized(error))
         throw error;
       await this.signIn.refusedAsync(token);
-      throw this.signIn.token === token ? AzureApi.failure(FailureCode.Unauthorized, cannotWrite) : error;
+      throw this.signIn.holds(token) ? AzureApi.failure(FailureCode.Unauthorized, cannotWrite) : error;
     }
     if (written === null)
       throw AzureApi.failure(FailureCode.NotFound, missing);

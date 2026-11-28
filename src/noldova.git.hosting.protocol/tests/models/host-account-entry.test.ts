@@ -22,6 +22,25 @@ describe("HostAccountEntry", () => {
     assert.deepEqual(HostAccountEntry.fromJson(JSON.parse(JSON.stringify(entry.toJson()))), entry);
   });
 
+  it("writes its place only when it has one, and reads JSON without it, with null or with a place", () => {
+    const placed: HostAccountEntry = new HostAccountEntry(2, signedIn, "dev.azure.com/fabrikam");
+
+    assert.deepEqual(placed.toJson(), { id: 2, signIn: signedIn.toJson(), place: "dev.azure.com/fabrikam" });
+    assert.deepEqual([
+      HostAccountEntry.fromJson({ id: 2, signIn: signedIn.toJson() }).place,
+      HostAccountEntry.fromJson({ id: 2, signIn: signedIn.toJson(), place: null }).place,
+      HostAccountEntry.fromJson(JSON.parse(JSON.stringify(placed.toJson()))).place,
+      HostAccountEntry.fromJson({ id: 2, signIn: signedIn.toJson(), place: "github.example.com:8443" }).place
+    ], [null, null, "dev.azure.com/fabrikam", "github.example.com:8443"]);
+  });
+
+  it("refuses a place with a scheme, a user name, capitals or a trailing '/', naming the parameter or the field", () => {
+    for (const place of ["https://dev.azure.com/fabrikam", "user@dev.azure.com/fabrikam", "dev.azure.com/Fabrikam", "dev.azure.com/fabrikam/", ""])
+      assert.throws(() => new HostAccountEntry(2, signedIn, place), { name: "HostingArgumentException", parameterName: "place" }, place);
+    assert.throws(() => HostAccountEntry.fromJson({ id: 2, signIn: signedIn.toJson(), place: "dev.azure.com/" }, "$.entry"),
+      { name: "HostingFieldException", field: "$.entry.place" });
+  });
+
   it("refuses an id that isn't a positive whole number, naming the parameter", () => {
     assert.throws(() => new HostAccountEntry(0, signedIn), { name: "HostingArgumentException", parameterName: "id" });
   });
