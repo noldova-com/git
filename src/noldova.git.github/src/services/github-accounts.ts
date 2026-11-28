@@ -66,14 +66,24 @@ export class GitHubAccounts implements IGitHubTokens {
   }
 
   public get signedIn(): readonly SignedInAccount[] {
+    return this.signedInOn(Resources.host);
+  }
+
+  public signedInOn(host: string): readonly SignedInAccount[] {
+    const server: string = host.toLowerCase();
     const accounts: SignedInAccount[] = [];
     for (const [id, signIn] of this.entries) {
       const token: string | null = signIn.token;
       const login: string | undefined = signIn.current.account?.login;
-      if (token !== null && login !== undefined && signIn.host === Resources.host)
+      if (token !== null && login !== undefined && signIn.host === server)
         accounts.push(new SignedInAccount(id, login, token));
     }
     return accounts;
+  }
+
+  public serves(host: string): boolean {
+    const server: string = host.toLowerCase();
+    return server === Resources.host || [...this.entries.values()].some(t => t.host === server);
   }
 
   public async restoreAsync(): Promise<void> {
@@ -174,7 +184,7 @@ export class GitHubAccounts implements IGitHubTokens {
   }
 
   public async accountForAsync(host: string, path: string, signal: AbortSignal): Promise<number | null> {
-    const signedIn: readonly SignedInAccount[] = this.signedIn;
+    const signedIn: readonly SignedInAccount[] = this.signedInOn(host);
     const first: SignedInAccount | undefined = signedIn[0];
     if (first === undefined)
       return null;
@@ -184,17 +194,17 @@ export class GitHubAccounts implements IGitHubTokens {
     const pick: number | undefined = this.picks.find(t => GitHubAccounts.isSameRepository(t, host, path))?.account;
     if (pick !== undefined && signedIn.some(t => t.id === pick))
       return pick;
-    if (signedIn.length === 1 || host !== Resources.host)
+    if (signedIn.length === 1)
       return first.id;
     const key: string = GitHubAccounts.keyOf(host, path);
     let found: Promise<number> | undefined = this.found.get(key);
     if (found === undefined) {
-      found = this.probeAsync(key, path, signedIn, first.id);
+      found = this.probeAsync(key, host, path, signedIn, first.id);
       this.found.set(key, found);
     }
     const id: number = await found;
     signal.throwIfAborted();
-    const now: readonly SignedInAccount[] = this.signedIn;
+    const now: readonly SignedInAccount[] = this.signedInOn(host);
     return now.some(t => t.id === id) ? id : now[0]?.id ?? null;
   }
 
@@ -205,7 +215,7 @@ export class GitHubAccounts implements IGitHubTokens {
 
   private namedFor(host: string, path: string): number | null {
     const user: string | undefined = this.users.get(GitHubAccounts.keyOf(host, path));
-    return this.signedIn.find(t => t.login.toLowerCase() === user)?.id ?? null;
+    return this.signedInOn(host).find(t => t.login.toLowerCase() === user)?.id ?? null;
   }
 
   public holds(token: string): boolean {
@@ -286,14 +296,14 @@ export class GitHubAccounts implements IGitHubTokens {
     this.picks = this.picks.filter(t => t.account !== id);
   }
 
-  private async probeAsync(key: string, path: string, signedIn: readonly SignedInAccount[], first: number): Promise<number> {
-    const repository: GitHubRepository | null = GitHubRepository.parse(path);
+  private async probeAsync(key: string, host: string, path: string, signedIn: readonly SignedInAccount[], first: number): Promise<number> {
+    const repository: GitHubRepository | null = GitHubRepository.parse(host, path);
     if (repository === null)
       return first;
     let isSure: boolean = true;
     for (const account of signedIn) {
       try {
-        if (await this.api.getAsync(repository.path, account.token, new AbortController().signal) !== null)
+        if (await this.api.getAsync(repository.host, repository.path, account.token, new AbortController().signal) !== null)
           return account.id;
       }
       catch (error) {

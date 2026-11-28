@@ -23,6 +23,7 @@ export class Resources {
   public static readonly accountAlreadyKept: string = "An added GitHub account signed in as an account already kept here, so its token was forgotten and it ended signed out as already kept.";
   public static readonly accountsUnreadMessage: string = "The GitHub accounts kept on this computer aren't read, so no account can be added until they are; the ones kept stay as they are.";
   public static readonly accountsNotKept: string = "The GitHub accounts couldn't be kept on this computer; added accounts and chosen accounts last until the app closes.";
+  public static readonly accessOtherHostReason: string = "The GitHub module gives other modules access to github.com only; other GitHub servers aren't served yet.";
   public static readonly accessSignedOutReason: string = "Sign in to GitHub in Settings, GitHub.";
   public static readonly accessUnreadableReason: string = "The GitHub sign-in kept on this computer couldn't be read; sign in again in Settings, GitHub.";
   public static readonly accessWaitingReason: string = "The sign-in to GitHub isn't finished yet: enter its code at GitHub, or sign in again in Settings, GitHub.";
@@ -260,7 +261,6 @@ export class Resources {
   public static readonly incompleteResultsField: string = "incomplete_results";
   public static readonly repositoryUrlField: string = "repository_url";
   public static readonly reviewRequestsPath: string = "/search/issues?q=is%3Apr+is%3Aopen+review-requested%3A%40me&sort=updated&order=desc&per_page=100";
-  public static readonly repositoryApiPrefix: string = "https://api.github.com/repos/";
   public static readonly reviewRequestsHeldFor: number = 60_000;
   public static readonly objectType: string = "object";
   public static readonly stringType: string = "string";
@@ -442,7 +442,15 @@ export class Resources {
   }
 
   public static formatUserUrl(host: string): string {
-    return host === Resources.host ? Resources.userUrl : `https://${host}/api/v3/user`;
+    return host === Resources.host ? Resources.userUrl : `${Resources.formatApiUrl(host)}/user`;
+  }
+
+  public static formatApiUrl(host: string): string {
+    return host === Resources.host ? Resources.apiUrl : `https://${host}/api/v3`;
+  }
+
+  public static formatRepositoryApiPrefix(host: string): string {
+    return `${Resources.formatApiUrl(host)}/repos/`;
   }
 
   public static formatTokenRefused(host: string): string {

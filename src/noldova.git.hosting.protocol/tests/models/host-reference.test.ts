@@ -30,6 +30,24 @@ describe("HostReference", () => {
     assert.deepEqual(HostReference.fromJson(JSON.parse(JSON.stringify(json))), reference);
   });
 
+  it("writes its place only when it has one, and reads JSON without it, with null or with a place", () => {
+    const placed: HostReference = new HostReference("git-github", "team", "repo", 7, "github.example.com");
+
+    assert.deepEqual([reference.place, placed.toJson()], [null, { host: "git-github", owner: "team", repository: "repo", number: 7, place: "github.example.com" }]);
+    assert.deepEqual([
+      HostReference.fromJson({ ...reference.toJson(), place: null }).place,
+      HostReference.fromJson(JSON.parse(JSON.stringify(placed.toJson()))).place,
+      HostReference.fromJson({ ...reference.toJson(), place: "github.example.com:8443" }).place
+    ], [null, "github.example.com", "github.example.com:8443"]);
+  });
+
+  it("refuses a place with a scheme, a user name, capitals or a trailing '/', naming the parameter or the field", () => {
+    for (const place of ["https://github.example.com", "user@github.example.com", "GitHub.example.com", "github.example.com/", ""])
+      assert.throws(() => new HostReference("git-github", "team", "repo", 7, place), { name: "HostingArgumentException", parameterName: "place" }, place);
+    assert.throws(() => HostReference.fromJson({ ...reference.toJson(), place: "github.example.com/" }, "$.reference"),
+      { name: "HostingFieldException", field: "$.reference.place" });
+  });
+
   it("takes an owner of nested groups, and refuses '.', '..' and characters outside a host's names in the owner or the repository", () => {
     const nested: HostReference = new HostReference("git-gitlab", "octocat/tools.v2", "hello_world-1.0", 7);
 

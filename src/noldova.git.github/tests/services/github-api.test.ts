@@ -46,9 +46,9 @@ describe("GitHubApi", () => {
     github.answer(tagged(issue, "\"a\""));
     const api = new GitHubApi(github.fetch);
 
-    const first = await api.getAsync("/repos/octocat/hello-world/issues/1", "gho_token", signal);
+    const first = await api.getAsync("github.com", "/repos/octocat/hello-world/issues/1", "gho_token", signal);
     vi.advanceTimersByTime(59_999);
-    const again = await api.getAsync("/repos/octocat/hello-world/issues/1", "gho_token", signal);
+    const again = await api.getAsync("github.com", "/repos/octocat/hello-world/issues/1", "gho_token", signal);
 
     assert.deepEqual([first?.toJson(), again?.toJson(), github.urls()], [issue, issue, ["https://api.github.com/repos/octocat/hello-world/issues/1"]]);
     assert.deepEqual([github.requests[0]?.header("Authorization"), github.requests[0]?.header("Accept"), github.requests[0]?.header("If-None-Match")],
@@ -63,7 +63,7 @@ describe("GitHubApi", () => {
 
     const answers: unknown[] = [];
     for (const wait of [60_000, 60_000, 0, 0]) {
-      answers.push((await api.getAsync("/repos/octocat/hello-world/issues/1", "gho_token", signal))?.toJson());
+      answers.push((await api.getAsync("github.com", "/repos/octocat/hello-world/issues/1", "gho_token", signal))?.toJson());
       vi.advanceTimersByTime(wait);
     }
 
@@ -76,10 +76,10 @@ describe("GitHubApi", () => {
     github.answer(FakeGitHub.json(issue), FakeGitHub.json(issue), new Response(null, { status: 304 }));
     const api = new GitHubApi(github.fetch);
 
-    await api.getAsync("/repos/octocat/hello-world/issues/1", "gho_token", signal);
+    await api.getAsync("github.com", "/repos/octocat/hello-world/issues/1", "gho_token", signal);
     vi.advanceTimersByTime(60_000);
-    await api.getAsync("/repos/octocat/hello-world/issues/1", "gho_token", signal);
-    const unkept = await api.getAsync("/repos/octocat/hello-world/issues/2", "gho_token", signal).then(() => null, codeOf);
+    await api.getAsync("github.com", "/repos/octocat/hello-world/issues/1", "gho_token", signal);
+    const unkept = await api.getAsync("github.com", "/repos/octocat/hello-world/issues/2", "gho_token", signal).then(() => null, codeOf);
 
     assert.deepEqual([github.requests.map(t => t.header("If-None-Match")), unkept], [[null, null, null], FailureCode.Unavailable]);
   });
@@ -89,11 +89,11 @@ describe("GitHubApi", () => {
     github.answer(tagged(issue, "\"a\""), FakeGitHub.json(issue, 404), new Response(null, { status: 304 }), tagged(issue, "\"b\""));
     const api = new GitHubApi(github.fetch);
 
-    await api.getAsync("/repos/octocat/hello-world/issues/1", "gho_token", signal);
-    const other = await api.getAsync("/repos/octocat/hello-world/issues/1", "gho_other", signal);
+    await api.getAsync("github.com", "/repos/octocat/hello-world/issues/1", "gho_token", signal);
+    const other = await api.getAsync("github.com", "/repos/octocat/hello-world/issues/1", "gho_other", signal);
     vi.advanceTimersByTime(61_000);
-    const again = await api.getAsync("/repos/octocat/hello-world/issues/1", "gho_token", signal);
-    const otherAgain = await api.getAsync("/repos/octocat/hello-world/issues/1", "gho_other", signal);
+    const again = await api.getAsync("github.com", "/repos/octocat/hello-world/issues/1", "gho_token", signal);
+    const otherAgain = await api.getAsync("github.com", "/repos/octocat/hello-world/issues/1", "gho_other", signal);
 
     assert.deepEqual([other, again?.readString("title"), otherAgain?.readString("title")], [null, "Found a bug", "Found a bug"]);
     assert.deepEqual(github.requests.map(t => [t.header("Authorization"), t.header("If-None-Match")]),
@@ -107,14 +107,14 @@ describe("GitHubApi", () => {
     github.answer(tagged(issue, "\"c\""));
     const api = new GitHubApi(github.fetch);
 
-    await api.getAsync("/repos/octocat/kept/issues/1", "gho_kept", signal);
-    const dropped = api.getAsync("/repos/octocat/private/issues/1", "gho_gone", signal);
+    await api.getAsync("github.com", "/repos/octocat/kept/issues/1", "gho_kept", signal);
+    const dropped = api.getAsync("github.com", "/repos/octocat/private/issues/1", "gho_gone", signal);
     api.keepOnly(t => t === "gho_kept");
     release(tagged({ ...issue, title: "Private" }, "\"p\""));
     await dropped;
-    await api.getAsync("/repos/octocat/kept/issues/1", "gho_kept", signal);
+    await api.getAsync("github.com", "/repos/octocat/kept/issues/1", "gho_kept", signal);
     vi.advanceTimersByTime(61_000);
-    await api.getAsync("/repos/octocat/private/issues/1", "gho_gone", signal);
+    await api.getAsync("github.com", "/repos/octocat/private/issues/1", "gho_gone", signal);
 
     assert.deepEqual(github.requests.map(t => [t.url.slice("https://api.github.com/repos/octocat/".length), t.header("If-None-Match")]), [
       ["kept/issues/1", null], ["private/issues/1", null], ["private/issues/1", null]
@@ -131,10 +131,10 @@ describe("GitHubApi", () => {
 
     const outcomes: unknown[] = [];
     for (let index = 0; index < 4; index++)
-      outcomes.push(await api.getAsync(`/repos/octocat/hello-world/issues/${index + 2}`, "gho_token", signal).then(t => t, (error: unknown) => codeOf(error)));
+      outcomes.push(await api.getAsync("github.com", `/repos/octocat/hello-world/issues/${index + 2}`, "gho_token", signal).then(t => t, (error: unknown) => codeOf(error)));
     for (let index = 0; index < 2; index++)
-      outcomes.push(await api.postAsync("/repos/octocat/hello-world/pulls", "gho_token", { title: "Fix" }, signal).then(t => t, (error: unknown) => codeOf(error)));
-    outcomes.push(await api.getAsync("/repos/octocat/hello-world/issues/9", "gho_token", signal));
+      outcomes.push(await api.postAsync("github.com", "/repos/octocat/hello-world/pulls", "gho_token", { title: "Fix" }, signal).then(t => t, (error: unknown) => codeOf(error)));
+    outcomes.push(await api.getAsync("github.com", "/repos/octocat/hello-world/issues/9", "gho_token", signal));
 
     assert.deepEqual(outcomes, [null, FailureCode.Unauthorized, FailureCode.Unavailable, FailureCode.Unavailable, FailureCode.NotFound, FailureCode.Conflict,
       null]);
@@ -147,10 +147,10 @@ describe("GitHubApi", () => {
     github.answer(tagged(issue, "\"a\""), tagged(large, "\"b\""), tagged(issue, "\"c\""));
     const api = new GitHubApi(github.fetch);
 
-    await api.getAsync("/items/1", "gho_token", signal);
+    await api.getAsync("github.com", "/items/1", "gho_token", signal);
     vi.advanceTimersByTime(60_000);
-    const read = await api.getAsync("/items/1", "gho_token", signal);
-    await api.getAsync("/items/1", "gho_token", signal);
+    const read = await api.getAsync("github.com", "/items/1", "gho_token", signal);
+    await api.getAsync("github.com", "/items/1", "gho_token", signal);
 
     assert.deepEqual([read?.readString("body").length, github.requests.map(t => t.header("If-None-Match"))], [262_144, [null, "\"a\"", null]]);
   });
@@ -164,7 +164,7 @@ describe("GitHubApi", () => {
     const failures: unknown[] = [];
 
     for (let index = 0; index < 4; index++)
-      failures.push(await api.getAsync(`/items/${index}`, "gho_token", signal).then(() => null, (error: unknown) => error instanceof MethodFailureException
+      failures.push(await api.getAsync("github.com", `/items/${index}`, "gho_token", signal).then(() => null, (error: unknown) => error instanceof MethodFailureException
         ? [error.failure.code, error.failure.message, error.failure.details ?? null] : null));
 
     assert.deepEqual(failures, [
@@ -182,13 +182,13 @@ describe("GitHubApi", () => {
     const api = new GitHubApi(github.fetch);
 
     for (let index = 0; index < 500; index++)
-      await api.getAsync(`/items/${index}`, "gho_token", signal);
-    await api.getAsync("/items/0", "gho_token", signal);
-    await api.getAsync("/items/500", "gho_token", signal);
+      await api.getAsync("github.com", `/items/${index}`, "gho_token", signal);
+    await api.getAsync("github.com", "/items/0", "gho_token", signal);
+    await api.getAsync("github.com", "/items/500", "gho_token", signal);
     const before: number = github.requests.length;
-    await api.getAsync("/items/0", "gho_token", signal);
-    await api.getAsync("/items/2", "gho_token", signal);
-    await api.getAsync("/items/1", "gho_token", signal);
+    await api.getAsync("github.com", "/items/0", "gho_token", signal);
+    await api.getAsync("github.com", "/items/2", "gho_token", signal);
+    await api.getAsync("github.com", "/items/1", "gho_token", signal);
 
     assert.deepEqual([before, github.urls().slice(before)], [501, ["https://api.github.com/items/1"]]);
   });
@@ -198,8 +198,8 @@ describe("GitHubApi", () => {
     github.answer(FakeGitHub.json([issue]), FakeGitHub.json({ message: "Not Found" }, 404));
     const api = new GitHubApi(github.fetch);
 
-    const list = await api.getAsync("/repos/octocat/hello-world/pulls", "gho_token", signal);
-    const missing = await api.getAsync("/repos/octocat/hidden/issues/1", "gho_token", signal);
+    const list = await api.getAsync("github.com", "/repos/octocat/hello-world/pulls", "gho_token", signal);
+    const missing = await api.getAsync("github.com", "/repos/octocat/hidden/issues/1", "gho_token", signal);
 
     assert.deepEqual([list?.toJson(), missing], [{ items: [issue] }, null]);
   });
@@ -215,7 +215,7 @@ describe("GitHubApi", () => {
     const messages: string[] = [];
 
     for (let index = 0; index < 6; index++) {
-      const failure: unknown = await api.getAsync(`/items/${index}`, "gho_token", signal).then(() => null, (error: unknown) => error);
+      const failure: unknown = await api.getAsync("github.com", `/items/${index}`, "gho_token", signal).then(() => null, (error: unknown) => error);
       failures.push(codeOf(failure));
       messages.push(failure instanceof MethodFailureException ? failure.failure.message : "");
     }
@@ -231,7 +231,7 @@ describe("GitHubApi", () => {
     github.fail(unexpected);
     const api = new GitHubApi(github.fetch);
 
-    const failure: unknown = await api.getAsync("/items/1", "gho_token", signal).then(() => null, (error: unknown) => error);
+    const failure: unknown = await api.getAsync("github.com", "/items/1", "gho_token", signal).then(() => null, (error: unknown) => error);
 
     assert.equal(failure, unexpected);
     assert.throws(() => GitHubApi.read(() => {
@@ -245,7 +245,7 @@ describe("GitHubApi", () => {
     const api = new GitHubApi(github.fetch);
     const waiting = new AbortController();
 
-    const cancelled = api.getAsync("/items/1", "gho_token", waiting.signal).then(() => null, (error: unknown) => error);
+    const cancelled = api.getAsync("github.com", "/items/1", "gho_token", waiting.signal).then(() => null, (error: unknown) => error);
     waiting.abort(new Error("Stopped."));
     release(FakeGitHub.json(issue));
 
@@ -260,10 +260,10 @@ describe("GitHubApi", () => {
       broken(unexpected));
     const api = new GitHubApi(github.fetch);
 
-    const terminated: unknown = await api.getAsync("/items/1", "gho_token", signal).then(() => null, (error: unknown) => error);
-    const timedOut: unknown = await api.getAsync("/items/2", "gho_token", signal).then(() => null, (error: unknown) => error);
-    const posted: unknown = await api.postAsync("/items", "gho_token", { title: "Found a bug" }, signal).then(() => null, (error: unknown) => error);
-    const failed: unknown = await api.getAsync("/items/3", "gho_token", signal).then(() => null, (error: unknown) => error);
+    const terminated: unknown = await api.getAsync("github.com", "/items/1", "gho_token", signal).then(() => null, (error: unknown) => error);
+    const timedOut: unknown = await api.getAsync("github.com", "/items/2", "gho_token", signal).then(() => null, (error: unknown) => error);
+    const posted: unknown = await api.postAsync("github.com", "/items", "gho_token", { title: "Found a bug" }, signal).then(() => null, (error: unknown) => error);
+    const failed: unknown = await api.getAsync("github.com", "/items/3", "gho_token", signal).then(() => null, (error: unknown) => error);
 
     assert.deepEqual([codeOf(terminated), codeOf(timedOut), codeOf(posted)], [FailureCode.Unavailable, FailureCode.DeadlineExceeded, FailureCode.Unavailable]);
     assert.equal(terminated instanceof MethodFailureException ? terminated.failure.message : "", "GitHub couldn't be reached.");
@@ -286,8 +286,8 @@ describe("GitHubApi", () => {
     github.answer(answerOf(limit), over);
     const api = new GitHubApi(github.fetch);
 
-    const read = await api.getAsync("/items/1", "gho_token", signal);
-    const failure: unknown = await api.getAsync("/items/2", "gho_token", signal).then(() => null, (error: unknown) => error);
+    const read = await api.getAsync("github.com", "/items/1", "gho_token", signal);
+    const failure: unknown = await api.getAsync("github.com", "/items/2", "gho_token", signal).then(() => null, (error: unknown) => error);
 
     assert.deepEqual([read?.readString("text").length, codeOf(failure), failure instanceof MethodFailureException ? failure.failure.message : null, over.bodyUsed],
       [limit - 11, FailureCode.Unavailable, "GitHub's answer is over 8 MiB, more than the module reads.", true]);
@@ -303,7 +303,7 @@ describe("GitHubApi", () => {
     }, { highWaterMark: 0 });
     const api = new GitHubApi(() => Promise.resolve(new Response(body)));
 
-    const stopped: unknown = await api.getAsync("/items/1", "gho_token", reading.signal).then(() => null, (error: unknown) => error);
+    const stopped: unknown = await api.getAsync("github.com", "/items/1", "gho_token", reading.signal).then(() => null, (error: unknown) => error);
 
     assert.deepEqual(stopped, new Error("Stopped while reading."));
   });
@@ -314,9 +314,9 @@ describe("GitHubApi", () => {
     const api = new GitHubApi(github.fetch);
     const body = { title: "Add a feature", head: "feature", base: "main", draft: false };
 
-    const created = await api.postAsync("/repos/octocat/hello-world/pulls", "gho_token", body, signal);
-    const failures = [await api.postAsync("/repos/octocat/hidden/pulls", "gho_token", body, signal).then(() => null, codeOf),
-      await api.postAsync("/repos/octocat/hello-world/pulls", "gho_token", body, signal).then(() => null, codeOf)];
+    const created = await api.postAsync("github.com", "/repos/octocat/hello-world/pulls", "gho_token", body, signal);
+    const failures = [await api.postAsync("github.com", "/repos/octocat/hidden/pulls", "gho_token", body, signal).then(() => null, codeOf),
+      await api.postAsync("github.com", "/repos/octocat/hello-world/pulls", "gho_token", body, signal).then(() => null, codeOf)];
 
     assert.deepEqual([created.toJson(), failures], [issue, [FailureCode.NotFound, FailureCode.Conflict]]);
     assert.deepEqual([github.requests[0]?.init.method, github.requests[0]?.body, github.requests[0]?.header("Content-Type"), github.requests[0]?.header("Authorization")],
@@ -329,7 +329,7 @@ describe("GitHubApi", () => {
       FakeGitHub.json({}, 301, { Location: "/repositories/1296269/pulls?state=open" }), FakeGitHub.json([]));
     const api = new GitHubApi(github.fetch);
 
-    const reads = [await api.getAsync("/repos/octocat/hello-world", "gho_token", signal), await api.getAsync("/repos/octocat/hello-world/pulls", "gho_token", signal)];
+    const reads = [await api.getAsync("github.com", "/repos/octocat/hello-world", "gho_token", signal), await api.getAsync("github.com", "/repos/octocat/hello-world/pulls", "gho_token", signal)];
 
     assert.deepEqual([reads.map(t => t?.toJson()), github.urls(), github.requests.map(t => [t.init.redirect, t.header("Authorization")])], [[issue, { items: [] }],
       ["https://api.github.com/repos/octocat/hello-world", "https://api.github.com/repositories/1296269", "https://api.github.com/repos/octocat/hello-world/pulls",
@@ -346,10 +346,29 @@ describe("GitHubApi", () => {
 
     const failures: (readonly string[] | null)[] = [];
     for (const name of ["one", "two", "three", "four", "five"])
-      failures.push(await api.getAsync(`/repos/octocat/${name}`, "gho_token", signal).then(() => null, failureOf));
+      failures.push(await api.getAsync("github.com", `/repos/octocat/${name}`, "gho_token", signal).then(() => null, failureOf));
 
     assert.deepEqual([failures, github.urls()], [targets.map(() => [FailureCode.Unavailable, moved]),
       ["one", "two", "three", "four", "five"].map(t => `https://api.github.com/repos/octocat/${t}`)]);
+  });
+
+  it("asks a GitHub Enterprise server's API under /api/v3 for a read and a post, follows a redirect on that server, and refuses one to github.com's API or "
+    + "another port", async () => {
+    const github = new FakeGitHub();
+    github.answer(FakeGitHub.json({}, 301, { Location: "https://ghe.example.com:8443/api/v3/repositories/1296269" }), FakeGitHub.json(issue),
+      FakeGitHub.json(issue, 201), ...["https://api.github.com/repositories/1296269", "https://ghe.example.com/api/v3/repositories/1296269"]
+        .map(t => FakeGitHub.json({}, 301, { Location: t })));
+    const api = new GitHubApi(github.fetch);
+
+    const read = await api.getAsync("ghe.example.com:8443", "/repos/octocat/hello-world", "ghp_token", signal);
+    const posted = await api.postAsync("ghe.example.com:8443", "/repos/octocat/hello-world/pulls", "ghp_token", { title: "Fix" }, signal);
+    const failures = [await api.getAsync("ghe.example.com:8443", "/repos/octocat/one", "ghp_token", signal).then(() => null, failureOf),
+      await api.getAsync("ghe.example.com:8443", "/repos/octocat/two", "ghp_token", signal).then(() => null, failureOf)];
+
+    assert.deepEqual([read?.toJson(), posted.toJson(), failures], [issue, issue, [[FailureCode.Unavailable, moved], [FailureCode.Unavailable, moved]]]);
+    assert.deepEqual(github.urls(), ["https://ghe.example.com:8443/api/v3/repos/octocat/hello-world", "https://ghe.example.com:8443/api/v3/repositories/1296269",
+      "https://ghe.example.com:8443/api/v3/repos/octocat/hello-world/pulls", "https://ghe.example.com:8443/api/v3/repos/octocat/one",
+      "https://ghe.example.com:8443/api/v3/repos/octocat/two"]);
   });
 
   it("follows only one redirect, refusing a second one on GitHub's API and saying the repository moved", async () => {
@@ -357,7 +376,7 @@ describe("GitHubApi", () => {
     github.answer(...[1, 2].map(t => FakeGitHub.json({}, 301, { Location: `https://api.github.com/repositories/${t}` })), FakeGitHub.json(issue));
     const api = new GitHubApi(github.fetch);
 
-    const failure = await api.getAsync("/repos/octocat/hello-world", "gho_token", signal).then(() => null, failureOf);
+    const failure = await api.getAsync("github.com", "/repos/octocat/hello-world", "gho_token", signal).then(() => null, failureOf);
 
     assert.deepEqual([failure, github.urls()], [[FailureCode.Unavailable, moved], ["https://api.github.com/repos/octocat/hello-world",
       "https://api.github.com/repositories/1"]]);
@@ -371,7 +390,7 @@ describe("GitHubApi", () => {
 
     const failures: (readonly string[] | null)[] = [];
     for (let i = 0; i < 2; i++)
-      failures.push(await api.postAsync("/repos/octocat/hello-world/pulls", "gho_token", { title: "Add a feature" }, signal).then(() => null, failureOf));
+      failures.push(await api.postAsync("github.com", "/repos/octocat/hello-world/pulls", "gho_token", { title: "Add a feature" }, signal).then(() => null, failureOf));
 
     assert.deepEqual([failures, github.urls(), github.requests.map(t => t.init.redirect)], [[[FailureCode.Unavailable, moved],
       [FailureCode.Unavailable, moved]], ["https://api.github.com/repos/octocat/hello-world/pulls", "https://api.github.com/repos/octocat/hello-world/pulls"],
