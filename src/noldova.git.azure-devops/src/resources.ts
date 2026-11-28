@@ -35,6 +35,7 @@ export class Resources {
   public static readonly unknownAccountMessage: string = "This Azure DevOps account isn't kept on this computer any more.";
   public static readonly keptAccountsUnreadable: string = "The Azure DevOps accounts kept on this computer couldn't be read; only the first account was restored.";
   public static readonly accountAlreadyKept: string = "An added Azure DevOps account signed in to an organization as an account already kept there, so its token was forgotten and it ended signed out as already kept.";
+  public static readonly accountsUnreadMessage: string = "The Azure DevOps accounts kept on this computer aren't read, so no account can be added until they are; the ones kept stay as they are.";
   public static readonly accountsNotKept: string = "The Azure DevOps accounts couldn't be kept on this computer; added accounts and chosen accounts last until the app closes.";
   public static readonly accountsField: string = "accounts";
   public static readonly picksField: string = "picks";

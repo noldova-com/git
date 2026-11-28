@@ -306,7 +306,7 @@ export class AzureReads {
       const list: JsonReader | null = await this.api.getAsync(Resources.formatBranchPullRequestsUrl(repository.organization, repository.project,
         repository.name, query.branch), token, signal);
       const pull: JsonReader | undefined = list === null ? undefined : AzureApi.read(() => list.readObjectArray(Resources.valueField))[0];
-      return pull === undefined ? none : await this.answerOfAsync(repository.organization, pull, token, signal);
+      return pull === undefined ? none : await this.answerOfAsync(query, repository.organization, pull, token, signal);
     });
     return this.signIn.holds(token) ? answer : none;
   }
@@ -319,7 +319,7 @@ export class AzureReads {
       return none;
     const answer: BranchPullRequest = await this.askAsync(token, async () => {
       const pull: JsonReader | null = await this.readCommitPullAsync(repository, query.commit, token, signal);
-      return pull === null ? none : await this.answerOfAsync(repository.organization, pull, token, signal);
+      return pull === null ? none : await this.answerOfAsync(query, repository.organization, pull, token, signal);
     });
     return this.signIn.holds(token) ? answer : none;
   }
@@ -398,7 +398,7 @@ export class AzureReads {
     if (repository === null || accounts.length === 0)
       return new HostReviewRequestList([], false);
     const settled: readonly PromiseSettledResult<AccountReviewRequests>[] = await AzureReads.inTurnAsync(accounts, async t =>
-      new AccountReviewRequests(t, await this.readAccountReviewsAsync(repository, t, signedIn.length > 1, signal)));
+      new AccountReviewRequests(t, await this.readAccountReviewsAsync(query, repository, t, signedIn.length > 1, signal)));
     const held: readonly AccountReviewRequests[] = this.heldOf(settled);
     if (held.length === 0)
       return HostReviewRequestList.signedOut();
@@ -461,7 +461,7 @@ export class AzureReads {
     });
   }
 
-  private async readAccountReviewsAsync(repository: AzureRepository, account: SignedInAccount, isNamed: boolean,
+  private async readAccountReviewsAsync(query: RepositoryQuery, repository: AzureRepository, account: SignedInAccount, isNamed: boolean,
     signal: AbortSignal): Promise<HostReviewRequestList> {
     const token: AzureCredential = account.token;
     return this.askAsync(token, async () => {
@@ -470,7 +470,7 @@ export class AzureReads {
         reviewer), token, signal);
       const read: readonly JsonReader[] = pulls === null ? [] : AzureApi.read(() => pulls.readObjectArray(Resources.valueField));
       const asked: readonly HostReviewRequest[] = AzureApi.read(() => read.filter(t => AzureReads.waitsOn(t, reviewer))
-        .map(t => AzureReads.reviewRequestOf(repository.organization, t, isNamed ? account.login : null)));
+        .map(t => this.noted(query.host, query.path, AzureReads.reviewRequestOf(repository.organization, t, isNamed ? account.login : null))));
       return new HostReviewRequestList(asked.slice(0, HostReviewRequestList.maximumRows).toSorted((a, b) => b.createdAt - a.createdAt),
         read.length > HostReviewRequestList.maximumRows);
     });
@@ -647,8 +647,9 @@ export class AzureReads {
       : await this.api.getAsync(Resources.formatProjectPullRequestUrl(repository.organization, repository.project, number), token, signal);
   }
 
-  private async answerOfAsync(organization: string, pull: JsonReader, token: AzureCredential, signal: AbortSignal): Promise<BranchPullRequest> {
-    const item: HostItem = AzureApi.read(() => AzureReads.itemOf(organization, pull));
+  private async answerOfAsync(query: CommitQuery | BranchQuery, organization: string, pull: JsonReader, token: AzureCredential,
+    signal: AbortSignal): Promise<BranchPullRequest> {
+    const item: HostItem = this.noted(query.host, query.path, AzureApi.read(() => AzureReads.itemOf(organization, pull)));
     const votes: readonly number[] = AzureReads.votesOf(pull);
     return new BranchPullRequest(item, await this.readChecksAsync(item, pull, token, signal), AzureReads.decisionOf(votes), votes.filter(t => t > 0).length);
   }
@@ -711,9 +712,9 @@ export class AzureReads {
     return Resources.isOwnReference(reference) ? this.signIn.tokenFor(reference.owner, host, path) : null;
   }
 
-  private noted(host: string, path: string, item: HostItem): HostItem {
-    this.repositories.set(AzureReads.keyOf(item.reference), [host, path]);
-    return item;
+  private noted<T extends { readonly reference: HostReference }>(host: string, path: string, read: T): T {
+    this.repositories.set(AzureReads.keyOf(read.reference), [host, path]);
+    return read;
   }
 
   private static keyOf(reference: HostReference): string {

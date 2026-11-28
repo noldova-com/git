@@ -213,19 +213,56 @@ describe("AzureAccounts", () => {
       [[1, mona.login, "dev.azure.com/fabrikam"], [2, hubot.login, "dev.azure.com/contoso"]], 0]);
   });
 
-  it("keeps an account added while a restore runs, signed in, in the list and the index once its sign-in answers", async () => {
+  it("gives an account added while the restore reads the index an id the index doesn't name, and refuses one while the index can't be read", async () => {
     const rig = new Rig();
-    const release = rig.azure.hold();
+    rig.keep([mona, hubot]);
+    const read = rig.store.holdRead();
+    const restoring = rig.accounts.restoreAsync();
+    let signIn: () => void = () => undefined;
+    const signing = new Promise<void>(resolve => {
+      signIn = resolve;
+    });
+    const adding = rig.accounts.addAsync(async t => {
+      await signing;
+      return t.signInWithTokenAsync("pat-octo", "northwind", signal);
+    });
+    rig.azure.answer(profileOf(mona.login), profileOf(hubot.login));
+    read();
+    await restoring;
+    rig.azure.answer(profileOf(octo.login));
+    signIn();
+    const entry = await adding;
+    const waiting = new Rig();
+    waiting.store.readFailure = KeptSecrets.failure(SecretFailureReason.NotConnected);
+    await waiting.accounts.restoreAsync();
+
+    const refusal = await waiting.accounts.addAsync(t => t.signInWithTokenAsync("pat-octo", "northwind", signal))
+      .then(() => null, (error: unknown) => error instanceof MethodFailureException ? [error.failure.code, error.failure.message] : null);
+
+    assert.deepEqual([entry.id, rig.entries()], [3, [[1, mona.login, "dev.azure.com/fabrikam"], [2, hubot.login, "dev.azure.com/contoso"],
+      [3, octo.login, "dev.azure.com/northwind"]]]);
+    assert.deepEqual(refusal, [FailureCode.Unavailable,
+      "The Azure DevOps accounts kept on this computer aren't read, so no account can be added until they are; the ones kept stay as they are."]);
+  });
+
+  it("keeps an account added while a restore waits, signed in, in the list and the index once its sign-in answers", async () => {
+    const rig = new Rig();
+    rig.keep([mona]);
+    const restored = rig.azure.hold();
+    const restoring = rig.accounts.restoreAsync();
+    await rig.azure.askedAsync(1);
+    const signedIn = rig.azure.hold();
 
     const adding = rig.accounts.addAsync(t => t.signInWithTokenAsync("pat-hubot", "contoso", signal));
-    await rig.azure.askedAsync(1);
-    await rig.accounts.restoreAsync();
-    release(profileOf(hubot.login));
+    await rig.azure.askedAsync(2);
+    restored(profileOf(mona.login));
+    await restoring;
+    signedIn(profileOf(hubot.login));
     const entry = await adding;
     await rig.savedAsync();
 
-    assert.deepEqual([entry.id, entry.signIn.state, rig.entries(), rig.index()], [2, SignInState.SignedIn, [[1, null, null], [2, hubot.login, "dev.azure.com/contoso"]],
-      { accounts: [{ id: 2, organization: "contoso", login: hubot.login }], picks: [] }]);
+    assert.deepEqual([entry.id, entry.signIn.state, rig.entries(), rig.index()], [2, SignInState.SignedIn,
+      [[1, mona.login, "dev.azure.com/fabrikam"], [2, hubot.login, "dev.azure.com/contoso"]], { accounts: [{ id: 2, organization: "contoso", login: hubot.login }], picks: [] }]);
   });
 
   it("writes through a reference as the account its repository reads with, else as the organization's last pick", async () => {
