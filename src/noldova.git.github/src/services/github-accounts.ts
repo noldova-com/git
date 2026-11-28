@@ -36,8 +36,11 @@ export class GitHubAccounts implements IGitHubTokens {
   private readonly entries: Map<number, GitHubSignIn> = new Map();
   private readonly found: Map<string, Promise<number>> = new Map();
   private readonly users: Map<string, string> = new Map();
+  private readonly dropping: Map<number, Promise<void>> = new Map();
   private picks: readonly AccountPick[] = [];
   private kept: string | null = null;
+  private isIndexRead: boolean = false;
+  private reading: Promise<KeptAccounts | null> = Promise.resolve(null);
   private saving: Promise<void> = Promise.resolve();
   private unfollowWindows: (() => void) | null = null;
   private stopped: boolean = false;
@@ -76,7 +79,8 @@ export class GitHubAccounts implements IGitHubTokens {
   public async restoreAsync(): Promise<void> {
     if (this.stopped)
       return;
-    const kept: KeptAccounts | null = await this.readKeptAsync();
+    this.reading = this.readKeptAsync();
+    const kept: KeptAccounts | null = await this.reading;
     if (this.stopped)
       return;
     for (const account of kept?.accounts ?? []) {
@@ -110,13 +114,18 @@ export class GitHubAccounts implements IGitHubTokens {
     const host: string = connect.host.toLowerCase();
     if (!Resources.enterpriseHostPattern.test(host) || host === Resources.host)
       throw GitHubApi.failure(FailureCode.InvalidParams, Resources.enterpriseHostMessage);
+    await this.reading;
+    if (!this.isIndexRead)
+      throw GitHubApi.failure(FailureCode.Unavailable, Resources.accountsUnreadMessage);
     const read: AccountRead = await this.readTokenAsync(host, connect.token, signal);
     if (read.account.scopes.length > 0 && !read.account.scopes.includes(Resources.scope))
       throw GitHubApi.failure(FailureCode.Unauthorized, Resources.formatScopeMissing(host));
     const id: number = Math.max(...this.entries.keys()) + 1;
     const signIn: GitHubSignIn = this.make(id, host);
     this.entries.set(id, signIn);
-    const answer: HostSignIn = await signIn.adoptAsync(connect.token, read, signal);
+    await signIn.adoptAsync(connect.token, read, signal);
+    await this.dropping.get(id);
+    const answer: HostSignIn = signIn.current;
     if (answer.state !== SignInState.SignedIn && this.entries.has(id)) {
       this.leave(id);
       this.publish(id, answer);
@@ -260,12 +269,14 @@ export class GitHubAccounts implements IGitHubTokens {
   private drop(id: number): void {
     const signIn: GitHubSignIn = this.signInOf(id);
     this.log.write(Resources.accountAlreadyKept);
-    Promise.resolve().then(() => signIn.alreadyKeptAsync()).catch((error: unknown) => this.log.write(Resources.formatSignInBroken(String(error))));
+    this.dropping.set(id, Promise.resolve().then(() => signIn.alreadyKeptAsync())
+      .catch((error: unknown) => this.log.write(Resources.formatSignInBroken(String(error)))));
   }
 
   private leave(id: number): void {
     this.signInOf(id).dispose();
     this.entries.delete(id);
+    this.dropping.delete(id);
     this.picks = this.picks.filter(t => t.account !== id);
   }
 
@@ -309,10 +320,14 @@ export class GitHubAccounts implements IGitHubTokens {
       return null;
     }
     this.kept = kept;
-    if (kept === null)
+    if (kept === null) {
+      this.isIndexRead = true;
       return null;
+    }
     try {
-      return KeptAccounts.fromJson(JsonReader.parseValue(kept));
+      const read: KeptAccounts = KeptAccounts.fromJson(JsonReader.parseValue(kept));
+      this.isIndexRead = true;
+      return read;
     }
     catch (error) {
       if (!(error instanceof JsonException || error instanceof HostingProtocolException))

@@ -221,23 +221,23 @@ describe("GitHubEnterpriseComponent", () => {
       `The GitHub module's ${GitHubNames.signInWithTokenMethod} request failed: WindowFailure: Not connected.`]);
   });
 
-  it("says so when the account is already in the list, or the answer isn't a sign-in, and stays on the form", async () => {
+  it("says so when the module answers a second connect of an account as already kept, or the answer isn't a sign-in, keeping the chosen account", async () => {
     const page = new Page();
-    page.requests.answer(GitHubNames.readAccountsMethod, listOf().toJson());
-    page.requests.answer(GitHubNames.signInWithTokenMethod, new HostAccountEntry(5, HostSignIn.signedOut(SignInFailure.AlreadyKept), undefined, SERVER).toJson(),
-      new HostAccountEntry(6, HostSignIn.signedOut(), undefined, SERVER).toJson());
-    await page.openAsync();
-    await page.typeAsync(page.server, SERVER);
+    page.requests.answer(GitHubNames.readAccountsMethod, listOf(new HostAccountEntry(3, HostSignIn.signedOut(SignInFailure.Revoked), undefined, SERVER)).toJson());
+    page.requests.answer(GitHubNames.signInWithTokenMethod, { id: 4, signIn: HostSignIn.signedOut(SignInFailure.AlreadyKept).toJson(), host: SERVER },
+      new HostAccountEntry(5, HostSignIn.signedOut(), undefined, SERVER).toJson());
+    await page.openAsync("3");
     const shown: unknown[] = [];
 
     for (let i = 0; i < 2; i++) {
       await page.typeAsync(page.token, "ghp_x");
       await page.clickAsync("Connect");
-      shown.push([page.alerts, page.texts("h3")]);
+      shown.push([page.alerts, page.texts("h3"), page.server.value]);
     }
 
-    expect(shown).toEqual([[["This GitHub account is already in the list."], ["GitHub Enterprise account"]],
-      [["The GitHub module didn't answer the connect."], ["GitHub Enterprise account"]]]);
+    expect(shown).toEqual([[["This GitHub account is already in the list."], ["GitHub Enterprise account"], SERVER],
+      [["The GitHub module didn't answer the connect."], ["GitHub Enterprise account"], SERVER]]);
+    expect(page.requests.methods).not.toContain(GitHubNames.signOutMethod);
   });
 
   it("sends nothing on Enter without a token or a server, or while a connect is on its way", async () => {
