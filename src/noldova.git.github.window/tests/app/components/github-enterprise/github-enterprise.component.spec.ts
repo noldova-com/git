@@ -235,8 +235,9 @@ describe("GitHubEnterpriseComponent", () => {
       shown.push([page.alerts, page.texts("h3"), page.server.value]);
     }
 
-    expect(shown).toEqual([[["This GitHub account is already in the list."], ["GitHub Enterprise account"], SERVER],
-      [["The GitHub module didn't answer the connect."], ["GitHub Enterprise account"], SERVER]]);
+    const revoked = "GitHub no longer accepts this computer's sign-in. Sign in again to restore it.";
+    expect(shown).toEqual([[[revoked, "This GitHub account is already in the list."], ["GitHub Enterprise account"], SERVER],
+      [[revoked, "The GitHub module didn't answer the connect."], ["GitHub Enterprise account"], SERVER]]);
     expect(page.requests.methods).not.toContain(GitHubNames.signOutMethod);
   });
 

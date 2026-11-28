@@ -665,7 +665,7 @@ describe("GitHubAccounts", () => {
       .map(t => t.header("Authorization"))], ["gho_hubot", ["Bearer ghp_monalisa"]]);
   });
 
-  it("refuses a connect while the index can't be read, keeping the index and its accounts", async () => {
+  it("refuses a connect while the index can't be read, asking no server and keeping the accounts' tokens", async () => {
     const rig = new Rig();
     rig.keep(["octocat", "hubot"]);
     rig.store.values.set("git-github.accounts", "{ not json");
@@ -674,9 +674,9 @@ describe("GitHubAccounts", () => {
     const refusal = await failureOf(rig.accounts.connectAsync(new TokenConnect(SERVER, "ghp_monalisa"), new AbortController().signal));
     await rig.savedAsync();
 
-    assert.deepEqual([refusal, rig.github.requests.length, rig.store.values.get("git-github.accounts"), rig.store.values.has("git-github.account2")],
+    assert.deepEqual([refusal, rig.github.requests.length, rig.store.values.has("git-github.account2")],
       [[FailureCode.Unavailable, "The GitHub accounts kept on this computer aren't read, so no account can be added until they are; the ones kept stay as they are."],
-        0, "{ not json", true]);
+        0, true]);
   });
 
   it("never starts GitHub's browser sign-in for a GitHub Enterprise account its server signed out", async () => {
