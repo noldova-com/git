@@ -13,10 +13,12 @@ import { describe, it } from "vitest";
 import { GitHubRepository } from "../../src/models/github-repository.ts";
 
 describe("GitHubRepository", () => {
-  it("reads an owner and repository path, with or without .git", () => {
-    const repositories = [GitHubRepository.parse("github.com", "octocat/hello-world"), GitHubRepository.parse("github.com", "octocat/hello-world.git"), GitHubRepository.parse("github.com", "octo-cat/a.b_c")];
+  it("reads an owner and repository path, with or without .git, on its host in lowercase", () => {
+    const repositories = [GitHubRepository.parse("github.com", "octocat/hello-world"), GitHubRepository.parse("github.com", "octocat/hello-world.git"),
+      GitHubRepository.parse("GHE.Example.com:8443", "octo-cat/a.b_c")];
 
-    assert.deepEqual(repositories.map(t => [t?.owner, t?.name]), [["octocat", "hello-world"], ["octocat", "hello-world"], ["octo-cat", "a.b_c"]]);
+    assert.deepEqual(repositories.map(t => [t?.host, t?.owner, t?.name]), [["github.com", "octocat", "hello-world"], ["github.com", "octocat", "hello-world"],
+      ["ghe.example.com:8443", "octo-cat", "a.b_c"]]);
   });
 
   it("refuses a path that isn't one owner and one repository GitHub can have", () => {

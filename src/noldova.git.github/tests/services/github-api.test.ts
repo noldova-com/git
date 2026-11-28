@@ -352,6 +352,25 @@ describe("GitHubApi", () => {
       ["one", "two", "three", "four", "five"].map(t => `https://api.github.com/repos/octocat/${t}`)]);
   });
 
+  it("asks a GitHub Enterprise server's API under /api/v3 for a read and a post, follows a redirect on that server, and refuses one to github.com's API or "
+    + "another port", async () => {
+    const github = new FakeGitHub();
+    github.answer(FakeGitHub.json({}, 301, { Location: "https://ghe.example.com:8443/api/v3/repositories/1296269" }), FakeGitHub.json(issue),
+      FakeGitHub.json(issue, 201), ...["https://api.github.com/repositories/1296269", "https://ghe.example.com/api/v3/repositories/1296269"]
+        .map(t => FakeGitHub.json({}, 301, { Location: t })));
+    const api = new GitHubApi(github.fetch);
+
+    const read = await api.getAsync("ghe.example.com:8443", "/repos/octocat/hello-world", "ghp_token", signal);
+    const posted = await api.postAsync("ghe.example.com:8443", "/repos/octocat/hello-world/pulls", "ghp_token", { title: "Fix" }, signal);
+    const failures = [await api.getAsync("ghe.example.com:8443", "/repos/octocat/one", "ghp_token", signal).then(() => null, failureOf),
+      await api.getAsync("ghe.example.com:8443", "/repos/octocat/two", "ghp_token", signal).then(() => null, failureOf)];
+
+    assert.deepEqual([read?.toJson(), posted.toJson(), failures], [issue, issue, [[FailureCode.Unavailable, moved], [FailureCode.Unavailable, moved]]]);
+    assert.deepEqual(github.urls(), ["https://ghe.example.com:8443/api/v3/repos/octocat/hello-world", "https://ghe.example.com:8443/api/v3/repositories/1296269",
+      "https://ghe.example.com:8443/api/v3/repos/octocat/hello-world/pulls", "https://ghe.example.com:8443/api/v3/repos/octocat/one",
+      "https://ghe.example.com:8443/api/v3/repos/octocat/two"]);
+  });
+
   it("follows only one redirect, refusing a second one on GitHub's API and saying the repository moved", async () => {
     const github = new FakeGitHub();
     github.answer(...[1, 2].map(t => FakeGitHub.json({}, 301, { Location: `https://api.github.com/repositories/${t}` })), FakeGitHub.json(issue));

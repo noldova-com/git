@@ -59,6 +59,14 @@ class TwoAccounts implements IGitHubTokens {
 
   public readonly useUser: () => void = () => undefined;
 
+  public signedInOn(host: string): readonly SignedInAccount[] {
+    return host === "github.com" ? this.signedIn : [];
+  }
+
+  public serves(host: string): boolean {
+    return host === "github.com";
+  }
+
   public tokenForAsync(): Promise<string | null> {
     return Promise.resolve("gho_octocat");
   }

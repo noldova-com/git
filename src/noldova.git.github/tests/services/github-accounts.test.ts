@@ -450,7 +450,7 @@ describe("GitHubAccounts", () => {
     rig.accounts.useUser("github.com", "octocat/r201", "hubot");
 
     assert.deepEqual([await rig.accounts.accountForAsync("dev.azure.com", "octocat/r1", signal),
-      await rig.accounts.accountForAsync("github.com", "octocat/r1", signal), await rig.accounts.accountForAsync("github.com", "octocat/r201", signal)], [1, 2, 2]);
+      await rig.accounts.accountForAsync("github.com", "octocat/r1", signal), await rig.accounts.accountForAsync("github.com", "octocat/r201", signal)], [null, 2, 2]);
     rig.github.answer(missing(), missing(), missing(), missing());
     assert.deepEqual([await rig.accounts.accountForAsync("github.com", "octocat/r0", signal), await rig.accounts.accountForAsync("github.com", "octocat/r2", signal)],
       [1, 1]);
@@ -471,7 +471,7 @@ describe("GitHubAccounts", () => {
       [["https://api.github.com/repos/octocat/hello-world", "Bearer gho_octocat"], ["https://api.github.com/repos/octocat/hello-world", "Bearer gho_hubot"]]);
   });
 
-  it("falls back to the first signed-in account when none can read the repository, or for a path that isn't a repository's or another host", async () => {
+  it("falls back to the first signed-in account when none can read the repository or for a path that isn't a repository's, and answers none on a host it keeps no account on", async () => {
     const rig = new Rig();
     rig.keep(["octocat", "hubot"]);
     await rig.restoreAsync(["octocat", "hubot"]);
@@ -481,7 +481,33 @@ describe("GitHubAccounts", () => {
     const answers = [await rig.accounts.accountForAsync("github.com", REPOSITORY, signal), await rig.accounts.accountForAsync("github.com", "octocat", signal),
       await rig.accounts.accountForAsync("dev.azure.com", "fabrikam/web/_git/site", signal)];
 
-    assert.deepEqual([answers, rig.github.requests.length], [[1, 1, 1], 2]);
+    assert.deepEqual([answers, rig.github.requests.length], [[1, 1, null], 2]);
+  });
+
+  it("reads a GitHub Enterprise repository only with an account on its server, whatever the host's case, asking that server which one can read it", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat", "hubot"]);
+    await rig.restoreAsync(["octocat", "hubot"]);
+    const signal = new AbortController().signal;
+    for (const login of ["monalisa", "kim"]) {
+      rig.github.answer(FakeGitHub.json({ login, name: null, avatar_url: null }));
+      await rig.accounts.connectAsync(new TokenConnect(SERVER, `ghp_${login}`), signal);
+    }
+    rig.github.requests.length = 0;
+    rig.github.answer(missing(), repository());
+
+    const probed = await rig.accounts.accountForAsync("GHE.Example.com", REPOSITORY, signal);
+    rig.accounts.useUser(SERVER, "octocat/named", "MonaLisa");
+    rig.accounts.useUser(SERVER, "octocat/stranger", "hubot");
+    const named = [await rig.accounts.accountForAsync(SERVER, "octocat/named", signal), await rig.accounts.tokenForAsync(SERVER, "octocat/named", signal)];
+    const asked = rig.github.requests.map(t => [t.url, t.header("Authorization")]);
+    rig.github.answer(missing(), missing());
+
+    assert.deepEqual([probed, named, await rig.accounts.accountForAsync(SERVER, "octocat/stranger", signal)], [4, [3, "ghp_monalisa"], 3]);
+    assert.deepEqual(asked, [[`https://${SERVER}/api/v3/repos/octocat/hello-world`, "Bearer ghp_monalisa"],
+      [`https://${SERVER}/api/v3/repos/octocat/hello-world`, "Bearer ghp_kim"]]);
+    assert.deepEqual([rig.accounts.signedIn.map(t => t.login), rig.accounts.signedInOn("GHE.example.com").map(t => t.login)], [["octocat", "hubot"], ["monalisa", "kim"]]);
+    assert.deepEqual(["github.com", "GitHub.com", SERVER, "GHE.Example.com", "other.example.com"].map(t => rig.accounts.serves(t)), [true, true, true, true, false]);
   });
 
   it("takes the first signed-in account without keeping the answer when GitHub can't be reached during the check, and asks again next time", async () => {

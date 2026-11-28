@@ -189,12 +189,24 @@ export class FakeToken extends Fake<IHeldToken> implements IHeldToken {
   private readonly chosen: Map<string, SignedInAccount> = new Map();
   private readonly gone: Set<string> = new Set();
 
+  public readonly servers: Map<string, readonly SignedInAccount[]> = new Map();
+
   public readonly asked: string[] = [];
   public readonly users: string[] = [];
 
   public get signedIn(): readonly SignedInAccount[] {
     const token: string | null = this.token;
     return [...token === null ? [] : [new SignedInAccount(1, "octocat", token)], ...new Set(this.chosen.values())].filter(t => !this.gone.has(t.token));
+  }
+
+  public signedInOn(host: string): readonly SignedInAccount[] {
+    const server: string = host.toLowerCase();
+    return server === "github.com" ? this.signedIn : (this.servers.get(server) ?? []).filter(t => !this.gone.has(t.token));
+  }
+
+  public serves(host: string): boolean {
+    const server: string = host.toLowerCase();
+    return server === "github.com" || this.servers.has(server);
   }
 
   public choose(host: string, path: string, account: SignedInAccount): void {
