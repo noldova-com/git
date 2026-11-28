@@ -13,7 +13,7 @@ import type { JsonValue } from "@noldova/context.json";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitBranchTrack, GitCommit, GitGraph, GitGraphCommit, GitRef, GitRemote, GitRepositoryItems, GitWorktrees, RefKind, RemoteTransport } from "@noldova/git.protocol";
 import { DefaultTheme } from "@noldova/ui.components.angular";
-import { AppearanceFixture } from "@noldova/ui.components.angular/testing";
+import { AppearanceFixture, PointerFixture } from "@noldova/ui.components.angular/testing";
 import type {} from "@vitest/browser-playwright";
 import { afterEach, describe, expect, it, onTestFinished } from "vitest";
 import { page, userEvent } from "vitest/browser";
@@ -28,6 +28,7 @@ import { GitRepositoryLinks } from "../../../../src/app/services/git-repository-
 import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
+import { RightEdge } from "../../../fixtures/right-edge.fixture.ts";
 import { Wait } from "../../../fixtures/wait.fixture.ts";
 
 describe("GitRepositoryComponent in the kit's look", () => {
@@ -223,6 +224,48 @@ describe("GitRepositoryComponent in the kit's look", () => {
     expect(rem(box(remoteRow).right - box(localRow).right)).toBe(0);
     expect(rem((box(remote).top - box(remoteRow).top) - (box(local).top - box(localRow).top))).toBe(0);
   });
+
+  it.each(AppearanceFixture.modes)("draws a remote branch's Switch to branch at its row's end on the row's fill in place of its counts when it is hovered or focused, its glyph where the counts end and the counts keeping their place, in %s mode",
+    async mode => {
+      AppearanceFixture.apply(DefaultTheme.theme, mode);
+      const element: HTMLElement = await renderAsync({
+        "git.branches": GitFixtures.branches("main", ["feature", "main"], ["origin/next"]).toJson(),
+        "git.remoteTracks": { tracks: [{ branch: "origin/next", ahead: 2, behind: 1 }] }
+      });
+      [...element.querySelectorAll<HTMLElement>("button.toggle")].find(t => t.textContent?.includes("Remotes"))?.click();
+      await untilAsync(() => !Object.isNull(element.querySelector("[title='origin/']")));
+      element.querySelector<HTMLElement>("[title='origin/']")?.click();
+      await untilAsync(() => !Object.isNull(element.querySelector(".remote .count.behind")));
+      const wrap: HTMLElement = element.querySelector<HTMLElement>(".remote") ?? element;
+      const row: HTMLElement = wrap.querySelector<HTMLElement>(".row") ?? wrap;
+      const actions: HTMLElement = wrap.querySelector<HTMLElement>(".actions") ?? wrap;
+      const ends = (): number[] => [".count.ahead", ".count.behind"].map(t => rem(box(row.querySelector(t)).right));
+      const shown = (): readonly string[] => [getComputedStyle(actions).display, getComputedStyle(actions).backgroundColor, getComputedStyle(row).backgroundColor,
+        getComputedStyle(row.querySelector(".count") ?? row).visibility];
+      const rest: number[] = ends();
+      const atRest: readonly string[] = [getComputedStyle(actions).display, getComputedStyle(row.querySelector(".count") ?? row).visibility];
+      const end: number = RightEdge.endOf(row.querySelector(".count.behind") ?? row);
+
+      row.focus();
+      const focused: readonly unknown[] = [ends(), ...shown()];
+      row.blur();
+      await PointerFixture.hoverAsync(row);
+      const hovered: readonly unknown[] = [ends(), ...shown()];
+      const missed: readonly string[] = RightEdge.missesOf(wrap, end, [".switch"]);
+      await page.screenshot({ element, path: `${screenshots}/git-repository-remote-switch-${mode}.png` });
+      row.click();
+      await untilAsync(() => row.classList.contains("sel"));
+      const selected: readonly string[] = shown();
+
+      expect(atRest).toEqual(["none", "visible"]);
+      expect([focused[0], hovered[0], focused[1], hovered[1]]).toEqual([rest, rest, "flex", "flex"]);
+      expect([focused[2], hovered[2]]).toEqual([focused[3], hovered[3]]);
+      expect(focused[2]).not.toBe("rgba(0, 0, 0, 0)");
+      expect([focused[4], hovered[4]]).toEqual(["hidden", "hidden"]);
+      expect(selected[1]).toBe(selected[2]);
+      expect(selected[1]).not.toBe(hovered[2]);
+      expect(missed).toEqual([]);
+    });
 
   it.each(AppearanceFixture.modes)("marks History across the panel's row, in the kit's selected fill, once a click on it selects the newest commit, in %s mode", async mode => {
     onTestFinished(() => {

@@ -141,6 +141,37 @@ button.row {
   margin-inline-end: calc((var(--nol-icon) - var(--nol-icon-button-target)) / 2);
 }
 
+.remote {
+  position: relative;
+}
+
+.remote > .actions {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: calc(0.5rem + (var(--nol-icon) - var(--nol-icon-button-target)) / 2);
+  display: flex;
+  align-items: center;
+  padding-inline-start: 0.375rem;
+  border-radius: 0.375rem;
+  background-color: var(--nol-hover);
+}
+
+.remote:not(:hover, :focus-within) > .actions {
+  display: none;
+}
+
+.remote:is(:hover, :focus-within) > .row:not(.sel) {
+  background: var(--nol-hover);
+}
+
+.remote:is(:hover, :focus-within) > .row > .count {
+  visibility: hidden;
+}
+
+.remote:has(> .row.sel) > .actions {
+  background-color: var(--nol-selected);
+}
+
 .row.nested {
   padding-left: 1.75rem;
 }

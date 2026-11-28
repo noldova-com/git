@@ -14,6 +14,7 @@ import { ContextMenuTriggerDirective, DialogService, IconButtonComponent, MenuCo
 import { FormsModule } from "@angular/forms";
 import type { GitBranches, GitBranchTrack, GitRemote, GitRemoteTracks, GitRepositoryItems, GitStatus, GitTag, GitWorktrees } from "@noldova/git.protocol";
 
+import { GitBranchMenuItem } from "../../models/git-branch-menu-item.ts";
 import type { GitBranchRow } from "../../models/git-branch-row.ts";
 import type { GitRepositoryLink } from "../../models/git-repository-link.ts";
 import { GitBranchView } from "../../models/git-branch-view.ts";
@@ -182,6 +183,10 @@ export class GitRepositoryComponent {
 
   protected history(folder: string): void {
     this.context.openDocument(Resources.historyDocumentName, folder, Resources.formatHistoryTitle(folder));
+  }
+
+  protected localNameOf(branch: string): string {
+    return GitBranchMenuItem.localNameOf(branch, this.remotes());
   }
 
   protected switchTo(folder: string, name: string): void {
