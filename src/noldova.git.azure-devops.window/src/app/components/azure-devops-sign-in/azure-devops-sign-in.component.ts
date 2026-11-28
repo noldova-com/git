@@ -7,18 +7,20 @@
  */
 
 import { NgTemplateOutlet } from "@angular/common";
-import { Component, computed, DestroyRef, ElementRef, inject, type OnInit, PendingTasks, signal, type Signal, viewChild, type WritableSignal } from "@angular/core";
+import { Component, computed, DestroyRef, effect, ElementRef, inject, input, type InputSignal, type OnInit, output, type OutputEmitterRef, PendingTasks, signal,
+  type Signal, untracked, viewChild, type WritableSignal } from "@angular/core";
 import "@noldova/context.core";
-import type { JsonValue } from "@noldova/context.json";
+import type { JsonObject, JsonValue } from "@noldova/context.json";
 import { type IWindowPartContext, LinkPlace, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
-import { type HostAccount, HostSignIn } from "@noldova/git.hosting.protocol";
+import { AccountQuery, type HostAccount, HostAccountEntry, HostSignIn, SignInState } from "@noldova/git.hosting.protocol";
 import { GitFolderParams, GitNames, GitStatus } from "@noldova/git.protocol";
 import { GitFolder } from "@noldova/git.window";
 import { AvatarComponent, ButtonComponent, ButtonVariant, SpinnerComponent, TextFieldComponent } from "@noldova/ui.components.angular";
 
 import { SignInNotice } from "../../models/sign-in-notice.ts";
 import { Resources } from "../../../resources.ts";
+import { AccountEvents } from "../../services/account-events.ts";
 import { AzureDevOpsReferenceLinks } from "../../services/azure-devops-reference-links.ts";
 import { SignInEvents } from "../../services/sign-in-events.ts";
 
@@ -35,8 +37,15 @@ export class AzureDevOpsSignInComponent implements OnInit {
   private readonly tokenField: Signal<ElementRef<HTMLInputElement>> = viewChild.required("tokenField", { read: ElementRef });
   private readonly organizationField: Signal<ElementRef<HTMLInputElement>> = viewChild.required("organizationField", { read: ElementRef });
   private signInEvents: number = 0;
+  private hasOpenedBrowser: boolean = false;
   private readonly visualStudioHome: WritableSignal<string | null> = signal<string | null>(null);
   private readonly organization: Signal<string> = computed(() => AzureDevOpsReferenceLinks.organizationIn(this.organizationText()) ?? String.empty);
+
+  public readonly account: InputSignal<number> = input<number>(Resources.firstAccount);
+  public readonly adds: InputSignal<boolean> = input<boolean>(false);
+  public readonly opensBrowser: InputSignal<boolean> = input<boolean>(false);
+  public readonly added: OutputEmitterRef<HostAccountEntry> = output<HostAccountEntry>();
+  public readonly closed: OutputEmitterRef<void> = output<void>();
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly secondary: ButtonVariant = ButtonVariant.Secondary;
@@ -48,14 +57,34 @@ export class AzureDevOpsSignInComponent implements OnInit {
   protected readonly hasOrganization: Signal<boolean> = computed(() => this.organization() !== String.empty);
   protected readonly isOrganizationUnread: Signal<boolean> = computed(() => !this.hasOrganization() && this.organizationText().trim() !== String.empty);
   protected readonly tokensUrl: Signal<string | null> = computed(() => this.hasOrganization() ? this.tokensUrlOf(this.organization()) : null);
+  protected readonly title: Signal<string> = computed(() => this.adds() ? Resources.addAccountTitle : Resources.accountTitle);
+
+  public constructor() {
+    effect(() => {
+      const address = this.signIn()?.address ?? null;
+      if (!this.opensBrowser() || Object.isNull(address) || this.hasOpenedBrowser)
+        return;
+      this.hasOpenedBrowser = true;
+      untracked(() => void this.openAsync(address));
+    });
+  }
 
   public ngOnInit(): void {
-    const unfollow = SignInEvents.follow(this.context, signIn => {
-      this.signInEvents++;
-      this.showSignIn(signIn);
-    });
-    this.destroyRef.onDestroy(unfollow);
-    void this.askAsync(AzureDevOpsNames.readSignInMethod, null);
+    if (this.adds())
+      this.signIn.set(HostSignIn.signedOut());
+    else {
+      const changed = (signIn: HostSignIn): void => {
+        this.signInEvents++;
+        this.showSignIn(signIn);
+      };
+      const account: number = this.account();
+      this.destroyRef.onDestroy(account === Resources.firstAccount ? SignInEvents.follow(this.context, changed) : AccountEvents.follow(this.context, list => {
+        const entry = list.accounts.find(t => t.id === account);
+        if (!Object.isUndefined(entry))
+          changed(entry.signIn);
+      }));
+      void this.askAsync(AzureDevOpsNames.readSignInMethod, this.query());
+    }
     const folder = GitFolder.folder();
     if (!Object.isNull(folder))
       void this.readRemoteAsync(folder);
@@ -82,13 +111,17 @@ export class AzureDevOpsSignInComponent implements OnInit {
   }
 
   protected async startAsync(): Promise<void> {
-    const address = (await this.askAsync(AzureDevOpsNames.startSignInMethod, { organization: this.organization() }))?.address ?? null;
+    if (this.adds()) {
+      await this.addAsync({ organization: this.organization() });
+      return;
+    }
+    const address = (await this.askAsync(AzureDevOpsNames.startSignInMethod, this.withAccount({ organization: this.organization() })))?.address ?? null;
     if (!Object.isNull(address))
       await this.openAsync(address);
   }
 
   protected async cancelAsync(): Promise<void> {
-    await this.askAsync(AzureDevOpsNames.cancelSignInMethod, null);
+    await this.askAsync(AzureDevOpsNames.cancelSignInMethod, this.query());
   }
 
   protected async signInAsync(): Promise<void> {
@@ -98,7 +131,10 @@ export class AzureDevOpsSignInComponent implements OnInit {
       return;
     const done = this.tasks.add();
     try {
-      await this.askAsync(AzureDevOpsNames.signInWithTokenMethod, { token, organization: this.organization() });
+      if (this.adds())
+        await this.addAsync({ token, organization: this.organization() });
+      else
+        await this.askAsync(AzureDevOpsNames.signInWithTokenMethod, this.withAccount({ token, organization: this.organization() }));
     }
     finally {
       field.value = "";
@@ -108,11 +144,11 @@ export class AzureDevOpsSignInComponent implements OnInit {
   }
 
   protected async readAsync(): Promise<void> {
-    await this.askAsync(AzureDevOpsNames.readSignInMethod, null);
+    await this.askAsync(AzureDevOpsNames.readSignInMethod, this.query());
   }
 
   protected async signOutAsync(): Promise<void> {
-    await this.askAsync(AzureDevOpsNames.signOutMethod, null);
+    await this.askAsync(AzureDevOpsNames.signOutMethod, this.query());
   }
 
   protected async openAsync(url: string): Promise<void> {
@@ -154,6 +190,39 @@ export class AzureDevOpsSignInComponent implements OnInit {
       this.isBusy.set(false);
       done();
     }
+  }
+
+  private async addAsync(parameters: JsonObject): Promise<void> {
+    const done = this.tasks.add();
+    this.isBusy.set(true);
+    this.failure.set(null);
+    try {
+      const entry = HostAccountEntry.fromJson(await this.context.requestAsync(AzureDevOpsNames.addAccountMethod, parameters));
+      if (entry.signIn.state === SignInState.SignedOut)
+        this.showSignIn(entry.signIn);
+      else
+        this.added.emit(entry);
+    }
+    catch (error) {
+      if (!(error instanceof WindowException))
+        throw error;
+      this.context.log(Resources.formatRequestFailed(AzureDevOpsNames.addAccountMethod, String(error)));
+      this.failure.set(Resources.addAccountUnanswered);
+    }
+    finally {
+      this.isBusy.set(false);
+      done();
+    }
+  }
+
+  private query(): JsonValue {
+    const account: number = this.account();
+    return account === Resources.firstAccount ? null : new AccountQuery(account).toJson();
+  }
+
+  private withAccount(fields: JsonObject): JsonObject {
+    const account: number = this.account();
+    return account === Resources.firstAccount ? fields : { ...fields, account };
   }
 
   private tokensUrlOf(organization: string): string {

@@ -12,7 +12,7 @@ import "@noldova/context.core";
 import { LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
-import { HostAccount, HostSignIn, SignInFailure } from "@noldova/git.hosting.protocol";
+import { AccountQuery, HostAccount, HostAccountEntry, HostAccountList, HostSignIn, SignInFailure } from "@noldova/git.hosting.protocol";
 import { GitNames, GitRemote, GitStatus, RemoteTransport } from "@noldova/git.protocol";
 import { GitFolder } from "@noldova/git.window";
 import { describe, expect, it, onTestFinished } from "vitest";
@@ -38,6 +38,8 @@ class Page {
   public readonly browser = { placeFor: (): LinkPlace => LinkPlace.InApp, openAsync: (): Promise<void> => Promise.resolve() };
   public readonly requests: RequestAnswers = new RequestAnswers(this.context);
   public fixture: ComponentFixture<AzureDevOpsSignInComponent> | null = null;
+  public readonly added: HostAccountEntry[] = [];
+  public closings: number = 0;
 
   public get element(): HTMLElement {
     const element = this.fixture?.nativeElement;
@@ -83,11 +85,15 @@ class Page {
     this.context.registerInAppBrowser(this.browser);
   }
 
-  public async openAsync(first: HostSignIn | null): Promise<this> {
+  public async openAsync(first: HostSignIn | null, inputs: Readonly<Record<string, unknown>> = {}): Promise<this> {
     if (!Object.isNull(first))
       this.requests.answer(AzureDevOpsNames.readSignInMethod, first.toJson());
     TestBed.configureTestingModule({ providers: [{ provide: WindowPartTokens.context, useValue: this.context }] });
     this.fixture = TestBed.createComponent(AzureDevOpsSignInComponent);
+    for (const [name, value] of Object.entries(inputs))
+      this.fixture.componentRef.setInput(name, value);
+    this.fixture.componentInstance.added.subscribe(t => void this.added.push(t));
+    this.fixture.componentInstance.closed.subscribe(() => void this.closings++);
     await this.settleAsync();
     return this;
   }
@@ -679,5 +685,131 @@ describe("AzureDevOpsSignInComponent", () => {
 
     expect(failed).toEqual(["Azure DevOps' sign-in didn't answer."]);
     expect([page.element.querySelector("[role=alert]"), page.labels()]).toEqual([null, ["Sign in", "Make a token on Azure DevOps", "Sign in with Microsoft"]]);
+  });
+
+  it("acts on the account it is given, naming it in its read, its token sign-in, its start with Microsoft, the start's cancel and its sign-out", async () => {
+    const page = await new Page().openAsync(HostSignIn.signedOut(), { account: 2 });
+    page.context.answer("openLinkAsync", async () => undefined);
+    page.requests.answer(AzureDevOpsNames.signInWithTokenMethod, HostSignIn.signedIn(account).toJson());
+    page.requests.answer(AzureDevOpsNames.signOutMethod, HostSignIn.signedOut().toJson());
+    page.requests.answer(AzureDevOpsNames.startSignInMethod, HostSignIn.waitingInBrowser(ADDRESS).toJson());
+    page.requests.answer(AzureDevOpsNames.cancelSignInMethod, HostSignIn.signedOut().toJson());
+    await page.typeAsync(TOKEN);
+
+    await page.clickAsync("Sign in");
+    await page.clickAsync("Sign out");
+    await page.clickAsync("Sign in with Microsoft");
+    await page.clickAsync("Cancel");
+
+    expect([page.requests.methods, page.requests.payloads]).toEqual([[AzureDevOpsNames.readSignInMethod, AzureDevOpsNames.signInWithTokenMethod,
+      AzureDevOpsNames.signOutMethod, AzureDevOpsNames.startSignInMethod, AzureDevOpsNames.cancelSignInMethod], [new AccountQuery(2).toJson(),
+      { token: TOKEN, organization: "fabrikam", account: 2 }, new AccountQuery(2).toJson(), { organization: "fabrikam", account: 2 }, new AccountQuery(2).toJson()]]);
+    expect([page.links, page.texts("h3"), page.added, page.closings]).toEqual([[ADDRESS], ["Account"], [], 0]);
+  });
+
+  it("follows an added account's changes in the account list, not the first account's sign-in, until it closes", async () => {
+    const page = await new Page().openAsync(HostSignIn.signedOut(), { account: 2 });
+    const list = (second: HostSignIn): HostAccountList => new HostAccountList([new HostAccountEntry(1, HostSignIn.signedOut()), new HostAccountEntry(2, second)]);
+
+    page.context.raiseEvent(AzureDevOpsNames.signInChangedEvent, HostSignIn.signedIn(unnamed).toJson());
+    page.context.raiseEvent(AzureDevOpsNames.accountsChangedEvent, new HostAccountList([new HostAccountEntry(1, HostSignIn.signedIn(unnamed))]).toJson());
+    await page.settleAsync();
+    const unchanged = page.labels();
+    page.context.raiseEvent(AzureDevOpsNames.accountsChangedEvent, list(HostSignIn.signedIn(account)).toJson());
+    await page.settleAsync();
+    const shown = page.texts(".nol-git-azure-devops-strong");
+    page.fixture?.destroy();
+
+    expect([unchanged, shown, page.context.callsOf("onEvent").map(t => t[0]), page.context.activeCallsOf("onEvent")])
+      .toEqual([["Sign in", "Make a token on Azure DevOps", "Sign in with Microsoft"], ["monalisa@example.com"], [AzureDevOpsNames.accountsChangedEvent], []]);
+  });
+
+  it("opens its sign-in's address in the system's browser once, when the list asks it to and the sign-in waits in the browser, however late the ask comes", async () => {
+    const page = await new Page().openAsync(HostSignIn.waitingInBrowser(ADDRESS), { account: 2 });
+    page.registerInAppBrowser();
+    page.context.answer("openLinkAsync", async () => undefined);
+    const before = [...page.links];
+
+    page.fixture?.componentRef.setInput("opensBrowser", true);
+    await page.settleAsync();
+    page.context.raiseEvent(AzureDevOpsNames.accountsChangedEvent, new HostAccountList([new HostAccountEntry(2, HostSignIn.waitingInBrowser(ADDRESS))]).toJson());
+    await page.settleAsync();
+
+    expect([before, page.links, page.places]).toEqual([[], [ADDRESS], [LinkPlace.System]]);
+  });
+
+  it("opens nothing for an ask to open the browser while its sign-in waits for none", async () => {
+    const page = await new Page().openAsync(HostSignIn.signedOut(), { account: 2, opensBrowser: true });
+
+    expect([page.links, page.labels()]).toEqual([[], ["Sign in", "Make a token on Azure DevOps", "Sign in with Microsoft"]]);
+  });
+
+  it("adds an account with a token, titled as another account and reading no sign-in, and hands on the account the add answers", async () => {
+    const page = await new Page().openAsync(null, { adds: true });
+    const entry = new HostAccountEntry(2, HostSignIn.signedIn(account), "dev.azure.com/fabrikam");
+    page.requests.answer(AzureDevOpsNames.addAccountMethod, entry.toJson());
+    const form = [page.texts("h3"), page.labels()];
+    await page.typeAsync(`  ${TOKEN}  `);
+
+    await page.clickAsync("Sign in");
+
+    expect(form).toEqual([["Another account"], ["Sign in", "Make a token on Azure DevOps", "Sign in with Microsoft", "Cancel"]]);
+    expect([page.requests.methods, page.requests.payloads, page.added.map(t => t.toJson()), page.field.value])
+      .toEqual([[AzureDevOpsNames.addAccountMethod], [{ token: TOKEN, organization: "fabrikam" }], [entry.toJson()], ""]);
+  });
+
+  it("adds an account with Microsoft for the organization, handing on the account waiting in the browser and opening nothing itself", async () => {
+    const page = await new Page().openAsync(null, { adds: true });
+    const entry = new HostAccountEntry(2, HostSignIn.waitingInBrowser(ADDRESS), "dev.azure.com/fabrikam");
+    page.requests.answer(AzureDevOpsNames.addAccountMethod, entry.toJson());
+    await page.typeOrganizationAsync("fabrikam");
+
+    await page.clickAsync("Sign in with Microsoft");
+
+    expect([page.requests.payloads, page.added.map(t => t.toJson()), page.links]).toEqual([[{ organization: "fabrikam" }], [entry.toJson()], []]);
+  });
+
+  it("keeps the add's form and says why when the account added is one already kept, handing nothing on", async () => {
+    const page = await new Page().openAsync(null, { adds: true });
+    page.requests.answer(AzureDevOpsNames.addAccountMethod, new HostAccountEntry(3, HostSignIn.signedOut(SignInFailure.AlreadyKept)).toJson());
+    await page.typeAsync(TOKEN);
+
+    await page.clickAsync("Sign in");
+
+    expect([page.texts("[role=alert] span span"), page.texts("h3"), page.added, page.field.value])
+      .toEqual([["This account is already signed in.", "Sign this entry out, or sign in again as another account."], ["Another account"], [], ""]);
+  });
+
+  it("says the account wasn't added when the add fails, logging why without the token, and hands nothing on", async () => {
+    const page = await new Page().openAsync(null, { adds: true });
+    page.requests.fail(AzureDevOpsNames.addAccountMethod, new WindowFailure("Not connected."));
+    await page.typeAsync(TOKEN);
+
+    await page.clickAsync("Sign in");
+
+    expect([page.texts("[role=alert] .nol-git-azure-devops-strong"), page.added, page.button("Sign in").disabled])
+      .toEqual([["Azure DevOps didn't add the account."], [], true]);
+    expect(page.logs).toEqual([`The Azure DevOps module's ${AzureDevOpsNames.addAccountMethod} request failed: WindowFailure: Not connected.`]);
+  });
+
+  it("passes on a failure of the add that isn't the window's, logging nothing", async () => {
+    const page = await new Page().openAsync(null, { adds: true });
+    const unexpected = new TypeError("Unexpected.");
+    page.requests.fail(AzureDevOpsNames.addAccountMethod, unexpected);
+    await page.typeOrganizationAsync("fabrikam");
+    const rejected = UnhandledRejections.nextAsync();
+
+    await page.clickAsync("Sign in with Microsoft");
+
+    expect(await rejected).toBe(unexpected);
+    expect([page.logs, page.added, page.element.querySelector("[role=alert]")]).toEqual([[], [], null]);
+  });
+
+  it("closes the add's form on Cancel, sending nothing", async () => {
+    const page = await new Page().openAsync(null, { adds: true });
+
+    await page.clickAsync("Cancel");
+
+    expect([page.closings, page.requests.methods]).toEqual([1, []]);
   });
 });

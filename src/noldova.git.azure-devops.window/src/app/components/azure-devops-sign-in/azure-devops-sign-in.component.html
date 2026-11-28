@@ -10,7 +10,7 @@ LICENSE file in the root directory of this source tree.
   <section class="nol-git-azure-devops-setting" [attr.aria-busy]="isBusy()">
     @if (current.address; as address) {
       <div class="nol-git-azure-devops-heading">
-        <h3 class="nol-git-azure-devops-setting-title">{{ resources.accountTitle }}</h3>
+        <h3 class="nol-git-azure-devops-setting-title">{{ title() }}</h3>
         <p class="nol-git-azure-devops-setting-note">{{ resources.browserNote }}</p>
       </div>
       <div class="nol-git-azure-devops-row">
@@ -25,7 +25,7 @@ LICENSE file in the root directory of this source tree.
       </div>
     } @else if (current.account; as account) {
       <div class="nol-git-azure-devops-heading">
-        <h3 class="nol-git-azure-devops-setting-title">{{ resources.accountTitle }}</h3>
+        <h3 class="nol-git-azure-devops-setting-title">{{ title() }}</h3>
         <div class="nol-git-azure-devops-account">
           <nol-avatar [name]="nameOf(account)" [colorKey]="account.login" [decorative]="true" />
           <span class="nol-git-azure-devops-account-text">
@@ -43,7 +43,7 @@ LICENSE file in the root directory of this source tree.
       </div>
     } @else {
       <div class="nol-git-azure-devops-heading">
-        <h3 class="nol-git-azure-devops-setting-title">{{ resources.accountTitle }}</h3>
+        <h3 class="nol-git-azure-devops-setting-title">{{ title() }}</h3>
         @if (failureOf(current); as failure) {
           <div class="nol-git-azure-devops-banner" role="alert">
             <span class="material-symbols-rounded nol-git-azure-devops-banner-icon" aria-hidden="true">{{ resources.failureIcon }}</span>
@@ -97,6 +97,11 @@ LICENSE file in the root directory of this source tree.
         </span>
       </div>
       <p class="nol-git-azure-devops-setting-note nol-git-azure-devops-label">{{ resources.microsoftNote }}</p>
+      @if (adds()) {
+        <div class="nol-git-azure-devops-row">
+          <button type="button" nol-button [variant]="secondary" [disabled]="isBusy()" (click)="closed.emit()">{{ resources.cancel }}</button>
+        </div>
+      }
     }
     @if (failure(); as failure) {
       <ng-container *ngTemplateOutlet="requestFailed; context: { $implicit: failure }" />
@@ -105,7 +110,7 @@ LICENSE file in the root directory of this source tree.
 } @else if (failure(); as failure) {
   <section class="nol-git-azure-devops-setting">
     <div class="nol-git-azure-devops-heading">
-      <h3 class="nol-git-azure-devops-setting-title">{{ resources.accountTitle }}</h3>
+      <h3 class="nol-git-azure-devops-setting-title">{{ title() }}</h3>
       <ng-container *ngTemplateOutlet="requestFailed; context: { $implicit: failure }" />
     </div>
     <div class="nol-git-azure-devops-row">
