@@ -100,7 +100,8 @@
   gap: 0.375rem;
   min-width: 0;
   height: 1.625rem;
-  padding: 0 0.25rem;
+  margin-inline: -0.5rem;
+  padding: 0 0.5rem;
   border: 0;
   border-radius: var(--nol-radius-medium);
   background: transparent;
@@ -113,6 +114,10 @@
 button.row,
 .row.review {
   cursor: pointer;
+}
+
+.row > [nol-toolbar-button]:last-child {
+  margin-inline-end: calc(-1 * var(--nol-pill-padding));
 }
 
 .row:hover {

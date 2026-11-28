@@ -21,6 +21,7 @@ import { page } from "vitest/browser";
 import { GitHistoryComponent } from "../../../../src/app/components/git-history/git-history.component.ts";
 import { GitLinkReferences } from "../../../../src/app/services/git-link-references.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
+import { RightEdge } from "../../../fixtures/right-edge.fixture.ts";
 
 describe("GitHistoryComponent references in the kit's look", () => {
   const screenshots: string = "../../../../../../_build/window/screenshots";
@@ -98,6 +99,7 @@ describe("GitHistoryComponent references in the kit's look", () => {
     expect(box(state).left).toBeGreaterThan(box(chip).right);
     expect(box(row).height).toBe(box(plainRow).height);
     expect([box(chip).top >= box(row).top, box(chip).bottom <= box(row).bottom]).toEqual([true, true]);
+    expect(RightEdge.missesOf(element, RightEdge.insideOf(element.querySelector(".toolbar") ?? element, 0.75), [".toolbar .field"])).toEqual([]);
     await page.screenshot({ element, path: `${screenshots}/git-history-reference-chip-${mode}.png` });
   });
 

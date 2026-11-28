@@ -30,6 +30,7 @@ import { FixtureLine, GitFixtures } from "../../../fixtures/git-fixtures.fixture
 import { GitHeldRequests } from "../../../fixtures/git-held-requests.fixture.ts";
 import { GitLayout } from "../../../fixtures/git-layout.fixture.ts";
 import { GitViewFixture } from "../../../fixtures/git-view.fixture.ts";
+import { RightEdge } from "../../../fixtures/right-edge.fixture.ts";
 
 describe("GitViewComponent in the kit's look", () => {
   const screenshots: string = "../../../../../../_build/window/screenshots";
@@ -117,8 +118,12 @@ describe("GitViewComponent in the kit's look", () => {
     expect(cards.map(t => rem(t.width))).toEqual(cards.map(() => 23.5));
     expect(rem(box(changes.querySelector(".header")).height)).toBe(1.625);
     expect(rem(box(row).height)).toBe(1.625);
-    expect(rem(box(row.querySelector("nol-file-badge")).left - changesBox.left)).toBe(0.5);
-    expect(rem(changesBox.right - box(row.querySelector(".move")).right)).toBe(0.25);
+    expect([rem(box(row.querySelector("nol-file-badge")).left - changesBox.left), rem(changesBox.left - box(row).left), rem(box(row).right - changesBox.right)]).toEqual([0, 0.5, 0.5]);
+    expect(RightEdge.missesOf(view.element, RightEdge.insideOf(view.element, 0.75),
+      ["nol-git-file-group:nth-of-type(3) .move-all", "nol-git-file-group:nth-of-type(3) .file .move", ".commit"])).toEqual([]);
+    expect(RightEdge.missesOf(view.element, RightEdge.insideOf(view.element, 0.75), ["nol-git-file-group:nth-of-type(1) .file .state",
+      "nol-git-file-group:nth-of-type(2) .file .state", "nol-git-file-group:nth-of-type(3) li:nth-child(2) .file .state"])).toEqual([]);
+    expect(RightEdge.missesOf(changes, RightEdge.insideOf(changes.querySelector(".diff") ?? changes, 0.5), [".hunk-action"])).toEqual([]);
     expect(rem(box(row.querySelector(".move")).right - box(row.querySelector(".state")).right)).toBeGreaterThan(0);
     expect([rem(box(row.querySelector(".move")).left - box(row.querySelector(".discard")).right), rem(box(row.querySelector(".discard")).left - box(row.querySelector(".expand")).right)])
       .toEqual([0.375, 0.375]);
@@ -141,6 +146,31 @@ describe("GitViewComponent in the kit's look", () => {
 
     await page.screenshot({ element: view.element, path: `${screenshots}/git-view-${mode}.png` });
   });
+
+  it.each(AppearanceFixture.modes)("keeps a file row's counts and letter where they rest when it is focused or hovered, its actions drawn over the name's end on the row's fill, in %s mode",
+    async mode => {
+      AppearanceFixture.apply(DefaultTheme.theme, mode);
+      const view: GitViewFixture = await GitViewFixture.renderAsync({ ...GitFixtures.watching, "git.status": status.toJson() });
+      view.state.fileLayout.set(GitFileLayout.List);
+      await view.fixture.whenStable();
+      view.element.style.width = "25rem";
+      const row: HTMLElement = view.find("nol-git-file-group:nth-of-type(3) .file");
+      const ends = (): number[] => [".counts", ".state"].map(t => rem(box(row.querySelector(t)).right));
+      const rest: number[] = ends();
+
+      row.querySelector<HTMLElement>(".name")?.focus();
+      await view.fixture.whenStable();
+      const focused: number[] = ends();
+      const focusedFill: string = getComputedStyle(row.querySelector(".actions") ?? row).backgroundColor;
+      row.querySelector<HTMLElement>(".name")?.blur();
+      await PointerFixture.hoverAsync(row);
+      const hovered: number[] = ends();
+      const actions: HTMLElement = row.querySelector<HTMLElement>(".actions") ?? row;
+
+      expect([focused, hovered]).toEqual([rest, rest]);
+      expect([getComputedStyle(actions).display, getComputedStyle(actions).backgroundColor, focusedFill]).toEqual(["flex", resolve("var(--nol-hover)"), resolve("var(--nol-hover)")]);
+      expect(RightEdge.missesOf(row, RightEdge.insideOf(view.element, 0.75), [".move"])).toEqual([]);
+    });
 
   it.each(AppearanceFixture.modes)("ends the amend row with the signing note in the kit's muted label type, at the card's edge and centred on the box, in %s mode", async mode => {
     AppearanceFixture.apply(DefaultTheme.theme, mode);
@@ -332,7 +362,7 @@ describe("GitViewComponent in the kit's look", () => {
       };
       expect([rem(card.left - frame.left), rem(card.top - frame.top), rem(card.width)]).toEqual([0.75, 0.75, 23.5]);
       expect([rem(box(changes.querySelector(".header")).height), rem(box(row).height), rem(box(changes.querySelector(".diff > div")).height)]).toEqual([1.625, 1.625, 1.125]);
-      expect(rem(box(row.querySelector("nol-file-badge")).left - box(changes).left)).toBe(0.5);
+      expect(rem(box(row.querySelector("nol-file-badge")).left - box(changes).left)).toBe(0);
       expect([getComputedStyle(view.find("nol-git-branch-card")).borderTopStyle, getComputedStyle(view.find("nol-git-file-group .diff")).borderTopStyle])
         .toEqual(["solid", "solid"]);
       expect([changes.querySelector(".added-line")?.textContent?.startsWith("+"), changes.querySelector(".removed-line")?.textContent?.startsWith("-")]).toEqual([true, true]);

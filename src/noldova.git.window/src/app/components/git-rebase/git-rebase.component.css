@@ -220,6 +220,10 @@
   padding: 0;
 }
 
+.title-row > [nol-toolbar-button]:last-child {
+  margin-inline-end: calc(-1 * var(--nol-pill-padding));
+}
+
 .start-row {
   display: flex;
   gap: 0.5rem;

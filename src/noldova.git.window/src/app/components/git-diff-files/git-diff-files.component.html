@@ -41,7 +41,7 @@ LICENSE file in the root directory of this source tree.
           <span class="small muted letter">{{ row.letter }}</span>
         </button>
         @if (isOpen) {
-          <div class="diff" [style.margin-inline-start.rem]="insetOf(row.depth)">
+          <div class="diff" [style.margin-inline-start.rem]="diffInsetOf(row.depth)">
             @let codes = openCodes().get(row.key) ?? [];
             @for (line of openLines().get(row.key) ?? []; track $index) {
               <div [class.added-line]="line.kind === lineKinds.Added" [class.removed-line]="line.kind === lineKinds.Removed"

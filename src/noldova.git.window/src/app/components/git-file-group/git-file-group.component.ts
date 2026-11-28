@@ -95,7 +95,7 @@ export class GitFileGroupComponent {
   }
 
   protected insetOf(depth: number): number | null {
-    return depth === 0 ? null : Resources.rowStartRem + depth * Resources.groupFileStepRem;
+    return depth === 0 ? null : Resources.filledRowStartRem + depth * Resources.groupFileStepRem;
   }
 
   protected toggleFolder(folder: string): void {

@@ -68,7 +68,7 @@ LICENSE file in the root directory of this source tree.
         <span role="columnheader" class="pull-request-head">{{ resources.pullRequestColumn }}</span>
         <span role="columnheader">{{ resources.checksColumn }}</span>
         <span role="columnheader" class="open-head">{{ resources.openColumn }}</span>
-        <span role="columnheader">{{ resources.fetchedColumn }}</span>
+        <span role="columnheader" class="fetched-head">{{ resources.fetchedColumn }}</span>
       </div>
       @for (row of rows(); track row.folder) {
         @let isChosen = chosen().has(row.folder);

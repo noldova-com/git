@@ -22,6 +22,7 @@ import { GitConflictsComponent } from "../../../../src/app/components/git-confli
 import { GitResolving } from "../../../../src/app/services/git-resolving.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitLayout } from "../../../fixtures/git-layout.fixture.ts";
+import { RightEdge } from "../../../fixtures/right-edge.fixture.ts";
 
 describe("GitConflictsComponent in the kit's look", () => {
   const screenshots: string = "../../../../../../_build/window/screenshots";
@@ -101,7 +102,7 @@ describe("GitConflictsComponent in the kit's look", () => {
       const take: DOMRect = box(find(".take-ours"));
       const headBox: DOMRect = box(head);
       const label: DOMRect = box(find(".take-ours .nol-toolbar-button-label"));
-      expect([rem(take.height), rem(headBox.right - take.right), rem(label.left - take.left)]).toEqual([1.5, 0.75, 0.375]);
+      expect([rem(take.height), rem(headBox.right - label.right), rem(label.left - take.left)]).toEqual([1.5, 0.75, 0.375]);
       expect(rem(take.top - headBox.top)).toBe(rem(headBox.bottom - head.clientTop - parseFloat(getComputedStyle(head).borderBottomWidth) - take.bottom));
 
       await page.screenshot({ element, path: `${screenshots}/git-conflicts-${mode}.png` });
@@ -143,7 +144,7 @@ describe("GitConflictsComponent in the kit's look", () => {
 
       const heads: readonly (readonly number[])[] = cards.map(card => {
         const head: HTMLElement = card.querySelector<HTMLElement>(":scope > .pane-head") ?? card;
-        const last: DOMRect = box(head.lastElementChild);
+        const last: DOMRect = box(head.lastElementChild?.querySelector(".nol-toolbar-button-label") ?? head.lastElementChild);
         return [rem(box(head).top - box(card).top - card.clientTop), rem(box(head).height), rem(box(head).right - last.right), rem(box(head.firstElementChild).left - box(head).left)];
       });
       expect(heads).toEqual([[0, 2, 0.75, 0.75], [0, 2, 0.75, 0.75], [0, 2, 0.75, 0.75]]);
@@ -239,6 +240,7 @@ describe("GitConflictsComponent in the kit's look", () => {
 
       await page.screenshot({ element, path: `${screenshots}/git-conflicts-30rem-${mode}.png` });
       expect([whole(".operation .abort"), whole(".operation .continue")]).toEqual([[true, true], [true, true]]);
+      expect(RightEdge.missesOf(element, RightEdge.endOf(element.querySelector(".operation .continue") ?? element), [".pane-head.theirs .take-theirs"])).toEqual([]);
       expect(box(element.querySelector(".operation .abort")).top).toBeGreaterThanOrEqual(text.bottom);
       expect([commitOf("ours"), commitOf("theirs")]).toEqual([["· 3b9f001", true], ["· e07a3c2", true]]);
       expect(GitLayout.problemsOf(element).filter(t => !t.startsWith("scrolls sideways: div.nol-code-editor-scroller "))).toEqual([]);

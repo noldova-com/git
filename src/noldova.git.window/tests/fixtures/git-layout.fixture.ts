@@ -18,7 +18,7 @@ export class GitLayout {
     const problems: string[] = [];
     for (const element of shown) {
       const style: CSSStyleDeclaration = getComputedStyle(element);
-      if (style.display === "inline" || element.scrollWidth <= element.clientWidth + GitLayout.SLACK)
+      if (style.display === "inline" || style.overflowX === "visible" || element.scrollWidth <= element.clientWidth + GitLayout.SLACK)
         continue;
       if (style.overflowX === "auto" || style.overflowX === "scroll")
         problems.push(`scrolls sideways: ${GitLayout.nameOf(element)}`);
@@ -31,7 +31,7 @@ export class GitLayout {
         problems.push(`leaves the screen: ${GitLayout.nameOf(text)}`);
     [...seen].forEach(([text, rects], i) => {
       for (const [other, others] of [...seen].slice(i + 1))
-        if (!text.contains(other) && !other.contains(text) && GitLayout.overlaps(rects, others))
+        if (!text.contains(other) && !other.contains(text) && GitLayout.overlaps(rects, others) && !GitLayout.isCovered(text, other, root))
           problems.push(`overlaps: ${GitLayout.nameOf(text)} and ${GitLayout.nameOf(other)}`);
     });
     return problems;
@@ -52,6 +52,23 @@ export class GitLayout {
         height: Math.min(t.bottom, clip.bottom) - Math.max(t.top, clip.top) })).filter(t => t.width > GitLayout.SLACK && t.height > GitLayout.SLACK);
     }
     return rects;
+  }
+
+  private static isCovered(first: HTMLElement, second: HTMLElement, root: HTMLElement): boolean {
+    return GitLayout.isUnder(first, second, root) || GitLayout.isUnder(second, first, root);
+  }
+
+  private static isUnder(text: HTMLElement, other: HTMLElement, root: HTMLElement): boolean {
+    for (let cover: HTMLElement | null = other; !Object.isNull(cover) && cover !== root && !cover.contains(text); cover = cover.parentElement) {
+      const style: CSSStyleDeclaration = getComputedStyle(cover);
+      if (style.position === "absolute" && GitLayout.isOpaque(style.backgroundColor))
+        return true;
+    }
+    return false;
+  }
+
+  private static isOpaque(color: string): boolean {
+    return color.startsWith("rgb(") || color.startsWith("color(") && !color.includes("/");
   }
 
   private static overlaps(first: readonly DOMRect[], second: readonly DOMRect[]): boolean {

@@ -21,6 +21,7 @@ import { AppearanceFixture, PointerFixture, TooltipFixture } from "@noldova/ui.c
 import { afterEach, describe, expect, it } from "vitest";
 import { cdp, page } from "vitest/browser";
 
+import { RightEdge } from "../../../../../noldova.git.window/tests/fixtures/right-edge.fixture.ts";
 import { AzureDevOpsHostRowComponent } from "../../../../src/app/components/azure-devops-host-row/azure-devops-host-row.component.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
@@ -186,7 +187,7 @@ describe("AzureDevOpsHostRowComponent in the kit's look", () => {
     AppearanceFixture.expectPixels(state.height, px(1));
     AppearanceFixture.expectPixels(titleBox.left - state.right, px(0.5));
     AppearanceFixture.expectPixels(open.left - titleBox.right, px(0.5));
-    AppearanceFixture.expectPixels(card.right - open.right, px(0.625) + border);
+    AppearanceFixture.expectPixels(card.right - open.right, px(0.375) + border);
     AppearanceFixture.expectPixels(line.top - card.top, px(0.5) + border);
     AppearanceFixture.expectTruncates(find(root, ".title .text"));
     AppearanceFixture.expectTruncates(all(root, ".name .text").at(-1) ?? find(root, ".name .text"));
@@ -208,6 +209,7 @@ describe("AzureDevOpsHostRowComponent in the kit's look", () => {
     expect(all(root, ".check-icon").map(t => getComputedStyle(t).color)).toEqual([resolve("var(--nol-status-failed)"),
       resolve("var(--nol-text-muted)"), resolve("var(--nol-status-ok)"), resolve("var(--nol-status-ok)")]);
 
+    expect(RightEdge.missesOf(root, RightEdge.endOf(find(root, ".check-state")), [".pr .line .open"])).toEqual([]);
     await page.screenshot({ element: find(root, ".dock"), path: `${screenshots}/host-row-pull-request-${mode}.png` });
   });
 
