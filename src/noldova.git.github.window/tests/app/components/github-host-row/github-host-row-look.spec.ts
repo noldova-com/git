@@ -68,6 +68,7 @@ async function openAsync(mode: ThemeMode, signIn: HostSignIn, pullRequest: Branc
   const context = new FakeWindowPartContext();
   const requests = new RequestAnswers(context);
   requests.answer(GitHubNames.readSignInMethod, signIn.toJson());
+  requests.always(GitHubNames.useFolderMethod, new RepositoryAccount(null).toJson());
   if (!Object.isNull(pullRequest))
     requests.answer(GitHubNames.readBranchPullRequestMethod, pullRequest.toJson());
   prepare(context, requests);

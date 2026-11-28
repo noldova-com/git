@@ -57,6 +57,8 @@ class TwoAccounts implements IGitHubTokens {
     return [new SignedInAccount(1, "octocat", "gho_octocat"), new SignedInAccount(2, "hubot", "gho_hubot")].filter(t => this.held.includes(t.token));
   }
 
+  public readonly useUser: () => void = () => undefined;
+
   public tokenForAsync(): Promise<string | null> {
     return Promise.resolve("gho_octocat");
   }

@@ -19,6 +19,7 @@ export class HostingNames {
   public static readonly addAccountMethod: string = "addAccount";
   public static readonly readRepositoryAccountMethod: string = "readRepositoryAccount";
   public static readonly pickAccountMethod: string = "pickAccount";
+  public static readonly useFolderMethod: string = "useFolder";
   public static readonly accountsChangedEvent: string = "accountsChanged";
   public static readonly readReferenceMethod: string = "readReference";
   public static readonly readBranchPullRequestMethod: string = "readBranchPullRequest";

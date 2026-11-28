@@ -31,6 +31,7 @@ export class GitHubNames {
   public static readonly addAccountMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.addAccountMethod);
   public static readonly readRepositoryAccountMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.readRepositoryAccountMethod);
   public static readonly pickAccountMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.pickAccountMethod);
+  public static readonly useFolderMethod: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.useFolderMethod);
   public static readonly accessService: string = HostingNames.nameOf(GitHubNames.moduleId, Resources.accessMember);
   public static readonly signInChangedEvent: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.signInChangedEvent);
   public static readonly accountsChangedEvent: string = HostingNames.nameOf(GitHubNames.moduleId, HostingNames.accountsChangedEvent);

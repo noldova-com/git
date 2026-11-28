@@ -86,6 +86,8 @@ export class Resources {
   public static readonly deviceCodeField: string = "deviceCode";
   public static readonly addressField: string = "address";
   public static readonly accountField: string = "account";
+  public static readonly folderField: string = "folder";
+  public static readonly remoteField: string = "remote";
   public static readonly accountsField: string = "accounts";
   public static readonly signInField: string = "signIn";
   public static readonly failureField: string = "failure";

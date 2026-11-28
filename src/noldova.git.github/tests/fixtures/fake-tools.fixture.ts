@@ -22,6 +22,8 @@ export class FakeRepositories extends GitRepositories {
   public readonly folders: string[] = [];
   public readonly remotes: Map<string, GitRemote> = new Map();
   public readonly remoteReads: (readonly [string, string])[] = [];
+  public readonly users: Map<string, string> = new Map();
+  public readonly userReads: (readonly [string, string])[] = [];
 
   public readStatusAsync(folder: string): Promise<GitStatus> {
     this.folders.push(folder);
@@ -31,6 +33,11 @@ export class FakeRepositories extends GitRepositories {
   public readRemoteAsync(folder: string, name: string): Promise<GitRemote | null> {
     this.remoteReads.push([folder, name]);
     return this.answer instanceof Error ? Promise.reject(this.answer) : Promise.resolve(this.remotes.get(name) ?? this.answer.remote);
+  }
+
+  public readRemoteUserAsync(folder: string, name: string): Promise<string | null> {
+    this.userReads.push([folder, name]);
+    return this.answer instanceof Error ? Promise.reject(this.answer) : Promise.resolve(this.users.get(name) ?? null);
   }
 }
 

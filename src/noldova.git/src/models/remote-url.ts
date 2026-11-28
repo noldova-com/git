@@ -21,15 +21,35 @@ export class RemoteUrl {
     return new GitRemote(name, RemoteUrl.hostOf(Required.at(scp, 1, Resources.remoteCommand, Resources.remoteUrlPart)), RemoteUrl.pathOf(Required.at(scp, 2, Resources.remoteCommand, Resources.remoteUrlPart)), RemoteTransport.Ssh);
   }
 
-  private static fromUrl(name: string, url: string): GitRemote {
-    let parsed: URL;
+  public static userOf(url: string): string | null {
+    const parsed: URL | null = Resources.urlSchemePattern.test(url) ? RemoteUrl.parse(url) : null;
+    if (parsed === null || !Resources.httpSchemes.includes(parsed.protocol.toLowerCase()) || parsed.username.length === 0)
+      return null;
+    let user: string;
     try {
-      parsed = new URL(url);
+      user = decodeURIComponent(parsed.username);
+    } catch (error) {
+      if (!(error instanceof URIError))
+        throw error;
+      return null;
+    }
+    return Resources.remoteUserPattern.test(user) ? user : null;
+  }
+
+  private static parse(url: string): URL | null {
+    try {
+      return new URL(url);
     } catch (error) {
       if (!(error instanceof TypeError))
         throw error;
-      return new GitRemote(name, null, null, RemoteTransport.Other);
+      return null;
     }
+  }
+
+  private static fromUrl(name: string, url: string): GitRemote {
+    const parsed: URL | null = RemoteUrl.parse(url);
+    if (parsed === null)
+      return new GitRemote(name, null, null, RemoteTransport.Other);
     const scheme = parsed.protocol.toLowerCase();
     if (scheme === Resources.fileScheme)
       return new GitRemote(name, null, null, RemoteTransport.File);

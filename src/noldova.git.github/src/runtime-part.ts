@@ -8,11 +8,11 @@
 
 import { JsonException } from "@noldova/context.json";
 import { Failure, FailureCode, ShellClients } from "@noldova/desktop.protocol";
-import { type EventChannel, type IRuntimePart, type IRuntimePartContext, MethodFailureException, type RequestContext } from "@noldova/desktop.runtime";
-import { AccountPick, AccountQuery, AuthorQuery, BranchQuery, CommitQuery, HostAvatar, HostingProtocolException, HostReference, PullRequestDraft,
+import { type EventChannel, type IRuntimePart, type IRuntimePartContext, MethodFailureException, type RequestContext, ServiceAccessException } from "@noldova/desktop.runtime";
+import { AccountPick, AccountQuery, AuthorQuery, BranchQuery, CommitQuery, FolderQuery, HostAvatar, HostingProtocolException, HostReference, PullRequestDraft,
   RepositoryAccount, RepositoryQuery } from "@noldova/git.hosting.protocol";
 import { GitHubNames } from "@noldova/git.github.protocol";
-import { GitNames, GitRepositories } from "@noldova/git.protocol";
+import { GitNames, type GitRemote, GitRepositories } from "@noldova/git.protocol";
 
 import { SignInMethod } from "./models/sign-in-method.ts";
 import { Resources } from "./resources.ts";
@@ -87,8 +87,8 @@ export class RuntimePart implements IRuntimePart {
       handleAsync: async request => (await reads.readCommitPullRequestAsync(RuntimePart.read(request, CommitQuery.fromJson), request.signal)).toJson()
     });
     context.registerMethod(GitHubNames.createPullRequestMethod, {
-      handleAsync: async request => (await reads.createPullRequestAsync(RuntimePart.read(RuntimePart.fromWindow(request), PullRequestDraft.fromJson),
-        request.signal)).toJson()
+      handleAsync: async request => (await reads.createPullRequestAsync(RuntimePart.read(RuntimePart.fromWindow(request, Resources.notFromWindowMessage),
+        PullRequestDraft.fromJson), request.signal)).toJson()
     });
     context.registerMethod(GitHubNames.readAccountsMethod, { handleAsync: () => Promise.resolve(accounts.list.toJson()) });
     context.registerMethod(GitHubNames.addAccountMethod, { handleAsync: async () => (await accounts.addAsync()).toJson() });
@@ -100,6 +100,17 @@ export class RuntimePart implements IRuntimePart {
     });
     context.registerMethod(GitHubNames.pickAccountMethod, {
       handleAsync: async request => new RepositoryAccount(await accounts.pickAsync(RuntimePart.read(request, AccountPick.fromJson), request.signal)).toJson()
+    });
+    context.registerMethod(GitHubNames.useFolderMethod, {
+      handleAsync: async request => {
+        const query: FolderQuery = RuntimePart.read(RuntimePart.fromWindow(request, Resources.folderNotFromWindowMessage), FolderQuery.fromJson);
+        const repositories: GitRepositories = RuntimePart.gitOf(context);
+        const remote: GitRemote | null = await repositories.readRemoteAsync(query.folder, query.remote, request.signal);
+        if (remote === null || remote.host === null || remote.path === null)
+          return new RepositoryAccount(null).toJson();
+        accounts.useUser(remote.host, remote.path, await repositories.readRemoteUserAsync(query.folder, query.remote, request.signal));
+        return new RepositoryAccount(await accounts.accountForAsync(remote.host, remote.path, request.signal)).toJson();
+      }
     });
     context.publishService(GitHubNames.accessService, new GitHubAccess(accounts));
     const tools = new GitHubTools(reads, accounts, () => context.getService(GitNames.repositoriesService, GitRepositories));
@@ -118,10 +129,21 @@ export class RuntimePart implements IRuntimePart {
     this.context = null;
   }
 
-  private static fromWindow(request: RequestContext): RequestContext {
+  private static fromWindow(request: RequestContext, message: string): RequestContext {
     if (request.window === null || request.client !== ShellClients.mainProcess)
-      throw GitHubApi.failure(FailureCode.Unauthorized, Resources.notFromWindowMessage);
+      throw GitHubApi.failure(FailureCode.Unauthorized, message);
     return request;
+  }
+
+  private static gitOf(context: IRuntimePartContext): GitRepositories {
+    try {
+      return context.getService(GitNames.repositoriesService, GitRepositories);
+    }
+    catch (error) {
+      if (!(error instanceof ServiceAccessException))
+        throw error;
+      throw GitHubApi.failure(FailureCode.Unavailable, Resources.gitMissingMessage);
+    }
   }
 
   private static read<T>(request: RequestContext, read: (value: unknown) => T): T {

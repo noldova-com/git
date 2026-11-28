@@ -32,6 +32,7 @@ export class GitHubAccounts implements IGitHubTokens {
   private readonly changed: (id: number, signIn: HostSignIn) => void;
   private readonly entries: Map<number, GitHubSignIn> = new Map();
   private readonly found: Map<string, Promise<number>> = new Map();
+  private readonly users: Map<string, string> = new Map();
   private picks: readonly AccountPick[] = [];
   private kept: string | null = null;
   private saving: Promise<void> = Promise.resolve();
@@ -120,11 +121,25 @@ export class GitHubAccounts implements IGitHubTokens {
     return this.accountForAsync(pick.host, pick.path, signal);
   }
 
+  public useUser(host: string, path: string, user: string | null): void {
+    const key: string = GitHubAccounts.keyOf(host, path);
+    this.users.delete(key);
+    if (user === null)
+      return;
+    this.users.set(key, user.toLowerCase());
+    for (const old of [...this.users.keys()].slice(0, -Resources.usersCap))
+      this.users.delete(old);
+  }
+
   public async accountForAsync(host: string, path: string, signal: AbortSignal): Promise<number | null> {
     const signedIn: readonly SignedInAccount[] = this.signedIn;
     const first: SignedInAccount | undefined = signedIn[0];
     if (first === undefined)
       return null;
+    const user: string | undefined = this.users.get(GitHubAccounts.keyOf(host, path));
+    const named: SignedInAccount | undefined = signedIn.find(t => t.login.toLowerCase() === user);
+    if (named !== undefined)
+      return named.id;
     const pick: number | undefined = this.picks.find(t => GitHubAccounts.isSameRepository(t, host, path))?.account;
     if (pick !== undefined && signedIn.some(t => t.id === pick))
       return pick;
@@ -285,7 +300,8 @@ export class GitHubAccounts implements IGitHubTokens {
   }
 
   private static keyOf(host: string, path: string): string {
-    return Resources.formatDraftSubject(host, path).toLowerCase();
+    const key: string = Resources.formatDraftSubject(host, path).toLowerCase();
+    return key.endsWith(Resources.gitSuffix) ? key.slice(0, -Resources.gitSuffix.length) : key;
   }
 
   private static isSameRepository(pick: AccountPick, host: string, path: string): boolean {

@@ -48,4 +48,14 @@ export class RepositoryStatuses extends GitRepositories {
       throw MethodFailures.toMethodFailure(error);
     }
   }
+
+  public async readRemoteUserAsync(folder: string, name: string, signal: AbortSignal): Promise<string | null> {
+    try {
+      const params = new GitFolderParams(folder);
+      const folders: RepositoryFolders = await this.repositories.readAsync(params.folder);
+      return await this.reads.runAsync(folders.top, () => this.remotes.readNamedUserAsync(folders.top, name, signal));
+    } catch (error) {
+      throw MethodFailures.toMethodFailure(error);
+    }
+  }
 }
