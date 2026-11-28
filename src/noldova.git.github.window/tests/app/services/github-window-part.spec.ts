@@ -220,6 +220,7 @@ describe("GitHubWindowPart", () => {
     const url: string = "https://github.com/example-owner/example-repository/pull/12";
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const requests: RequestAnswers = new RequestAnswers(context);
+    requests.always(GitHubNames.useFolderMethod, new RepositoryAccount(null).toJson());
     requests.answer(GitHubNames.readAccountsMethod, listOf(HostSignIn.signedOut()));
     requests.answer(GitHubNames.readPullRequestsMethod, HostPullRequestList.signedOut().toJson(), new HostPullRequestList([new HostPullRequestRow(
       new HostReference("git-github", "example-owner", "example-repository", 12), "Fix the sign-in", url, false, 0, 0, 0, 0, "fix-sign-in", "main")], false).toJson(),
@@ -255,6 +256,7 @@ describe("GitHubWindowPart", () => {
     const commit: string = "6dcb09b5b57875f334f61aebed695e2e4193db5e";
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const requests: RequestAnswers = new RequestAnswers(context);
+    requests.always(GitHubNames.useFolderMethod, new RepositoryAccount(null).toJson());
     requests.answer(GitHubNames.readAccountsMethod, listOf(signedIn));
     requests.answer(GitHubNames.readCommitPullRequestMethod, new BranchPullRequest(new HostItem(new HostReference("git-github", "example-owner",
       "example-repository", 12), ReferenceKind.PullRequest, ReferenceState.Merged, "Fix the sign-in", url, null, 1_800_000_000_000, 1_800_000_100_000, 0,
