@@ -187,6 +187,22 @@ describe("RuntimePart", () => {
     assert.deepEqual(repositories.userReads, [["/home/monalisa/hello-world", "origin"], ["/home/monalisa/hello-world", "origin"]]);
   });
 
+  it("passes on a failure to reach the Git module that isn't its absence", async () => {
+    const part = new RuntimePart();
+    const context = new RuntimeContext();
+    const unexpected = new RangeError("Unexpected.");
+
+    await part.activateAsync(context.fake);
+    context.fake.answer("getService", () => {
+      throw unexpected;
+    });
+    const outcome = await callAsync(context, "git-github.useFolder", { folder: "/home/monalisa/hello-world", remote: "origin" }, ShellClients.mainProcess, 1)
+      .then(() => null, (error: unknown) => error);
+    await part.deactivateAsync();
+
+    assert.equal(outcome, unexpected);
+  });
+
   it("restores the kept sign-in on activation and stops following the app's windows on deactivation", async () => {
     const github = new FakeGitHub();
     const release = github.hold();
