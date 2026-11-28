@@ -88,7 +88,8 @@ class Test {
   private static rootTests(options: readonly string[]): readonly string[] {
     return [
       ...Resources.vitestRun,
-      ...(options.includes(Resources.skipTestDetails) ? [Resources.dotReporter] : []),
+      options.includes(Resources.skipTestDetails) ? Resources.dotReporter : Resources.defaultReporter,
+      Resources.stuckTestReporter,
       ...(options.includes(Resources.skipCoverageDetails) ? [Resources.skipFullCoverage] : [])
     ];
   }
@@ -99,8 +100,7 @@ class Test {
     mkdirSync(blobs, { recursive: true });
     writeFileSync(path.join(blobs, Resources.formatPartRootFile(part)), Test.root.replaceAll(Resources.windowsPathSeparator, Resources.pathSeparator));
     const root: readonly string[] = [
-      ...Test.rootTests(options), ...Test.noGates, Resources.formatShardOption(part, parts),
-      ...(options.includes(Resources.skipTestDetails) ? [] : [Resources.defaultReporter]), Resources.blobReporter, Resources.formatBlobOutput(part)
+      ...Test.rootTests(options), ...Test.noGates, Resources.formatShardOption(part, parts), Resources.blobReporter, Resources.formatBlobOutput(part)
     ];
     const ran: number[] = [await this.runStepsAsync([root], Test.root)];
     for (const [index, folder] of Test.windowFolders.entries())
@@ -120,7 +120,7 @@ class Test {
     if (filters.length > 0 && windowSpecs.length === 0)
       return await this.runStepsAsync([[...rootTests, ...Test.noGates, ...rootFilters]], Test.root);
     if (filters.length === 0) {
-      const timed: readonly string[] = [...rootTests, ...(options.includes(Resources.skipTestDetails) ? [] : [Resources.defaultReporter]), ...Resources.testTimesReporter];
+      const timed: readonly string[] = [...rootTests, ...Resources.testTimesReporter];
       const ran: number[] = [await this.runStepsAsync([timed, [Resources.testTimeCheckScript]], Test.root)];
       for (const folder of Test.windowFolders)
         ran.push(await this.runWindowAsync(folder, null));

@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 import { ClassMetadataCoverage } from "../../scripts/angular/class-metadata-coverage.ts";
+import StuckTestReporter from "../../scripts/reporters/stuck-test-reporter.ts";
 
 const cacheDir = fileURLToPath(new URL("../../node_modules/.vite", import.meta.url));
 const port: string | undefined = process.env["NOLDOVA_TEST_PORT"];
@@ -27,6 +28,7 @@ export default defineConfig({
   },
   test: {
     ...(port === undefined ? {} : { api: { port: Number(port) } }),
+    reporters: ["default", new StuckTestReporter()],
     attachmentsDir: fileURLToPath(new URL("../../_build/azure-devops-window/attachments", import.meta.url)),
     coverage: {
       reportsDirectory: fileURLToPath(new URL("../../_build/azure-devops-window-coverage", import.meta.url))
