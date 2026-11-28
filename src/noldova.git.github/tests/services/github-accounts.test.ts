@@ -240,6 +240,24 @@ describe("GitHubAccounts", () => {
       [2, SignInState.Waiting, [[1, SignInState.SignedIn], [2, SignInState.Waiting]]]);
   });
 
+  it("gives an account added while the restore reads the index an id the index doesn't name", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat", "hubot"]);
+    const read = rig.store.holdRead();
+    const held = [rig.github.hold(), rig.github.hold(), rig.github.hold()];
+    const restoring = rig.accounts.restoreAsync();
+
+    const adding = rig.accounts.addAsync();
+    read();
+    await rig.github.askedAsync(3);
+    rig.github.requests.forEach((request, index) => held[index]?.(request.url.includes("/login/device/code") ? FakeGitHub.json(grant)
+      : userOf(request.header("Authorization")?.includes("gho_hubot") === true ? "hubot" : "octocat")));
+    await restoring;
+    const added = await adding;
+
+    assert.deepEqual([added.id, rig.accounts.list.accounts.map(t => [t.id, t.signIn.account?.login ?? null])], [3, [[1, "octocat"], [2, "hubot"], [3, null]]]);
+  });
+
   it("keeps an index it can't read and the accounts' tokens, refusing an add and writing no pick over them", async () => {
     const rig = new Rig();
     rig.keep(["octocat", "hubot"]);

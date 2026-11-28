@@ -35,6 +35,7 @@ export class GitHubAccounts implements IGitHubTokens {
   private picks: readonly AccountPick[] = [];
   private kept: string | null = null;
   private isIndexRead: boolean = false;
+  private reading: Promise<KeptAccounts | null> = Promise.resolve(null);
   private saving: Promise<void> = Promise.resolve();
   private unfollowWindows: (() => void) | null = null;
   private stopped: boolean = false;
@@ -72,7 +73,8 @@ export class GitHubAccounts implements IGitHubTokens {
   public async restoreAsync(): Promise<void> {
     if (this.stopped)
       return;
-    const kept: KeptAccounts | null = await this.readKeptAsync();
+    this.reading = this.readKeptAsync();
+    const kept: KeptAccounts | null = await this.reading;
     if (this.stopped)
       return;
     const named: readonly number[] = (kept?.accounts ?? []).map(t => t.id);
@@ -99,6 +101,7 @@ export class GitHubAccounts implements IGitHubTokens {
   }
 
   public async addAsync(): Promise<HostAccountEntry> {
+    await this.reading;
     if (!this.isIndexRead)
       throw GitHubApi.failure(FailureCode.Unavailable, Resources.accountsUnreadMessage);
     const id: number = Math.max(...this.entries.keys()) + 1;
