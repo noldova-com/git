@@ -11,7 +11,7 @@ import { Fake, UnansweredCallException } from "@noldova/desktop.protocol/testing
 import { MethodFailureException } from "@noldova/desktop.runtime";
 import type { FakeModuleLog, FakeModuleSecrets } from "@noldova/desktop.runtime/testing";
 
-import type { IAzureToken } from "../../src/interfaces/i-azure-token.ts";
+import type { IAzureTokens } from "../../src/interfaces/i-azure-tokens.ts";
 import { AzureCredential } from "../../src/models/azure-credential.ts";
 
 export class FakeRequest {
@@ -102,6 +102,7 @@ export class KeptSecrets {
 
   public readonly values: Map<string, string> = new Map();
   public readFailure: Error | null = null;
+  public readFailureName: string | null = null;
   public saveFailure: Error | null = null;
   public removeFailure: Error | null = null;
   public removeFailureName: string | null = null;
@@ -154,7 +155,7 @@ export class KeptSecrets {
 
   private async readAsync(name: string): Promise<string | null> {
     await this.readGate;
-    if (this.readFailure !== null)
+    if (this.readFailure !== null && (this.readFailureName === null || this.readFailureName === name))
       throw this.readFailure;
     return this.values.get(name) ?? null;
   }
@@ -175,9 +176,17 @@ export class KeptSecrets {
   }
 }
 
-export class FakeToken extends Fake<IAzureToken> implements IAzureToken {
-  public readonly refusedAsync: IAzureToken["refusedAsync"] = (...args) => this.respondAsync("refusedAsync", args, this.answers.refusedAsync);
-  public readonly readyAsync: IAzureToken["readyAsync"] = (...args) => this.respondAsync("readyAsync", args, this.answers.readyAsync);
+interface FakeTokenMembers {
+  readonly token: AzureCredential | null;
+  readonly organization: string | null;
+  refusedAsync(token: AzureCredential): Promise<void>;
+  readyAsync(): Promise<void>;
+}
+
+export class FakeToken extends Fake<FakeTokenMembers> implements IAzureTokens {
+  public readonly refusedAsync: IAzureTokens["refusedAsync"] = (...args) => this.respondAsync("refusedAsync", args, this.answers.refusedAsync);
+  public readonly readyAsync: IAzureTokens["readyAsync"] = (...args) => this.respondAsync("readyAsync", args, this.answers.readyAsync);
+  public readonly asked: (readonly (string | null)[])[] = [];
 
   private readonly credential: AzureCredential | null;
   private readonly raw: string | null;
@@ -198,6 +207,20 @@ export class FakeToken extends Fake<IAzureToken> implements IAzureToken {
 
   public get organization(): string | null {
     return this.propertyOf("organization", this.answers.organization);
+  }
+
+  public get isSignedIn(): boolean {
+    return this.token !== null;
+  }
+
+  public tokenFor(organization: string, host: string | null = null, path: string | null = null): AzureCredential | null {
+    this.asked.push([organization, host, path]);
+    const signedIn: string | null = this.organization;
+    return signedIn !== null && signedIn.toLowerCase() === organization.toLowerCase() ? this.token : null;
+  }
+
+  public holds(token: AzureCredential): boolean {
+    return this.token === token;
   }
 
   public get refused(): readonly string[] {

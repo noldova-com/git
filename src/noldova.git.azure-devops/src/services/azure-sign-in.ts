@@ -12,7 +12,6 @@ import { type IAppWindows, type IModuleLog, type IModuleSecrets, MethodFailureEx
 import { HostAccount, HostingProtocolException, HostSignIn, SignInFailure, SignInState } from "@noldova/git.hosting.protocol";
 
 import { SignInKind } from "../enums/sign-in-kind.ts";
-import type { IAzureToken } from "../interfaces/i-azure-token.ts";
 import { AzureCredential } from "../models/azure-credential.ts";
 import type { EntraGrant } from "../models/entra-grant.ts";
 import { HeldSignIn } from "../models/held-sign-in.ts";
@@ -23,13 +22,15 @@ import { AzureApi } from "./azure-api.ts";
 import { EntraFlow } from "./entra-flow.ts";
 import { LoopbackRedirect } from "./loopback-redirect.ts";
 
-export class AzureSignIn implements IAzureToken {
+export class AzureSignIn {
   private readonly api: AzureApi;
   private readonly flow: EntraFlow;
   private readonly secrets: IModuleSecrets;
   private readonly appWindows: IAppWindows;
   private readonly log: IModuleLog;
   private readonly changed: (signIn: HostSignIn) => void;
+  private readonly tokenSecret: string;
+  private readonly microsoftSecret: string;
   private readonly stopped: AbortController = new AbortController();
   private signIn: HostSignIn = HostSignIn.signedOut();
   private unfollowWindows: (() => void) | null = null;
@@ -40,14 +41,19 @@ export class AzureSignIn implements IAzureToken {
   private renewal: ReturnType<typeof setTimeout> | undefined = undefined;
   private checking: Promise<void> | null = null;
   private isSigningIn: boolean = false;
+  private target: string | null = null;
+  private unreadable: boolean = false;
 
-  public constructor(api: AzureApi, flow: EntraFlow, secrets: IModuleSecrets, appWindows: IAppWindows, log: IModuleLog, changed: (signIn: HostSignIn) => void) {
+  public constructor(api: AzureApi, flow: EntraFlow, secrets: IModuleSecrets, appWindows: IAppWindows, log: IModuleLog, changed: (signIn: HostSignIn) => void,
+    tokenSecret: string = Resources.signInSecret, microsoftSecret: string = Resources.microsoftSignInSecret) {
     this.api = api;
     this.flow = flow;
     this.secrets = secrets;
     this.appWindows = appWindows;
     this.log = log;
     this.changed = changed;
+    this.tokenSecret = tokenSecret;
+    this.microsoftSecret = microsoftSecret;
   }
 
   public get current(): HostSignIn {
@@ -62,24 +68,35 @@ export class AzureSignIn implements IAzureToken {
     return this.held?.organization ?? null;
   }
 
+  public get place(): string | null {
+    return this.target === null ? null : Resources.formatPlace(this.target);
+  }
+
+  public get keptUnreadable(): boolean {
+    return this.unreadable;
+  }
+
   public async restoreAsync(): Promise<void> {
     if (this.stopped.signal.aborted)
       return;
     let kept: string | null;
     try {
-      kept = await this.secrets.readAsync(Resources.signInSecret) ?? await this.secrets.readAsync(Resources.microsoftSignInSecret);
+      kept = await this.secrets.readAsync(this.tokenSecret) ?? await this.secrets.readAsync(this.microsoftSecret);
     }
     catch (error) {
       if (this.stopped.signal.aborted)
         return;
       if (!(error instanceof MethodFailureException))
         throw error;
-      if (SecretFailures.reasonOf(error.failure) !== SecretFailureReason.NotConnected)
+      if (SecretFailures.reasonOf(error.failure) !== SecretFailureReason.NotConnected) {
+        this.unreadable = true;
         this.log.write(Resources.formatKeptSignInUnread(error.failure.message));
+      }
       else if (this.unfollowWindows === null)
         this.unfollowWindows = this.appWindows.onChanged(() => this.restoreOnceConnected());
       return;
     }
+    this.unreadable = false;
     if (kept === null)
       return;
     let restored: KeptSignIn;
@@ -97,6 +114,7 @@ export class AzureSignIn implements IAzureToken {
     const credential = restored.kind === SignInKind.Microsoft ? AzureCredential.ofAccess(Resources.emptyText) : AzureCredential.ofToken(restored.token);
     this.held = new HeldSignIn(credential, restored.organization);
     this.kept = restored;
+    this.target = restored.organization;
     this.set(HostSignIn.signedIn(restored.account));
     this.background(restored.kind === SignInKind.Microsoft ? this.recheckOnceAsync(credential, restored.organization, restored)
       : this.checkAsync(credential, restored.organization, this.generation));
@@ -114,6 +132,7 @@ export class AzureSignIn implements IAzureToken {
     }
     const waiting = new AbortController();
     this.waiting = waiting;
+    this.target = organization;
     const generation: number = ++this.generation;
     const timer = setTimeout(() => waiting.abort(SignInFailure.Expired), Resources.browserSignInLimit);
     const signal = AbortSignal.any([waiting.signal, this.stopped.signal]);
@@ -139,6 +158,7 @@ export class AzureSignIn implements IAzureToken {
     if (this.isBusy())
       return this.signIn;
     this.isSigningIn = true;
+    this.target = organization;
     try {
       return await this.trySignInAsync(token, organization, signal);
     }
@@ -152,6 +172,11 @@ export class AzureSignIn implements IAzureToken {
     if (this.signIn.state === SignInState.SignedIn)
       await this.forgetAsync(null);
     return this.signIn;
+  }
+
+  public async alreadyKeptAsync(): Promise<void> {
+    if (this.signIn.state === SignInState.SignedIn)
+      await this.forgetAsync(SignInFailure.AlreadyKept);
   }
 
   public async refusedAsync(token: AzureCredential): Promise<void> {
@@ -355,8 +380,8 @@ export class AzureSignIn implements IAzureToken {
 
   private async saveAsync(kept: KeptSignIn): Promise<boolean> {
     const isMicrosoft: boolean = kept.kind === SignInKind.Microsoft;
-    const name: string = isMicrosoft ? Resources.microsoftSignInSecret : Resources.signInSecret;
-    const other: string = isMicrosoft ? Resources.signInSecret : Resources.microsoftSignInSecret;
+    const name: string = isMicrosoft ? this.microsoftSecret : this.tokenSecret;
+    const other: string = isMicrosoft ? this.tokenSecret : this.microsoftSecret;
     try {
       await this.secrets.saveAsync(name, JSON.stringify(kept.toJson()));
     }
@@ -384,7 +409,7 @@ export class AzureSignIn implements IAzureToken {
   }
 
   private removeKeptAsync(): Promise<boolean> {
-    return this.removeSecretsAsync(Resources.signInSecret, Resources.microsoftSignInSecret);
+    return this.removeSecretsAsync(this.tokenSecret, this.microsoftSecret);
   }
 
   private async removeSecretsAsync(...names: readonly string[]): Promise<boolean> {

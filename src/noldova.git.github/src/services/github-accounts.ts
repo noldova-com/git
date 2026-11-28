@@ -61,7 +61,7 @@ export class GitHubAccounts implements IGitHubTokens {
   }
 
   public get list(): HostAccountList {
-    return new HostAccountList([...this.entries].map(([id, signIn]) => new HostAccountEntry(id, signIn.current, undefined,
+    return new HostAccountList([...this.entries].map(([id, signIn]) => new HostAccountEntry(id, signIn.current,
       signIn.host === Resources.host ? null : signIn.host)));
   }
 
@@ -130,7 +130,7 @@ export class GitHubAccounts implements IGitHubTokens {
       this.leave(id);
       this.publish(id, answer);
     }
-    return new HostAccountEntry(id, answer, undefined, host);
+    return new HostAccountEntry(id, answer, host);
   }
 
   public async signOutAsync(id: number): Promise<HostSignIn> {

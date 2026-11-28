@@ -423,9 +423,9 @@ describe("GitHubWindowPart", () => {
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const mona: HostAccount = new HostAccount("monalisa", "Mona", null, ["repo"]);
     new RequestAnswers(context).answer(GitHubNames.readAccountsMethod, new HostAccountList([new HostAccountEntry(1, signedIn),
-      new HostAccountEntry(2, HostSignIn.signedIn(mona), undefined, "ghe.example.com"),
-      new HostAccountEntry(3, HostSignIn.signedIn(new HostAccount("hubot", null, null, ["repo"])), undefined, "ghe.example.com"),
-      new HostAccountEntry(4, HostSignIn.signedOut(), undefined, "github.example.org")]).toJson());
+      new HostAccountEntry(2, HostSignIn.signedIn(mona), "ghe.example.com"),
+      new HostAccountEntry(3, HostSignIn.signedIn(new HostAccount("hubot", null, null, ["repo"])), "ghe.example.com"),
+      new HostAccountEntry(4, HostSignIn.signedOut(), "github.example.org")]).toJson());
 
     await part.activateAsync(context);
     await Wait.until(() => expect(enterpriseOf()?.account.cards()).toHaveLength(3));

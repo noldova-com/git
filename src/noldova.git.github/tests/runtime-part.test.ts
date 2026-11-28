@@ -208,9 +208,9 @@ describe("RuntimePart", () => {
 
     assert.deepEqual(refused.map(t => t?.[0]), [FailureCode.Unauthorized, FailureCode.InvalidParams]);
     assert.deepEqual([refused[0]?.[1], connected, github.urls().at(-1)], ["Only a window can sign in with a token.",
-      { id: 2, signIn: HostSignIn.signedIn(new HostAccount("monalisa", null, null, ["repo"])).toJson(), host: "ghe.example.com" },
+      { id: 2, signIn: HostSignIn.signedIn(new HostAccount("monalisa", null, null, ["repo"])).toJson(), place: "ghe.example.com" },
       "https://ghe.example.com/api/v3/user"]);
-    assert.deepEqual(again, { id: 3, signIn: HostSignIn.signedOut(SignInFailure.AlreadyKept).toJson(), host: "ghe.example.com" });
+    assert.deepEqual(again, { id: 3, signIn: HostSignIn.signedOut(SignInFailure.AlreadyKept).toJson(), place: "ghe.example.com" });
   });
 
   it("passes on a failure to reach the Git module that isn't its absence", async () => {

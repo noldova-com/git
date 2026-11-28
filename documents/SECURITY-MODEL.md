@@ -126,7 +126,8 @@ A change to any of these is risky in review:
 - what failures, cards and logs carry from git's output or a remote's URL;
 - a new write;
 - which modules can read the GitHub tokens through `git-github.access`, which account it answers for a repository, or what it answers;
-- how the GitHub module chooses the account for a repository, what that check sends, or how the picks and the other accounts' secrets are kept.
+- how the GitHub module chooses the account for a repository, what that check sends, or how the picks and the other accounts' secrets are kept;
+- how the Azure DevOps module chooses the account for a repository or a reference's read or write, or how its picks and the other accounts' secrets are kept;
 - which hosts the GitHub or GitHub Enterprise tokens go to, who may give the module an Enterprise token, whether GitHub's sign-in and API follow a redirect, how much of an answer they read, or what the avatar read sends, follows or takes;
 - who may give the Azure DevOps module a token, which hosts the token goes to, whether a request follows a redirect with it, or how it is kept;
 - the sign-in with Microsoft: its client, authority or scopes, what the loopback listener binds to, accepts or answers, how its state and PKCE verifier are made, or how its refresh token is kept and renewed;
@@ -165,6 +166,15 @@ Picks match a repository's host and path without case.
 An added account that signs in as a login another account already holds keeps no token: the module forgets it and ends that account signed out with `AlreadyKept`, so no login is held twice.
 `git-github.access` answers `accessAsync` with the first account's token and login, and `accessForAsync` with the token and login of the account chosen for the repository it names, so another module's runtime part gets only the account the GitHub module would read that repository with.
 The API's answer cache is kept apart for each token, so one account never gets an answer read with another's token, and the cache of a token no account holds any more is let go of.
+
+## Which Azure DevOps account reads a repository
+
+The Azure DevOps module keeps several accounts, each signed in to one organization: the first in `git-azure-devops.signIn` or `git-azure-devops.microsoftSignIn`, each other in `git-azure-devops.account<id>` or `git-azure-devops.microsoftAccount<id>`, and the index `git-azure-devops.accounts` with each other account's id, organization and login and the person's picks, each a repository's host and path with the account picked for it.
+The index is local data in the module's secrets; nothing in it is logged or sent, and a token goes only to the organization its account signed in to.
+A read for a repository takes the person's pick while that account is signed in to the repository's organization, else the first account signed in there; no request is made to choose.
+A read or write through a pull request's reference, such as a vote, reply, thread state, completion, abandonment or added reviewer, goes as the account the reference's repository reads with, once the module has read one of that repository's pull requests by its address, in its list, its heads, a branch's or a commit's pull request, its commit comments or its review requests; for one it hasn't, it goes as the account last picked in the organization while that one is signed in there, else as the first account signed in there. So a pick for one repository never makes another repository's vote go as a different account than its reads.
+Picks match a repository's host and path without case.
+An account that signs in as a login another account already holds in the same organization keeps no token: the module forgets it and ends that account signed out with `AlreadyKept`, so no login is held twice in an organization.
 
 ## What reaches GitHub for a picture
 

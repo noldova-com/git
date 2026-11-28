@@ -22,7 +22,7 @@ describe("The hosting protocol's Resources", () => {
       Resources.otherBranchExpected, Resources.avatarExpected,
       Resources.closedAtExpected, Resources.deviceCodeExpected, Resources.accountExpected, Resources.failureExpected, Resources.eachOnceExpected,
       Resources.voteExpected, Resources.finishedAtExpected, Resources.colorExpected, Resources.parentExpected,
-      Resources.countsExpected, Resources.accountIdsExpected
+      Resources.countsExpected, Resources.accountIdsExpected, Resources.placeExpected
     ], [
       "none, since the model doesn't define it", "a text that isn't blank", "an https address with no user name or password", "a whole number above zero",
       "a whole number, zero or more", "a name of letters, digits, '.', '_' and '-', other than '.' and '..'",
@@ -34,7 +34,8 @@ describe("The hosting protocol's Resources", () => {
       "either a device code or an address to open in the browser, exactly while the sign-in waits for the person", "an account exactly while signed in", "null, since only a sign-out has a failure",
       "each capability at most once", "a number from -1 to 1", "a finish time exactly when the build has finished, no earlier than its start",
       "a color of six hexadecimal digits", "a parent other than the work item itself",
-      "zero counts when the host doesn't count them", "accounts with each id once"
+      "zero counts when the host doesn't count them", "accounts with each id once",
+      "a lowercase host name, with its port or a path if it has one, and no scheme, user name or trailing '/'"
     ]);
     assert.equal(Resources.formatMemberExpected(["Queued", "Failed"]), "one of Queued, Failed");
   });

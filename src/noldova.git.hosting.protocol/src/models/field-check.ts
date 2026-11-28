@@ -46,11 +46,6 @@ export class FieldCheck {
       FieldCheck.fail(field, Resources.nonBlankTextExpected, reader);
   }
 
-  public static requireServer(value: string, field: string, reader?: JsonReader): void {
-    if (!Resources.serverPattern.test(value))
-      FieldCheck.fail(field, Resources.serverExpected, reader);
-  }
-
   public static requirePositive(value: number, field: string, reader?: JsonReader): void {
     if (!Number.isSafeInteger(value) || value < 1)
       FieldCheck.fail(field, Resources.positiveExpected, reader);
@@ -80,6 +75,11 @@ export class FieldCheck {
     const payload: string | undefined = Resources.avatarPattern.exec(value)?.[1];
     if (payload === undefined || payload.length === 0 || payload.length > Resources.maximumAvatarLength)
       FieldCheck.fail(field, Resources.avatarExpected, reader);
+  }
+
+  public static requirePlace(value: string, field: string, reader?: JsonReader): void {
+    if (!Resources.placePattern.test(value))
+      FieldCheck.fail(field, Resources.placeExpected, reader);
   }
 
   public static requireHttps(value: string, field: string, reader?: JsonReader): void {

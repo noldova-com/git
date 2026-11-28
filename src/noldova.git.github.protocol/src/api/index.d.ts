@@ -149,10 +149,10 @@ export declare class GitHubNames {
   /**
    * `git-github.signInWithToken`: only from a window, takes `{ "host": string, "token": string }`, a GitHub Enterprise server's name and a personal
    * access token the person pasted, reads the token's user from that server, keeps it on this computer as a new account and answers it as
-   * `HostAccountEntry` JSON naming its host. A server's name that isn't one, or github.com, fails as `InvalidParams`; a token the server refuses, or
-   * one without the `repo` scope, fails as `Unauthorized` with a message naming the scope; a server it can't reach, or a call made while the
-   * accounts kept on this computer aren't read, fails as `Unavailable`. An account already kept on that server is answered signed out with
-   * `AlreadyKept` once its new token is forgotten, and isn't kept.
+   * `HostAccountEntry` JSON whose `place` is the server. A server's name that isn't one, or github.com, fails as `InvalidParams`; a token the
+   * server refuses, or one without the `repo` scope, fails as `Unauthorized` with a message naming the scope; a server it can't reach, or a call
+   * made while the accounts kept on this computer aren't read, fails as `Unavailable`. An account already kept on that server is answered signed
+   * out with `AlreadyKept` once its new token is forgotten, and isn't kept.
    */
   public static readonly signInWithTokenMethod: string;
 

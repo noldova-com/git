@@ -634,10 +634,10 @@ describe("GitHubAccounts", () => {
     await restored.accounts.restoreAsync();
     await restored.changedAsync(4);
 
-    assert.deepEqual(entry.toJson(), { id: 2, signIn: HostSignIn.signedIn(new HostAccount("monalisa", "Mona", null, ["repo", "read:org"])).toJson(), host: SERVER });
+    assert.deepEqual(entry.toJson(), { id: 2, signIn: HostSignIn.signedIn(new HostAccount("monalisa", "Mona", null, ["repo", "read:org"])).toJson(), place: SERVER });
     assert.deepEqual(asked, [[`https://${SERVER}/api/v3/user`], "Bearer ghp_monalisa"]);
     assert.deepEqual(rig.index(), { accounts: [{ id: 2, host: SERVER, login: "monalisa" }], picks: [] });
-    assert.deepEqual([rig.accounts.list.accounts.map(t => t.host), rig.accounts.signedIn.map(t => t.login),
+    assert.deepEqual([rig.accounts.list.accounts.map(t => t.place), rig.accounts.signedIn.map(t => t.login),
       await rig.accounts.accountForAsync("github.com", REPOSITORY, signal)], [[null, SERVER], ["octocat"], 1]);
     assert.deepEqual([restored.github.urls(), restored.accounts.list.toJson()], [["https://api.github.com/user", `https://${SERVER}/api/v3/user`],
       rig.accounts.list.toJson()]);
@@ -659,7 +659,7 @@ describe("GitHubAccounts", () => {
     const entry = await connecting;
     await rig.savedAsync();
 
-    assert.deepEqual([entry.id, rig.accounts.list.accounts.map(t => [t.id, t.host, t.signIn.account?.login ?? null])],
+    assert.deepEqual([entry.id, rig.accounts.list.accounts.map(t => [t.id, t.place, t.signIn.account?.login ?? null])],
       [3, [[1, null, "octocat"], [2, null, "hubot"], [3, SERVER, "monalisa"]]]);
     assert.deepEqual([JSON.parse(rig.store.values.get("git-github.account2") ?? "{}").token, rig.github.requests.filter(t => t.url.includes(SERVER))
       .map(t => t.header("Authorization"))], ["gho_hubot", ["Bearer ghp_monalisa"]]);
@@ -743,16 +743,16 @@ describe("GitHubAccounts", () => {
     const other = await rig.accounts.connectAsync(new TokenConnect("github.example.org", "ghp_two"), signal);
     const again = await rig.accounts.connectAsync(new TokenConnect(SERVER, "ghp_three"), signal);
     await rig.savedAsync();
-    const kept = [rig.accounts.list.accounts.map(t => [t.id, t.host, t.signIn.state, t.signIn.failure]), rig.store.values.has("git-github.account4"), rig.changes.includes("4 SignedIn")];
+    const kept = [rig.accounts.list.accounts.map(t => [t.id, t.place, t.signIn.state, t.signIn.failure]), rig.store.values.has("git-github.account4"), rig.changes.includes("4 SignedIn")];
     rig.github.answer(mona());
     rig.store.saveFailure = KeptSecrets.failure(SecretFailureReason.Unprotected);
     const unkept = await rig.accounts.connectAsync(new TokenConnect("github.example.net", "ghp_four"), signal);
 
     assert.deepEqual([first.signIn.state, other.signIn.state, first.signIn.account?.scopes], [SignInState.SignedIn, SignInState.SignedIn, []]);
-    assert.deepEqual(again.toJson(), { id: 4, signIn: HostSignIn.signedOut(SignInFailure.AlreadyKept).toJson(), host: SERVER });
+    assert.deepEqual(again.toJson(), { id: 4, signIn: HostSignIn.signedOut(SignInFailure.AlreadyKept).toJson(), place: SERVER });
     assert.deepEqual(kept, [[[1, null, SignInState.SignedOut, null], [2, SERVER, SignInState.SignedIn, null], [3, "github.example.org", SignInState.SignedIn, null]],
       false, false]);
     assert.deepEqual([unkept.toJson(), rig.accounts.list.accounts.map(t => t.id)], [{ id: 4, signIn: HostSignIn.signedOut(SignInFailure.Unkept).toJson(),
-      host: "github.example.net" }, [1, 2, 3]]);
+      place: "github.example.net" }, [1, 2, 3]]);
   });
 });

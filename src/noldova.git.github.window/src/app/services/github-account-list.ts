@@ -20,11 +20,11 @@ export class GitHubAccountList {
   }
 
   public static gitHubOf(list: HostAccountList): HostAccountList {
-    return new HostAccountList(list.accounts.filter(t => Object.isNull(t.host)));
+    return new HostAccountList(list.accounts.filter(t => Object.isNull(t.place)));
   }
 
   public static enterpriseOf(list: HostAccountList): readonly EnterpriseEntry[] {
-    return list.accounts.flatMap(t => Object.isNull(t.host) ? [] : [new EnterpriseEntry(t.id, t.host, t.signIn)]);
+    return list.accounts.flatMap(t => Object.isNull(t.place) ? [] : [new EnterpriseEntry(t.id, t.place, t.signIn)]);
   }
 
   public static show(context: IWindowPartContext, list: HostAccountList | null): void {
