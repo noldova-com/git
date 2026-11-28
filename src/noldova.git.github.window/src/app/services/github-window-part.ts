@@ -117,7 +117,7 @@ export class GitHubWindowPart implements IWindowPart {
   }
 
   private static cardsOf(list: HostAccountList): GitHostCard[] {
-    return GitHubAccountList.gitHubOf(list).accounts.map(t => GitHubWindowPart.cardOf(t.id, t.signIn));
+    return list.accounts.map(t => GitHubWindowPart.cardOf(t.id, t.signIn));
   }
 
   private static enterpriseCardsOf(entries: readonly EnterpriseEntry[]): GitHostCard[] {
@@ -167,8 +167,9 @@ export class GitHubWindowPart implements IWindowPart {
   private showList(context: IWindowPartContext, list: HostAccountList): void {
     if (this.context !== context)
       return;
-    GitHubAccountList.show(context, list);
-    this.cards.set(GitHubWindowPart.cardsOf(list));
+    const gitHub: HostAccountList = GitHubAccountList.gitHubOf(list);
+    GitHubAccountList.show(context, gitHub);
+    this.cards.set(GitHubWindowPart.cardsOf(gitHub));
     this.enterpriseCards.set(GitHubWindowPart.enterpriseCardsOf(GitHubAccountList.enterpriseOf(list)));
   }
 
