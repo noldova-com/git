@@ -549,25 +549,27 @@ describe("GitRepositoryComponent", () => {
     };
     const remoteRowOf = (element: HTMLElement, branch: string): HTMLElement => element.querySelector<HTMLElement>(`.remote:has(> [title='${branch}'])`) ?? element;
 
-    it.each([true, false])("switches to a branch only on the remote by its local name from its Remotes row's Switch to branch and by a double-click, with the branch card shown %s", async shown => {
-      GitViewOptions.showsBranch.set(shown);
-      onTestFinished(() => GitViewOptions.showsBranch.set(true));
-      const { element, context } = await renderWithAsync({ "git.switchBranch": null, "git.branches": GitFixtures.branches("main", ["feature", "main"], ["origin/main", "origin/team/colleague"]).toJson() });
-      await openRemoteAsync(element, 1);
-      element.querySelector<HTMLElement>("[title='origin/team/']")?.click();
-      await domAsync(() => element.querySelectorAll(".remote").length === 2);
-      const action: HTMLButtonElement | null = remoteRowOf(element, "origin/team/colleague").querySelector<HTMLButtonElement>(".switch");
-      const named: readonly unknown[] = [action?.getAttribute("aria-label"), action?.disabled];
+    it.each([[true, "action"], [false, "action"], [true, "double-click"], [false, "double-click"]])(
+      "switches to a branch only on the remote by its local name, with the branch card shown %s, from its Remotes row's %s", async (shown, way) => {
+        GitViewOptions.showsBranch.set(shown);
+        onTestFinished(() => GitViewOptions.showsBranch.set(true));
+        const { element, context } = await renderWithAsync({ "git.switchBranch": null, "git.branches": GitFixtures.branches("main", ["feature", "main"], ["origin/main", "origin/team/colleague"]).toJson() });
+        await openRemoteAsync(element, 1);
+        element.querySelector<HTMLElement>("[title='origin/team/']")?.click();
+        await domAsync(() => element.querySelectorAll(".remote").length === 2);
+        const row: HTMLElement = remoteRowOf(element, "origin/team/colleague");
+        const action: HTMLButtonElement | null = row.querySelector<HTMLButtonElement>(".switch");
+        const named: readonly unknown[] = [action?.getAttribute("aria-label"), action?.disabled];
 
-      action?.click();
-      await domAsync(() => requested(context, "git.switchBranch").length === 1);
-      await domAsync(() => element.querySelector<HTMLButtonElement>("[title='origin/team/colleague']")?.disabled !== true && Object.isNull(element.querySelector(".spin")));
-      remoteRowOf(element, "origin/team/colleague").querySelector("[title='origin/team/colleague']")?.dispatchEvent(new MouseEvent("dblclick"));
-      await domAsync(() => requested(context, "git.switchBranch").length === 2);
+        if (way === "action")
+          action?.click();
+        else
+          row.querySelector("[title='origin/team/colleague']")?.dispatchEvent(new MouseEvent("dblclick"));
+        await domAsync(() => requested(context, "git.switchBranch").length === 1);
 
-      const call: unknown = { folder: GitFixtures.folder, name: "team/colleague", basedOn: GitFixtures.status().fingerprint };
-      expect([named, requested(context, "git.switchBranch")]).toEqual([["Switch to branch team/colleague", false], [call, call]]);
-    });
+        expect([named, requested(context, "git.switchBranch")])
+          .toEqual([["Switch to branch team/colleague", false], [{ folder: GitFixtures.folder, name: "team/colleague", basedOn: GitFixtures.status().fingerprint }]]);
+      });
 
     it("offers Switch to branch in a remote branch's menu, and neither in the menu nor at the row's end for the current branch's own", async () => {
       const { element, context } = await renderWithAsync({ "git.switchBranch": null, "git.branches": GitFixtures.branches("main", ["feature", "main"], ["origin/main", "origin/next"]).toJson() });
