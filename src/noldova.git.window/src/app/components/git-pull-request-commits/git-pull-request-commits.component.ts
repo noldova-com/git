@@ -8,7 +8,7 @@
 
 import { Component, effect, inject, input, type InputSignal, output, type OutputEmitterRef, PendingTasks, signal, untracked, type WritableSignal } from "@angular/core";
 import "@noldova/context.core";
-import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
+import { type IWindowPartContext, TimeFormatService, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { type HostPullRequestCommit, HostPullRequestCommits, type HostReference } from "@noldova/git.hosting.protocol";
 import { ButtonComponent, ButtonVariant, SpinnerComponent } from "@noldova/ui.components.angular";
 
@@ -27,7 +27,7 @@ export class GitPullRequestCommitsComponent {
   private readonly context: IWindowPartContext = inject(WindowPartTokens.context);
   private readonly tasks: PendingTasks = inject(PendingTasks);
   private readonly attempt: WritableSignal<number> = signal<number>(0);
-  private readonly dates: Intl.DateTimeFormat = new Intl.DateTimeFormat(undefined, Resources.pullRequestCommitDateFormat);
+  private readonly dates: TimeFormatService = inject(TimeFormatService);
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly secondary: ButtonVariant = ButtonVariant.Secondary;
@@ -72,7 +72,7 @@ export class GitPullRequestCommitsComponent {
   }
 
   protected ageOf(commit: HostPullRequestCommit): string {
-    return Resources.formatPullRequestCommitAge(Date.now() - commit.authoredAt) ?? this.dates.format(commit.authoredAt);
+    return Resources.formatPullRequestCommitAge(Date.now() - commit.authoredAt) ?? this.dates.shortDate(commit.authoredAt);
   }
 
   protected open(commit: HostPullRequestCommit): void {

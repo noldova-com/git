@@ -12,9 +12,9 @@ import { FailureCode } from "@noldova/desktop.protocol";
 import { RuntimeRequestException } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitHubNames } from "@noldova/git.github.protocol";
-import { BranchPullRequest, CheckState, CommitQuery, DeviceCode, HostAccount, HostAccountEntry, HostAccountList, HostChanges, HostCheck, HostCommitComments, HostItem, HostPullRequestList,
-  HostPullRequestRow, HostReference, HostReviewRequest, HostReviewRequestList, HostSignIn, ReferenceKind, ReferenceState, RepositoryQuery,
-  ReviewDecision } from "@noldova/git.hosting.protocol";
+import { BranchPullRequest, CheckState, CommitQuery, DeviceCode, FolderQuery, HostAccount, HostAccountEntry, HostAccountList, HostChanges, HostCheck, HostCommitComments,
+  HostItem, HostPullRequestList, HostPullRequestRow, HostReference, HostReviewRequest, HostReviewRequestList, HostSignIn, ReferenceKind, ReferenceState,
+  RepositoryAccount, RepositoryQuery, ReviewDecision } from "@noldova/git.hosting.protocol";
 import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
 import { GitBranchPullRequest, GitCommitComments, GitPullRequestList, GitPullRequestRow, GitPullRequestState, GitPullRequestsState } from "@noldova/git.window";
 import { describe, expect, it } from "vitest";
@@ -67,6 +67,18 @@ class Host {
   public readonly requests: RequestAnswers = new RequestAnswers(this.context);
   public readonly pullRequests: GitHubPullRequests = new GitHubPullRequests(this.context);
 
+  public constructor() {
+    this.requests.always(GitHubNames.useFolderMethod, new RepositoryAccount(null).toJson());
+  }
+
+  public get reads(): readonly unknown[] {
+    return this.requests.methods.filter(t => t !== GitHubNames.useFolderMethod);
+  }
+
+  public readsAsync(count: number): Promise<void> {
+    return Wait.until(() => expect(this.reads.length).toBeGreaterThanOrEqual(count));
+  }
+
   public async readAsync(where: GitRemote, state: GitPullRequestsState): Promise<Signal<GitPullRequestList | null>> {
     const list = this.pullRequests.listFor(FOLDER, where);
     this.pullRequests.refresh(FOLDER, where);
@@ -106,8 +118,8 @@ describe("GitHubPullRequests", () => {
 
     const list = await host.readAsync(remote, GitPullRequestsState.Ready);
 
-    expect([host.requests.methods, host.requests.payloads]).toEqual([[GitHubNames.readPullRequestsMethod],
-      [new RepositoryQuery("github.com", "octocat/site").toJson()]]);
+    expect([host.requests.methods, host.requests.payloads]).toEqual([[GitHubNames.useFolderMethod, GitHubNames.readPullRequestsMethod],
+      [new FolderQuery(FOLDER, "origin").toJson(), new RepositoryQuery("github.com", "octocat/site").toJson()]]);
     expect(list()).toEqual(GitPullRequestList.ready([shown]));
     expect(host.pullRequests.listFor(FOLDER, remote)).toBe(list);
   });
@@ -119,7 +131,7 @@ describe("GitHubPullRequests", () => {
     const list = await host.readAsync(remote, GitPullRequestsState.Ready);
 
     host.pullRequests.refresh(FOLDER, remote);
-    await host.requests.askedAsync(2);
+    await host.readsAsync(2);
     const reading = list();
     release(new HostPullRequestList([], false).toJson());
     await Host.untilAsync(list, GitPullRequestsState.Ready);
@@ -152,10 +164,10 @@ describe("GitHubPullRequests", () => {
     await Host.untilAsync(reviews, GitPullRequestsState.SignedOut);
     const comments = host.pullRequests.commentsFor(FOLDER, remote, COMMENTED);
     const commit = host.pullRequests.commitFor(FOLDER, remote, COMMENTED);
-    await host.requests.askedAsync(4);
+    await host.readsAsync(4);
 
     host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.waiting(new DeviceCode("WDJB-MJHT", "https://github.com/login/device", 1_800_000_000_000)).toJson());
-    const whileWaiting = host.requests.methods.length;
+    const whileWaiting = host.reads.length;
     host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("octocat", null, null, ["repo"])).toJson());
     await Host.untilAsync(list, GitPullRequestsState.Ready);
     await Host.untilAsync(reviews, GitPullRequestsState.Ready);
@@ -170,7 +182,7 @@ describe("GitHubPullRequests", () => {
     host.pullRequests.stop();
     host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedOut().toJson());
 
-    expect([whileWaiting, host.requests.methods.length, host.context.activeCallsOf("onEvent")]).toEqual([4, 12, []]);
+    expect([whileWaiting, host.reads.length, host.context.activeCallsOf("onEvent")]).toEqual([4, 12, []]);
     expect(signedIn).toEqual([GitPullRequestList.ready([shown]), GitPullRequestList.ready([asked], false), new GitCommitComments(2, false, URL),
       GitBranchPullRequest.of(cardRowOf(0), GitPullRequestState.Merged, false)]);
   });
@@ -192,9 +204,9 @@ describe("GitHubPullRequests", () => {
     const afterLate = [commented()?.count, uncommented()?.count];
     host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedOut().toJson());
     await Wait.until(() => expect(commented()?.count).toBe(3));
-    await host.requests.askedAsync(6);
+    await host.readsAsync(6);
 
-    expect([afterLate, uncommented()?.count, host.requests.methods.length]).toEqual([[2, 0], 0, 6]);
+    expect([afterLate, uncommented()?.count, host.reads.length]).toEqual([[2, 0], 0, 6]);
   });
 
   it("keeps a re-read waiting behind the queue's limit when the commit's earlier read fails meanwhile, and reads that commit again at the next sign-in", async () => {
@@ -205,10 +217,10 @@ describe("GitHubPullRequests", () => {
     const held = ids.slice(0, 4).map(() => host.requests.hold(GitHubNames.readCommitCommentsMethod));
     host.requests.answer(GitHubNames.readCommitCommentsMethod, new HostCommitComments(2, false, URL).toJson(), ...ids.map(() => HostCommitComments.none().toJson()));
     const counts = ids.map(t => host.pullRequests.commentsFor(FOLDER, remote, t));
-    await host.requests.askedAsync(5);
+    await host.readsAsync(5);
 
     host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("octocat", null, null, ["repo"])).toJson());
-    await host.requests.askedAsync(9);
+    await host.readsAsync(9);
     failFirst(new WindowFailure("The runtime stopped."));
     await Wait.until(() => expect(host.context.callsOf("log")).toHaveLength(1));
     for (const release of held)
@@ -217,7 +229,17 @@ describe("GitHubPullRequests", () => {
     host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedOut().toJson());
     await Wait.until(() => expect(counts[4]?.()?.count).toBe(0));
 
-    expect([host.pullRequests.commentsFor(FOLDER, remote, ids[4] ?? "") === counts[4], host.requests.methods.length]).toEqual([true, 15]);
+    expect([host.pullRequests.commentsFor(FOLDER, remote, ids[4] ?? "") === counts[4], host.reads.length]).toEqual([true, 15]);
+  });
+
+  it("keeps when a used-up rate limit resets from a failed pull request read", async () => {
+    const host = new Host();
+    host.requests.fail(GitHubNames.readPullRequestsMethod, new RuntimeRequestException(FailureCode.Unavailable, "GitHub's rate limit is used up.",
+      { rateLimitedUntil: 1_800_003_600_000 }));
+
+    const list = await host.readAsync(remote, GitPullRequestsState.Failed);
+
+    expect([list()?.failure, list()?.limitedUntil]).toEqual(["GitHub's rate limit is used up.", 1_800_003_600_000]);
   });
 
   it("shows the runtime's message for a failed read, says plainly that the window failed, and logs both", async () => {
@@ -251,7 +273,7 @@ describe("GitHubPullRequests", () => {
     await Host.untilAsync(list, GitPullRequestsState.Ready);
     release(new HostPullRequestList([], false).toJson());
     reject(new WindowFailure("The runtime stopped."));
-    await host.requests.askedAsync(3);
+    await host.readsAsync(3);
     await Promise.allSettled(host.requests.answered);
 
     expect(list()).toEqual(GitPullRequestList.ready([shown]));
@@ -275,7 +297,7 @@ describe("GitHubPullRequests", () => {
     const listOf = (...entries: [number, HostSignIn][]): HostAccountList => new HostAccountList(entries.map(([id, t]) => new HostAccountEntry(id, t)));
     host.requests.answer(GitHubNames.readPullRequestsMethod, ...Array.from({ length: 4 }, () => HostPullRequestList.signedOut().toJson()));
     await host.readAsync(remote, GitPullRequestsState.SignedOut);
-    const reads = (): number => host.requests.methods.length;
+    const reads = (): number => host.reads.length;
     const counts: number[] = [];
 
     for (const list of [listOf([1, kim]), listOf([1, HostSignIn.signedOut()]), listOf([1, kim], [2, waiting]), listOf([1, kim], [2, waiting]), listOf([1, kim], [2, kim]),
@@ -316,11 +338,12 @@ describe("GitHubPullRequests", () => {
     expect([host.requests.methods, host.requests.payloads]).toEqual([[GitHubNames.readReviewRequestsMethod], [new RepositoryQuery("github.com", "octocat/site").toJson()]]);
   });
 
-  it("keeps the review requests it showed while it reads again and after a failed read, logging it, and says when nobody is signed in", async () => {
+  it("keeps the review requests it showed and when a used-up rate limit resets after a failed read, logging it, and says when nobody is signed in", async () => {
     const host = new Host();
     host.requests.answer(GitHubNames.readReviewRequestsMethod, new HostReviewRequestList([request], false).toJson());
     const release = host.requests.hold(GitHubNames.readReviewRequestsMethod);
-    host.requests.fail(GitHubNames.readReviewRequestsMethod, new RuntimeRequestException(FailureCode.Unavailable, "GitHub's rate limit resets at 12:01."));
+    host.requests.fail(GitHubNames.readReviewRequestsMethod, new RuntimeRequestException(FailureCode.Unavailable, "GitHub's rate limit resets at 12:01.",
+      { rateLimitedUntil: 1_800_003_600_000 }));
     host.requests.fail(GitHubNames.readReviewRequestsMethod, new WindowFailure("The runtime stopped."));
     host.requests.answer(GitHubNames.readReviewRequestsMethod, HostReviewRequestList.signedOut().toJson());
     const reviews = host.pullRequests.reviewsFor(remote);
@@ -338,7 +361,8 @@ describe("GitHubPullRequests", () => {
     }
 
     expect(states).toEqual([GitPullRequestList.ready([asked]), GitPullRequestList.reading([asked]), GitPullRequestList.ready([asked]),
-      GitPullRequestList.failed("GitHub's rate limit resets at 12:01.", [asked]), GitPullRequestList.failed(UNANSWERED, [asked]), GitPullRequestList.signedOut()]);
+      GitPullRequestList.failedBy(new RuntimeRequestException(FailureCode.Unavailable, "GitHub's rate limit resets at 12:01.", { rateLimitedUntil: 1_800_003_600_000 }), UNANSWERED,
+        [asked]), GitPullRequestList.failed(UNANSWERED, [asked]), GitPullRequestList.signedOut()]);
     expect(host.context.callsOf("log").map(t => String(t[0]))).toEqual([
       "The GitHub module's git-github.readReviewRequests request failed: RuntimeRequestException: GitHub's rate limit resets at 12:01.",
       "The GitHub module's git-github.readReviewRequests request failed: WindowFailure: The runtime stopped."]);
@@ -391,8 +415,9 @@ describe("GitHubPullRequests", () => {
 
     expect([before, comments(), again === comments, otherCommit()]).toEqual([null, new GitCommitComments(3, true, "https://github.com/octocat/site/pull/752#discussion_r7"), true,
       new GitCommitComments(0, false, null)]);
-    expect([host.requests.methods, host.requests.payloads]).toEqual([[GitHubNames.readCommitCommentsMethod, GitHubNames.readCommitCommentsMethod],
-      [new CommitQuery("github.com", "octocat/site", COMMENTED).toJson(), new CommitQuery("github.com", "octocat/site", UNCOMMENTED).toJson()]]);
+    expect([host.requests.methods, host.requests.payloads]).toEqual([[GitHubNames.useFolderMethod, GitHubNames.readCommitCommentsMethod,
+      GitHubNames.readCommitCommentsMethod], [new FolderQuery(FOLDER, "origin").toJson(), new CommitQuery("github.com", "octocat/site", COMMENTED).toJson(),
+      new CommitQuery("github.com", "octocat/site", UNCOMMENTED).toJson()]]);
   });
 
   it("logs a failed comments read and forgets it so the next ask reads again, reads nothing for a remote with no host or path, and passes on a failure that isn't the window's",
@@ -418,7 +443,7 @@ describe("GitHubPullRequests", () => {
       const rejected = UnhandledRejections.nextAsync();
       host.pullRequests.commentsFor(FOLDER, other, COMMENTED);
 
-      expect([failed(), retried === failed, retried(), hostless, pathless, await rejected, host.requests.methods.length]).toEqual([null, false,
+      expect([failed(), retried === failed, retried(), hostless, pathless, await rejected, host.reads.length]).toEqual([null, false,
         new GitCommitComments(2, false, "https://github.com/octocat/site/pull/752#discussion_r7"), null, null, unexpected, 3]);
       expect(host.context.callsOf("log").map(t => String(t[0]))).toEqual([
         "The GitHub module's git-github.readCommitComments request failed: RuntimeRequestException: GitHub refused the request (503)."]);
@@ -439,7 +464,7 @@ describe("GitHubPullRequests", () => {
     expect(answers.map(t => t())).toEqual([GitBranchPullRequest.of(cardRowOf(1), GitPullRequestState.Merged, false),
       GitBranchPullRequest.of(cardRowOf(0), GitPullRequestState.Open, true), GitBranchPullRequest.of(cardRowOf(0, true), GitPullRequestState.Draft, false),
       GitBranchPullRequest.of(cardRowOf(0), GitPullRequestState.Open, false), GitBranchPullRequest.none(0, 0, 0)]);
-    expect([host.pullRequests.commitFor(FOLDER, remote, ids[0] ?? "") === answers[0], host.requests.methods.length, host.requests.payloads[0]])
+    expect([host.pullRequests.commitFor(FOLDER, remote, ids[0] ?? "") === answers[0], host.reads.length, host.requests.payloads[1]])
       .toEqual([true, 5, new CommitQuery("github.com", "octocat/site", "a".repeat(40)).toJson()]);
   });
 
@@ -463,7 +488,7 @@ describe("GitHubPullRequests", () => {
     const rejected = UnhandledRejections.nextAsync();
     host.pullRequests.commitFor(FOLDER, other, COMMENTED);
 
-    expect([refused(), unanswered(), reopened(), hostless, pathless, await rejected, host.requests.methods.length]).toEqual([
+    expect([refused(), unanswered(), reopened(), hostless, pathless, await rejected, host.reads.length]).toEqual([
       GitBranchPullRequest.failed("GitHub refused the request (503)."), GitBranchPullRequest.failed(COMMIT_UNANSWERED),
       GitBranchPullRequest.of(cardRowOf(0), GitPullRequestState.Merged, false), null, null, unexpected, 4]);
     expect(host.context.callsOf("log").map(t => String(t[0]))).toEqual([
@@ -489,9 +514,9 @@ describe("GitHubPullRequests", () => {
     const afterLate = [merged(), unpulled()];
     host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedOut().toJson());
     await Wait.until(() => expect(merged()?.pullRequestState).toBe(GitPullRequestState.Open));
-    await host.requests.askedAsync(6);
+    await host.readsAsync(6);
 
-    expect([afterLate, unpulled(), host.pullRequests.commitFor(FOLDER, remote, UNCOMMENTED) === unpulled, host.requests.methods.length]).toEqual([
+    expect([afterLate, unpulled(), host.pullRequests.commitFor(FOLDER, remote, UNCOMMENTED) === unpulled, host.reads.length]).toEqual([
       [GitBranchPullRequest.of(cardRowOf(0), GitPullRequestState.Merged, false), GitBranchPullRequest.none(0, 0, 0)], GitBranchPullRequest.none(0, 0, 0), true, 6]);
   });
 
@@ -505,10 +530,10 @@ describe("GitHubPullRequests", () => {
       host.requests.answer(GitHubNames.readCommitPullRequestMethod, pullRequestOf(ReferenceState.Merged).toJson(),
         ...ids.map(() => new BranchPullRequest(null, []).toJson()));
       const commits = ids.map(t => host.pullRequests.commitFor(FOLDER, remote, t));
-      await host.requests.askedAsync(5);
+      await host.readsAsync(5);
 
       host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedIn(new HostAccount("octocat", null, null, ["repo"])).toJson());
-      await host.requests.askedAsync(9);
+      await host.readsAsync(9);
       failFirst(new WindowFailure("The runtime stopped."));
       await Wait.until(() => expect(host.context.callsOf("log")).toHaveLength(1));
       const whileWaiting = commits[4]?.();
@@ -518,8 +543,30 @@ describe("GitHubPullRequests", () => {
       host.context.raiseEvent(GitHubNames.signInChangedEvent, HostSignIn.signedOut().toJson());
       await Wait.until(() => expect(commits[4]?.()?.pullRequest).toBeNull());
 
-      expect([whileWaiting, host.pullRequests.commitFor(FOLDER, remote, ids[4] ?? "") === commits[4], host.requests.methods.length]).toEqual([null, true, 15]);
+      expect([whileWaiting, host.pullRequests.commitFor(FOLDER, remote, ids[4] ?? "") === commits[4], host.reads.length]).toEqual([null, true, 15]);
     });
+
+  it("reads a commit's pull request, its comments and the list only once the folder is in use, so the account its remote's user name names reads them", async () => {
+    const host = new Host();
+    const release = host.requests.hold(GitHubNames.useFolderMethod);
+    host.requests.answer(GitHubNames.readCommitPullRequestMethod, pullRequestOf(ReferenceState.Merged).toJson());
+    host.requests.answer(GitHubNames.readCommitCommentsMethod, HostCommitComments.none().toJson());
+    host.requests.answer(GitHubNames.readPullRequestsMethod, new HostPullRequestList([row], false).toJson());
+
+    const commit = host.pullRequests.commitFor(FOLDER, remote, COMMENTED);
+    const comments = host.pullRequests.commentsFor(FOLDER, remote, COMMENTED);
+    const list = host.pullRequests.listFor(FOLDER, remote);
+    host.pullRequests.refresh(FOLDER, remote);
+    await host.requests.askedAsync(1);
+    const waiting = [...host.requests.methods];
+    release(new RepositoryAccount(2, undefined, true).toJson());
+    await untilAsync(commit, GitPullRequestsState.Ready);
+    await Host.untilAsync(list, GitPullRequestsState.Ready);
+    await Wait.until(() => expect(comments()).not.toBeNull());
+
+    expect([waiting, host.requests.payloads[0]]).toEqual([[GitHubNames.useFolderMethod], new FolderQuery(FOLDER, "origin").toJson()]);
+    expect([...host.reads].sort()).toEqual([GitHubNames.readCommitCommentsMethod, GitHubNames.readCommitPullRequestMethod, GitHubNames.readPullRequestsMethod]);
+  });
 
   it("passes on a failure that isn't the window's", async () => {
     const host = new Host();

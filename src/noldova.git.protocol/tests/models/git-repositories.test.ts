@@ -27,6 +27,11 @@ class ProbeRepositories extends GitRepositories {
     this.asked.push(`${folder} ${name}`);
     return await Promise.resolve(name === "origin" ? new GitRemote("origin", "host.example", "team/repo", RemoteTransport.Https) : null);
   }
+
+  public override async readRemoteUserAsync(folder: string, name: string, _signal: AbortSignal): Promise<string | null> {
+    this.asked.push(`${folder} ${name} user`);
+    return await Promise.resolve(name === "origin" ? "kim" : null);
+  }
 }
 
 describe("GitRepositories", () => {
@@ -37,8 +42,11 @@ describe("GitRepositories", () => {
     const status = await repositories.readStatusAsync("/work/repo", signal);
     const origin = await repositories.readRemoteAsync("/work/repo", "origin", signal);
     const missing = await repositories.readRemoteAsync("/work/repo", "backup", signal);
+    const user = await repositories.readRemoteUserAsync("/work/repo", "origin", signal);
+    const noUser = await repositories.readRemoteUserAsync("/work/repo", "backup", signal);
 
     assert.ok(repositories instanceof ProbeRepositories);
-    assert.deepEqual([status.branch, origin?.path, missing, repositories.asked], ["main", "team/repo", null, ["/work/repo", "/work/repo origin", "/work/repo backup"]]);
+    assert.deepEqual([status.branch, origin?.path, missing, user, noUser, repositories.asked], ["main", "team/repo", null, "kim", null,
+      ["/work/repo", "/work/repo origin", "/work/repo backup", "/work/repo origin user", "/work/repo backup user"]]);
   });
 });

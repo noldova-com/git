@@ -16,8 +16,9 @@ import { HEAD } from "../fixtures/fake-tools.fixture.ts";
 import { failureOf, folder, PrToolsRig, pull, textOf } from "../fixtures/pr-tools.fixture.ts";
 
 describe("GitHubPrChecksTool", () => {
-  it("answers the newest pull request of the session's branch, the check runs of its HEAD and its review, as untrusted text from github.com", async () => {
+  it("answers the newest pull request of the session's branch, the check runs of its HEAD and its review, as untrusted text from github.com, with the account its origin's user name names", async () => {
     const rig = new PrToolsRig();
+    rig.repositories.users.set("origin", "hubot");
     rig.github.answer(FakeGitHub.json([pull]), FakeGitHub.json(pull), FakeGitHub.json({ total_count: 1, check_runs: [{ name: "build", status: "completed",
       conclusion: "success", html_url: null }] }), FakeGitHub.json([{ user: { login: "hubot" }, state: "APPROVED", author_association: "MEMBER" }]));
 
@@ -28,6 +29,7 @@ describe("GitHubPrChecksTool", () => {
     assert.deepEqual(rig.github.urls(), ["https://api.github.com/repos/octocat/hello-world/pulls?head=octocat%3Afix-bug&state=all&per_page=1",
       "https://api.github.com/repos/octocat/hello-world/pulls/2", `https://api.github.com/repos/octocat/hello-world/commits/${HEAD}/check-runs?per_page=100`,
       "https://api.github.com/repos/octocat/hello-world/pulls/2/reviews?per_page=100"]);
+    assert.deepEqual([rig.repositories.userReads, rig.token.users], [[[folder, "origin"]], ["github.com octocat/hello-world hubot"]]);
   });
 
   it("is a low-risk read that reaches GitHub", () => {

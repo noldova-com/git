@@ -7,6 +7,7 @@
  */
 
 import { Component, ErrorHandler, inject } from "@angular/core";
+import { TimeFormatService } from "@noldova/desktop.window";
 import { type GitJournalEntry, UndoMode } from "@noldova/git.protocol";
 import { IconButtonComponent, MenuComponent, MenuItemComponent, MenuTriggerDirective, TooltipDirective } from "@noldova/ui.components.angular";
 
@@ -20,6 +21,7 @@ import { GitViewStateService } from "../../services/git-view-state.service.ts";
 })
 export class GitUndoMenuComponent {
   private readonly errors: ErrorHandler = inject(ErrorHandler);
+  private readonly dates: TimeFormatService = inject(TimeFormatService);
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly state: GitViewStateService = inject(GitViewStateService);
@@ -33,7 +35,7 @@ export class GitUndoMenuComponent {
   }
 
   protected timeOf(entry: GitJournalEntry): string {
-    return new Date(entry.at).toLocaleString(Resources.dateLocale, Resources.authoredFormat);
+    return this.dates.shortDateTime(entry.at);
   }
 
   protected canUndo(entry: GitJournalEntry): boolean {

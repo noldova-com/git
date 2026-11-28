@@ -31,6 +31,7 @@ export { BranchPullRequest } from "../models/branch-pull-request.ts";
 export { BranchQuery } from "../models/branch-query.ts";
 export { CommitQuery } from "../models/commit-query.ts";
 export { DeviceCode } from "../models/device-code.ts";
+export { FolderQuery } from "../models/folder-query.ts";
 export { HostAccount } from "../models/host-account.ts";
 export { HostAccountEntry } from "../models/host-account-entry.ts";
 export { HostAccountList } from "../models/host-account-list.ts";

@@ -16,6 +16,7 @@ import { AnswerWaiter } from "./answer-waiter.fixture.ts";
 export class RequestAnswers {
   private readonly context: FakeWindowPartContext;
   private readonly queues: Map<string, (() => Promise<JsonValue>)[]> = new Map();
+  private readonly fallbacks: Map<string, JsonValue> = new Map();
   private readonly waiters: AnswerWaiter[] = [];
 
   public readonly answered: Promise<JsonValue>[] = [];
@@ -24,7 +25,9 @@ export class RequestAnswers {
     this.context = context;
     context.answer("requestAsync", method => {
       const next = this.queue(method).shift();
-      const reply: Promise<JsonValue> = Object.isUndefined(next) ? Promise.reject(new UnansweredCallException("requestAsync")) : next();
+      const fallback: JsonValue | undefined = this.fallbacks.get(method);
+      const reply: Promise<JsonValue> = !Object.isUndefined(next) ? next()
+        : Object.isUndefined(fallback) ? Promise.reject(new UnansweredCallException("requestAsync")) : Promise.resolve(fallback);
       this.answered.push(reply);
       for (const waiter of this.waiters.filter(t => t.count <= this.answered.length)) {
         this.waiters.splice(this.waiters.indexOf(waiter), 1);
@@ -50,6 +53,10 @@ export class RequestAnswers {
 
   public answer(method: string, ...payloads: JsonValue[]): void {
     this.queue(method).push(...payloads.map(t => () => Promise.resolve(t)));
+  }
+
+  public always(method: string, payload: JsonValue): void {
+    this.fallbacks.set(method, payload);
   }
 
   public fail(method: string, error: Error): void {

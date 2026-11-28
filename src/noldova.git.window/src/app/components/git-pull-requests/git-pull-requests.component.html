@@ -20,8 +20,10 @@ LICENSE file in the root directory of this source tree.
         <button type="button" class="row link" (click)="signIn(provider.signInPage)">{{ resources.pullRequestsSignIn }}</button>
       }
       @case (states.Failed) {
+        @let until = list()?.limitedUntil ?? null;
+        @let failure = until === null ? list()?.failure ?? '' : limitedText(provider.hostName, until);
         <div class="row failure" role="alert">
-          <span class="grow note" [title]="list()?.failure ?? ''">{{ list()?.failure }}</span>
+          <span class="grow note" [title]="failure">{{ failure }}</span>
           <button type="button" class="retry" (click)="refresh()">{{ resources.tryAgainLabel }}</button>
         </div>
       }

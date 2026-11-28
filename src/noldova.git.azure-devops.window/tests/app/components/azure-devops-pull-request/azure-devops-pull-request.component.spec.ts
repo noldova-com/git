@@ -11,7 +11,7 @@ import { type ComponentFixture, TestBed, TestComponentRenderer } from "@angular/
 import { By } from "@angular/platform-browser";
 import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
-import { FailureCode } from "@noldova/desktop.protocol";
+import { DatePattern, FailureCode } from "@noldova/desktop.protocol";
 import { RuntimeRequestException, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
@@ -32,6 +32,7 @@ import { AzureDevOpsPullRequestDetailComponent }
 import { PullRequestPages } from "../../../../src/app/services/pull-request-pages.ts";
 import { PullRequestSelection } from "../../../../src/app/services/pull-request-selection.ts";
 import { RequestAnswers } from "../../../fixtures/request-answers.fixture.ts";
+import { TimeFormatsFixture } from "../../../fixtures/time-formats.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
 
@@ -263,7 +264,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     page.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson());
     await page.openAsync();
 
-    const opened: string = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(CREATED);
+    const opened: string = DatePattern.format(new Date(CREATED), "MMM d");
     expect([page.requests.methods.slice(0, 2), [...page.requests.methods.slice(2)].sort(), page.payloadsOf(AzureDevOpsNames.readSignInMethod),
       page.payloadsOf(AzureDevOpsNames.readPullRequestMethod), page.payloadsOf(AzureDevOpsNames.readMergeTypesMethod)]).toEqual([
       [AzureDevOpsNames.readSignInMethod, AzureDevOpsNames.readPullRequestMethod],
@@ -470,7 +471,7 @@ describe("AzureDevOpsPullRequestComponent", () => {
     await page.clickAsync("Updates");
 
     expect(before).toEqual([["page", null, null, null, null], [true, false, false], ["Overview", "Files 0", "Updates 1", "Commits 5", "Conflicts"]]);
-    expect(updates).toEqual([[null, null, "page", null, null], [false, true, false], [`Update 1 Someone ${new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(OLD)} 0123456`]]);
+    expect(updates).toEqual([[null, null, "page", null, null], [false, true, false], [`Update 1 Someone ${DatePattern.format(new Date(OLD), "MMM d")} 0123456`]]);
     expect(commits).toEqual([[null, null, null, "page", null], [false, false, true], ["Add note export", "Respect local times"]]);
     const tabReads: unknown[] = page.requests.methods.filter(t => t !== AzureDevOpsNames.readSignInMethod && t !== AzureDevOpsNames.readMergeTypesMethod);
     expect([current(), shown(), tabReads]).toEqual([[null, null, "page", null, null], [false, true, false], [AzureDevOpsNames.readPullRequestMethod,
@@ -797,6 +798,19 @@ describe("AzureDevOpsPullRequestComponent", () => {
     await page.settleAsync();
 
     expect([page.query("[role=alert]"), page.texts(".title")]).toEqual([null, ["Export notes as Markdown from the shared notes list"]]);
+  });
+
+  it("shows the opened date by the date and time format setting, and again when it changes", async () => {
+    const page = new Page();
+    page.requests.answer(AzureDevOpsNames.readPullRequestMethod, pullRequest.toJson());
+    await page.openAsync();
+    const before: string = page.texts(".meta")[0] ?? "";
+    onTestFinished(() => TimeFormatsFixture.reset());
+    TimeFormatsFixture.use24Hour();
+    const after: string = DatePattern.format(new Date(CREATED), "d MMM");
+    await page.untilAsync(() => (page.texts(".meta")[0] ?? "").includes(`opened ${after}`));
+
+    expect([before.includes(`opened ${DatePattern.format(new Date(CREATED), "MMM d")}`), page.texts(".meta")[0]?.includes(`opened ${after}`)]).toEqual([true, true]);
   });
 
   it("opens a link in the description through the window, with the gesture that opened it", async () => {

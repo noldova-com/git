@@ -9,7 +9,8 @@
 import { ErrorHandler, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import "@noldova/context.core";
-import { LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
+import { DatePattern, FailureCode } from "@noldova/desktop.protocol";
+import { LinkPlace, RuntimeRequestException, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
@@ -19,6 +20,7 @@ import type { IGitPullRequests } from "../../../../src/app/interfaces/i-git-pull
 import { GitPullRequestList } from "../../../../src/app/models/git-pull-request-list.ts";
 import { GitPullRequestRow } from "../../../../src/app/models/git-pull-request-row.ts";
 import { GitPullRequests } from "../../../../src/app/services/git-pull-requests.ts";
+import { TimeFormatsFixture } from "../../../fixtures/time-formats.fixture.ts";
 import { Wait } from "../../../fixtures/wait.fixture.ts";
 
 describe("GitPullRequestsComponent", () => {
@@ -146,6 +148,23 @@ describe("GitPullRequestsComponent", () => {
 
     expect([texts(mounted.element, ".failure .note"), failure?.getAttribute("role"), mounted.refreshed.length - before]).toEqual([["GitHub answered 502."], "alert", 1]);
     expect(texts(mounted.element, ".retry")).toEqual(["Try again"]);
+  });
+
+  it("writes when a used-up rate limit resets by the date and time format setting, in the note and its tooltip, and again when it changes", async () => {
+    const until: number = 1_800_003_600_000;
+    const mounted: IMounted = await mount();
+    mounted.list.set(GitPullRequestList.failedBy(new RuntimeRequestException(FailureCode.Unavailable, "GitHub's rate limit for this account is used up until 2027-01-15T09:00:00.000Z.",
+      { rateLimitedUntil: until }), "No answer."));
+    await mounted.fixture.whenStable();
+    const note = (): readonly unknown[] => [texts(mounted.element, ".failure .note"), mounted.element.querySelector(".failure .note")?.getAttribute("title")];
+    const before: readonly unknown[] = note();
+    onTestFinished(() => TimeFormatsFixture.reset());
+    TimeFormatsFixture.use24Hour();
+    await mounted.fixture.whenStable();
+
+    const twelve: string = `GitHub's rate limit for this account is used up until ${DatePattern.format(new Date(until), TimeFormatsFixture.dateTime)}.`;
+    const day: string = `GitHub's rate limit for this account is used up until ${DatePattern.format(new Date(until), TimeFormatsFixture.dateTime24)}.`;
+    expect([before, note()]).toEqual([[[twelve], twelve], [[day], day]]);
   });
 
   it("opens a pull request in the host's own page by its key when the host opens it, and otherwise its page in the browser", async () => {
