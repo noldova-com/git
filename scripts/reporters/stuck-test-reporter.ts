@@ -6,6 +6,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import "@noldova/context.core";
+
 import type { ReportedHookContext, Reporter, TestCase, TestModule, TestSuite, Vitest } from "vitest/node";
 
 import { Resources } from "../resources.ts";
@@ -75,19 +77,19 @@ export default class StuckTestReporter implements Reporter {
 
   private static nameOf(testModule: TestModule): string {
     const next: TestCase | undefined = StuckTestReporter.nextTest(testModule);
-    return next === undefined ? testModule.relativeModuleId : Resources.formatStuckTest(testModule.relativeModuleId, next.fullName);
+    return Object.isUndefined(next) ? testModule.relativeModuleId : Resources.formatStuckTest(testModule.relativeModuleId, next.fullName);
   }
 
   private hear(testModule: TestModule): void {
     const module: HeardModule | undefined = this.modules.get(testModule.id);
-    if (module !== undefined)
+    if (!Object.isUndefined(module))
       module.heard = performance.now();
   }
 
   private check(): void {
     const now: number = performance.now();
     const stuck: readonly string[] = [...this.modules.values()].filter(t => StuckTestReporter.isQuiet(t, now)).map(t => StuckTestReporter.nameOf(t.module));
-    if (stuck.length === 0 || this.vitest === null)
+    if (stuck.length === 0 || Object.isNull(this.vitest))
       return;
     this.stop();
     console.error(Resources.formatStuckTests(stuck, Resources.stuckMarginMilliseconds));
@@ -96,7 +98,7 @@ export default class StuckTestReporter implements Reporter {
   }
 
   private stop(): void {
-    if (this.timer !== null)
+    if (!Object.isNull(this.timer))
       clearInterval(this.timer);
     this.timer = null;
   }

@@ -77,7 +77,7 @@ The window part's specs measure its `src` the same way, through the unit-test bu
 ## The targets
 
 The modules' tests run on Linux x64, Windows x64 and macOS arm64 for every pull request, draft or ready, and on pushes to `main` and runs started by hand on all six targets, Linux arm64, Windows arm64 and macOS x64 too, on GitHub-hosted runners.
-On those runs, Windows arm64's tests run as 3 parts and macOS x64's as 2, each a job of its own, since their whole suite runs past the job's 17 minutes. The job's limit, `timeout-minutes` in `build-and-test.yml`, is the slowest job on `main` over 15 runs, 13.7 minutes for a macOS x64 part, with a quarter more as margin, so a job that hangs fails sooner; a job per target then runs `npm run test:merge` on Linux x64 with every part's blob reports, and "All targets" fails unless that merge passes too.
+On those runs, Windows arm64's tests run as 3 parts and macOS x64's as 2, each a job of its own, since their whole suite runs past the job's 17 minutes. The job's limit, `timeout-minutes` in `build-and-test.yml`, is set from the slowest job on `main` over 15 runs, 851 s for a macOS x64 part in run 46176739306, which uses 83% of its 17 minutes, so a job that hangs fails sooner; a job per target then runs `npm run test:merge` on Linux x64 with every part's blob reports, and "All targets" fails unless that merge passes too.
 The workflow's one job, `build-and-test`, named "Build and test", calls the shared workflow, which runs one job per target, such as "Linux x64", which GitHub lists as "Build and test / Linux x64", and its "All targets" fails unless every one of them passed.
 
 ## What the tests cover
