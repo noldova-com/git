@@ -69,8 +69,10 @@ export class GitHubHostRowComponent implements OnInit {
   protected readonly copiedCode: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly isReading: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly reader: WritableSignal<RepositoryAccount | null> = signal<RepositoryAccount | null>(null);
-  protected readonly readers: Signal<readonly AccountReader[]> = computed(() => (this.accounts()?.accounts ?? [])
-    .flatMap(t => Object.isNull(t.signIn.account) ? [] : [new AccountReader(t.id, t.signIn.account.login)]));
+  protected readonly readers: Signal<readonly AccountReader[]> = computed(() => {
+    const place: string | null = GitHubAccountList.placeOf(this.remote());
+    return (this.accounts()?.accounts ?? []).flatMap(t => Object.isNull(t.signIn.account) || t.place !== place ? [] : [new AccountReader(t.id, t.signIn.account.login)]);
+  });
   protected readonly readerQuery: Signal<RepositoryQuery | null> = computed(() => {
     const remote: GitRemote = this.remote();
     return this.readers().length < 2 || Object.isNull(remote.host) || Object.isNull(remote.path) ? null : new RepositoryQuery(remote.host, remote.path);

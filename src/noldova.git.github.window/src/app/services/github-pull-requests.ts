@@ -20,6 +20,7 @@ import { CommitRead } from "../models/commit-read.ts";
 import { ListRead } from "../models/list-read.ts";
 import { ReadQueue } from "../models/read-queue.ts";
 import { AccountEvents } from "./account-events.ts";
+import { GitHubAccountList } from "./github-account-list.ts";
 import { GitHubFolders } from "./github-folders.ts";
 import { SignInEvents } from "./sign-in-events.ts";
 import { Resources } from "../../resources.ts";
@@ -63,11 +64,12 @@ export class GitHubPullRequests implements IGitPullRequests {
   }
 
   public claims(remote: GitRemote): boolean {
-    return remote.host === Resources.gitHubHost;
+    return GitHubAccountList.claims(GitHubAccountList.of(this.context)(), remote);
   }
 
   public newPullRequestUrl(remote: GitRemote, source: string, target: string): string | null {
-    return Object.isNull(remote.path) ? null : Resources.formatGitHubNewPullRequestAddress(remote.path, source, target);
+    return Object.isNull(remote.path) ? null
+      : Resources.formatGitHubNewPullRequestAddress(GitHubAccountList.placeOf(remote) ?? Resources.gitHubHost, remote.path, source, target);
   }
 
   public listFor(_folder: string, remote: GitRemote): Signal<GitPullRequestList | null> {

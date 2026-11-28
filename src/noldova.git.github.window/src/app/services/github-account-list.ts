@@ -8,9 +8,11 @@
 
 import { type Signal, signal, type WritableSignal } from "@angular/core";
 import type { IWindowPartContext } from "@noldova/desktop.window";
-import { HostAccountList } from "@noldova/git.hosting.protocol";
+import { HostAccountList, SignInState } from "@noldova/git.hosting.protocol";
+import type { GitRemote } from "@noldova/git.protocol";
 
 import { EnterpriseEntry } from "../models/enterprise-entry.ts";
+import { Resources } from "../../resources.ts";
 
 export class GitHubAccountList {
   private static readonly lists: WeakMap<IWindowPartContext, WritableSignal<HostAccountList | null>> = new WeakMap();
@@ -25,6 +27,17 @@ export class GitHubAccountList {
 
   public static enterpriseOf(list: HostAccountList): readonly EnterpriseEntry[] {
     return list.accounts.flatMap(t => Object.isNull(t.place) ? [] : [new EnterpriseEntry(t.id, t.place, t.signIn)]);
+  }
+
+  public static placeOf(remote: GitRemote): string | null {
+    return Object.isNull(remote.host) || remote.host === Resources.gitHubHost ? null : remote.host.toLowerCase();
+  }
+
+  public static claims(list: HostAccountList | null, remote: GitRemote): boolean {
+    if (remote.host === Resources.gitHubHost)
+      return true;
+    const place: string | null = GitHubAccountList.placeOf(remote);
+    return !Object.isNull(place) && !Object.isNull(list) && list.accounts.some(t => t.place === place && t.signIn.state === SignInState.SignedIn);
   }
 
   public static show(context: IWindowPartContext, list: HostAccountList | null): void {
