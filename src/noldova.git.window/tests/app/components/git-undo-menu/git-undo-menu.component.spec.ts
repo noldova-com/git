@@ -9,14 +9,16 @@
 import { ApplicationRef, ErrorHandler, signal, type WritableSignal } from "@angular/core";
 import { type ComponentFixture, TestBed } from "@angular/core/testing";
 import "@noldova/context.core";
+import { DatePattern } from "@noldova/desktop.protocol";
 import { GitJournalEntry, UndoMode } from "@noldova/git.protocol";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { GitUndoMenuComponent } from "../../../../src/app/components/git-undo-menu/git-undo-menu.component.ts";
 import { GitViewStateService } from "../../../../src/app/services/git-view-state.service.ts";
+import { TimeFormatsFixture } from "../../../fixtures/time-formats.fixture.ts";
 
 const AT: string = "2026-11-22T20:15:00Z";
-const time: string = new Date(AT).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const time: string = DatePattern.format(new Date(AT), "MMM d, h:mm a");
 
 function entryOf(id: string, method: string, branch: string | null, undo: UndoMode): GitJournalEntry {
   const tree: string | null = undo === UndoMode.Index ? "4b825dc642cb6eb9a060e54bf8d69288fbee4904" : null;
@@ -72,6 +74,8 @@ class Menu {
 }
 
 describe("GitUndoMenuComponent", () => {
+  afterEach(() => TimeFormatsFixture.reset());
+
   it("reads the recent actions as it opens, and says there are none yet", async () => {
     const menu: Menu = new Menu();
 
@@ -88,6 +92,17 @@ describe("GitUndoMenuComponent", () => {
     await menu.openAsync();
 
     expect(menu.rows()).toEqual([[`git.example|${time}`, true], [`Push on main|${time}`, true], [`Stage on main|${time}|Undo`, false]]);
+  });
+
+  it("shows each action's time by the date and time format setting, and again when it changes", async () => {
+    const menu: Menu = new Menu();
+    menu.recentActions.set([entryOf("7", "git.push", "main", UndoMode.None)]);
+    await menu.openAsync();
+    const before: readonly (readonly unknown[])[] = menu.rows();
+    TimeFormatsFixture.use24Hour();
+    await menu.fixture.whenStable();
+
+    expect([before, menu.rows()]).toEqual([[[`Push on main|${time}`, true]], [[`Push on main|${DatePattern.format(new Date(AT), "d MMM, HH:mm")}`, true]]]);
   });
 
   it("names a fetch and a rebase", async () => {

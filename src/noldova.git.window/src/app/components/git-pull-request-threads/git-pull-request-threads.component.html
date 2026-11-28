@@ -16,7 +16,7 @@ LICENSE file in the root directory of this source tree.
   @if (failure(); as failure) {
     <div class="threads-notice" role="alert">
       <span class="material-symbols-rounded failed" aria-hidden="true">{{ resources.failureIcon }}</span>
-      <span class="grow">{{ failure }}</span>
+      <span class="grow">{{ textOf(failure) }}</span>
       <button type="button" nol-button [variant]="secondary" (click)="retry()">{{ resources.tryAgainLabel }}</button>
     </div>
   } @else if (isRead()) {
@@ -77,7 +77,7 @@ LICENSE file in the root directory of this source tree.
               <div class="answer-actions">
                 @if (writeFailures().get(thread.id); as writeFailure) {
                   <span class="answer-failure" role="alert">
-                    <span class="material-symbols-rounded failed" aria-hidden="true">{{ resources.failureIcon }}</span>{{ writeFailure }}
+                    <span class="material-symbols-rounded failed" aria-hidden="true">{{ resources.failureIcon }}</span>{{ textOf(writeFailure) }}
                   </span>
                 }
                 @if (host().changeThreadMethod; as changeMethod) {

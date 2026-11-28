@@ -8,7 +8,7 @@
 
 import { Component, computed, DestroyRef, effect, inject, Injector, input, type InputSignal, PendingTasks, type Signal, signal, untracked, type WritableSignal } from "@angular/core";
 import "@noldova/context.core";
-import { type IWindowPartContext, RuntimeRequestException, WindowException, WindowPartTokens } from "@noldova/desktop.window";
+import { type IWindowPartContext, RuntimeRequestException, TimeFormatService, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
 import type { JsonValue } from "@noldova/context.json";
 import { HostPullRequest, HostPullRequestFiles, HostPullRequestUpdates, type HostReference, HostReviewer, HostSignIn, ReferenceState, SignInState }
@@ -54,7 +54,7 @@ export class AzureDevOpsPullRequestComponent {
   private readonly attempt: WritableSignal<number> = signal<number>(0);
 
   protected readonly host: AzureDevOpsPullRequestHost = new AzureDevOpsPullRequestHost(this.context);
-  private readonly dates: Intl.DateTimeFormat = new Intl.DateTimeFormat(undefined, Resources.openDateFormat);
+  private readonly dates: TimeFormatService = inject(TimeFormatService);
   private readonly votes: WritableSignal<ReadonlyMap<string, HostReviewer>> = signal<ReadonlyMap<string, HostReviewer>>(new Map());
   private readonly login: WritableSignal<string | null> = signal<string | null>(null);
   private loginChanges: number = 0;
@@ -207,7 +207,7 @@ export class AzureDevOpsPullRequestComponent {
   }
 
   protected openedOf(pullRequest: HostPullRequest): string {
-    return Resources.formatOpened(this.dates.format(pullRequest.item.createdAt));
+    return Resources.formatOpened(this.dates.shortDate(pullRequest.item.createdAt));
   }
 
   private reviewersOf(pullRequest: HostPullRequest): readonly HostReviewer[] {

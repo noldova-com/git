@@ -10,7 +10,7 @@ import { Component, computed, DestroyRef, effect, inject, Injector, input, type 
   type WritableSignal } from "@angular/core";
 import "@noldova/context.core";
 import type { JsonValue } from "@noldova/context.json";
-import { type IWindowPartContext, WindowException, WindowPartTokens } from "@noldova/desktop.window";
+import { type IWindowPartContext, TimeFormatService, WindowException, WindowPartTokens } from "@noldova/desktop.window";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
 import { HostPullRequest, type HostReference, type HostWorkItem, type HostWorkItemDetail, HostWorkItemList, PolicyState, SignInState, WorkItemScope, WorkItemsQuery }
   from "@noldova/git.hosting.protocol";
@@ -43,7 +43,7 @@ export class AzureDevOpsWorkItemDetailComponent {
   private readonly tasks: PendingTasks = inject(PendingTasks);
   private readonly history: AzureDevOpsLinkedCommits = new AzureDevOpsLinkedCommits(this.context);
   private chipItems: AzureDevOpsChipItems = new AzureDevOpsChipItems(this.context);
-  private readonly dates: Intl.DateTimeFormat = new Intl.DateTimeFormat(undefined, Resources.linkedCommitDateFormat);
+  private readonly dates: TimeFormatService = inject(TimeFormatService);
 
   protected readonly resources: typeof Resources = Resources;
   protected readonly small: AvatarSize = AvatarSize.Small;
@@ -111,7 +111,7 @@ export class AzureDevOpsWorkItemDetailComponent {
 
   protected ageOf(commit: GitCommit): string {
     const authored: number = Date.parse(commit.authoredAt);
-    return Resources.formatCommitAge(Date.now() - authored) ?? this.dates.format(authored);
+    return Resources.formatCommitAge(Date.now() - authored) ?? this.dates.shortDate(authored);
   }
 
   protected partsOf(commit: GitCommit): readonly SubjectPart[] {

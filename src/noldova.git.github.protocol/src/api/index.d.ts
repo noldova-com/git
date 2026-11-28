@@ -148,7 +148,8 @@ export declare class GitHubNames {
 
   /**
    * `git-github.readRepositoryAccount`: takes a `RepositoryQuery` as JSON and answers the account the module reads the repository with as
-   * `RepositoryAccount` JSON: the one the person chose for it, else the first signed-in account that can read it, else the first signed-in account.
+   * `RepositoryAccount` JSON: the signed-in account whose login is the user name in the remote's address, once a window sent its folder with
+   * `git-github.useFolder`; else the one the person chose for it; else the first signed-in account that can read it; else the first signed-in account.
    */
   public static readonly readRepositoryAccountMethod: string;
 
@@ -157,6 +158,13 @@ export declare class GitHubNames {
    * and answers the account the module now reads it with as `RepositoryAccount` JSON.
    */
   public static readonly pickAccountMethod: string;
+
+  /**
+   * `git-github.useFolder`: takes a `FolderQuery` as JSON, reads that folder's remote through the Git module in the main process, keeps the user
+   * name in its address for the remote's host and path while the app runs, never in a window or a log, and answers the account the module now
+   * reads the repository with as `RepositoryAccount` JSON; for a remote that isn't on a host and path, no account.
+   */
+  public static readonly useFolderMethod: string;
 
   /**
    * `git-github.access`: the service the GitHub runtime part publishes as an `IGitHubAccess`, through which another module's runtime part,

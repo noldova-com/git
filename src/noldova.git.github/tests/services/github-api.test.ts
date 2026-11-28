@@ -155,7 +155,7 @@ describe("GitHubApi", () => {
     assert.deepEqual([read?.readString("body").length, github.requests.map(t => t.header("If-None-Match"))], [262_144, [null, "\"a\"", null]]);
   });
 
-  it("names when GitHub's rate limit resets, for a 403 with no requests left or a 429, and calls any other 403 a refusal", async () => {
+  it("names when GitHub's rate limit resets, in its message and as data in its details, for a 403 with no requests left or a 429, and calls any other 403 a refusal", async () => {
     const github = new FakeGitHub();
     github.answer(FakeGitHub.json({ message: "API rate limit exceeded" }, 403, { "X-RateLimit-Remaining": "0", "X-RateLimit-Reset": "1800003600" }),
       FakeGitHub.json({ message: "Too many requests" }, 429), FakeGitHub.json({ message: "Forbidden" }, 403, { "X-RateLimit-Remaining": "7699" }),
@@ -165,13 +165,13 @@ describe("GitHubApi", () => {
 
     for (let index = 0; index < 4; index++)
       failures.push(await api.getAsync(`/items/${index}`, "gho_token", signal).then(() => null, (error: unknown) => error instanceof MethodFailureException
-        ? [error.failure.code, error.failure.message] : null));
+        ? [error.failure.code, error.failure.message, error.failure.details ?? null] : null));
 
     assert.deepEqual(failures, [
-      [FailureCode.Unavailable, "GitHub's rate limit for this account is used up until 2027-01-15T09:00:00.000Z."],
-      [FailureCode.Unavailable, "GitHub's rate limit for this account is used up; try again later."],
-      [FailureCode.Unavailable, "GitHub refused the request (403)."],
-      [FailureCode.Unavailable, "GitHub's rate limit for this account is used up; try again later."]
+      [FailureCode.Unavailable, "GitHub's rate limit for this account is used up until 2027-01-15T09:00:00.000Z.", { rateLimitedUntil: 1_800_003_600_000 }],
+      [FailureCode.Unavailable, "GitHub's rate limit for this account is used up; try again later.", null],
+      [FailureCode.Unavailable, "GitHub refused the request (403).", null],
+      [FailureCode.Unavailable, "GitHub's rate limit for this account is used up; try again later.", null]
     ]);
   });
 

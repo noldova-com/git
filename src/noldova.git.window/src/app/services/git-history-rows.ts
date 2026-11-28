@@ -7,6 +7,7 @@
  */
 
 import "@noldova/context.core";
+import type { TimeFormatService } from "@noldova/desktop.window";
 import { GitCommit, GitGraphCommit, GitRef, RefKind } from "@noldova/git.protocol";
 
 import { GitHistoryRow } from "../models/git-history-row.ts";
@@ -29,7 +30,7 @@ export class GitHistoryRows {
     });
   }
 
-  public static rowsOf(commits: readonly GitGraphCommit[], changedFiles: number, filter: string, now: Date): GitHistoryRow[] {
+  public static rowsOf(commits: readonly GitGraphCommit[], changedFiles: number, filter: string, now: Date, dates: TimeFormatService): GitHistoryRow[] {
     const headCommit: GitCommit | null = commits.find(t => t.refs.some(r => r.kind === RefKind.Head))?.commit ?? null;
     const head: string | null = headCommit?.id ?? null;
     const changes: GitGraphCommit | null = changedFiles > 0 && !Object.isNull(headCommit)
@@ -46,7 +47,7 @@ export class GitHistoryRows {
       const matches: boolean = query.length === 0 || [row.commit.subject, author, email, row.commit.id, ...refs.map(t => t.name)]
         .some(t => t.toLocaleLowerCase(Resources.dateLocale).includes(query));
       return new GitHistoryRow(row, GitRefChip.remotesApart(GitRefChip.chipsOf(refs)), false, row.commit.id === head, row.commit.subject, author, CommitLabels.initialsOf(author),
-        CommitLabels.avatarOf(email), CommitLabels.ageOf(row.commit.authoredAt, now), matches);
+        CommitLabels.avatarOf(email), CommitLabels.ageOf(row.commit.authoredAt, now, dates), matches);
     });
   }
 }

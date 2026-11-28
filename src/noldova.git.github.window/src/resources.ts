@@ -188,6 +188,10 @@ export class Resources {
     return `Account: ${login}`;
   }
 
+  public static formatRemoteAccount(login: string): string {
+    return `Account: ${login}, picked by the remote's address`;
+  }
+
   public static formatAccountDetail(account: HostAccount): string {
     const access: string = Resources.formatAccess(account.scopes);
     return Object.isNull(account.name) ? access : `${account.login} · ${access}`;

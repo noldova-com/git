@@ -66,9 +66,9 @@
       "git.fetch"
     ],
     "events": ["git.changed"],
-    "views": ["git.view", "git.repository", "git.workspaces", "git.commands", "git.commitView", "git.conflictDetail", "git.rebasePreview", "git.workspaceAcross"],
-    "documents": ["git.history", "git.conflicts", "git.interactiveRebase", "git.workspace"],
-    "commands": ["git.openHistory", "git.openCommandLog", "git.openConflicts", "git.openWorkspace"],
+    "views": ["git.view", "git.repository", "git.workspaces", "git.commands", "git.commitView", "git.conflictDetail", "git.rebasePreview"],
+    "documents": ["git.history", "git.conflicts", "git.interactiveRebase", "git.workspace", "git.workspaceAcross"],
+    "commands": ["git.openHistory", "git.openCommandLog", "git.openConflicts", "git.openWorkspace", "git.openAcross"],
     "statusBarItems": ["git.branch", "git.fetched", "git.lastCommand"],
     "tools": [
       "git_status",

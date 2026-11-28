@@ -7,7 +7,7 @@
  */
 
 import "@noldova/context.core";
-import { type StatusBarItem, StatusBarItemState } from "@noldova/desktop.window";
+import { type IWindowPartContext, type StatusBarItem, StatusBarItemState, type TimeFormatService } from "@noldova/desktop.window";
 import { type GitCommand, GitFolderParams, type GitStatus } from "@noldova/git.protocol";
 
 import { Resources } from "../../resources.ts";
@@ -22,12 +22,15 @@ export class GitStatusBar {
   private static commandFolder: string | null = null;
   private static command: GitCommand | null = null;
 
-  public static provide(branch: StatusBarItem, fetched: StatusBarItem, command: StatusBarItem): () => void {
-    const items: GitStatusBarItems = new GitStatusBarItems(branch, fetched, command);
+  public static provide(context: IWindowPartContext, branch: StatusBarItem, fetched: StatusBarItem, command: StatusBarItem): () => void {
+    const items: GitStatusBarItems = new GitStatusBarItems(branch, fetched, command, context.timeFormats);
     GitStatusBar.items = items;
     const timer = setInterval(() => GitStatusBar.refresh(), GitStatusBar.MINUTE);
+    const unwatch: readonly (() => void)[] = Resources.timeSettings.map(t => context.onSettingChanged(t, () => GitStatusBar.refresh()));
     return () => {
       clearInterval(timer);
+      for (const stop of unwatch)
+        stop();
       if (GitStatusBar.items === items)
         GitStatusBar.items = null;
     };
@@ -72,19 +75,22 @@ export class GitStatusBar {
     });
   }
 
-  public static fetchedStateOf(folder: string | null, status: GitStatus | null, now: Date): StatusBarItemState {
+  public static fetchedStateOf(folder: string | null, status: GitStatus | null, now: Date, dates: TimeFormatService): StatusBarItemState {
     const fetchedAt = Object.isNull(folder) ? null : status?.fetchedAt ?? null;
     if (Object.isNull(fetchedAt))
       return GitStatusBar.HIDDEN;
     const time = new Date(fetchedAt);
     return new StatusBarItemState(Resources.formatFetched(Math.floor((now.getTime() - time.getTime()) / GitStatusBar.MINUTE)), {
-      tooltip: Resources.formatFetchedTooltip(time.toLocaleString(Resources.dateLocale))
+      tooltip: Resources.formatFetchedTooltip(dates.dateTime(fetchedAt))
     });
   }
 
   private static refresh(): void {
-    GitStatusBar.items?.branch.update(GitStatusBar.stateOf(GitStatusBar.folder, GitStatusBar.status));
-    GitStatusBar.items?.fetched.update(GitStatusBar.fetchedStateOf(GitStatusBar.folder, GitStatusBar.status, new Date()));
-    GitStatusBar.items?.command.update(GitStatusBar.commandStateOf(GitStatusBar.commandFolder, GitStatusBar.command));
+    const items: GitStatusBarItems | null = GitStatusBar.items;
+    if (Object.isNull(items))
+      return;
+    items.branch.update(GitStatusBar.stateOf(GitStatusBar.folder, GitStatusBar.status));
+    items.fetched.update(GitStatusBar.fetchedStateOf(GitStatusBar.folder, GitStatusBar.status, new Date(), items.dates));
+    items.command.update(GitStatusBar.commandStateOf(GitStatusBar.commandFolder, GitStatusBar.command));
   }
 }

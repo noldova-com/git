@@ -11,7 +11,7 @@ import type { JsonObject } from "@noldova/context.json";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitHubNames } from "@noldova/git.github.protocol";
 import { BranchPullRequest, DeviceCode, HostAccount, HostAccountEntry, HostAccountList, HostAvatar, HostChanges, HostItem, HostPullRequestList, HostPullRequestRow,
-  HostReference, HostSignIn, ReferenceKind, ReferenceState } from "@noldova/git.hosting.protocol";
+  HostReference, HostSignIn, ReferenceKind, ReferenceState, RepositoryAccount } from "@noldova/git.hosting.protocol";
 import { GitRemote, GitStatus, RemoteTransport } from "@noldova/git.protocol";
 import { GitAvatars, GitBranchPullRequest, GitHostAccounts, GitHostCard, GitHostCardState, GitHostFeature, GitHostRows, GitLinkReferences, GitPullRequestList,
   GitPullRequestRow, GitPullRequests, GitPullRequestState, GitPullRequestsState, type IProvidedGitHostAccount } from "@noldova/git.window";
@@ -19,6 +19,7 @@ import { describe, expect, it } from "vitest";
 
 import { GitHubHostRowComponent } from "../../../src/app/components/github-host-row/github-host-row.component.ts";
 import { GitHubAccountsComponent } from "../../../src/app/components/github-accounts/github-accounts.component.ts";
+import { GitHubFolders } from "../../../src/app/services/github-folders.ts";
 import { GitHubPullRequests } from "../../../src/app/services/github-pull-requests.ts";
 import { GitHubWindowPart } from "../../../src/app/services/github-window-part.ts";
 import { RequestAnswers } from "../../fixtures/request-answers.fixture.ts";
@@ -62,6 +63,31 @@ describe("GitHubWindowPart", () => {
     answers.push(await part.reconnectAsync(), part.isActive);
 
     expect(answers).toEqual([false, true, true, false, false]);
+  });
+
+  it("forgets which folders are in use when it reconnects or stops, since the main process that held their user names may be new", async () => {
+    const part: GitHubWindowPart = new GitHubWindowPart();
+    const context: FakeWindowPartContext = new FakeWindowPartContext();
+    const requests = new RequestAnswers(context);
+    const gitHub: GitRemote = new GitRemote("origin", "github.com", "example-owner/example-repository", RemoteTransport.Https);
+    requests.answer(GitHubNames.readAccountsMethod, listOf(HostSignIn.signedOut()), listOf(HostSignIn.signedOut()));
+    requests.always(GitHubNames.useFolderMethod, new RepositoryAccount(null).toJson());
+    const uses = (): number => requests.methods.filter(t => t === GitHubNames.useFolderMethod).length;
+
+    await part.activateAsync(context);
+    await GitHubFolders.useAsync(context, "/work/example-repository", gitHub);
+    await GitHubFolders.useAsync(context, "/work/example-repository", gitHub);
+    const counts: number[] = [uses()];
+    await part.reconnectAsync();
+    await GitHubFolders.useAsync(context, "/work/example-repository", gitHub);
+    counts.push(uses());
+    await part.deactivateAsync();
+    await part.activateAsync(context);
+    await GitHubFolders.useAsync(context, "/work/example-repository", gitHub);
+    counts.push(uses());
+    await part.deactivateAsync();
+
+    expect(counts).toEqual([1, 2, 3]);
   });
 
   it("gives the repository panel its GitHub pull requests while it is active, and withdraws them once", async () => {
@@ -194,6 +220,7 @@ describe("GitHubWindowPart", () => {
     const url: string = "https://github.com/example-owner/example-repository/pull/12";
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const requests: RequestAnswers = new RequestAnswers(context);
+    requests.always(GitHubNames.useFolderMethod, new RepositoryAccount(null).toJson());
     requests.answer(GitHubNames.readAccountsMethod, listOf(HostSignIn.signedOut()));
     requests.answer(GitHubNames.readPullRequestsMethod, HostPullRequestList.signedOut().toJson(), new HostPullRequestList([new HostPullRequestRow(
       new HostReference("git-github", "example-owner", "example-repository", 12), "Fix the sign-in", url, false, 0, 0, 0, 0, "fix-sign-in", "main")], false).toJson(),
@@ -229,6 +256,7 @@ describe("GitHubWindowPart", () => {
     const commit: string = "6dcb09b5b57875f334f61aebed695e2e4193db5e";
     const context: FakeWindowPartContext = new FakeWindowPartContext();
     const requests: RequestAnswers = new RequestAnswers(context);
+    requests.always(GitHubNames.useFolderMethod, new RepositoryAccount(null).toJson());
     requests.answer(GitHubNames.readAccountsMethod, listOf(signedIn));
     requests.answer(GitHubNames.readCommitPullRequestMethod, new BranchPullRequest(new HostItem(new HostReference("git-github", "example-owner",
       "example-repository", 12), ReferenceKind.PullRequest, ReferenceState.Merged, "Fix the sign-in", url, null, 1_800_000_000_000, 1_800_000_100_000, 0,
