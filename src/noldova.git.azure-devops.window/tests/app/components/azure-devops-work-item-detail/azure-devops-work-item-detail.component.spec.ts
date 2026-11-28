@@ -268,7 +268,7 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
     const page = new Page().answerMine();
     page.requests.answer(GitNames.statusMethod, azureStatus.toJson());
     page.requests.answer(GitNames.graphMethod, new GitGraph([new GitGraphCommit(new GitCommit("d".repeat(40), [], "Mona Lisa", "2025-01-05T12:00:00Z",
-      "Guard the due dates"), "kim@fabrikam.test", [])], false).toJson());
+      "Guard the due dates of #7402"), "kim@fabrikam.test", [])], false).toJson());
     page.requests.answer(GitNames.messageReferencesMethod, noMessages);
     await page.openAsync();
     await Wait.until(() => expect(page.texts(".history .commit .byline")).toEqual(["ddddddd · Mona Lisa · Jan 5"]));
