@@ -12,11 +12,14 @@ import { JsonReader } from "@noldova/context.json";
 import { FailureCode, SecretFailureReason } from "@noldova/desktop.protocol";
 import { MethodFailureException } from "@noldova/desktop.runtime";
 import { FakeAppWindows, FakeModuleLog, FakeModuleSecrets } from "@noldova/desktop.runtime/testing";
-import { AccountPick, HostAccount, type HostSignIn, SignInFailure, SignInState } from "@noldova/git.hosting.protocol";
+import { AccountPick, HostAccount, HostReference, type HostSignIn, RepositoryQuery, SignInFailure, SignInState } from "@noldova/git.hosting.protocol";
 import { afterEach, describe, it, vi } from "vitest";
 
+import { PullRequestVote } from "../../src/models/pull-request-vote.ts";
 import { AzureAccounts } from "../../src/services/azure-accounts.ts";
 import { AzureApi } from "../../src/services/azure-api.ts";
+import { AzureReads } from "../../src/services/azure-reads.ts";
+import { AzureWrites } from "../../src/services/azure-writes.ts";
 import { EntraFlow } from "../../src/services/entra-flow.ts";
 import { FakeAzure, KeptSecrets, linesOf } from "../fixtures/fake-azure.fixture.ts";
 
@@ -208,6 +211,46 @@ describe("AzureAccounts", () => {
     assert.deepEqual(linesOf(refusing.log)[0], "The Azure DevOps accounts kept on this computer couldn't be read: The secret call failed.");
     assert.deepEqual([before, waiting.entries(), waiting.appWindows.activeCallsOf("onChanged").length], [[[[1, null, null]], 2],
       [[1, mona.login, "dev.azure.com/fabrikam"], [2, hubot.login, "dev.azure.com/contoso"]], 0]);
+  });
+
+  it("keeps an account added while a restore runs, signed in, in the list and the index once its sign-in answers", async () => {
+    const rig = new Rig();
+    const release = rig.azure.hold();
+
+    const adding = rig.accounts.addAsync(t => t.signInWithTokenAsync("pat-hubot", "contoso", signal));
+    await rig.azure.askedAsync(1);
+    await rig.accounts.restoreAsync();
+    release(profileOf(hubot.login));
+    const entry = await adding;
+    await rig.savedAsync();
+
+    assert.deepEqual([entry.id, entry.signIn.state, rig.entries(), rig.index()], [2, SignInState.SignedIn, [[1, null, null], [2, hubot.login, "dev.azure.com/contoso"]],
+      { accounts: [{ id: 2, organization: "contoso", login: hubot.login }], picks: [] }]);
+  });
+
+  it("writes through a reference as the account its repository reads with, else as the organization's last pick", async () => {
+    const rig = new Rig();
+    rig.keep([mona, octo]);
+    await rig.restoreAsync([mona, octo]);
+    rig.accounts.pick(new AccountPick("dev.azure.com", pathOf("fabrikam", "x"), 2));
+    rig.accounts.pick(new AccountPick("dev.azure.com", pathOf("fabrikam", "y"), 1));
+    const api = new AzureApi(rig.azure.fetch);
+    const reads = new AzureReads(api, rig.accounts, rig.log);
+    const writes = new AzureWrites(api, rig.accounts, reads);
+    const person = "d6245f20-2af8-44f4-9451-8107cb2767db";
+    const voted = (): Response => FakeAzure.json({ id: person, displayName: "Octo", uniqueName: octo.login, vote: 10, isRequired: false });
+    const pull = { pullRequestId: 12, status: "active", isDraft: false, title: "Fold tag case", creationDate: "2027-01-15T09:30:00Z", sourceRefName: "refs/heads/fold",
+      targetRefName: "refs/heads/main", lastMergeSourceCommit: { commitId: "a".repeat(40) }, repository: { id: "3411ebc1-d5aa-464f-9615-0b527bc66719", name: "x",
+        project: { id: "7f3c2a10-0000-0000-0000-000000000003", name: "shop" } } };
+    rig.azure.answer(FakeAzure.json({ value: [pull] }), FakeAzure.json({ authenticatedUser: { id: person } }), voted(),
+      FakeAzure.json({ authenticatedUser: { id: person } }), voted());
+
+    const [head] = (await reads.readPullRequestHeadsAsync(new RepositoryQuery("dev.azure.com", pathOf("fabrikam", "x")), signal)).rows;
+    assert.ok(head !== undefined);
+    await writes.voteAsync(new PullRequestVote(head.reference, 10), signal);
+    await writes.voteAsync(new PullRequestVote(new HostReference("git-azure-devops", "fabrikam", "5b0e1c2d-0000-0000-0000-000000000004", 7), 10), signal);
+
+    assert.deepEqual(rig.azure.requests.map(t => t.header("Authorization")), [...Array(3).fill(basic(`pat-${octo.login}`)), ...Array(2).fill(basic(`pat-${mona.login}`))]);
   });
 
   it("adds an account signed in with a token under the next id, keeping it in its own secret and in the index", async () => {

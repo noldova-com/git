@@ -423,7 +423,7 @@ The Octicons and their license are listed in the window part's `THIRD-PARTY-NOTI
 
 ## Signing in to and reading Azure DevOps
 
-The Azure DevOps module signs in to one organization from its account's dialog on Settings → Accounts and hosts: first with a personal access token the person makes in Azure DevOps and pastes, and below that, as a second option, with Microsoft, noting that the organization's admin may need to approve the app; the two swap once the app's publisher is verified.
+The Azure DevOps module keeps one or more accounts, each signed in to one organization from its account's dialog on Settings → Accounts and hosts: first with a personal access token the person makes in Azure DevOps and pastes, and below that, as a second option, with Microsoft, noting that the organization's admin may need to approve the app; the two swap once the app's publisher is verified.
 The page fills the organization from the open repository's Azure DevOps remote, read through `git.status`, and the person types it when there is none; its "Make a token" link opens the organization's token page, on `{organization}.visualstudio.com` for a remote of that old form and on `dev.azure.com/{organization}` otherwise.
 Under the token field it lists the scopes a token needs for what the module reads and writes: Code (Read & write) for pull requests, their votes and comments, Work Items (Read & write), Graph (Read) for people's pictures and Build (Read) for a pull request's checks.
 A token is often scoped to one organization, which the profile on `app.vssps.visualstudio.com` refuses, so either sign-in asks the organization itself who signed in.
@@ -443,13 +443,27 @@ A sign-in kept before the kind is a token sign-in.
 | `git-azure-devops.startSignIn` | Takes `{ organization }`, opens the listener and answers the waiting state with the address to open; the sign-in then ends signed in, or signed out with `Denied` when the person refuses consent, `Refused` when Microsoft or the organization refuses it, `Expired` after five minutes, `Unreachable` when either can't be reached and `Unkept` when the secrets can't keep it. While a sign-in waits, runs or is signed in, it answers that one. |
 | `git-azure-devops.cancelSignIn` | Stops a waiting sign-in with Microsoft, closing the listener, and answers the signed-out state. |
 | `git-azure-devops.signInWithToken` | Takes `{ token, organization }`, reads who the token is from the organization's `dev.azure.com/{organization}/_apis/connectionData`, keeps the token with the organization and the account and answers the signed-in state, or the signed-out state with `Refused` for a token the organization refuses or answers as anonymous, `Unreachable` when it can't be reached or its answer can't be read, and `Unkept` when the secrets can't keep it; while a sign-in runs or one is signed in, it answers that one. |
-| `git-azure-devops.signOut` | Stops a waiting sign-in, forgets the kept sign-in and answers the signed-out state. |
-| `git-azure-devops.signInChanged` | The event that carries each new state. |
+| `git-azure-devops.signOut` | Stops a waiting sign-in, forgets the kept sign-in and answers the signed-out state; an added account then leaves the list. |
+| `git-azure-devops.signInChanged` | The event that carries each new state of the first account. |
+| `git-azure-devops.readAccounts` | Answers every account as a `HostAccountList`, the first account first, each with its place, `dev.azure.com/{organization}`, once it has one. |
+| `git-azure-devops.addAccount` | Takes `{ token, organization }` or `{ organization }`, signs a new account in under the next id with the token or with Microsoft, and answers it as a `HostAccountEntry`; an account that ends signed out, or as an account already kept, leaves the list. |
+| `git-azure-devops.readRepositoryAccount` | Takes a `RepositoryQuery` and answers the account the module reads that repository with, as a `RepositoryAccount`, none while no account is signed in to its organization. |
+| `git-azure-devops.pickAccount` | Takes an `AccountPick`, remembers it, and answers the account the repository is now read with. |
+| `git-azure-devops.accountsChanged` | The event that carries every account each time one is added, changes state or leaves. |
+
+The sign-in methods take the account's id as `account` beside their payload, the first account when there is none, and refuse an account the module doesn't keep as `NotFound`.
 
 Only a person signs in: `git-azure-devops.startSignIn` and `git-azure-devops.signInWithToken` refuse as `Unauthorized` any caller but the app's main process acting for a window, and refuse a payload without a token or an organization's name as `InvalidParams` in a fixed sentence that never repeats what it was given; no token, code or verifier is ever logged.
 The sign-in is kept with its organization and account in Noldova Desktop's module secrets as `git-azure-devops.signIn`, or `git-azure-devops.microsoftSignIn` for a sign-in with Microsoft, encrypted for this computer only, and restored, the token's first, and checked again on activation as GitHub's is: a sign-in Azure DevOps refuses then signs out as `Revoked`; keeping either kind removes the other's, and sign-out tries to remove both, signing out as `Unforgotten` when either removal fails.
 A sign-out during a sign-in forgets a token the sign-in saved after it.
+An added account is kept the same way as `git-azure-devops.account<id>`, or `git-azure-devops.microsoftAccount<id>` with Microsoft.
+The index `git-azure-devops.accounts` holds each added account signed in, or whose kept sign-in couldn't be read, by its id, organization and login, and the picks, each a repository's host and path with its account's id, the newest 200; the paths are local data, kept for this computer only and never logged.
+The index is written only once it holds something, and a failure to write it is logged and the accounts and picks last until the app closes; an index that can't be read restores only the first account, one whose account's own sign-in is gone drops that account, and a restore leaves alone an account added while it runs.
+Two accounts with the same login in one organization are one account: the later sign-in ends signed out as `AlreadyKept`.
 The account's login is the authenticated user's `Account` property, an email address, and its name the provider's display name; Azure DevOps' avatars need the token, so the account has none.
+
+A read through a `RepositoryQuery` goes as the account picked for the repository while it is signed in to the repository's organization, else as the first account signed in there.
+A read or write through a `HostReference`, such as a vote, reply, thread state, completion or added reviewer, goes as the account its repository reads with, once the module has listed that repository's pull requests; for a repository it hasn't, it goes as the account last picked in the organization while that one is signed in there, else as the first account signed in there.
 
 Every request goes to `dev.azure.com` with a token as basic authorization, or Microsoft's access token as a bearer token, follows no redirect and times out after 30 seconds; a 401, a 203 or a redirect, which is how Azure DevOps answers a token it doesn't take, fails as `Unauthorized`; when it answers the held token, the sign-in asks `connectionData` again and signs out as `Revoked` only when that is refused too, so a token whose scope lacks one read or write stays signed in, a 404 answers nothing, a 429 fails as rate limited and any other refusal or an unreadable answer as `Unavailable`.
 
