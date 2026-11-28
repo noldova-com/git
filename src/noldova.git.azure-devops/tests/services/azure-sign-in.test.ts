@@ -17,6 +17,7 @@ import { afterEach, describe, it, vi } from "vitest";
 
 import type { IAzureTokens } from "../../src/interfaces/i-azure-tokens.ts";
 import { AzureCredential } from "../../src/models/azure-credential.ts";
+import { SignedInAccount } from "../../src/models/signed-in-account.ts";
 import { AzureApi } from "../../src/services/azure-api.ts";
 import { AzureReads } from "../../src/services/azure-reads.ts";
 import { AzureSignIn } from "../../src/services/azure-sign-in.ts";
@@ -37,6 +38,10 @@ const basic = (token: string): string => `Basic ${Buffer.from(`:${token}`).toStr
 const tokensOf = (signIn: AzureSignIn): IAzureTokens => ({
   get isSignedIn(): boolean {
     return signIn.token !== null;
+  },
+  get signedIn(): readonly SignedInAccount[] {
+    const held = signIn.holding;
+    return held === null ? [] : [new SignedInAccount(1, held.login, held.organization, held.token)];
   },
   tokenFor: () => signIn.token,
   holds: t => signIn.token === t,

@@ -13,6 +13,7 @@ import type { FakeModuleLog, FakeModuleSecrets } from "@noldova/desktop.runtime/
 
 import type { IAzureTokens } from "../../src/interfaces/i-azure-tokens.ts";
 import { AzureCredential } from "../../src/models/azure-credential.ts";
+import { SignedInAccount } from "../../src/models/signed-in-account.ts";
 
 export class FakeRequest {
   public readonly url: string;
@@ -211,6 +212,12 @@ export class FakeToken extends Fake<FakeTokenMembers> implements IAzureTokens {
 
   public get isSignedIn(): boolean {
     return this.token !== null;
+  }
+
+  public get signedIn(): readonly SignedInAccount[] {
+    const token: AzureCredential | null = this.token;
+    const organization: string | null = this.organization;
+    return token === null || organization === null ? [] : [new SignedInAccount(1, "monalisa", organization, token)];
   }
 
   public tokenFor(organization: string, host: string | null = null, path: string | null = null): AzureCredential | null {

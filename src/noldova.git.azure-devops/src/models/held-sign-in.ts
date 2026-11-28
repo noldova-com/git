@@ -11,9 +11,11 @@ import type { AzureCredential } from "./azure-credential.ts";
 export class HeldSignIn {
   public readonly token: AzureCredential;
   public readonly organization: string;
+  public readonly login: string;
 
-  public constructor(token: AzureCredential, organization: string) {
+  public constructor(token: AzureCredential, organization: string, login: string) {
     this.token = token;
     this.organization = organization;
+    this.login = login;
   }
 }

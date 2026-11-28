@@ -52,6 +52,21 @@ describe("HostWorkItemDetail", () => {
     assert.deepEqual([false, true].map(t => HostWorkItemDetail.fromJson(JSON.parse(JSON.stringify(linkedTo(t).toJson()))).isWaiting), [false, true]);
   });
 
+  it("returns the account it was listed for, when it names one, as JSON that reads back the same, and leaves the field out for none", () => {
+    const listedFor: HostWorkItemDetail = new HostWorkItemDetail(item, null, null, null, null, null, [], [], 0, [], null, "monalisa");
+    const json = listedFor.toJson();
+
+    assert.deepEqual([json["account"], HostWorkItemDetail.fromJson(JSON.parse(JSON.stringify(json))), HostWorkItemDetail.fromJson({ ...json, account: null }).account,
+      Object.keys(detail.toJson()).includes("account"), detail.account], ["monalisa", listedFor, null, false, null]);
+  });
+
+  it("refuses a blank account, naming the parameter, or its field by its path", () => {
+    const json = new HostWorkItemDetail(item, null, null, null, null, null, [], [], 0, [], null, "monalisa").toJson();
+
+    assert.throws(() => new HostWorkItemDetail(item, null, null, null, null, null, [], [], 0, [], null, " "), { name: "HostingArgumentException", parameterName: "account" });
+    assert.throws(() => HostWorkItemDetail.fromJson({ ...json, account: "" }, "$.items.0"), { name: "HostingFieldException", field: "$.items.0.account" });
+  });
+
   it("keeps its own copies of the children, pull requests and branches", () => {
     const children: number[] = [7530];
     const pullRequests: HostReference[] = [pullRequest];

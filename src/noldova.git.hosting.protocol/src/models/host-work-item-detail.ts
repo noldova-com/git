@@ -16,7 +16,7 @@ import { HostWorkItem } from "./host-work-item.ts";
 export class HostWorkItemDetail {
   private static readonly FIELDS: readonly string[] = [Resources.itemField, Resources.pointsField, Resources.remainingField, Resources.completedField,
     Resources.orderField, Resources.acceptanceField, Resources.childrenField, Resources.pullRequestsField, Resources.commitsField, Resources.branchesField,
-    Resources.isWaitingField];
+    Resources.isWaitingField, Resources.accountField];
 
   public readonly item: HostWorkItem;
   public readonly points: number | null;
@@ -29,10 +29,11 @@ export class HostWorkItemDetail {
   public readonly commits: number;
   public readonly branches: readonly string[];
   public readonly isWaiting: boolean | null;
+  public readonly account: string | null;
 
   public constructor(item: HostWorkItem, points: number | null, remaining: number | null, completed: number | null, order: number | null,
     acceptance: string | null, children: readonly number[], pullRequests: readonly HostReference[], commits: number, branches: readonly string[],
-    isWaiting: boolean | null = null, reader?: JsonReader) {
+    isWaiting: boolean | null = null, account: string | null = null, reader?: JsonReader) {
     HostWorkItemDetail.requireAmount(points, Resources.pointsField, reader);
     HostWorkItemDetail.requireAmount(remaining, Resources.remainingField, reader);
     HostWorkItemDetail.requireAmount(completed, Resources.completedField, reader);
@@ -47,6 +48,8 @@ export class HostWorkItemDetail {
     FieldCheck.requireCount(commits, Resources.commitsField, reader);
     for (const branch of branches)
       FieldCheck.requireText(branch, Resources.branchesField, reader);
+    if (account !== null)
+      FieldCheck.requireText(account, Resources.accountField, reader);
 
     this.item = item;
     this.points = points;
@@ -59,6 +62,7 @@ export class HostWorkItemDetail {
     this.commits = commits;
     this.branches = [...branches];
     this.isWaiting = isWaiting;
+    this.account = account;
   }
 
   public static fromJson(value: unknown, path?: string): HostWorkItemDetail {
@@ -77,6 +81,7 @@ export class HostWorkItemDetail {
       reader.readInteger(Resources.commitsField),
       reader.readStringArray(Resources.branchesField),
       reader.readValue(Resources.isWaitingField) === null ? null : reader.readBoolean(Resources.isWaitingField),
+      reader.hasField(Resources.accountField) ? reader.readNullableString(Resources.accountField) : null,
       reader);
   }
 
@@ -92,7 +97,8 @@ export class HostWorkItemDetail {
       [Resources.pullRequestsField]: this.pullRequests.map(t => t.toJson()),
       [Resources.commitsField]: this.commits,
       [Resources.branchesField]: [...this.branches],
-      [Resources.isWaitingField]: this.isWaiting
+      [Resources.isWaitingField]: this.isWaiting,
+      ...(this.account === null ? {} : { [Resources.accountField]: this.account })
     };
   }
 

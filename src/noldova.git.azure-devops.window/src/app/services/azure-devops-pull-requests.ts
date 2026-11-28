@@ -225,7 +225,7 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
   private reviewRowOf(request: HostReviewRequest): GitPullRequestRow {
     this.remember(request.url, request.reference);
     return new GitPullRequestRow(PullRequestDocument.instanceOf(request.reference), Resources.formatPullRequestReference(request.reference.number), request.title,
-      request.url, request.isDraft, 0, 0, 0, 0, "");
+      request.url, request.isDraft, 0, 0, 0, 0, "", null, request.account);
   }
 
   private async readAsync(query: RepositoryQuery): Promise<void> {

@@ -39,6 +39,9 @@ LICENSE file in the root directory of this source tree.
           <span class="toggle" aria-hidden="true"></span>
         }
         <span class="title-text">{{ row.detail.item.title }}</span>
+        @if (row.detail.account !== null) {
+          <span class="muted small account">{{ row.detail.account }}</span>
+        }
       </span>
       <span role="gridcell" class="state"><span class="dot" [style.background-color]="resources.categoryColors[row.detail.item.category]"></span>{{ row.detail.item.state }}</span>
       <span role="gridcell" class="muted">{{ row.detail.item.iteration === null ? resources.noValue : resources.formatIterationName(row.detail.item.iteration) }}</span>

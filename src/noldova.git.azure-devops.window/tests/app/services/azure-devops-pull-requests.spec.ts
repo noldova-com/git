@@ -386,6 +386,18 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
     expect(host.pages).toEqual([{ url: request.url, reference: request.reference }]);
   });
 
+  it("keeps the account each review request was listed for on its row", async () => {
+    const host = new Host();
+    host.requests.answer(AzureDevOpsNames.readReviewRequestsMethod, new HostReviewRequestList([new HostReviewRequest(request.reference, request.title, request.url,
+      request.isDraft, request.createdAt, "octocat")], false).toJson());
+    const reviews = host.pullRequests.reviewsFor(remote);
+
+    host.pullRequests.refreshReviews(remote);
+    await Host.untilAsync(reviews, GitPullRequestsState.Ready);
+
+    expect([reviews()?.rows.map(t => t.account), asked.account]).toEqual([["octocat"], null]);
+  });
+
   it("keeps the review requests it showed while it reads again and after a failed read, logging it, and says when nobody is signed in", async () => {
     const host = new Host();
     host.requests.answer(AzureDevOpsNames.readReviewRequestsMethod, new HostReviewRequestList([request], false).toJson());

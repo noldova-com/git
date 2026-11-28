@@ -2412,6 +2412,11 @@ export declare class HostWorkItemDetail {
   public readonly isWaiting: boolean | null;
 
   /**
+   * The login of the account the work item was listed for, when the module keeps several accounts and more than one is signed in; null otherwise.
+   */
+  public readonly account: string | null;
+
+  /**
    * Makes a work item's detail from its parts.
    *
    * @param item The work item.
@@ -2425,6 +2430,7 @@ export declare class HostWorkItemDetail {
    * @param commits How many commits are linked, a whole number, zero or more.
    * @param branches The linked branches' names, texts that aren't blank.
    * @param isWaiting Whether a linked pull request waits on review, or null, the default, when that isn't known.
+   * @param account The login of the account the work item was listed for, not blank, or null, the default, when only one account is signed in.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
    * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `children`.
    * @throws {HostingFieldException} With a reader, when a part is out of its range, naming the field by its path, such as `$.children`.
@@ -2438,7 +2444,7 @@ export declare class HostWorkItemDetail {
    */
   public constructor(item: HostWorkItem, points: number | null, remaining: number | null, completed: number | null, order: number | null,
     acceptance: string | null, children: readonly number[], pullRequests: readonly HostReference[], commits: number, branches: readonly string[],
-    isWaiting?: boolean | null, reader?: JsonReader);
+    isWaiting?: boolean | null, account?: string | null, reader?: JsonReader);
 
   /**
    * Reads a work item's detail from its JSON.

@@ -11,7 +11,9 @@ import "@noldova/context.core";
 import { WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { HostReference, HostWorkItem, HostWorkItemDetail, HostWorkItemType, WorkItemCategory } from "@noldova/git.hosting.protocol";
-import { describe, expect, it } from "vitest";
+import { DefaultTheme } from "@noldova/ui.components.angular";
+import { AppearanceFixture } from "@noldova/ui.components.angular/testing";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { AzureDevOpsWorkItemTableComponent } from "../../../../src/app/components/azure-devops-work-item-table/azure-devops-work-item-table.component.ts";
 import { WorkItemRow } from "../../../../src/app/models/work-item-row.ts";
@@ -56,6 +58,10 @@ function cellsOf(row: HTMLElement): string[] {
 }
 
 describe("AzureDevOpsWorkItemTableComponent", () => {
+  afterEach(() => {
+    AppearanceFixture.reset();
+  });
+
   it("shows each row's id, title, state, iteration's last name and links: its first pull request, else its commits, else its children, else none", () => {
     const fixture = open(rows);
 
@@ -65,6 +71,29 @@ describe("AzureDevOpsWorkItemTableComponent", () => {
       ["7522", "Send note digest emails", "Active", "Sprint 17", "2 commits"],
       ["7530", "Export preferences", "Active", "—", "none"]
     ]);
+  });
+
+  it.each(AppearanceFixture.modes)("names a row's account after its title, the title shortening first so the whole account stays in the cell, and names none on a row without one, in %s mode", mode => {
+    AppearanceFixture.apply(DefaultTheme.theme, mode);
+    const item: HostWorkItem = linked.item;
+    const listedFor: HostWorkItemDetail = new HostWorkItemDetail(new HostWorkItem(item.host, item.organization, item.project, 7540, story,
+      "Export every note in the notebook as Markdown files with their attachments", item.state, item.category, item.url, null, item.iteration, null, null),
+    null, null, null, null, null, [], [], 0, [], null, "octocat");
+    const fixture = open([new WorkItemRow(listedFor, 0), new WorkItemRow(bare, 0)]);
+    const host: unknown = fixture.nativeElement;
+    if (host instanceof HTMLElement)
+      host.style.inlineSize = "40rem";
+    fixture.detectChanges();
+    const [named, plain] = rowsOf(fixture);
+    const title = named?.querySelector<HTMLElement>(".title-text");
+    const account = named?.querySelector<HTMLElement>(".account");
+    const cell = named?.querySelector<HTMLElement>(".cell-title")?.getBoundingClientRect();
+    const titleBox = title?.getBoundingClientRect();
+    const accountBox = account?.getBoundingClientRect();
+
+    expect([account?.textContent?.trim(), (title?.scrollWidth ?? 0) > (title?.clientWidth ?? 0), account?.scrollWidth === account?.clientWidth,
+      Math.round((accountBox?.left ?? 0) - (titleBox?.right ?? 0)), (accountBox?.right ?? Infinity) <= (cell?.right ?? 0) + 0.5,
+      plain?.querySelector(".account") ?? null]).toEqual(["octocat", true, true, Math.round(AppearanceFixture.toPixels(0.25)), true, null]);
   });
 
   it("shows a pull request as a chip and the other links as muted text", () => {

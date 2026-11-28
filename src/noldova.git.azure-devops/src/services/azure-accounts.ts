@@ -14,8 +14,10 @@ import { AccountPick, HostAccountEntry, HostAccountList, HostingProtocolExceptio
 import type { IAzureTokens } from "../interfaces/i-azure-tokens.ts";
 import type { AzureCredential } from "../models/azure-credential.ts";
 import { AzureRepository } from "../models/azure-repository.ts";
+import type { HeldSignIn } from "../models/held-sign-in.ts";
 import { KeptAccount } from "../models/kept-account.ts";
 import { KeptAccounts } from "../models/kept-accounts.ts";
+import { SignedInAccount } from "../models/signed-in-account.ts";
 import { Resources } from "../resources.ts";
 import { AzureApi } from "./azure-api.ts";
 import type { EntraFlow } from "./entra-flow.ts";
@@ -55,6 +57,13 @@ export class AzureAccounts implements IAzureTokens {
 
   public get isSignedIn(): boolean {
     return [...this.entries.values()].some(t => t.token !== null);
+  }
+
+  public get signedIn(): readonly SignedInAccount[] {
+    return [...this.entries].flatMap(([id, signIn]) => {
+      const held: HeldSignIn | null = signIn.holding;
+      return held === null ? [] : [new SignedInAccount(id, held.login, held.organization, held.token)];
+    });
   }
 
   public async restoreAsync(): Promise<void> {

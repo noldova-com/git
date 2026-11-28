@@ -160,6 +160,7 @@ export declare class AzureDevOpsNames {
   /**
    * The method that takes a `WorkItemsQuery` as JSON and answers the work items in its scope, the signed-in person's open ones or the ones with its ids,
    * each with its links, as a JSON array of `HostWorkItemDetail`, parents before their children; empty signed out or for another host or organization.
+   * The signed-in person's ones merge every account signed in to the organization, each naming its account while more than one is signed in.
    */
   public static readonly readWorkItemsMethod: string;
 
@@ -232,7 +233,8 @@ export declare class AzureDevOpsNames {
   /**
    * `git-azure-devops.readReviewRequests`: takes a `RepositoryQuery` as JSON for a remote on Azure DevOps and answers the repository's active pull
    * requests that list the signed-in person as a reviewer who hasn't voted, as `HostReviewRequestList` JSON, the newest first; a review asked of a
-   * group the person is in isn't among them. Signed out, the signed-out list, and for another organization or host, none.
+   * group the person is in isn't among them. The rows merge every account signed in to the remote's organization, each naming its account while
+   * more than one is signed in. Signed out, the signed-out list, and for another organization or host, none.
    */
   public static readonly readReviewRequestsMethod: string;
 

@@ -295,6 +295,20 @@ describe("AzureAccounts", () => {
       [2, hubot.login, "dev.azure.com/contoso"]], true, basic(`pat-${hubot.login}`)]);
   });
 
+  it("lists each signed-in account with its login, organization and token, the first first, and leaves out one that signs out while the other stays", async () => {
+    const rig = new Rig();
+    rig.keep([mona, octo, hubot]);
+    await rig.restoreAsync([mona, octo, hubot]);
+    const listed = (): readonly (readonly (string | number)[])[] => rig.accounts.signedIn.map(t => [t.id, t.login, t.organization, t.token.authorization]);
+
+    const all = listed();
+    await rig.accounts.signOutAsync(1);
+
+    assert.deepEqual([all, listed()], [[[1, mona.login, mona.organization, basic(`pat-${mona.login}`)], [2, octo.login, octo.organization, basic(`pat-${octo.login}`)],
+      [3, hubot.login, hubot.organization, basic(`pat-${hubot.login}`)]], [[2, octo.login, octo.organization, basic(`pat-${octo.login}`)],
+      [3, hubot.login, hubot.organization, basic(`pat-${hubot.login}`)]]]);
+  });
+
   it("keeps an added account its organization revoked in the list with its failure, and drops it when the person signs it out", async () => {
     const rig = new Rig();
     rig.keep([mona, hubot]);
