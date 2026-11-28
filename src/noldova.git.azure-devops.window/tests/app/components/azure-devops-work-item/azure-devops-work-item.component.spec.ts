@@ -9,7 +9,7 @@
 import { signal } from "@angular/core";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
-import { HostAccount, HostSignIn } from "@noldova/git.hosting.protocol";
+import { HostAccount, HostAccountEntry, HostAccountList, HostSignIn } from "@noldova/git.hosting.protocol";
 import { GitFolderParams, GitGraph, GitNames, GitStatus } from "@noldova/git.protocol";
 import { GitFolder } from "@noldova/git.window";
 import { describe, expect, it, onTestFinished } from "vitest";
@@ -344,4 +344,24 @@ describe("AzureDevOpsWorkItemComponent", () => {
         ["key You signed out of Azure DevOps, so your work items aren't shown. Sign in to read them again. Sign in", [], [], ["Select a work item to see it here."]],
         [["desktop.openSettings", { page: "git.accounts" }]], 6, 2]);
     });
+
+  it("reads the work items again when an added account signs in or out, but not when only the first account's entry changes", async () => {
+    const page = new Page().answerMine();
+    await page.openAsync();
+    await Wait.until(() => page.find(".detail"));
+    const octocat = HostSignIn.signedIn(new HostAccount("octocat", null, null, []));
+    const reads = (): number => page.requests.payloads.filter(t => JSON.stringify(t) === JSON.stringify(mineQuery().toJson())).length;
+    const counts: number[] = [];
+
+    for (const list of [new HostAccountList([new HostAccountEntry(1, HostSignIn.signedOut())]),
+      new HostAccountList([new HostAccountEntry(1, octocat), new HostAccountEntry(2, octocat)]),
+      new HostAccountList([new HostAccountEntry(1, octocat), new HostAccountEntry(2, HostSignIn.signedOut())])]) {
+      page.answerMine();
+      page.context.raiseEvent(AzureDevOpsNames.accountsChangedEvent, list.toJson());
+      await page.settleAsync();
+      counts.push(reads());
+    }
+
+    expect([counts, page.ids.length]).toEqual([[1, 2, 3], 6]);
+  });
 });

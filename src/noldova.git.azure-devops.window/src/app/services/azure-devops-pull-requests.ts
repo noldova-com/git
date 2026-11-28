@@ -23,6 +23,7 @@ import { PullRequestDocument } from "../models/pull-request-document.ts";
 import { ReadQueue } from "../models/read-queue.ts";
 import { WorkItemsPlace } from "../models/work-items-place.ts";
 import { Resources } from "../../resources.ts";
+import { AccountEvents } from "./account-events.ts";
 import { PullRequestPages } from "./pull-request-pages.ts";
 import { SignInEvents } from "./sign-in-events.ts";
 
@@ -53,6 +54,7 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
   private readonly context: IWindowPartContext;
   private readonly remember: (url: string, reference: HostReference) => void;
   private readonly unfollow: () => void;
+  private readonly unfollowAccounts: () => void;
 
   public readonly hostName: string = Resources.hostName;
   public readonly signInPage: string = Resources.accountsPage;
@@ -61,10 +63,12 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
     this.context = context;
     this.remember = remember;
     this.unfollow = SignInEvents.follow(context, signIn => this.readAgain(signIn.state));
+    this.unfollowAccounts = AccountEvents.followOthers(context, () => this.readAll());
   }
 
   public stop(): void {
     this.unfollow();
+    this.unfollowAccounts();
   }
 
   public claims(remote: GitRemote): boolean {
@@ -166,8 +170,11 @@ export class AzureDevOpsPullRequests implements IGitPullRequests {
   }
 
   private readAgain(state: SignInState): void {
-    if (state === SignInState.Waiting)
-      return;
+    if (state !== SignInState.Waiting)
+      this.readAll();
+  }
+
+  private readAll(): void {
     for (const query of this.queries.values())
       void this.readAsync(query);
     for (const query of this.reviewQueries.values())

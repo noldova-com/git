@@ -12,7 +12,7 @@ import { FailureCode } from "@noldova/desktop.protocol";
 import { RuntimeRequestException } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { AzureDevOpsNames } from "@noldova/git.azure-devops.protocol";
-import { BranchPullRequest, BranchQuery, CheckState, CommitQuery, HostAccount, HostChanges, HostCheck, HostCommitComments, HostItem,
+import { BranchPullRequest, BranchQuery, CheckState, CommitQuery, HostAccount, HostAccountEntry, HostAccountList, HostChanges, HostCheck, HostCommitComments, HostItem,
   HostPullRequestHead, HostPullRequestHeads, HostPullRequestList, HostPullRequestRow, HostReference, HostReviewRequest, HostReviewRequestList, HostSignIn,
   ReferenceKind, ReferenceState, RepositoryQuery, ReviewDecision } from "@noldova/git.hosting.protocol";
 import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
@@ -384,6 +384,29 @@ describe("AzureDevOpsPullRequests, a branch's and a commit's pull request", () =
     expect([host.requests.methods, host.requests.payloads]).toEqual([[AzureDevOpsNames.readReviewRequestsMethod],
       [new RepositoryQuery("dev.azure.com", "fabrikam/web/_git/site").toJson()]]);
     expect(host.pages).toEqual([{ url: request.url, reference: request.reference }]);
+  });
+
+  it("reads the review requests again when an added account signs in, out or leaves, but not for the first account, a waiting sign-in or an unchanged list", async () => {
+    const host = new Host();
+    const octocat = HostSignIn.signedIn(new HostAccount("octocat", null, null, []));
+    const waiting = HostSignIn.waitingInBrowser("https://login.microsoftonline.com/example");
+    const listOf = (...entries: [number, HostSignIn][]): HostAccountList => new HostAccountList(entries.map(([id, t]) => new HostAccountEntry(id, t)));
+    host.requests.answer(AzureDevOpsNames.readReviewRequestsMethod, ...Array.from({ length: 4 }, () => new HostReviewRequestList([request], false).toJson()));
+    const reviews = host.pullRequests.reviewsFor(remote);
+    host.pullRequests.refreshReviews(remote);
+    await Host.untilAsync(reviews, GitPullRequestsState.Ready);
+    const counts: number[] = [];
+
+    for (const list of [listOf([1, octocat]), listOf([1, HostSignIn.signedOut()]), listOf([1, octocat], [2, waiting]), listOf([1, octocat], [2, waiting]),
+      listOf([1, octocat], [2, octocat]), listOf([1, octocat], [2, octocat]), listOf([1, octocat], [2, HostSignIn.signedOut()]), listOf([1, octocat])]) {
+      host.context.raiseEvent(AzureDevOpsNames.accountsChangedEvent, list.toJson());
+      await Promise.allSettled(host.requests.answered);
+      counts.push(host.requests.methods.length);
+    }
+    host.pullRequests.stop();
+
+    expect([counts, reviews()]).toEqual([[1, 1, 1, 1, 2, 2, 3, 4], GitPullRequestList.ready([asked])]);
+    expect(host.context.activeCallsOf("onEvent")).toEqual([]);
   });
 
   it("keeps the account each review request was listed for on its row", async () => {

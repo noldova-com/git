@@ -17,6 +17,7 @@ import { VoteChoice } from "./app/models/vote-choice.ts";
 
 export class Resources {
   public static readonly accountsPage: string = "git.accounts";
+  public static readonly firstAccount: number = 1;
   public static readonly openSettingsCommand: string = "desktop.openSettings";
   public static readonly settingsPageArgument: string = "page";
   public static readonly pullRequestsUnanswered: string = "Azure DevOps didn't answer. Try again to read this repository's pull requests.";
