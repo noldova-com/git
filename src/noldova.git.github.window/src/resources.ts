@@ -248,9 +248,9 @@ export class Resources {
     return `${Resources.formatGitHubRepositoryAddress(owner, repository)}/${Resources.gitHubPullSegment}/${number}/${Resources.gitHubFilesSegment}`;
   }
 
-  public static formatGitHubNewPullRequestAddress(host: string, path: string, source: string, target: string): string {
+  public static formatGitHubNewPullRequestAddress(path: string, source: string, target: string): string {
     const branch = (name: string): string => name.split(Resources.slash).map(t => encodeURIComponent(t)).join(Resources.slash);
-    return `${Resources.gitHubReferenceProtocol}//${host}/${path}/${Resources.gitHubCompareSegment}/${branch(target)}...${branch(source)}?expand=1`;
+    return `${Resources.gitHubReferenceProtocol}//${Resources.gitHubHost}/${path}/${Resources.gitHubCompareSegment}/${branch(target)}...${branch(source)}?expand=1`;
   }
 
   public static formatGitHubPersonAddress(login: string): string {

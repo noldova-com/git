@@ -45,8 +45,7 @@ export class GitHubWindowPart implements IWindowPart {
   }
 
   public async activateAsync(context: IWindowPartContext): Promise<void> {
-    const accounts = GitHubAccountList.of(context);
-    const withdrawRows = GitHostRows.provide(context, { claims: (remote: GitRemote) => GitHubAccountList.claims(accounts(), remote), component: GitHubHostRowComponent });
+    const withdrawRows = GitHostRows.provide(context, { claims: (remote: GitRemote) => remote.host === Resources.gitHubHost, component: GitHubHostRowComponent });
     const pullRequests = new GitHubPullRequests(context);
     const withdrawPullRequests = GitPullRequests.provide(context, pullRequests);
     this.withdraw = () => {
@@ -80,7 +79,7 @@ export class GitHubWindowPart implements IWindowPart {
       cards: this.cards.asReadonly(), signIn: GitHubAccountsComponent, features: [GitHostFeature.PullRequests, GitHostFeature.BuildsOnCommits] });
     this.withdrawEnterprise = GitHostAccounts.provide(context, { id: Resources.enterpriseAccountId, host: Resources.enterpriseHostName,
       column: Resources.enterpriseColumn, mark: Resources.hostMark, markColor: Resources.hostColor, cards: this.enterpriseCards.asReadonly(),
-      signIn: GitHubEnterpriseComponent, features: [GitHostFeature.PullRequests, GitHostFeature.BuildsOnCommits] });
+      signIn: GitHubEnterpriseComponent, features: [] });
     this.unfollow = AccountEvents.follow(context, list => {
       this.changes++;
       this.showList(context, list);
