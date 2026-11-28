@@ -161,6 +161,14 @@ describe("GitHubAccess", () => {
       new GitHubAccessRefusal("The GitHub sign-in kept on this computer couldn't be read; sign in again in Settings, GitHub.")]);
   });
 
+  it("refuses a repository on a GitHub Enterprise server, in any case, though the account chosen for it is signed in", async () => {
+    const second = { current: HostSignIn.signedIn(new HostAccount("hubot", null, null, ["repo"])), token: "ghe_hubot", keptUnreadable: false };
+
+    const answer = await accessOf(second, new Map([[2, second]]), 2).accessForAsync({ host: "GHE.example.com", path: "octocat/hello-world" }, signal);
+
+    assert.deepEqual(answer, new GitHubAccessRefusal("The GitHub module gives other modules access to github.com only; other GitHub servers aren't served yet."));
+  });
+
   it("refuses an aborted call for a repository with the signal's reason", async () => {
     const stop = new AbortController();
     const reason = new Error("The turn was cancelled.");

@@ -33,6 +33,8 @@ export class GitHubAccess implements IGitHubAccess {
 
   public async accessForAsync(repository: { readonly host: string; readonly path: string }, signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal> {
     signal.throwIfAborted();
+    if (repository.host.toLowerCase() !== Resources.host)
+      return new GitHubAccessRefusal(Resources.accessOtherHostReason);
     const id: number | null = await this.accounts.accountForAsync(repository.host, repository.path, signal);
     return GitHubAccess.answerOf(id === null ? this.accounts.first : this.accounts.signInOf(id));
   }

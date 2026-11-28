@@ -362,7 +362,8 @@ export interface IGitHubAccess {
   /**
    * Answers the token and login of the account the module reads the repository with, as a `GitHubAccessGrant`: the one the person chose for it,
    * else the first signed-in account that can read it, else the first signed-in account. With none signed in, it answers why, as
-   * `accessAsync` does for the first account.
+   * `accessAsync` does for the first account. A repository on any host but github.com, such as a GitHub Enterprise server, is refused with why,
+   * since other modules aren't given such a server's tokens yet.
    *
    * @param repository The repository's host, such as `github.com`, and its path, such as `octocat/hello-world`.
    * @param signal Withdraws the call: an aborted signal rejects with its reason.

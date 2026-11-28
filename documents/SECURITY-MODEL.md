@@ -164,7 +164,8 @@ For that check the module asks `api.github.com` for the repository, by its path,
 A token GitHub refuses as unauthorized is reported to its account; a token refused another way, such as a 403, moves on to the next account, and the choice isn't kept.
 Picks match a repository's host and path without case.
 An added account that signs in as a login another account already holds keeps no token: the module forgets it and ends that account signed out with `AlreadyKept`, so no login is held twice.
-`git-github.access` answers `accessAsync` with the first account's token and login, and `accessForAsync` with the token and login of the account chosen for the repository it names, so another module's runtime part gets only the account the GitHub module would read that repository with.
+`git-github.access` answers `accessAsync` with the first account's token and login, and `accessForAsync` with the token and login of the account chosen for the repository it names, so another module's runtime part gets only the account the GitHub module would read that repository with; it refuses a repository on any host but github.com, so no GitHub Enterprise token reaches another module yet.
+A GitHub Enterprise account's token goes only to its own server's API, `https://<server>/api/v3`, and a github.com account's only to `api.github.com`; an answer's link to another origin is never followed with it.
 The API's answer cache is kept apart for each token, so one account never gets an answer read with another's token, and the cache of a token no account holds any more is let go of.
 
 ## Which Azure DevOps account reads a repository
