@@ -8,11 +8,13 @@
 
 import assert from "node:assert/strict";
 
-import { ServiceMissingException } from "@noldova/desktop.runtime";
+import { Failure, FailureCode } from "@noldova/desktop.protocol";
+import { MethodFailureException, ServiceMissingException } from "@noldova/desktop.runtime";
 import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
 import { describe, it } from "vitest";
 
 import { GitHubFolderUsers } from "../../src/services/github-folder-users.ts";
+import { FakeToken } from "../fixtures/fake-github.fixture.ts";
 import { FakeRepositories, statusOf } from "../fixtures/fake-tools.fixture.ts";
 
 const FOLDER: string = "/home/monalisa/hello-world";
@@ -20,8 +22,8 @@ const signal: AbortSignal = new AbortController().signal;
 
 class Rig {
   public readonly repositories: FakeRepositories = new FakeRepositories();
-  public readonly used: (readonly [string, string, string | null])[] = [];
-  public readonly users: GitHubFolderUsers = new GitHubFolderUsers({ useUser: (host, path, user) => void this.used.push([host, path, user]) }, () => this.repositories);
+  public readonly tokens: FakeToken = new FakeToken();
+  public readonly users: GitHubFolderUsers = new GitHubFolderUsers(this.tokens, () => this.repositories);
 }
 
 describe("GitHubFolderUsers", () => {
@@ -33,7 +35,7 @@ describe("GitHubFolderUsers", () => {
     await rig.users.useAsync(FOLDER, "origin", "github.com", "octocat/hello-world", signal);
     await rig.users.useAsync(FOLDER, "upstream", "github.com", "octocat/hello-world.git", signal);
 
-    assert.deepEqual(rig.used, [["github.com", "octocat/hello-world.git", "hubot"], ["GitHub.com", "Octocat/Hello-World", null]]);
+    assert.deepEqual(rig.tokens.users, ["github.com octocat/hello-world.git hubot", "GitHub.com Octocat/Hello-World null"]);
     assert.deepEqual([rig.repositories.remoteReads, rig.repositories.userReads], [[[FOLDER, "origin"], [FOLDER, "upstream"]], [[FOLDER, "origin"], [FOLDER, "upstream"]]]);
   });
 
@@ -50,25 +52,28 @@ describe("GitHubFolderUsers", () => {
     rig.repositories.answer = statusOf("fix-bug", null, null);
     await rig.users.useAsync(FOLDER, "origin", "github.com", "octocat/hello-world", signal);
 
-    assert.deepEqual([rig.used, rig.repositories.userReads, rig.repositories.remoteReads.length], [[], [], 5]);
+    assert.deepEqual([rig.tokens.users, rig.repositories.userReads, rig.repositories.remoteReads.length], [[], [], 5]);
   });
 
-  it("gives nothing while the Git module isn't active, and passes on any other failure to reach it or to read the remote", async () => {
-    const used: unknown[] = [];
+  it("gives nothing for a folder Git can't read or while the Git module isn't active, and passes on any other failure to reach it or to read the remote", async () => {
     const unexpected = new RangeError("Unexpected.");
-    const missing = new GitHubFolderUsers({ useUser: () => void used.push(1) }, () => {
+    const tokens = new FakeToken();
+    const missing = new GitHubFolderUsers(tokens, () => {
       throw new ServiceMissingException("git.repositories");
     });
-    const broken = new GitHubFolderUsers({ useUser: () => void used.push(1) }, () => {
+    const broken = new GitHubFolderUsers(tokens, () => {
       throw unexpected;
     });
-    const rig = new Rig();
-    rig.repositories.answer = unexpected;
+    const unreadable = new Rig();
+    unreadable.repositories.answer = new MethodFailureException(new Failure(FailureCode.NotFound, "The folder isn't a Git repository."));
+    const failing = new Rig();
+    failing.repositories.answer = unexpected;
 
     await missing.useAsync(FOLDER, "origin", "github.com", "octocat/hello-world", signal);
+    await unreadable.users.useAsync(FOLDER, "origin", "github.com", "octocat/hello-world", signal);
     await assert.rejects(broken.useAsync(FOLDER, "origin", "github.com", "octocat/hello-world", signal), unexpected);
-    await assert.rejects(rig.users.useAsync(FOLDER, "origin", "github.com", "octocat/hello-world", signal), unexpected);
+    await assert.rejects(failing.users.useAsync(FOLDER, "origin", "github.com", "octocat/hello-world", signal), unexpected);
 
-    assert.deepEqual([used, rig.used], [[], []]);
+    assert.deepEqual([tokens.users, unreadable.tokens.users, failing.tokens.users], [[], [], []]);
   });
 });

@@ -7,9 +7,10 @@
  */
 
 import type { GitHubAccessGrant } from "../models/github-access-grant.ts";
+import type { GitHubAccessQuery } from "../models/github-access-query.ts";
 import type { GitHubAccessRefusal } from "../models/github-access-refusal.ts";
 
 export interface IGitHubAccess {
   accessAsync(signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal>;
-  accessForAsync(repository: { readonly host: string; readonly path: string; readonly folder?: string; readonly remote?: string }, signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal>;
+  accessForAsync(repository: GitHubAccessQuery, signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal>;
 }
