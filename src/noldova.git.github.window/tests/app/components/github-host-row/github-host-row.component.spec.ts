@@ -448,6 +448,7 @@ describe("GitHubHostRowComponent", () => {
     const page = new Page();
     const unexpected = new TypeError("Unexpected.");
     page.requests.fail(method, unexpected);
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
     const rejected = UnhandledRejections.nextAsync();
     await page.openAsync(first);
 
