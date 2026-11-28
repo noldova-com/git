@@ -13,6 +13,7 @@ import type { JsonValue } from "@noldova/context.json";
 import { FailureCode, SecretFailureReason, ShellClients } from "@noldova/desktop.protocol";
 import { MethodFailureException, RequestContext, ToolFailure, ToolFailureCode } from "@noldova/desktop.runtime";
 import { GitHubAccessGrant, GitHubAccessRefusal } from "@noldova/git.github.protocol";
+import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
 import { AuthorQuery, BranchPullRequest, BranchQuery, CommitQuery, DeviceCode, HostAccount, HostComment, HostCommitComments, HostItem, HostPerson, HostPullRequestList,
   HostPullRequestThreads, HostReference, HostReviewRequestList, HostSignIn, HostThread, PullRequestDraft, RepositoryQuery, ThreadStatus } from "@noldova/git.hosting.protocol";
 import { afterEach, describe, it, vi } from "vitest";
@@ -20,7 +21,7 @@ import { afterEach, describe, it, vi } from "vitest";
 import { RuntimePart } from "../src/api/index.ts";
 import { GitHubAccess } from "../src/services/github-access.ts";
 import { FakeGitHub, KeptSecrets, linesOf } from "./fixtures/fake-github.fixture.ts";
-import { FakeRepositories } from "./fixtures/fake-tools.fixture.ts";
+import { FakeRepositories, statusOf } from "./fixtures/fake-tools.fixture.ts";
 import { MockClock } from "./fixtures/mock-clock.fixture.ts";
 import { RuntimeContext } from "./fixtures/runtime-context.fixture.ts";
 
@@ -105,7 +106,8 @@ describe("RuntimePart", () => {
     assert.deepEqual([...context.methods.keys()], ["git-github.readSignIn", "git-github.startSignIn", "git-github.cancelSignIn", "git-github.signOut",
       "git-github.readReference", "git-github.readBranchPullRequest", "git-github.readAuthorAvatar", "git-github.readPullRequests", "git-github.readReviewRequests",
       "git-github.readCommitComments", "git-github.readPullRequest", "git-github.readPullRequestThreads", "git-github.readCommitPullRequest",
-      "git-github.createPullRequest", "git-github.readAccounts", "git-github.addAccount", "git-github.readRepositoryAccount", "git-github.pickAccount"]);
+      "git-github.createPullRequest", "git-github.readAccounts", "git-github.addAccount", "git-github.readRepositoryAccount", "git-github.pickAccount",
+      "git-github.useFolder"]);
     assert.deepEqual(answers, [HostSignIn.signedOut().toJson(), waiting, HostSignIn.signedOut().toJson(), HostSignIn.signedOut().toJson()]);
     assert.deepEqual([context.events.get("git-github.signInChanged"), github.urls()], [[waiting, HostSignIn.signedOut().toJson()], ["https://github.com/login/device/code"]]);
   });
@@ -144,6 +146,63 @@ describe("RuntimePart", () => {
       [3, HostSignIn.signedOut().toJson(), HostSignIn.signedOut().toJson(), [FailureCode.NotFound, FailureCode.InvalidParams, FailureCode.InvalidParams]]);
     assert.deepEqual(events.at(-1), { accounts: [{ id: 1, signIn: HostSignIn.signedIn(new HostAccount("octocat", null, null, ["repo"])).toJson() }] });
     assert.equal(context.events.get("git-github.signInChanged")?.every(t => (t as { account: { login: string } | null }).account?.login !== "hubot"), true);
+  });
+
+  it("reads a window's folder's remote, choosing the account its user name names and saying so, and answers no account for a remote off a host and path", async () => {
+    const github = new FakeGitHub();
+    github.answer(FakeGitHub.json({ login: "octocat", name: null, avatar_url: null }, 200, { "X-OAuth-Scopes": "repo" }),
+      FakeGitHub.json({ login: "hubot", name: null, avatar_url: null }, 200, { "X-OAuth-Scopes": "repo" }));
+    vi.stubGlobal("fetch", github.fetch);
+    const part = new RuntimePart();
+    const context = new RuntimeContext();
+    const repositories = new FakeRepositories();
+    context.secrets.values.set("git-github.signIn", JSON.stringify({ token: "gho_octocat", account: new HostAccount("octocat", null, null, ["repo"]).toJson() }));
+    context.secrets.values.set("git-github.account2", JSON.stringify({ token: "gho_hubot", account: new HostAccount("hubot", null, null, ["repo"]).toJson() }));
+    context.secrets.values.set("git-github.accounts", JSON.stringify({ accounts: [{ id: 2, host: "github.com", login: "hubot" }], picks: [] }));
+    repositories.users.set("origin", "hubot");
+    repositories.remotes.set("local", new GitRemote("local", null, "srv/hello-world.git", RemoteTransport.File));
+    repositories.remotes.set("bare", new GitRemote("bare", "github.com", null, RemoteTransport.Https));
+    const folder = { folder: "/home/monalisa/hello-world", remote: "origin" };
+    const useAsync = (payload: JsonValue, client: string = ShellClients.mainProcess, window: number | null = 1): Promise<JsonValue> =>
+      callAsync(context, "git-github.useFolder", payload, client, window);
+
+    await part.activateAsync(context.fake);
+    await github.askedAsync(2);
+    const missing = await useAsync(folder).then(() => null, failureOf);
+    context.services.set("git.repositories", repositories);
+    const refused = await Promise.all([useAsync(folder, "git-github"), useAsync(folder, ShellClients.mainProcess, null), useAsync({ folder: "/home/monalisa/hello-world" })]
+      .map(t => t.then(() => null, failureOf)));
+    const used = await useAsync(folder);
+    const read = await callAsync(context, "git-github.readRepositoryAccount", { host: "github.com", path: "octocat/hello-world" });
+    const offHost = await Promise.all([useAsync({ ...folder, remote: "local" }), useAsync({ ...folder, remote: "bare" })]);
+    repositories.users.clear();
+    github.answer(FakeGitHub.json({ full_name: "octocat/hello-world" }));
+    const forgotten = await useAsync(folder);
+    repositories.answer = statusOf("fix-bug", null, null);
+    offHost.push(await useAsync(folder));
+    await part.deactivateAsync();
+
+    assert.deepEqual([missing, refused.map(t => t?.[0])], [[FailureCode.Unavailable, "The Git module isn't active, so the folder's remote can't be read."],
+      [FailureCode.Unauthorized, FailureCode.Unauthorized, FailureCode.InvalidParams]]);
+    assert.deepEqual([used, read, offHost, forgotten], [{ account: 2, isNamedByRemote: true }, { account: 2, isNamedByRemote: true },
+      [{ account: null }, { account: null }, { account: null }], { account: 1 }]);
+    assert.deepEqual(repositories.userReads, [["/home/monalisa/hello-world", "origin"], ["/home/monalisa/hello-world", "origin"]]);
+  });
+
+  it("passes on a failure to reach the Git module that isn't its absence", async () => {
+    const part = new RuntimePart();
+    const context = new RuntimeContext();
+    const unexpected = new RangeError("Unexpected.");
+
+    await part.activateAsync(context.fake);
+    context.fake.answer("getService", () => {
+      throw unexpected;
+    });
+    const outcome = await callAsync(context, "git-github.useFolder", { folder: "/home/monalisa/hello-world", remote: "origin" }, ShellClients.mainProcess, 1)
+      .then(() => null, (error: unknown) => error);
+    await part.deactivateAsync();
+
+    assert.equal(outcome, unexpected);
   });
 
   it("restores the kept sign-in on activation and stops following the app's windows on deactivation", async () => {

@@ -84,4 +84,14 @@ describe("RepositoryStatuses", () => {
     await assert.rejects(statuses.readRemoteAsync("relative", "origin", signal), failure(DesktopCode.InvalidParams, FailureCode.Refused));
     await assert.rejects(statuses.readRemoteAsync(repository.home, "origin", signal), failure(DesktopCode.NotFound, FailureCode.NotRepository));
   });
+
+  test("reads a remote's user name by the remote's name, and fails a folder that isn't absolute or isn't in a repository as git.status does", async () => {
+    await repository.runGitAsync(["remote", "add", "origin", "https://kim@host.example/team/repo.git"]);
+    await repository.runGitAsync(["remote", "add", "upstream", "https://host.example/upstream-team/repo.git"]);
+
+    assert.deepEqual([await statuses.readRemoteUserAsync(repository.folder, "origin", signal), await statuses.readRemoteUserAsync(repository.folder, "upstream", signal)],
+      ["kim", null]);
+    await assert.rejects(statuses.readRemoteUserAsync("relative", "origin", signal), failure(DesktopCode.InvalidParams, FailureCode.Refused));
+    await assert.rejects(statuses.readRemoteUserAsync(repository.home, "origin", signal), failure(DesktopCode.NotFound, FailureCode.NotRepository));
+  });
 });

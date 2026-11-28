@@ -353,7 +353,7 @@ describe("GitHubAccounts", () => {
     const picked = await rig.accounts.pickAsync(new AccountPick("github.com", REPOSITORY, 2), signal);
     await rig.savedAsync();
 
-    assert.deepEqual([picked, await rig.accounts.tokenForAsync("github.com", REPOSITORY, signal), rig.github.requests.length], [2, "gho_hubot", 0]);
+    assert.deepEqual([picked.toJson(), await rig.accounts.tokenForAsync("github.com", REPOSITORY, signal), rig.github.requests.length], [{ account: 2 }, "gho_hubot", 0]);
     assert.deepEqual(rig.index(), { accounts: [{ id: 2, host: "github.com", login: "hubot" }], picks: [{ host: "github.com", path: REPOSITORY, account: 2 }] });
   });
 
@@ -383,6 +383,74 @@ describe("GitHubAccounts", () => {
 
     assert.deepEqual([picks.length, picks[0]?.path, picks.at(-1), picks.some(t => t.path === "octocat/r0")],
       [200, "octocat/r1", { host: "github.com", path: "octocat/r5", account: 1 }, false]);
+  });
+
+  it("reads a repository with the account named by its remote's user name, whatever its case or .git ending, ahead of a pick, without asking GitHub or keeping it", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat", "hubot"], [new AccountPick("github.com", REPOSITORY, 1)]);
+    await rig.restoreAsync(["octocat", "hubot"]);
+    const signal = new AbortController().signal;
+
+    rig.accounts.useUser("GitHub.com", "Octocat/Hello-World.git", "HuBot");
+    const named = await rig.accounts.accountForAsync("github.com", REPOSITORY, signal);
+    const answer = await rig.accounts.repositoryAccountAsync("github.com", REPOSITORY, signal);
+    await rig.savedAsync();
+
+    assert.deepEqual([named, answer.toJson(), await rig.accounts.tokenForAsync("github.com", REPOSITORY, signal), rig.github.requests.length],
+      [2, { account: 2, isNamedByRemote: true }, "gho_hubot", 0]);
+    assert.deepEqual(rig.index(), { accounts: [{ id: 2, host: "github.com", login: "hubot" }], picks: [{ host: "github.com", path: REPOSITORY, account: 1 }] });
+  });
+
+  it("answers a pick against the remote's user name with the named account, saying the user name chose it, and no account while none is signed in", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat", "hubot"]);
+    await rig.restoreAsync(["octocat", "hubot"]);
+    const signal = new AbortController().signal;
+
+    rig.accounts.useUser("github.com", REPOSITORY, "hubot");
+    const picked = await rig.accounts.pickAsync(new AccountPick("github.com", REPOSITORY, 1), signal);
+    rig.accounts.useUser("github.com", REPOSITORY, null);
+    const unnamed = await rig.accounts.repositoryAccountAsync("github.com", REPOSITORY, signal);
+    await rig.accounts.signOutAsync(1);
+    await rig.accounts.signOutAsync(2);
+
+    assert.deepEqual([picked.toJson(), unnamed.toJson(), (await rig.accounts.repositoryAccountAsync("github.com", REPOSITORY, signal)).toJson()],
+      [{ account: 2, isNamedByRemote: true }, { account: 1 }, { account: null }]);
+  });
+
+  it("passes over a user name no signed-in account has, a user name it no longer holds, and one whose account signed out", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat", "hubot"], [new AccountPick("github.com", REPOSITORY, 1)]);
+    await rig.restoreAsync(["octocat", "hubot"]);
+    const signal = new AbortController().signal;
+
+    rig.accounts.useUser("github.com", REPOSITORY, "monalisa");
+    const stranger = await rig.accounts.accountForAsync("github.com", REPOSITORY, signal);
+    rig.accounts.useUser("github.com", REPOSITORY, "hubot");
+    rig.accounts.useUser("github.com", REPOSITORY, null);
+    const cleared = await rig.accounts.accountForAsync("github.com", REPOSITORY, signal);
+    rig.accounts.useUser("github.com", REPOSITORY, "hubot");
+    await rig.accounts.signOutAsync(2);
+
+    assert.deepEqual([stranger, cleared, await rig.accounts.accountForAsync("github.com", REPOSITORY, signal)], [1, 1, 1]);
+  });
+
+  it("holds the newest 200 repositories' user names, a repository named again counting as new", async () => {
+    const rig = new Rig();
+    rig.keep(["octocat", "hubot"]);
+    await rig.restoreAsync(["octocat", "hubot"]);
+    const signal = new AbortController().signal;
+
+    for (let index = 0; index < 201; index++)
+      rig.accounts.useUser("github.com", `octocat/r${index}`, "hubot");
+    rig.accounts.useUser("github.com", "octocat/r1", "hubot");
+    rig.accounts.useUser("github.com", "octocat/r201", "hubot");
+
+    assert.deepEqual([await rig.accounts.accountForAsync("dev.azure.com", "octocat/r1", signal),
+      await rig.accounts.accountForAsync("github.com", "octocat/r1", signal), await rig.accounts.accountForAsync("github.com", "octocat/r201", signal)], [1, 2, 2]);
+    rig.github.answer(missing(), missing(), missing(), missing());
+    assert.deepEqual([await rig.accounts.accountForAsync("github.com", "octocat/r0", signal), await rig.accounts.accountForAsync("github.com", "octocat/r2", signal)],
+      [1, 1]);
   });
 
   it("reads a repository nobody picked with the first signed-in account that can read it, asking GitHub once a session", async () => {

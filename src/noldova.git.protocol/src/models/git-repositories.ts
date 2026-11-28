@@ -13,4 +13,6 @@ export abstract class GitRepositories {
   public abstract readStatusAsync(folder: string, signal: AbortSignal): Promise<GitStatus>;
 
   public abstract readRemoteAsync(folder: string, name: string, signal: AbortSignal): Promise<GitRemote | null>;
+
+  public abstract readRemoteUserAsync(folder: string, name: string, signal: AbortSignal): Promise<string | null>;
 }

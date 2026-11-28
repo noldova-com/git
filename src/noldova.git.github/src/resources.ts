@@ -17,6 +17,7 @@ export class Resources {
   public static readonly signInSecret: string = "git-github.signIn";
   public static readonly accountsSecret: string = "git-github.accounts";
   public static readonly picksCap: number = 200;
+  public static readonly usersCap: number = 200;
   public static readonly unknownAccountMessage: string = "This GitHub account isn't kept on this computer any more.";
   public static readonly keptAccountsUnreadable: string = "The GitHub accounts kept on this computer couldn't be read; only the first account was restored.";
   public static readonly accountAlreadyKept: string = "An added GitHub account signed in as an account already kept here, so its token was forgotten and it ended signed out as already kept.";
@@ -142,6 +143,7 @@ export class Resources {
   public static readonly refusedPullRequestMessage: string = "GitHub refused the pull request: the branch may already have one, or have no commits the base lacks.";
   public static readonly otherHostMessage: string = "The repository isn't on github.com.";
   public static readonly notFromWindowMessage: string = "Only a person's click in a window opens a pull request.";
+  public static readonly folderNotFromWindowMessage: string = "Only a window reads a folder's remote.";
   public static readonly readToolTitle: string = "Read a GitHub issue or pull request";
   public static readonly readToolDescription: string = "Reads an issue or pull request on github.com by its owner, repository and number, with the account the person "
     + "signed in to GitHub with: its kind, state, title, address, author, created time and comment count, and for a pull request its branches, "
@@ -197,6 +199,7 @@ export class Resources {
   public static readonly detachedHeadToolCode: string = "git-github.detachedHead";
   public static readonly noFolderToolCode: string = "git-github.noFolder";
   public static readonly gitMissingToolMessage: string = "The Git module isn't active, so the session's repository can't be read.";
+  public static readonly gitMissingMessage: string = "The Git module isn't active, so the folder's remote can't be read.";
   public static readonly notGitHubToolMessage: string = "The session's repository has no origin remote on github.com.";
   public static readonly detachedHeadToolMessage: string = "The session's repository has no branch checked out.";
   public static readonly itemNotFoundMessage: string = "GitHub has no such issue or pull request, or the signed-in account can't see it.";

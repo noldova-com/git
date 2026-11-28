@@ -24,6 +24,7 @@ describe("The hosting protocol package's API", () => {
       "CommitQuery",
       "DeviceCode",
       "FileChangeKind",
+      "FolderQuery",
       "HostAccount",
       "HostAccountEntry",
       "HostAccountList",

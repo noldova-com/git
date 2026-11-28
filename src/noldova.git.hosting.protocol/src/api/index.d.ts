@@ -797,6 +797,13 @@ export declare class HostingNames {
   public static readonly pickAccountMethod: string;
 
   /**
+   * The method that takes a `FolderQuery` as JSON: the module's main process reads that folder's remote, its host, path and user name, keeps the
+   * user name for that host and path while the app runs, so an account whose login is that user name reads the repository first, and answers
+   * the account it now reads the repository with as `RepositoryAccount` JSON. A window sends it before its first read for that remote.
+   */
+  public static readonly useFolderMethod: string;
+
+  /**
    * The event that carries every account as `HostAccountList` JSON each time one is added, signs in, signs out or leaves.
    */
   public static readonly accountsChangedEvent: string;
@@ -5408,6 +5415,77 @@ export declare class AccountPick {
 }
 
 /**
+ * A repository folder and the name of the remote a window shows for it, which a window sends a host module once, before its first read for
+ * that remote, so the module's main process can read the remote's user name there and choose the account by it. The user name itself never
+ * leaves the main process: it is in no model, answer or log.
+ *
+ * @example
+ * ```ts
+ * import { FolderQuery } from "@noldova/git.hosting.protocol";
+ *
+ * const query = new FolderQuery("/work/hello-world", "origin");
+ * ```
+ */
+export declare class FolderQuery {
+  /**
+   * The repository's folder, as the Git module names it; untrusted.
+   */
+  public readonly folder: string;
+
+  /**
+   * The name of the remote, such as `origin`; untrusted.
+   */
+  public readonly remote: string;
+
+  /**
+   * Makes the query from its parts.
+   *
+   * @param folder The repository's folder, not blank.
+   * @param remote The remote's name, not blank.
+   * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
+   * @throws {HostingArgumentException} Without a reader, when a part is blank, naming the field as the parameter, such as `folder`.
+   * @throws {HostingFieldException} With a reader, when a part is blank, naming the field by its path, such as `$.remote`.
+   * @example
+   * ```ts
+   * import { FolderQuery } from "@noldova/git.hosting.protocol";
+   *
+   * const query = new FolderQuery("/work/hello-world", "upstream");
+   * ```
+   */
+  public constructor(folder: string, remote: string, reader?: JsonReader);
+
+  /**
+   * Reads it from its JSON.
+   *
+   * @param value The JSON, with exactly the fields `toJson` writes.
+   * @param path The JSON's path, `$` by default.
+   * @returns The query.
+   * @throws {JsonException} When the value isn't an object, or a field is missing or of the wrong type; it comes from `@noldova/context.json`.
+   * @throws {HostingFieldException} When the value holds an unknown field, or a field is blank.
+   * @example
+   * ```ts
+   * import { FolderQuery } from "@noldova/git.hosting.protocol";
+   *
+   * const query = FolderQuery.fromJson({ folder: "/work/hello-world", remote: "origin" });
+   * ```
+   */
+  public static fromJson(value: unknown, path?: string): FolderQuery;
+
+  /**
+   * Writes it as JSON: `folder` and `remote`.
+   *
+   * @returns The JSON.
+   * @example
+   * ```ts
+   * import { FolderQuery } from "@noldova/git.hosting.protocol";
+   *
+   * console.log(new FolderQuery("/work/hello-world", "origin").toJson());
+   * ```
+   */
+  public toJson(): JsonObject;
+}
+
+/**
  * The account a module reads a repository with, or none when no account kept is signed in.
  *
  * @example
@@ -5424,10 +5502,17 @@ export declare class RepositoryAccount {
   public readonly account: number | null;
 
   /**
+   * Whether the user name in the repository's remote address chose the account, so picking another one for that repository changes nothing.
+   * It never carries the user name.
+   */
+  public readonly isNamedByRemote: boolean;
+
+  /**
    * Makes the answer from its parts.
    *
    * @param account The account's id, a positive whole number, or null.
    * @param reader The reader the values came from, so an error names the field by its path; omitted for values that didn't come from JSON.
+   * @param isNamedByRemote Whether the remote's user name chose the account, false by default; true needs an account.
    * @throws {HostingArgumentException} Without a reader, when a part is out of its range, naming the field as the parameter, such as `account`.
    * @throws {HostingFieldException} With a reader, when a part is out of its range, naming the field by its path, such as `$.account`.
    * @example
@@ -5435,9 +5520,10 @@ export declare class RepositoryAccount {
    * import { RepositoryAccount } from "@noldova/git.hosting.protocol";
    *
    * const answer = new RepositoryAccount(2);
+   * const named = new RepositoryAccount(2, undefined, true);
    * ```
    */
-  public constructor(account: number | null, reader?: JsonReader);
+  public constructor(account: number | null, reader?: JsonReader, isNamedByRemote?: boolean);
 
   /**
    * Reads it from its JSON.

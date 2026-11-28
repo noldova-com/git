@@ -58,7 +58,7 @@ export class GitHubPrCreateTool implements IToolHandler {
   }
 
   public async handleAsync(call: ToolCall): Promise<ToolResult> {
-    const repository: BoundRepository = await BoundRepository.readAsync(call, this.repositories);
+    const repository: BoundRepository = await BoundRepository.readAsync(call, this.repositories, this.tokens);
     const draft: PullRequestDraft = GitHubPrCreateTool.draftOf(call, repository);
     const token: string | null = await this.tokens.tokenForAsync(draft.host, draft.path, call.signal);
     const account: SignedInAccount | undefined = this.tokens.signedIn.find(t => t.token === token);

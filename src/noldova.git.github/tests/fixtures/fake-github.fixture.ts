@@ -191,6 +191,7 @@ export class FakeToken extends Fake<IHeldToken> implements IHeldToken {
   private readonly gone: Set<string> = new Set();
 
   public readonly asked: string[] = [];
+  public readonly users: string[] = [];
 
   public get signedIn(): readonly SignedInAccount[] {
     const token: string | null = this.token;
@@ -203,6 +204,10 @@ export class FakeToken extends Fake<IHeldToken> implements IHeldToken {
 
   public signOut(token: string): void {
     this.gone.add(token);
+  }
+
+  public useUser(host: string, path: string, user: string | null): void {
+    this.users.push(`${host} ${path} ${String(user)}`);
   }
 
   public tokenForAsync(host: string, path: string): Promise<string | null> {

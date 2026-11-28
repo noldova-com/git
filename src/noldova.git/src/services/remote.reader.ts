@@ -35,9 +35,15 @@ export class RemoteReader {
     return Object.isNull(output) ? null : this.readChosenAsync(top, output, name, signal);
   }
 
+  public async readNamedUserAsync(top: string, name: string, signal?: AbortSignal): Promise<string | null> {
+    const output: string | null = await this.readConfigAsync(top, signal);
+    const configured: string | undefined = Object.isNull(output) ? undefined : RemoteReader.urlsOf(output).get(name);
+    return Object.isUndefined(configured) ? null : RemoteUrl.userOf(await this.readUrlAsync(top, name, configured, signal));
+  }
+
   private async readChosenAsync(top: string, output: string, name: string | null, signal?: AbortSignal): Promise<GitRemote | null> {
     const configured: string | undefined = Object.isNull(name) ? undefined : RemoteReader.urlsOf(output).get(name);
-    return Object.isNull(name) || Object.isUndefined(configured) ? null : await this.readUrlAsync(top, name, configured, signal);
+    return Object.isNull(name) || Object.isUndefined(configured) ? null : RemoteUrl.toRemote(name, await this.readUrlAsync(top, name, configured, signal));
   }
 
   private async readConfigAsync(top: string, signal?: AbortSignal): Promise<string | null> {
@@ -49,10 +55,9 @@ export class RemoteReader {
     return result.output.toString(Resources.utf8Encoding);
   }
 
-  private async readUrlAsync(top: string, name: string, configured: string, signal?: AbortSignal): Promise<GitRemote> {
+  private async readUrlAsync(top: string, name: string, configured: string, signal?: AbortSignal): Promise<string> {
     const result = await this.runner.runAsync(ProgramRun.readGit(new GitArguments([...Resources.remoteUrlArguments, name]), top, RemoteReader.LIMITS, signal));
-    const url: string = result.exit.code !== 0 || result.isTruncated ? configured : result.output.toString(Resources.utf8Encoding).replace(Resources.lineEndPattern, "");
-    return RemoteUrl.toRemote(name, url);
+    return result.exit.code !== 0 || result.isTruncated ? configured : result.output.toString(Resources.utf8Encoding).replace(Resources.lineEndPattern, "");
   }
 
   private static choose(output: string, branch: string | null): string | null {

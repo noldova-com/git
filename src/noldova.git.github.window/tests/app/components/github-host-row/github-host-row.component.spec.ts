@@ -11,8 +11,8 @@ import "@noldova/context.core";
 import { LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
 import { FakeWindowPartContext } from "@noldova/desktop.window/testing";
 import { GitHubNames } from "@noldova/git.github.protocol";
-import { AccountPick, BranchPullRequest, BranchQuery, CheckState, DeviceCode, HostAccount, HostAccountEntry, HostAccountList, HostChanges, HostCheck, HostItem,
-  HostReference, HostSignIn, ReferenceKind, ReferenceState, RepositoryAccount, RepositoryQuery } from "@noldova/git.hosting.protocol";
+import { AccountPick, BranchPullRequest, BranchQuery, CheckState, DeviceCode, FolderQuery, HostAccount, HostAccountEntry, HostAccountList, HostChanges, HostCheck,
+  HostItem, HostReference, HostSignIn, ReferenceKind, ReferenceState, RepositoryAccount, RepositoryQuery } from "@noldova/git.hosting.protocol";
 import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
 import { ClipboardWriter } from "@noldova/ui.components.angular";
 import { ClipboardWriterFixture } from "@noldova/ui.components.angular/testing";
@@ -43,6 +43,7 @@ const answer: BranchPullRequest = new BranchPullRequest(pullRequest, checks);
 const none: BranchPullRequest = new BranchPullRequest(null, []);
 const lee: HostSignIn = HostSignIn.signedIn(new HostAccount("lee", null, null, ["repo"]));
 const repository: RepositoryQuery = new RepositoryQuery("github.com", "example-owner/example-repository");
+const folder: FolderQuery = new FolderQuery("/work/example-repository", "origin");
 
 function accountsOf(...signIns: HostSignIn[]): HostAccountList {
   return new HostAccountList(signIns.map((t, i) => new HostAccountEntry(i + 1, t)));
@@ -66,6 +67,10 @@ class Page {
   public readonly browser = { placeFor: (): LinkPlace => LinkPlace.InApp, openAsync: (): Promise<void> => Promise.resolve() };
   public readonly requests: RequestAnswers = new RequestAnswers(this.context);
   public fixture: ComponentFixture<GitHubHostRowComponent> | null = null;
+
+  public constructor() {
+    this.requests.always(GitHubNames.useFolderMethod, new RepositoryAccount(null).toJson());
+  }
 
   public get element(): HTMLElement {
     const element = this.fixture?.nativeElement;
@@ -188,8 +193,8 @@ describe("GitHubHostRowComponent", () => {
     page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
     await page.openAsync(signedIn);
 
-    expect(page.requests.methods).toEqual([GitHubNames.readSignInMethod, GitHubNames.readBranchPullRequestMethod]);
-    expect(page.requests.payloads).toEqual([null, new BranchQuery("github.com", "example-owner/example-repository", "feature/readme", HEAD).toJson()]);
+    expect(page.requests.methods).toEqual([GitHubNames.readSignInMethod, GitHubNames.useFolderMethod, GitHubNames.readBranchPullRequestMethod]);
+    expect(page.requests.payloads).toEqual([null, folder.toJson(), new BranchQuery("github.com", "example-owner/example-repository", "feature/readme", HEAD).toJson()]);
     expect(page.texts(".title")).toEqual(["#7 Sample pull request title"]);
     expect(page.find(".state").getAttribute("aria-label")).toBe("Open");
   });
@@ -265,13 +270,14 @@ describe("GitHubHostRowComponent", () => {
     const page = new Page();
     const release = page.requests.hold(GitHubNames.readBranchPullRequestMethod);
     page.create(signedIn);
-    await page.requests.askedAsync(2);
+    await page.requests.askedAsync(3);
     await page.untilAsync(() => page.text === "Reading this branch's pull request on GitHub.");
     const reading = [page.requests.methods, page.text];
     release(answer.toJson());
     await page.settleAsync();
 
-    expect(reading).toEqual([[GitHubNames.readSignInMethod, GitHubNames.readBranchPullRequestMethod], "Reading this branch's pull request on GitHub."]);
+    expect(reading).toEqual([[GitHubNames.readSignInMethod, GitHubNames.useFolderMethod, GitHubNames.readBranchPullRequestMethod],
+      "Reading this branch's pull request on GitHub."]);
     expect(page.texts(".title")).toEqual(["#7 Sample pull request title"]);
   });
 
@@ -292,7 +298,7 @@ describe("GitHubHostRowComponent", () => {
     const release = page.requests.hold(GitHubNames.readBranchPullRequestMethod);
     page.requests.answer(GitHubNames.readBranchPullRequestMethod, none.toJson(), answer.toJson());
     page.create(signedIn);
-    await page.requests.askedAsync(2);
+    await page.requests.askedAsync(3);
     page.fixture?.componentRef.setInput("branch", "feature/other");
     await page.untilAsync(() => page.text === "No pull request for this branch");
     release(answer.toJson());
@@ -301,7 +307,7 @@ describe("GitHubHostRowComponent", () => {
     await page.setAsync("head", "fedcba9876543210fedcba9876543210fedcba98");
 
     expect(left).toBe("No pull request for this branch");
-    expect(page.requests.payloads.slice(1)).toEqual([
+    expect(page.requests.payloads.slice(2)).toEqual([
       new BranchQuery("github.com", "example-owner/example-repository", "feature/readme", HEAD).toJson(),
       new BranchQuery("github.com", "example-owner/example-repository", "feature/other", HEAD).toJson(),
       new BranchQuery("github.com", "example-owner/example-repository", "feature/other", "fedcba9876543210fedcba9876543210fedcba98").toJson()
@@ -315,7 +321,7 @@ describe("GitHubHostRowComponent", () => {
     await page.openAsync(signedIn);
     await page.setAsync("remote", new GitRemote("origin", "github.com", "example-owner/example-repository", RemoteTransport.Https));
 
-    expect([page.requests.methods, page.texts(".title")]).toEqual([[GitHubNames.readSignInMethod, GitHubNames.readBranchPullRequestMethod],
+    expect([page.requests.methods, page.texts(".title")]).toEqual([[GitHubNames.readSignInMethod, GitHubNames.useFolderMethod, GitHubNames.readBranchPullRequestMethod],
       ["#7 Sample pull request title"]]);
   });
 
@@ -334,7 +340,7 @@ describe("GitHubHostRowComponent", () => {
     await page.openAsync(signedIn);
     const shown = page.element.querySelector(".pr")?.getAttribute("aria-busy");
     page.fixture?.componentRef.setInput("head", "fedcba9876543210fedcba9876543210fedcba98");
-    await page.requests.askedAsync(3);
+    await page.requests.askedAsync(4);
     const reading = [page.texts(".title"), page.element.querySelector(".pr")?.getAttribute("aria-busy")];
     release(answer.toJson());
     await page.settleAsync();
@@ -371,7 +377,7 @@ describe("GitHubHostRowComponent", () => {
     const reject = page.requests.holdFailure(GitHubNames.readBranchPullRequestMethod);
     page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
     page.create(signedIn);
-    await page.requests.askedAsync(2);
+    await page.requests.askedAsync(3);
     page.fixture?.componentRef.setInput("branch", "feature/other");
     await page.untilAsync(() => page.texts(".title")[0] === "#7 Sample pull request title");
     reject(new WindowFailure("GitHub didn't answer."));
@@ -436,11 +442,13 @@ describe("GitHubHostRowComponent", () => {
 
   it.each([
     ["the sign-in's read", GitHubNames.readSignInMethod, null],
-    ["the pull request's read", GitHubNames.readBranchPullRequestMethod, signedIn]
+    ["the pull request's read", GitHubNames.readBranchPullRequestMethod, signedIn],
+    ["the folder's use", GitHubNames.useFolderMethod, signedIn]
   ])("passes on a failure of %s that isn't the window's, rather than saying GitHub didn't answer", async (_, method, first) => {
     const page = new Page();
     const unexpected = new TypeError("Unexpected.");
     page.requests.fail(method, unexpected);
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
     const rejected = UnhandledRejections.nextAsync();
     await page.openAsync(first);
 
@@ -615,8 +623,80 @@ describe("GitHubHostRowComponent", () => {
 
     expect([shown, menu]).toEqual([["Account: lee Switch account"], [["example-user", "false"], ["lee", "true"]]]);
     expect(page.requests.payloads.filter((_, i) => page.requests.methods[i] !== GitHubNames.readBranchPullRequestMethod))
-      .toEqual([null, repository.toJson(), new AccountPick("github.com", "example-owner/example-repository", 1).toJson()]);
+      .toEqual([null, folder.toJson(), repository.toJson(), new AccountPick("github.com", "example-owner/example-repository", 1).toJson()]);
     expect(page.requests.methods.filter(t => t === GitHubNames.readBranchPullRequestMethod)).toHaveLength(2);
+  });
+
+  it("says the remote's address picks the account its user name names, offering no switch that couldn't take effect", async () => {
+    const page = new Page();
+    GitHubAccountList.show(page.context, accountsOf(signedIn, lee));
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
+    page.requests.answer(GitHubNames.readRepositoryAccountMethod, new RepositoryAccount(2, undefined, true).toJson());
+    await page.openAsync(signedIn);
+    await page.untilAsync(() => page.texts(".account").length === 1);
+
+    expect([page.texts(".account"), page.element.querySelector(".account button"), page.requests.methods.includes(GitHubNames.pickAccountMethod)])
+      .toEqual([["Account: lee, picked by the remote's address"], null, false]);
+  });
+
+  it("reads nothing about the repository until the window's folder is in use, so the account its remote's user name names reads the very first time", async () => {
+    const page = new Page();
+    GitHubAccountList.show(page.context, accountsOf(signedIn, lee));
+    const release = page.requests.hold(GitHubNames.useFolderMethod);
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
+    page.requests.answer(GitHubNames.readRepositoryAccountMethod, new RepositoryAccount(2).toJson());
+    page.create(signedIn);
+    await page.requests.askedAsync(2);
+    const waiting = [...page.requests.methods];
+    release(new RepositoryAccount(2).toJson());
+    await page.untilAsync(() => page.texts(".account .notice-text").join() === "Account: lee");
+    await page.settleAsync();
+
+    expect([waiting, page.requests.payloads[1]]).toEqual([[GitHubNames.readSignInMethod, GitHubNames.useFolderMethod], folder.toJson()]);
+    expect([...page.requests.methods].slice(2).sort()).toEqual([GitHubNames.readBranchPullRequestMethod, GitHubNames.readRepositoryAccountMethod]);
+    expect(page.texts(".title")).toEqual(["#7 Sample pull request title"]);
+  });
+
+  it("sends no read for a repository the row left while its folder's use waited", async () => {
+    const page = new Page();
+    const other: GitRemote = new GitRemote("origin", "github.com", "example-owner/other", RemoteTransport.Https);
+    GitHubAccountList.show(page.context, accountsOf(signedIn, lee));
+    const release = page.requests.hold(GitHubNames.useFolderMethod);
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
+    page.requests.answer(GitHubNames.readRepositoryAccountMethod, new RepositoryAccount(2).toJson());
+    page.create(signedIn);
+    await page.requests.askedAsync(2);
+    page.fixture?.componentRef.setInput("remote", other);
+    await page.untilAsync(() => page.texts(".account .notice-text").join() === "Account: lee");
+    release(new RepositoryAccount(1).toJson());
+    await Promise.allSettled(page.requests.answered);
+    await page.settleAsync();
+
+    expect(page.requests.payloads.filter((_, i) => page.requests.methods[i] !== GitHubNames.readSignInMethod && page.requests.methods[i] !== GitHubNames.useFolderMethod))
+      .toEqual([new BranchQuery("github.com", "example-owner/other", "feature/readme", HEAD).toJson(), new RepositoryQuery("github.com", "example-owner/other").toJson()]);
+    expect(page.texts(".title")).toEqual(["#7 Sample pull request title"]);
+  });
+
+  it("logs a folder's use that fails and reads all the same, and drops one for a folder or remote the row has left", async () => {
+    const page = new Page();
+    const other: GitRemote = new GitRemote("upstream", "github.com", "example-owner/example-repository", RemoteTransport.Https);
+    const reject = page.requests.holdFailure(GitHubNames.useFolderMethod);
+    page.requests.fail(GitHubNames.useFolderMethod, new WindowFailure("Not connected."));
+    page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson(), answer.toJson());
+    page.create(signedIn);
+    await page.requests.askedAsync(2);
+    page.fixture?.componentRef.setInput("remote", other);
+    await page.untilAsync(() => page.texts(".title").length === 1);
+    const shown = page.texts(".title");
+    reject(new WindowFailure("Too late."));
+    await Promise.allSettled(page.requests.answered);
+    await page.settleAsync();
+
+    expect([shown, page.requests.methods]).toEqual([["#7 Sample pull request title"],
+      [GitHubNames.readSignInMethod, GitHubNames.useFolderMethod, GitHubNames.useFolderMethod, GitHubNames.readBranchPullRequestMethod]]);
+    expect(page.requests.payloads[2]).toEqual(new FolderQuery("/work/example-repository", "upstream").toJson());
+    expect(page.logs).toEqual([`The GitHub module's ${GitHubNames.useFolderMethod} request failed: WindowFailure: Not connected.`,
+      `The GitHub module's ${GitHubNames.useFolderMethod} request failed: WindowFailure: Too late.`]);
   });
 
   it("names no account, and asks for none, while only one is signed in", async () => {
@@ -625,7 +705,8 @@ describe("GitHubHostRowComponent", () => {
     page.requests.answer(GitHubNames.readBranchPullRequestMethod, answer.toJson());
     await page.openAsync(signedIn);
 
-    expect([page.element.querySelector(".account"), page.requests.methods]).toEqual([null, [GitHubNames.readSignInMethod, GitHubNames.readBranchPullRequestMethod]]);
+    expect([page.element.querySelector(".account"), page.requests.methods]).toEqual([null,
+      [GitHubNames.readSignInMethod, GitHubNames.useFolderMethod, GitHubNames.readBranchPullRequestMethod]]);
   });
 
   it("reads the pull request with an added account while the first is signed out", async () => {
