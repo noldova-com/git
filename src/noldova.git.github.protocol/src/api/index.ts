@@ -7,6 +7,7 @@
  */
 
 export { GitHubAccessGrant } from "../models/github-access-grant.ts";
+export { GitHubAccessQuery } from "../models/github-access-query.ts";
 export { GitHubAccessRefusal } from "../models/github-access-refusal.ts";
 export { GitHubNames } from "../models/github-names.ts";
 export type { IGitHubAccess } from "../interfaces/i-github-access.ts";

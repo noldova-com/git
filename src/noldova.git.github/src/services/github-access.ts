@@ -6,38 +6,49 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { SignInState } from "@noldova/git.hosting.protocol";
-import { GitHubAccessGrant, GitHubAccessRefusal, type IGitHubAccess } from "@noldova/git.github.protocol";
+import { type HostSignIn, SignInState } from "@noldova/git.hosting.protocol";
+import { GitHubAccessGrant, type GitHubAccessQuery, GitHubAccessRefusal, type IGitHubAccess } from "@noldova/git.github.protocol";
 
 import { Resources } from "../resources.ts";
-import type { GitHubSignIn } from "./github-sign-in.ts";
 
-type AccessSignIn = Pick<GitHubSignIn, "current" | "token" | "keptUnreadable">;
+interface IAccessSignIn {
+  readonly current: HostSignIn;
+  readonly token: string | null;
+  readonly keptUnreadable: boolean;
+}
+
+interface IAccessFolders {
+  useAsync(folder: string, remote: string, host: string, path: string, signal: AbortSignal): Promise<void>;
+}
 
 interface IAccessAccounts {
-  readonly first: AccessSignIn;
+  readonly first: IAccessSignIn;
   accountForAsync(host: string, path: string, signal: AbortSignal): Promise<number | null>;
-  signInOf(id: number): AccessSignIn;
+  signInOf(id: number): IAccessSignIn;
 }
 
 export class GitHubAccess implements IGitHubAccess {
   private readonly accounts: IAccessAccounts;
+  private readonly folders: IAccessFolders;
 
-  public constructor(accounts: IAccessAccounts) {
+  public constructor(accounts: IAccessAccounts, folders: IAccessFolders) {
     this.accounts = accounts;
+    this.folders = folders;
   }
 
   public accessAsync(signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal> {
     return signal.aborted ? Promise.reject(signal.reason) : Promise.resolve(GitHubAccess.answerOf(this.accounts.first));
   }
 
-  public async accessForAsync(repository: { readonly host: string; readonly path: string }, signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal> {
+  public async accessForAsync(repository: GitHubAccessQuery, signal: AbortSignal): Promise<GitHubAccessGrant | GitHubAccessRefusal> {
     signal.throwIfAborted();
+    if (!Object.isNull(repository.folder))
+      await this.folders.useAsync(repository.folder, repository.remote ?? Resources.originRemote, repository.host, repository.path, signal);
     const id: number | null = await this.accounts.accountForAsync(repository.host, repository.path, signal);
     return GitHubAccess.answerOf(id === null ? this.accounts.first : this.accounts.signInOf(id));
   }
 
-  private static answerOf(signIn: AccessSignIn): GitHubAccessGrant | GitHubAccessRefusal {
+  private static answerOf(signIn: IAccessSignIn): GitHubAccessGrant | GitHubAccessRefusal {
     const current = signIn.current;
     const token = signIn.token;
     if (current.account !== null && token !== null)

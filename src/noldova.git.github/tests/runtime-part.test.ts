@@ -11,9 +11,9 @@ import assert from "node:assert/strict";
 import type { JsonValue } from "@noldova/context.json";
 import { FailureCode, SecretFailureReason, ShellClients } from "@noldova/desktop.protocol";
 import { MethodFailureException, RequestContext, ToolFailure, ToolFailureCode } from "@noldova/desktop.runtime";
-import { GitHubAccessGrant, GitHubAccessRefusal } from "@noldova/git.github.protocol";
+import { GitHubAccessGrant, GitHubAccessQuery, GitHubAccessRefusal } from "@noldova/git.github.protocol";
 import { GitRemote, RemoteTransport } from "@noldova/git.protocol";
-import { AuthorQuery, BranchPullRequest, BranchQuery, CommitQuery, DeviceCode, HostAccount, HostComment, HostCommitComments, HostItem, HostPerson, HostPullRequestList,
+import { AuthorQuery, BranchPullRequest, BranchQuery, CommitQuery, DeviceCode, HostAccount, HostAccountEntry, HostAccountList, HostComment, HostCommitComments, HostItem, HostPerson, HostPullRequestList,
   HostPullRequestThreads, HostReference, HostReviewRequestList, HostSignIn, HostThread, PullRequestDraft, RepositoryQuery, SignInFailure,
   ThreadStatus } from "@noldova/git.hosting.protocol";
 import { afterEach, describe, it, vi } from "vitest";
@@ -29,15 +29,27 @@ const grant = { device_code: "3584d83530557fdd1f46af8289938c8ef79f9dc5", user_co
 const account: HostAccount = new HostAccount("octocat", "The Octocat", null, ["repo"]);
 const avatarUrl: string = "https://avatars.githubusercontent.com/u/583231";
 
-async function callAsync(context: RuntimeContext, name: string, payload: JsonValue = null, client: string = "git-github",
-  window: number | null = null): Promise<JsonValue> {
-  const handler = context.methods.get(name);
-  assert.ok(handler !== undefined, `${name} isn't registered.`);
-  return handler.handleAsync(new RequestContext(client, payload, new AbortController().signal, 1, window));
+class Caller {
+  public readonly client: string;
+  public readonly window: number | null;
+
+  public constructor(client: string, window: number | null) {
+    this.client = client;
+    this.window = window;
+  }
 }
 
-function failureOf(error: unknown): readonly string[] | null {
-  return error instanceof MethodFailureException ? [error.failure.code, error.failure.message] : null;
+class Calls {
+  public static async callAsync(context: RuntimeContext, name: string, payload: JsonValue = null, client: string = "git-github",
+    window: number | null = null): Promise<JsonValue> {
+    const handler = context.methods.get(name);
+    assert.ok(handler !== undefined, `${name} isn't registered.`);
+    return handler.handleAsync(new RequestContext(client, payload, new AbortController().signal, 1, window));
+  }
+
+  public static failureOf(error: unknown): readonly string[] | null {
+    return error instanceof MethodFailureException ? [error.failure.code, error.failure.message] : null;
+  }
 }
 
 describe("RuntimePart", () => {
@@ -98,8 +110,8 @@ describe("RuntimePart", () => {
     const context = new RuntimeContext();
 
     await part.activateAsync(context.fake);
-    const answers = [await callAsync(context, "git-github.readSignIn"), await callAsync(context, "git-github.startSignIn"),
-      await callAsync(context, "git-github.cancelSignIn"), await callAsync(context, "git-github.signOut")];
+    const answers = [await Calls.callAsync(context, "git-github.readSignIn"), await Calls.callAsync(context, "git-github.startSignIn"),
+      await Calls.callAsync(context, "git-github.cancelSignIn"), await Calls.callAsync(context, "git-github.signOut")];
     await part.deactivateAsync();
 
     const waiting = HostSignIn.waiting(new DeviceCode("WDJB-MJHT", "https://github.com/login/device", 1_800_000_900_000)).toJson();
@@ -128,24 +140,24 @@ describe("RuntimePart", () => {
     await part.activateAsync(context.fake);
     await github.askedAsync(2);
     github.answer(FakeGitHub.json(grant));
-    const listed = await callAsync(context, "git-github.readAccounts");
-    const second = await callAsync(context, "git-github.readSignIn", { account: 2 });
-    const picked = await callAsync(context, "git-github.pickAccount", { ...repository, account: 2 });
-    const read = await callAsync(context, "git-github.readRepositoryAccount", repository);
-    const added = await callAsync(context, "git-github.addAccount");
-    const cancelled = await callAsync(context, "git-github.cancelSignIn", { account: 3 });
-    const signedOut = await callAsync(context, "git-github.signOut", { account: 2 });
-    const failures = await Promise.all([callAsync(context, "git-github.readSignIn", { account: 9 }), callAsync(context, "git-github.readSignIn", { account: 0 }),
-      callAsync(context, "git-github.readRepositoryAccount", { host: "github.com" })].map(t => t.then(() => null, failureOf)));
+    const listed = await Calls.callAsync(context, "git-github.readAccounts");
+    const second = await Calls.callAsync(context, "git-github.readSignIn", { account: 2 });
+    const picked = await Calls.callAsync(context, "git-github.pickAccount", { ...repository, account: 2 });
+    const read = await Calls.callAsync(context, "git-github.readRepositoryAccount", repository);
+    const added = await Calls.callAsync(context, "git-github.addAccount");
+    const cancelled = await Calls.callAsync(context, "git-github.cancelSignIn", { account: 3 });
+    const signedOut = await Calls.callAsync(context, "git-github.signOut", { account: 2 });
+    const failures = await Promise.all([Calls.callAsync(context, "git-github.readSignIn", { account: 9 }), Calls.callAsync(context, "git-github.readSignIn", { account: 0 }),
+      Calls.callAsync(context, "git-github.readRepositoryAccount", { host: "github.com" })].map(t => t.then(() => null, Calls.failureOf)));
     const events = context.events.get("git-github.accountsChanged") ?? [];
     await part.deactivateAsync();
 
-    assert.deepEqual([(listed as { accounts: { id: number }[] }).accounts.map(t => t.id), second, picked, read],
+    assert.deepEqual([HostAccountList.fromJson(listed).accounts.map(t => t.id), second, picked, read],
       [[1, 2], HostSignIn.signedIn(hubot).toJson(), { account: 2 }, { account: 2 }]);
-    assert.deepEqual([(added as { id: number }).id, cancelled, signedOut, failures.map(t => t?.[0])],
+    assert.deepEqual([HostAccountEntry.fromJson(added).id, cancelled, signedOut, failures.map(t => t?.[0])],
       [3, HostSignIn.signedOut().toJson(), HostSignIn.signedOut().toJson(), [FailureCode.NotFound, FailureCode.InvalidParams, FailureCode.InvalidParams]]);
     assert.deepEqual(events.at(-1), { accounts: [{ id: 1, signIn: HostSignIn.signedIn(new HostAccount("octocat", null, null, ["repo"])).toJson() }] });
-    assert.equal(context.events.get("git-github.signInChanged")?.every(t => (t as { account: { login: string } | null }).account?.login !== "hubot"), true);
+    assert.equal(context.events.get("git-github.signInChanged")?.every(t => HostSignIn.fromJson(t).account?.login !== "hubot"), true);
   });
 
   it("reads a window's folder's remote, choosing the account its user name names and saying so, and answers no account for a remote off a host and path", async () => {
@@ -164,16 +176,16 @@ describe("RuntimePart", () => {
     repositories.remotes.set("bare", new GitRemote("bare", "github.com", null, RemoteTransport.Https));
     const folder = { folder: "/home/monalisa/hello-world", remote: "origin" };
     const useAsync = (payload: JsonValue, client: string = ShellClients.mainProcess, window: number | null = 1): Promise<JsonValue> =>
-      callAsync(context, "git-github.useFolder", payload, client, window);
+      Calls.callAsync(context, "git-github.useFolder", payload, client, window);
 
     await part.activateAsync(context.fake);
     await github.askedAsync(2);
-    const missing = await useAsync(folder).then(() => null, failureOf);
+    const missing = await useAsync(folder).then(() => null, Calls.failureOf);
     context.services.set("git.repositories", repositories);
     const refused = await Promise.all([useAsync(folder, "git-github"), useAsync(folder, ShellClients.mainProcess, null), useAsync({ folder: "/home/monalisa/hello-world" })]
-      .map(t => t.then(() => null, failureOf)));
+      .map(t => t.then(() => null, Calls.failureOf)));
     const used = await useAsync(folder);
-    const read = await callAsync(context, "git-github.readRepositoryAccount", { host: "github.com", path: "octocat/hello-world" });
+    const read = await Calls.callAsync(context, "git-github.readRepositoryAccount", { host: "github.com", path: "octocat/hello-world" });
     const offHost = await Promise.all([useAsync({ ...folder, remote: "local" }), useAsync({ ...folder, remote: "bare" })]);
     repositories.users.clear();
     github.answer(FakeGitHub.json({ full_name: "octocat/hello-world" }));
@@ -200,10 +212,10 @@ describe("RuntimePart", () => {
     const connect = { host: "ghe.example.com", token: "ghp_monalisa" };
 
     await part.activateAsync(context.fake);
-    const refused = await Promise.all([callAsync(context, "git-github.signInWithToken", connect, "git-github"),
-      callAsync(context, "git-github.signInWithToken", { host: "ghe.example.com" }, ShellClients.mainProcess, 1)].map(t => t.then(() => null, failureOf)));
-    const connected = await callAsync(context, "git-github.signInWithToken", connect, ShellClients.mainProcess, 1);
-    const again = await callAsync(context, "git-github.signInWithToken", { host: "ghe.example.com", token: "ghp_again" }, ShellClients.mainProcess, 1);
+    const refused = await Promise.all([Calls.callAsync(context, "git-github.signInWithToken", connect, "git-github"),
+      Calls.callAsync(context, "git-github.signInWithToken", { host: "ghe.example.com" }, ShellClients.mainProcess, 1)].map(t => t.then(() => null, Calls.failureOf)));
+    const connected = await Calls.callAsync(context, "git-github.signInWithToken", connect, ShellClients.mainProcess, 1);
+    const again = await Calls.callAsync(context, "git-github.signInWithToken", { host: "ghe.example.com", token: "ghp_again" }, ShellClients.mainProcess, 1);
     await part.deactivateAsync();
 
     assert.deepEqual(refused.map(t => t?.[0]), [FailureCode.Unauthorized, FailureCode.InvalidParams]);
@@ -222,7 +234,7 @@ describe("RuntimePart", () => {
     context.fake.answer("getService", () => {
       throw unexpected;
     });
-    const outcome = await callAsync(context, "git-github.useFolder", { folder: "/home/monalisa/hello-world", remote: "origin" }, ShellClients.mainProcess, 1)
+    const outcome = await Calls.callAsync(context, "git-github.useFolder", { folder: "/home/monalisa/hello-world", remote: "origin" }, ShellClients.mainProcess, 1)
       .then(() => null, (error: unknown) => error);
     await part.deactivateAsync();
 
@@ -241,7 +253,7 @@ describe("RuntimePart", () => {
     waitingContext.secrets.readFailure = KeptSecrets.failure(SecretFailureReason.NotConnected);
 
     await kept.activateAsync(keptContext.fake);
-    const restored = await callAsync(keptContext, "git-github.readSignIn");
+    const restored = await Calls.callAsync(keptContext, "git-github.readSignIn");
     await kept.deactivateAsync();
     release(FakeGitHub.json({ message: "Bad credentials" }, 401));
     await waiting.activateAsync(waitingContext.fake);
@@ -277,6 +289,30 @@ describe("RuntimePart", () => {
     assert.ok([...linesOf(signedIn.fake.log), ...linesOf(signedOut.fake.log)].every(t => !t.includes("gho_token")));
   });
 
+  it("lets git-github.access read a folder's remote through the Git module, so its user name chooses the account on the first call", async () => {
+    const github = new FakeGitHub();
+    github.answer(FakeGitHub.json({ login: "octocat", name: null, avatar_url: null }, 200, { "X-OAuth-Scopes": "repo" }),
+      FakeGitHub.json({ login: "hubot", name: null, avatar_url: null }, 200, { "X-OAuth-Scopes": "repo" }));
+    vi.stubGlobal("fetch", github.fetch);
+    const part = new RuntimePart();
+    const context = new RuntimeContext();
+    const repositories = new FakeRepositories();
+    context.secrets.values.set("git-github.signIn", JSON.stringify({ token: "gho_octocat", account: new HostAccount("octocat", null, null, ["repo"]).toJson() }));
+    context.secrets.values.set("git-github.account2", JSON.stringify({ token: "gho_hubot", account: new HostAccount("hubot", null, null, ["repo"]).toJson() }));
+    context.secrets.values.set("git-github.accounts", JSON.stringify({ accounts: [{ id: 2, host: "github.com", login: "hubot" }], picks: [] }));
+    repositories.users.set("origin", "hubot");
+    context.services.set("git.repositories", repositories);
+
+    await part.activateAsync(context.fake);
+    await github.askedAsync(2);
+    const access = context.published("git-github.access");
+    assert.ok(access instanceof GitHubAccess);
+    const answer = await access.accessForAsync(new GitHubAccessQuery("github.com", "octocat/hello-world", "/home/monalisa/hello-world"), new AbortController().signal);
+    await part.deactivateAsync();
+
+    assert.deepEqual([answer, repositories.userReads], [new GitHubAccessGrant("gho_hubot", "hubot"), [["/home/monalisa/hello-world", "origin"]]]);
+  });
+
   it("serves the reads through its methods, signed out as no answer, and refuses a request that isn't the protocol's as InvalidParams", async () => {
     const github = new FakeGitHub();
     vi.stubGlobal("fetch", github.fetch);
@@ -284,26 +320,26 @@ describe("RuntimePart", () => {
     const context = new RuntimeContext();
 
     await part.activateAsync(context.fake);
-    const answers = [await callAsync(context, "git-github.readReference", new HostReference("git-github", "octocat", "hello-world", 1).toJson()),
-      await callAsync(context, "git-github.readBranchPullRequest", new BranchQuery("github.com", "octocat/hello-world", "fix-bug", null).toJson()),
-      await callAsync(context, "git-github.readAuthorAvatar", new AuthorQuery("github.com", "octocat/hello-world", "kim@example.com", "6dcb09b5b57875f334f61aebed695e2e4193db5e").toJson()),
-      await callAsync(context, "git-github.readPullRequests", new RepositoryQuery("github.com", "octocat/hello-world").toJson()),
-      await callAsync(context, "git-github.readReviewRequests", new RepositoryQuery("github.com", "octocat/hello-world").toJson()),
-      await callAsync(context, "git-github.readCommitComments", new CommitQuery("github.com", "octocat/hello-world", "6dcb09b5b57875f334f61aebed695e2e4193db5e").toJson()),
-      await callAsync(context, "git-github.readPullRequest", new HostReference("git-github", "octocat", "hello-world", 1).toJson()),
-      await callAsync(context, "git-github.readPullRequestThreads", new HostReference("git-github", "octocat", "hello-world", 1).toJson()),
-      await callAsync(context, "git-github.readCommitPullRequest", new CommitQuery("github.com", "octocat/hello-world", "6dcb09b5b57875f334f61aebed695e2e4193db5e").toJson())];
-    const refusals = [await callAsync(context, "git-github.readReference", null).then(() => null, failureOf),
-      await callAsync(context, "git-github.readBranchPullRequest", { host: "github.com" }).then(() => null, failureOf),
-      await callAsync(context, "git-github.readAuthorAvatar", { host: "github.com" }).then(() => null, failureOf),
-      await callAsync(context, "git-github.readPullRequests", { host: "github.com" }).then(() => null, failureOf),
-      await callAsync(context, "git-github.readReviewRequests", { host: "github.com" }).then(() => null, failureOf),
-      await callAsync(context, "git-github.readCommitComments", { host: "github.com" }).then(() => null, failureOf),
-      await callAsync(context, "git-github.readPullRequest", null).then(() => null, failureOf),
-      await callAsync(context, "git-github.readPullRequestThreads", { number: 1 }).then(() => null, failureOf),
-      await callAsync(context, "git-github.readCommitPullRequest", { host: "github.com" }).then(() => null, failureOf),
-      await callAsync(context, "git-github.readReference", { ...new HostReference("git-github", "octocat", "hello-world", 1).toJson(), title: "x" })
-        .then(() => null, failureOf)];
+    const answers = [await Calls.callAsync(context, "git-github.readReference", new HostReference("git-github", "octocat", "hello-world", 1).toJson()),
+      await Calls.callAsync(context, "git-github.readBranchPullRequest", new BranchQuery("github.com", "octocat/hello-world", "fix-bug", null).toJson()),
+      await Calls.callAsync(context, "git-github.readAuthorAvatar", new AuthorQuery("github.com", "octocat/hello-world", "kim@example.com", "6dcb09b5b57875f334f61aebed695e2e4193db5e").toJson()),
+      await Calls.callAsync(context, "git-github.readPullRequests", new RepositoryQuery("github.com", "octocat/hello-world").toJson()),
+      await Calls.callAsync(context, "git-github.readReviewRequests", new RepositoryQuery("github.com", "octocat/hello-world").toJson()),
+      await Calls.callAsync(context, "git-github.readCommitComments", new CommitQuery("github.com", "octocat/hello-world", "6dcb09b5b57875f334f61aebed695e2e4193db5e").toJson()),
+      await Calls.callAsync(context, "git-github.readPullRequest", new HostReference("git-github", "octocat", "hello-world", 1).toJson()),
+      await Calls.callAsync(context, "git-github.readPullRequestThreads", new HostReference("git-github", "octocat", "hello-world", 1).toJson()),
+      await Calls.callAsync(context, "git-github.readCommitPullRequest", new CommitQuery("github.com", "octocat/hello-world", "6dcb09b5b57875f334f61aebed695e2e4193db5e").toJson())];
+    const refusals = [await Calls.callAsync(context, "git-github.readReference", null).then(() => null, Calls.failureOf),
+      await Calls.callAsync(context, "git-github.readBranchPullRequest", { host: "github.com" }).then(() => null, Calls.failureOf),
+      await Calls.callAsync(context, "git-github.readAuthorAvatar", { host: "github.com" }).then(() => null, Calls.failureOf),
+      await Calls.callAsync(context, "git-github.readPullRequests", { host: "github.com" }).then(() => null, Calls.failureOf),
+      await Calls.callAsync(context, "git-github.readReviewRequests", { host: "github.com" }).then(() => null, Calls.failureOf),
+      await Calls.callAsync(context, "git-github.readCommitComments", { host: "github.com" }).then(() => null, Calls.failureOf),
+      await Calls.callAsync(context, "git-github.readPullRequest", null).then(() => null, Calls.failureOf),
+      await Calls.callAsync(context, "git-github.readPullRequestThreads", { number: 1 }).then(() => null, Calls.failureOf),
+      await Calls.callAsync(context, "git-github.readCommitPullRequest", { host: "github.com" }).then(() => null, Calls.failureOf),
+      await Calls.callAsync(context, "git-github.readReference", { ...new HostReference("git-github", "octocat", "hello-world", 1).toJson(), title: "x" })
+        .then(() => null, Calls.failureOf)];
     await part.deactivateAsync();
 
     assert.deepEqual([answers, github.requests.length], [[null, new BranchPullRequest(null, []).toJson(), { avatar: null },
@@ -321,7 +357,7 @@ describe("RuntimePart", () => {
     });
 
     await part.activateAsync(context.fake);
-    const failure: unknown = await callAsync(context, "git-github.readReference", new HostReference("git-github", "octocat", "hello-world", 1).toJson())
+    const failure: unknown = await Calls.callAsync(context, "git-github.readReference", new HostReference("git-github", "octocat", "hello-world", 1).toJson())
       .then(() => null, (error: unknown) => error);
     await part.deactivateAsync();
 
@@ -344,11 +380,11 @@ describe("RuntimePart", () => {
 
     await part.activateAsync(context.fake);
     await vi.advanceTimersByTimeAsync(0);
-    await callAsync(context, "git-github.readReference", reference);
-    await callAsync(context, "git-github.signOut");
-    await callAsync(context, "git-github.startSignIn");
+    await Calls.callAsync(context, "git-github.readReference", reference);
+    await Calls.callAsync(context, "git-github.signOut");
+    await Calls.callAsync(context, "git-github.startSignIn");
     await vi.advanceTimersByTimeAsync(5_000);
-    const again = await callAsync(context, "git-github.readReference", reference);
+    const again = await Calls.callAsync(context, "git-github.readReference", reference);
     await part.deactivateAsync();
 
     assert.deepEqual([HostItem.fromJson(again).title, github.urls().at(-1), github.requests.at(-1)?.header("If-None-Match")],
@@ -370,7 +406,7 @@ describe("RuntimePart", () => {
 
     await part.activateAsync(context.fake);
     await vi.advanceTimersByTimeAsync(0);
-    const answer = await callAsync(context, "git-github.readReference", new HostReference("git-github", "octocat", "hello-world", 1).toJson());
+    const answer = await Calls.callAsync(context, "git-github.readReference", new HostReference("git-github", "octocat", "hello-world", 1).toJson());
     await part.deactivateAsync();
 
     const item = HostItem.fromJson(answer);
@@ -392,7 +428,7 @@ describe("RuntimePart", () => {
 
     await part.activateAsync(context.fake);
     await vi.advanceTimersByTimeAsync(0);
-    const answer = await callAsync(context, "git-github.readPullRequestThreads", new HostReference("git-github", "octocat", "hello-world", 2).toJson());
+    const answer = await Calls.callAsync(context, "git-github.readPullRequestThreads", new HostReference("git-github", "octocat", "hello-world", 2).toJson());
     await part.deactivateAsync();
 
     assert.deepEqual(answer, new HostPullRequestThreads([new HostThread(14, ThreadStatus.None, null, null, [new HostComment(7, null,
@@ -414,10 +450,10 @@ describe("RuntimePart", () => {
 
     await part.activateAsync(context.fake);
     const refusals: (readonly string[] | null)[] = [];
-    for (const [client, window] of [["cli", null], ["chat", 1], [ShellClients.mainProcess, null]] as const)
-      refusals.push(await callAsync(context, "git-github.createPullRequest", draft, client, window).then(() => null, failureOf));
+    for (const caller of [new Caller("cli", null), new Caller("chat", 1), new Caller(ShellClients.mainProcess, null)])
+      refusals.push(await Calls.callAsync(context, "git-github.createPullRequest", draft, caller.client, caller.window).then(() => null, Calls.failureOf));
     const requestsBefore = github.requests.length;
-    const made = await callAsync(context, "git-github.createPullRequest", draft, ShellClients.mainProcess, 1);
+    const made = await Calls.callAsync(context, "git-github.createPullRequest", draft, ShellClients.mainProcess, 1);
     await part.deactivateAsync();
 
     const refusal = [FailureCode.Unauthorized, "Only a person's click in a window opens a pull request."];
