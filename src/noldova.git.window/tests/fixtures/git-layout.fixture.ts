@@ -55,13 +55,11 @@ export class GitLayout {
   }
 
   private static isCovered(first: HTMLElement, second: HTMLElement, root: HTMLElement): boolean {
-    const a: DOMRect = first.getBoundingClientRect();
-    const b: DOMRect = second.getBoundingClientRect();
-    const x: number = (Math.max(a.left, b.left) + Math.min(a.right, b.right)) / 2;
-    const y: number = (Math.max(a.top, b.top) + Math.min(a.bottom, b.bottom)) / 2;
-    const hit: Element | null = document.elementFromPoint(x, y);
-    const under: HTMLElement = !Object.isNull(hit) && first.contains(hit) ? second : first;
-    for (let cover: Element | null = hit; !Object.isNull(cover) && cover !== root && !cover.contains(under); cover = cover.parentElement) {
+    return GitLayout.isUnder(first, second, root) || GitLayout.isUnder(second, first, root);
+  }
+
+  private static isUnder(text: HTMLElement, other: HTMLElement, root: HTMLElement): boolean {
+    for (let cover: HTMLElement | null = other; !Object.isNull(cover) && cover !== root && !cover.contains(text); cover = cover.parentElement) {
       const style: CSSStyleDeclaration = getComputedStyle(cover);
       if (style.position === "absolute" && GitLayout.isOpaque(style.backgroundColor))
         return true;
