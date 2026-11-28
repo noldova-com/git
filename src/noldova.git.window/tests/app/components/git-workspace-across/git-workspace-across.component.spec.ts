@@ -30,6 +30,7 @@ import { GitWorkspaceReviews } from "../../../../src/app/models/git-workspace-re
 import { GitWorkspaceRow } from "../../../../src/app/models/git-workspace-row.ts";
 import { GitWorkspaceRun } from "../../../../src/app/models/git-workspace-run.ts";
 import { GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
+import { RightEdge } from "../../../fixtures/right-edge.fixture.ts";
 
 describe("GitWorkspaceAcrossComponent", () => {
   const remote: GitRemote = new GitRemote("origin", "github.com", "example-owner/git", RemoteTransport.Https);
@@ -173,6 +174,22 @@ describe("GitWorkspaceAcrossComponent", () => {
     expect(panel.rem(card).width).toBeCloseTo(20.5, 2);
     expect(panel.rem(row).height).toBeCloseTo(1.625, 2);
     expect(panel.rem(panel.find(".needs")).y - (panel.rem(card).y + panel.rem(card).height)).toBeCloseTo(0.75, 2);
+  });
+
+  it("ends a waiting agent's Review, each Needs you action and a run's own worktree on the content edge, each row's fill 0.5rem past it on both sides, a run's with the pointer", async () => {
+    const provider: IGitAgents = agents();
+    const panel: Panel = Panel.render([rowOf("/work/ui", statusOf("feature/kit", kitUpstream), pull(1)), rowOf("/work/desktop", statusOf("main", behind))], [
+      runOf(provider, "/work/terminal", "w", "Push fix/pty-resize", GitAgentState.WaitingForYou), runOf(provider, "/work/git", "a", "Blame gutter", GitAgentState.Working, "/work/git-blame")]);
+    await panel.fixture.whenStable();
+    const start: number = panel.element.getBoundingClientRect().left + Number.parseFloat(getComputedStyle(panel.element).paddingLeft);
+    const edge: number = RightEdge.contentOf(panel.element);
+    const rows: HTMLElement[] = [...panel.element.querySelectorAll<HTMLElement>(".needs .row, .working .row")];
+    const rem = (pixels: number): number => Math.round(pixels / Number.parseFloat(getComputedStyle(document.documentElement).fontSize) * 1000) / 1000;
+    const outsets: number[][] = rows.map(t => [rem(start - t.getBoundingClientRect().left), rem(t.getBoundingClientRect().right - edge)]);
+
+    expect(RightEdge.missesOf(panel.element, edge, [".waiting [nol-toolbar-button]", ".failing [nol-toolbar-button]", ".behind [nol-toolbar-button]", ".run .small"])).toEqual([]);
+    expect(outsets).toEqual(rows.map(() => [0.5, 0.5]));
+    expect(getComputedStyle(panel.find(".run")).cursor).toBe("pointer");
   });
 
   it("opens the repositories, the failing checks' pull request or history, and the runs, reporting a run that won't open", async () => {

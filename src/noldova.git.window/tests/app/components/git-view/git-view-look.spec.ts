@@ -121,6 +121,8 @@ describe("GitViewComponent in the kit's look", () => {
     expect([rem(box(row.querySelector("nol-file-badge")).left - changesBox.left), rem(changesBox.left - box(row).left), rem(box(row).right - changesBox.right)]).toEqual([0, 0.5, 0.5]);
     expect(RightEdge.missesOf(view.element, RightEdge.insideOf(view.element, 0.75),
       ["nol-git-file-group:nth-of-type(3) .move-all", "nol-git-file-group:nth-of-type(3) .file .move", ".commit"])).toEqual([]);
+    expect(RightEdge.missesOf(view.element, RightEdge.insideOf(view.element, 0.75), ["nol-git-file-group:nth-of-type(1) .file .state",
+      "nol-git-file-group:nth-of-type(2) .file .state", "nol-git-file-group:nth-of-type(3) li:nth-child(2) .file .state"])).toEqual([]);
     expect(RightEdge.missesOf(changes, RightEdge.insideOf(changes.querySelector(".diff") ?? changes, 0.5), [".hunk-action"])).toEqual([]);
     expect(rem(box(row.querySelector(".move")).right - box(row.querySelector(".state")).right)).toBeGreaterThan(0);
     expect([rem(box(row.querySelector(".move")).left - box(row.querySelector(".discard")).right), rem(box(row.querySelector(".discard")).left - box(row.querySelector(".expand")).right)])

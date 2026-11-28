@@ -112,12 +112,12 @@
 }
 
 button.row,
-.row > [nol-toolbar-button]:last-child {
-  margin-inline-end: calc(-1 * var(--nol-pill-padding));
-}
-
 .row.review {
   cursor: pointer;
+}
+
+.row > [nol-toolbar-button]:last-child {
+  margin-inline-end: calc(-1 * var(--nol-pill-padding));
 }
 
 .row:hover {
