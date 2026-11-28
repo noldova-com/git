@@ -42,6 +42,14 @@ describe("RemoteUrl", () => {
       assert.equal(RemoteUrl.toRemote("origin", url).path, null, url);
   });
 
+  test("reads the user name of an HTTPS URL, decoded, and none from SSH, scp-style, local or unreadable addresses, nor one with a space, a colon or a control character", () => {
+    assert.deepEqual(["https://Kim@github.com/a/b", "http://kim:secret@host/a", "https://kim%40example.com@dev.azure.com/o/p/_git/r"].map(t => RemoteUrl.userOf(t)),
+      ["Kim", "kim", "kim@example.com"]);
+    for (const url of ["https://github.com/a/b", "ssh://kim@host/a/b", "kim@host:a/b", "/srv/repo.git", "https://kim@exa mple.com/a", "https://%zz@host/a",
+      "https://a%20b@host/a", "https://a%3Ab@host/a", "https://a%0Ab@host/a", `https://${"k".repeat(257)}@host/a`])
+      assert.equal(RemoteUrl.userOf(url), null, url);
+  });
+
   test("lets through a failure to read a URL or its path other than one it can't read", () => {
     const failure = new RangeError("The reader broke.");
     const parse = vi.spyOn(globalThis, "URL").mockImplementationOnce(function () {
@@ -55,5 +63,11 @@ describe("RemoteUrl", () => {
     });
     onTestFinished(() => decode.mockRestore());
     assert.throws(() => RemoteUrl.toRemote("origin", "https://host/a"), failure);
+
+    const user = vi.spyOn(globalThis, "decodeURIComponent").mockImplementationOnce(() => {
+      throw failure;
+    });
+    onTestFinished(() => user.mockRestore());
+    assert.throws(() => RemoteUrl.userOf("https://kim@host/a"), failure);
   });
 });

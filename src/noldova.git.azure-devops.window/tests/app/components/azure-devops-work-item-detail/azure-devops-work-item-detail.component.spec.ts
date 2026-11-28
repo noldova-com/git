@@ -14,6 +14,7 @@ import { GitCommit, GitGraph, GitGraphCommit, GitGraphParams, GitNames } from "@
 import { GitFolder } from "@noldova/git.window";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 
+import { TimeFormatsFixture } from "../../../fixtures/time-formats.fixture.ts";
 import { UnhandledRejections } from "../../../fixtures/unhandled-rejections.fixture.ts";
 import { Wait } from "../../../fixtures/wait.fixture.ts";
 import { WindowFailure } from "../../../fixtures/window-failure.fixture.ts";
@@ -261,6 +262,21 @@ describe("AzureDevOpsWorkItemDetailComponent", () => {
         ["Guard bug_report AB#7699 behind workspace_premium #7402 ddddddd · Mona Lisa · Jan 5"], ["rgb(204, 41, 61)", "rgb(255, 123, 0)"],
         new WorkItemsQuery(HOST, "fabrikam", PROJECT, WorkItemScope.Ids, [7699]).toJson(), 2]);
     });
+
+  it("dates a linked commit past 30 days by the date and time format setting, and again when it changes", async () => {
+    onTestFinished(GitFolder.provide(new FakeWindowPartContext(), signal("/work/garden-web")));
+    const page = new Page().answerMine();
+    page.requests.answer(GitNames.statusMethod, azureStatus.toJson());
+    page.requests.answer(GitNames.graphMethod, new GitGraph([new GitGraphCommit(new GitCommit("d".repeat(40), [], "Mona Lisa", "2025-01-05T12:00:00Z",
+      "Guard the due dates of #7402"), "kim@fabrikam.test", [])], false).toJson());
+    page.requests.answer(GitNames.messageReferencesMethod, noMessages);
+    await page.openAsync();
+    await Wait.until(() => expect(page.texts(".history .commit .byline")).toEqual(["ddddddd · Mona Lisa · Jan 5"]));
+    onTestFinished(() => TimeFormatsFixture.reset());
+    TimeFormatsFixture.use24Hour();
+
+    await Wait.until(() => expect(page.texts(".history .commit .byline")).toEqual(["ddddddd · Mona Lisa · 5 Jan"]));
+  });
 
   it("keeps a chip's work item through a sign-in that waits, and reads it anew once the person signs out and in again, showing none the earlier sign-in read",
     async () => {

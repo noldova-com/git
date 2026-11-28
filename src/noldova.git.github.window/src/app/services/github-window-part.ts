@@ -20,6 +20,7 @@ import { Resources } from "../../resources.ts";
 import { AccountEvents } from "./account-events.ts";
 import { GitHubAccountList } from "./github-account-list.ts";
 import { GitHubAuthorAvatars } from "./github-author-avatars.ts";
+import { GitHubFolders } from "./github-folders.ts";
 import { GitHubPullRequests } from "./github-pull-requests.ts";
 import { GitHubReferenceSource } from "./github-reference-source.ts";
 
@@ -80,7 +81,10 @@ export class GitHubWindowPart implements IWindowPart {
   }
 
   public async reconnectAsync(): Promise<boolean> {
-    return !Object.isNull(this.context);
+    if (Object.isNull(this.context))
+      return false;
+    GitHubFolders.forget(this.context);
+    return true;
   }
 
   public async deactivateAsync(): Promise<void> {
@@ -92,8 +96,10 @@ export class GitHubWindowPart implements IWindowPart {
     this.withdrawLinks = null;
     this.unfollow?.();
     this.unfollow = null;
-    if (!Object.isNull(this.context))
+    if (!Object.isNull(this.context)) {
       GitHubAccountList.show(this.context, null);
+      GitHubFolders.forget(this.context);
+    }
     this.context = null;
   }
 

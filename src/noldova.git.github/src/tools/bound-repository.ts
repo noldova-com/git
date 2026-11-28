@@ -10,6 +10,7 @@ import { JsonException } from "@noldova/context.json";
 import { ServiceAccessException, ToolFailureCode, type ToolCall } from "@noldova/desktop.runtime";
 import { GitFolderBinding, type GitRemote, type GitRepositories, type GitStatus, ProtocolException } from "@noldova/git.protocol";
 
+import type { IGitHubTokens } from "../interfaces/i-github-tokens.ts";
 import { GitHubRepository } from "../models/github-repository.ts";
 import { Resources } from "../resources.ts";
 import { GitHubToolFailures } from "./github-tool-failures.ts";
@@ -27,14 +28,16 @@ export class BoundRepository {
     this.headCommit = headCommit;
   }
 
-  public static async readAsync(call: ToolCall, repositories: () => GitRepositories): Promise<BoundRepository> {
+  public static async readAsync(call: ToolCall, repositories: () => GitRepositories, tokens: IGitHubTokens): Promise<BoundRepository> {
     const folder: string = BoundRepository.folderOf(call);
     let status: GitStatus;
     let origin: GitRemote | null;
+    let user: string | null;
     try {
       const reads: GitRepositories = repositories();
       status = await reads.readStatusAsync(folder, call.signal);
       origin = await reads.readRemoteAsync(folder, Resources.originRemote, call.signal);
+      user = await reads.readRemoteUserAsync(folder, Resources.originRemote, call.signal);
     } catch (error) {
       throw error instanceof ServiceAccessException
         ? GitHubToolFailures.fail(ToolFailureCode.Unavailable, Resources.gitMissingToolMessage, Resources.gitUnavailableToolCode)
@@ -47,6 +50,7 @@ export class BoundRepository {
       throw GitHubToolFailures.fail(ToolFailureCode.Refused, Resources.notGitHubToolMessage, Resources.notGitHubToolCode);
     if (status.branch === null)
       throw GitHubToolFailures.fail(ToolFailureCode.Refused, Resources.detachedHeadToolMessage, Resources.detachedHeadToolCode);
+    tokens.useUser(host, path, user);
     return new BoundRepository(host, path, status.branch, status.head);
   }
 

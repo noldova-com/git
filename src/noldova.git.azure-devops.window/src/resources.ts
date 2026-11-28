@@ -83,7 +83,6 @@ export class Resources {
   public static readonly approvedVoteIcon: IconName = "check";
   public static readonly waitingVoteIcon: IconName = "schedule";
   public static readonly rejectedVoteIcon: IconName = "close";
-  public static readonly openDateFormat: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
   public static readonly accountId: string = "git-azure-devops.account";
   public static readonly hostName: string = "Azure DevOps";
   public static readonly hostColumn: string = "Azure";
@@ -699,7 +698,6 @@ export class Resources {
 
   public static readonly linkedHistoryTitle: string = "Linked in your history";
   public static readonly linkedHistoryCap: string = "It covers the repository's last 1,000 commits.";
-  public static readonly linkedCommitDateFormat: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
 
   public static formatCommitAge(milliseconds: number): string | null {
     const minutes: number = Math.max(1, Math.floor(milliseconds / 60_000));

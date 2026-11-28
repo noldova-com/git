@@ -10,7 +10,7 @@ import { Component, computed, DestroyRef, effect, ElementRef, ErrorHandler, inje
   type WritableSignal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import "@noldova/context.core";
-import { type IWindowPartContext, LinkPlace, WindowPartTokens } from "@noldova/desktop.window";
+import { type IWindowPartContext, LinkPlace, TimeFormatService, WindowPartTokens } from "@noldova/desktop.window";
 import { type GitRepositoryScan, ScanEnd } from "@noldova/git.protocol";
 import { ButtonComponent, CheckboxComponent, DialogService, IconButtonComponent, TextFieldComponent, ToolbarButtonComponent } from "@noldova/ui.components.angular";
 
@@ -102,6 +102,7 @@ export class GitWorkspaceComponent {
   private readonly summaries: GitRepositorySummaries = new GitRepositorySummaries(this.context);
   private readonly pullRequests: GitWorkspacePullRequests = new GitWorkspacePullRequests(this.errors);
   private readonly dialogs: DialogService = inject(DialogService);
+  private readonly dates: TimeFormatService = inject(TimeFormatService);
   private readonly client: GitRuntimeClient = new GitRuntimeClient(this.context);
   private readonly bulk: GitWorkspaceBulk = new GitWorkspaceBulk(this.client, this.errors);
   private readonly watched: Set<string> = new Set();
@@ -255,6 +256,14 @@ export class GitWorkspaceComponent {
 
   protected open(folder: string): void {
     GitWorkspacePages.openRepository(this.context, folder);
+  }
+
+  protected fetchedOf(row: GitWorkspaceRow): string {
+    return GitWorkspaceRow.fetchedOf(row.summary(), new Date(), this.dates);
+  }
+
+  protected openAcross(): void {
+    GitWorkspaceAcrossViews.open(this.context);
   }
 
   protected openPullRequest(row: GitWorkspaceRow, pullRequest: GitPullRequestRow): void {

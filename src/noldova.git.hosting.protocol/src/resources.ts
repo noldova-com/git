@@ -12,6 +12,7 @@ export class Resources {
   public static readonly httpsAddressExpected: string = "an https address with no user name or password";
   public static readonly positiveExpected: string = "a whole number above zero";
   public static readonly countExpected: string = "a whole number, zero or more";
+  public static readonly namedAccountExpected: string = "false while there is no account";
   public static readonly nameExpected: string = "a name of letters, digits, '.', '_' and '-', other than '.' and '..'";
   public static readonly pathExpected: string = "names of letters, digits, '.', '_', '-' and percent escapes such as '%20' but not of '/' or '\\' joined by '/', none of them '.' or '..', '%2e' counting as a dot";
   public static readonly namePattern: RegExp = /^(?!\.\.?$)[A-Za-z0-9._-]+$/;
@@ -88,6 +89,9 @@ export class Resources {
   public static readonly deviceCodeField: string = "deviceCode";
   public static readonly addressField: string = "address";
   public static readonly accountField: string = "account";
+  public static readonly isNamedByRemoteField: string = "isNamedByRemote";
+  public static readonly folderField: string = "folder";
+  public static readonly remoteField: string = "remote";
   public static readonly accountsField: string = "accounts";
   public static readonly signInField: string = "signIn";
   public static readonly placeField: string = "place";

@@ -9,7 +9,7 @@
 import { afterNextRender, Component, computed, DestroyRef, effect, ElementRef, ErrorHandler, inject, Injector, input, type InputSignal, type Signal, signal, untracked, viewChild,
   type WritableSignal } from "@angular/core";
 import "@noldova/context.core";
-import { type IWindowPartContext, WindowPartTokens } from "@noldova/desktop.window";
+import { type IWindowPartContext, TimeFormatService, WindowPartTokens } from "@noldova/desktop.window";
 import type { GitCommand, GitCommandLog } from "@noldova/git.protocol";
 
 import { Resources } from "../../../resources.ts";
@@ -26,6 +26,7 @@ export class GitCommandLogComponent {
   private readonly client: GitRuntimeClient = new GitRuntimeClient(this.context);
   private readonly errors: ErrorHandler = inject(ErrorHandler);
   private readonly injector: Injector = inject(Injector);
+  private readonly times: TimeFormatService = inject(TimeFormatService);
   private readonly list: Signal<ElementRef<HTMLElement> | undefined> = viewChild<ElementRef<HTMLElement>>("list");
   private reads = 0;
   private height = 0;
@@ -70,7 +71,7 @@ export class GitCommandLogComponent {
   }
 
   protected timeOf(command: GitCommand): string {
-    return new Date(command.at).toLocaleTimeString(Resources.dateLocale);
+    return this.times.time(command.at);
   }
 
   protected iconOf(command: GitCommand): string {

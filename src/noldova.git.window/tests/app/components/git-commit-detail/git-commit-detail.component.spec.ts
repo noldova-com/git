@@ -9,6 +9,7 @@
 import { ApplicationRef, type EnvironmentProviders, ErrorHandler, type Provider, signal, type WritableSignal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import "@noldova/context.core";
+import { DatePattern } from "@noldova/desktop.protocol";
 import {
   FailureCode, GitCommit, GitCommitDetail, GitCommitSignature, GitGraphCommit, GitPrediction, GitRef, type JsonValue, LineKind, PredictionAction, PredictionOutcome, RefKind,
   SignatureState
@@ -16,7 +17,7 @@ import {
 import { DefaultTheme, LinkGesture, LinkReference, LinkReferenceImage, LinkReferenceMatch } from "@noldova/ui.components.angular";
 import { provideMarkdown } from "@noldova/ui.components.angular/markdown";
 import { AppearanceFixture } from "@noldova/ui.components.angular/testing";
-import { describe, expect, it, onTestFinished, vi } from "vitest";
+import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { GitCommitView } from "../../../../src/app/models/git-commit-view.ts";
 import { GitAvatars } from "../../../../src/app/services/git-avatars.ts";
@@ -26,9 +27,12 @@ import { GitViewOptions } from "../../../../src/app/services/git-view-options.ts
 import { GitViewing } from "../../../../src/app/services/git-viewing.ts";
 import { FixtureLine, GitFixtures } from "../../../fixtures/git-fixtures.fixture.ts";
 import { GitViewFixture } from "../../../fixtures/git-view.fixture.ts";
+import { TimeFormatsFixture } from "../../../fixtures/time-formats.fixture.ts";
 import type { IGitLinkReferences } from "../../../../src/app/interfaces/i-git-link-references.ts";
 
 describe("GitCommitDetailComponent", () => {
+  afterEach(() => TimeFormatsFixture.reset());
+
   const commitOf = (parents: readonly string[]): GitGraphCommit =>
     new GitGraphCommit(new GitCommit("c".repeat(40), parents, "Sample Author", "2026-11-20T14:02:00Z", "Follow renames"), "author@example.com", []);
 
@@ -131,6 +135,20 @@ describe("GitCommitDetailComponent", () => {
     expect([message.top >= subject.bottom, message.left, message.height > subject.height]).toEqual([true, subject.left, true]);
     expect(view.texts(".committed")[0]).toMatch(/^committed by Other Person /u);
     expect(view.requested("git.commitDetail")).toEqual([{ folder: GitFixtures.folder, id: "c".repeat(40) }]);
+  });
+
+  it("shows when the commit was authored and committed by the date and time format setting, and again when it changes", async () => {
+    const view: GitViewFixture = await showAsync(commitOf(["d".repeat(40)]), GitFixtures.diff("a.ts", new FixtureLine(LineKind.Added, "one")),
+      new GitCommitDetail("c".repeat(40), "", "Other Person", "other@example.com", "2026-11-21T09:30:00Z", true));
+    await view.waitForAsync(".committed");
+    const shows = (pattern: string): readonly boolean[] => ["2026-11-20T14:02:00Z", "2026-11-21T09:30:00Z"]
+      .map(t => (view.texts(".when")[0] ?? "").includes(DatePattern.format(new Date(t), pattern)));
+    const before: readonly boolean[] = shows("MMM d, h:mm a");
+    const text: string = view.texts(".when")[0] ?? "";
+    TimeFormatsFixture.use24Hour();
+    await view.untilAsync(() => view.texts(".when")[0] !== text);
+
+    expect([before, shows("d MMM, HH:mm")]).toEqual([[true, true], [true, true]]);
   });
 
   it("draws a link a host knows in the message as its chip, asking for the commit's folder, and opens a link through the window", async () => {

@@ -23,10 +23,10 @@ describe("HostingNames", () => {
 
   it("names each account member after the host module's id", () => {
     const names: readonly string[] = [HostingNames.readAccountsMethod, HostingNames.addAccountMethod, HostingNames.readRepositoryAccountMethod,
-      HostingNames.pickAccountMethod, HostingNames.accountsChangedEvent].map(t => HostingNames.nameOf("git-github", t));
+      HostingNames.pickAccountMethod, HostingNames.useFolderMethod, HostingNames.accountsChangedEvent].map(t => HostingNames.nameOf("git-github", t));
 
     assert.deepEqual(names, ["git-github.readAccounts", "git-github.addAccount", "git-github.readRepositoryAccount", "git-github.pickAccount",
-      "git-github.accountsChanged"]);
+      "git-github.useFolder", "git-github.accountsChanged"]);
   });
 
   it("names each pull request member after the host module's id", () => {
@@ -65,5 +65,9 @@ describe("HostingNames", () => {
 
   it("names the pull request threads read after the host module's id", () => {
     assert.equal(HostingNames.nameOf("git-azure-devops", HostingNames.readPullRequestThreadsMethod), "git-azure-devops.readPullRequestThreads");
+  });
+
+  it("names the failure detail that holds when a host's rate limit resets", () => {
+    assert.equal(HostingNames.rateLimitedUntilDetail, "rateLimitedUntil");
   });
 });
